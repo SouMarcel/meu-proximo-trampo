@@ -1,0 +1,10 @@
+# Dados pessoais: ficam só no seu computador
+config.json
+perfil.md
+dash/dados/
+.cache/
+
+# Ambiente Python
+.venv/
+__pycache__/
+*.pyc

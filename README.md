@@ -1,0 +1,195 @@
+# meu-proximo-trampo
+
+Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, monta um
+relatório para você decidir o que vale a pena e acompanha suas candidaturas num
+quadro kanban. Com IA (opcional), cada vaga recebe uma nota de aderência ao seu perfil,
+com o que bate, o que falta e o que o anúncio esconde.
+
+Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
+
+![Relatório de Vagas](docs/relatorio.png)
+
+## O que ela faz
+
+- **Busca** vagas no Indeed com os seus termos (frase exata, só remoto, últimos N
+  dias). Tira o ruído pelo título, junta anúncios repetidos e esconde vagas que você
+  já viu.
+- **Relatório de Vagas:** para cada vaga você decide **Seguir**, e ela vai para o
+  quadro, ou **Não seguir**, e ela não aparece mais nas próximas buscas.
+- **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
+  Recebida → Encerrada, com anotações, resultado e filtro por plataforma. O botão
+  **Adicionar Vaga** registra vagas de qualquer site (LinkedIn, Gupy, InHire…).
+- **Com IA:** nota de 0 a 100 por vaga, encaixes, lacunas e alertas (híbrido
+  disfarçado de remoto, PJ, inglês fluente, vaga afirmativa).
+
+![Quadro de candidaturas](docs/quadro.png)
+
+## Precisa de IA?
+
+Não. A busca, o relatório e o quadro funcionam sem IA. A IA entra para avaliar as
+vagas por você.
+
+| | Sem IA | Com IA ([Claude Code](https://claude.com/claude-code)) |
+|---|---|---|
+| Buscar vagas | `python vagas.py buscar --gravar` | "busca vagas novas pra mim" |
+| Relatório e quadro | Sim | Sim |
+| Nota de aderência, encaixes, lacunas e alertas | Não | Sim |
+| Analisar vagas que você adicionou à mão | Não | Sim |
+| Montar a configuração e o perfil | À mão | Guiado, a partir do seu currículo |
+
+Para usar com IA você precisa do Claude Code, com uma assinatura Claude (Pro ou Max) ou
+uma chave de API da Anthropic. A skill que ensina o Claude a fazer tudo isso já vem
+neste repositório, em `.claude/skills/buscar-vagas/`.
+
+## Como funciona
+
+```mermaid
+flowchart LR
+  A[Indeed] --> B[vagas.py buscar]
+  B -->|sem IA| D[(banco local)]
+  B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
+  C --> D
+  D --> E[Relatório de Vagas]
+  E -->|Seguir| F[Quadro de candidaturas]
+  E -->|Não seguir| G[visitada:<br/>não volta mais]
+```
+
+## Instalação
+
+Você precisa de [Python](https://www.python.org/downloads/) 3.10 ou mais novo e do
+[Git](https://git-scm.com/downloads).
+
+```bash
+git clone https://github.com/SouMarcel/meu-proximo-trampo.git
+cd meu-proximo-trampo
+python -m venv .venv
+```
+
+Ative o ambiente e instale a dependência:
+
+```bash
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+# macOS / Linux
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+Crie a sua configuração a partir do exemplo e troque os termos pelos cargos que você
+procura:
+
+```bash
+# Windows
+copy config.exemplo.json config.json
+# macOS / Linux
+cp config.exemplo.json config.json
+```
+
+Com IA, dá para pular essa parte: abra a pasta no Claude Code e peça "quero configurar
+a busca de vagas".
+
+## Uso sem IA
+
+1. Busque e grave tudo no relatório:
+
+   ```bash
+   python vagas.py buscar --gravar
+   ```
+
+2. Abra o dashboard:
+
+   ```bash
+   python dash/servidor.py
+   ```
+
+   No Windows, dá para dar dois cliques em `dash\abrir-dashboard.bat`. O navegador abre
+   em http://127.0.0.1:8765. Para parar, feche a janela do servidor.
+
+3. Na aba **Relatório de Vagas**, decida vaga por vaga. As que você seguir aparecem
+   no **Quadro**; arraste os cartões conforme o processo anda.
+
+Algumas buscas por semana bastam.
+
+## Uso com IA (Claude Code)
+
+1. Instale o [Claude Code](https://claude.com/claude-code) e abra esta pasta nele (no
+   terminal, `claude`; ou pela extensão do VS Code).
+2. Na primeira vez, peça **"quero configurar a busca de vagas"**. O Claude cria o
+   `config.json` com você e monta o `perfil.md` a partir do seu currículo ou do PDF do
+   seu LinkedIn. Esse perfil é a base da nota de aderência; veja o modelo em
+   `perfil.exemplo.md`.
+3. No dia a dia:
+   - "busca vagas novas pra mim"
+   - "busca vagas de product owner dos últimos 3 dias, pode ser híbrido"
+   - "analisa as vagas que adicionei no dashboard"
+   - "o que está em entrevista?"
+
+O Claude roda a busca, lê cada vaga, dá a nota, grava no dashboard e responde com um
+resumo das melhores. A decisão de seguir continua sendo sua, no relatório.
+
+> **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
+> Claude (Anthropic) para a análise. Sem IA, nada sai do seu computador além das
+> consultas ao Indeed.
+
+## Configuração (`config.json`)
+
+| Campo | O que é |
+|---|---|
+| `perfil` | Arquivo do seu perfil de carreira (usado só pela IA). Padrão: `perfil.md` |
+| `fontes` | Portais onde buscar. Hoje: `["indeed"]` |
+| `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
+| `local` | Onde buscar (ex.: `Brasil`, `São Paulo, SP`) |
+| `pais_indeed` | Site do Indeed (ex.: `Brazil`, `Portugal`, `USA`) |
+| `somente_remoto` | `true` para só vagas remotas |
+| `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias) |
+| `resultados_por_termo` | Máximo de vagas por termo |
+| `titulo_excluir` | Descarta vagas cujo título tenha alguma dessas palavras (ex.: `estagio`) |
+| `titulo_incluir` | Se preenchido, só fica vaga cujo título tenha alguma dessas palavras |
+
+Opções pontuais, sem mexer no arquivo: `python vagas.py buscar --help`.
+
+## Seus dados
+
+- Vagas e candidaturas: `dash/dados/candidaturas.db` (SQLite), com uma cópia de
+  segurança por dia em `dash/dados/backup/`.
+- `config.json`, `perfil.md`, `dash/dados/` e `.cache/` estão no `.gitignore` e não vão
+  para o GitHub. Se você fizer um fork, o seu histórico continua só com você.
+- Dica: mantenha a ferramenta na branch `master` e os seus ajustes pessoais numa
+  branch local (por exemplo `minha`), trazendo as melhorias com `git merge master`.
+
+## Combina com: skills de LinkedIn
+
+Enquanto procura emprego, vale caprichar no LinkedIn. O
+[linkedin-agent-skills](https://github.com/liftli-ai/linkedin-agent-skills) é um
+conjunto de skills para o Claude Code que escreve e revisa headline, About, posts,
+comentários e carrosséis no seu tom de voz. Para instalar, no Claude Code:
+
+```
+/plugin marketplace add liftli-ai/linkedin-agent-skills
+/plugin install linkedin-agent-skills@liftli
+```
+
+## Avisos
+
+- A busca no Indeed usa a biblioteca [python-jobspy](https://github.com/speedyapply/JobSpy),
+  que acessa o Indeed de forma não oficial. Ela pode parar de funcionar se o Indeed
+  mudar algo, e uso exagerado pode gerar bloqueio temporário. Use para a sua busca
+  pessoal, com moderação, e respeite os termos de uso do portal.
+- A nota da IA serve para triagem; ela não substitui ler a vaga.
+
+## Próximos passos
+
+- [x] Indeed (Brasil e outros países)
+- [ ] Outros portais: LinkedIn, Gupy, InHire, Catho, Glassdoor
+- [ ] Simular entrevista para as vagas na coluna Entrevista
+
+### Adicionar um portal
+
+Cada portal é um módulo em `fontes/` com uma função `buscar()` que devolve as vagas
+num formato comum. O contrato está em [`fontes/__init__.py`](fontes/__init__.py), e o
+[`fontes/indeed.py`](fontes/indeed.py) serve de exemplo. Contribuições são bem-vindas.
+
+## Licença
+
+[MIT](LICENSE)

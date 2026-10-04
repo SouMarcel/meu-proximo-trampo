@@ -1,0 +1,12 @@
+{
+  "perfil": "perfil.md",
+  "fontes": ["indeed"],
+  "termos": ["\"product owner\"", "\"product manager\"", "\"analista de produto\""],
+  "local": "Brasil",
+  "pais_indeed": "Brazil",
+  "somente_remoto": true,
+  "janela_horas": 168,
+  "resultados_por_termo": 40,
+  "titulo_excluir": ["estagio", "estagiario", "estagiaria", "jovem aprendiz", "trainee"],
+  "titulo_incluir": []
+}
