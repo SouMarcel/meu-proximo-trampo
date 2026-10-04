@@ -271,9 +271,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       <div class="filtro">
         <span class="filtro-lbl" id="fl-nivel">Senioridade</span>
         <div class="seg" role="group" aria-labelledby="fl-nivel">
-          <button type="button" data-nivel="junior" aria-pressed="false">Júnior</button>
-          <button type="button" data-nivel="pleno" aria-pressed="false">Pleno</button>
-          <button type="button" data-nivel="senior" aria-pressed="false">Sênior</button>
+          <button type="button" data-nivel="junior" aria-pressed="false" title="Júnior">Jr</button>
+          <button type="button" data-nivel="pleno" aria-pressed="false" title="Pleno">Pl</button>
+          <button type="button" data-nivel="senior" aria-pressed="false" title="Sênior">Sr</button>
           <button type="button" data-nivel="ni" aria-pressed="false" title="Vagas que não dizem o nível">Não informada</button>
         </div>
       </div>
@@ -368,16 +368,18 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function noQuadro(v) { return !!v.etapa && (v.origem === "manual" || v.triagem === "seguir"); }
   function porPlataforma(v) { return !S.plataforma || (v.plataforma || "Outra") === S.plataforma; }
 
-  // Senioridade: a da análise da IA (declarada no anúncio ou sugerida); sem ela, a que o título declara (Jr, Pleno, PL/SR, II, III…)
-  var NIVEIS = { junior: "Júnior", pleno: "Pleno", senior: "Sênior" };
+  // Senioridade: a da análise da IA (declarada no anúncio ou sugerida); sem ela, a que o título declara
+  // (Jr, Pl, Sr, Júnior, Pleno, Sênior, Snr, Mid-level, Intermediate, Semi Senior/SSr, II, III, Principal)
+  var NIVEIS = { junior: "Jr", pleno: "Pl", senior: "Sr" };
   function nivelSugerido(v) { return Array.isArray(v.senioridade) && v.senioridade_origem === "sugerida"; }
   function niveis(v) {
     if (Array.isArray(v.senioridade)) return v.senioridade;
-    var t = " " + String(v.titulo || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
+    var t = " " + String(v.titulo || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
+    t = t.replace(/ semi ?(senior|sr) /g, " ssr "); // "Semi Senior" (espanhol) é pleno, não sênior
     var r = [];
     if (/ (jr|junior|entry level) /.test(t)) r.push("junior");
-    if (/ (pl(?! sql )|pleno|mid|ii) /.test(t)) r.push("pleno");
-    if (/ (sr|senior|iii|principal) /.test(t)) r.push("senior");
+    if (/ (pl(?! sql )|pleno|mid|intermediate|intermediario|intermediaria|ssr|ii) /.test(t)) r.push("pleno");
+    if (/ (sr|snr|senior|iii|principal) /.test(t)) r.push("senior");
     return r;
   }
   // Filtros do relatório ("ni" = nível não informado)

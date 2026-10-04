@@ -117,10 +117,12 @@ Algumas buscas por semana bastam.
 
 1. Instale o [Claude Code](https://claude.com/claude-code) e abra esta pasta nele (no
    terminal, `claude`; ou pela extensão do VS Code).
-2. Na primeira vez, peça **"quero configurar a busca de vagas"**. O Claude cria o
-   `config.json` com você e monta o `perfil.md` a partir do seu currículo ou do PDF do
-   seu LinkedIn. Esse perfil é a base da nota de aderência; veja o modelo em
-   `perfil.exemplo.md`.
+2. Na primeira vez, deixe o seu currículo ou o PDF do seu LinkedIn na pasta `anexos/` e
+   peça **"quero configurar a busca de vagas"**. O Claude cria o `config.json` com você
+   e monta o `perfil.md` a partir desse material. Esse perfil é a base da nota de
+   aderência; veja o modelo em `perfil.exemplo.md`. A pasta `anexos/` serve para
+   qualquer arquivo que você queira passar ao Claude (o texto de uma vaga, um retorno
+   de recrutador…).
 3. No dia a dia:
    - "busca vagas novas pra mim"
    - "busca vagas de product owner dos últimos 3 dias, pode ser híbrido"
@@ -155,8 +157,8 @@ Opções pontuais, sem mexer no arquivo: `python vagas.py buscar --help`.
 
 - Vagas e candidaturas: `dash/dados/candidaturas.db` (SQLite), com uma cópia de
   segurança por dia em `dash/dados/backup/`.
-- `config.json`, `perfil.md`, `dash/dados/` e `.cache/` estão no `.gitignore` e não vão
-  para o GitHub. Se você fizer um fork, o seu histórico continua só com você.
+- `config.json`, `perfil.md`, `anexos/`, `dash/dados/` e `.cache/` estão no
+  `.gitignore` e não vão para o GitHub. Se você fizer um fork, o seu histórico continua só com você.
 - Dica: mantenha a ferramenta na branch `master` e os seus ajustes pessoais numa
   branch local (por exemplo `minha`), trazendo as melhorias com `git merge master`.
 
