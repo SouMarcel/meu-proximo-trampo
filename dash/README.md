@@ -54,7 +54,7 @@ nas adicionadas à mão.
 | `analise_status` | `feita`, `sem_analise` (gravada sem IA), `pendente` (adicionada à mão, esperando a IA), `sem_dados` |
 | `aderencia` | 0–100 (só com IA); faixas: ≥80 forte, 65–79 boa, 50–64 parcial, <50 baixa |
 | `resumo`, `encaixe[]`, `lacunas[]`, `alertas[]`, `modelo_trabalho` | análise da IA |
-| `senioridade[]` | análise da IA: `junior`, `pleno`, `senior` (pode ter mais de um; `[]` = não informada). Sem esse campo, o dashboard deduz pelo título (Jr, Pleno, PL/SR, Sr, II, III, Principal) |
+| `senioridade[]`, `senioridade_origem` | análise da IA: `junior`, `pleno`, `senior` (pode ter mais de um; `[]` = não informada), `declarada` pelo anúncio ou `sugerida` pela IA quando o anúncio não diz. Sem esse campo, o dashboard deduz pelo título (Jr, Pleno, PL/SR, Sr, II, III, Principal) |
 | `anotacao` | suas anotações |
 | `criada_em`, `atualizada_em`, `analisada_em` | carimbos de data |
 

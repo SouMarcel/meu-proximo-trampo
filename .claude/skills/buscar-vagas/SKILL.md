@@ -89,17 +89,21 @@ servidor; ele só serve para ver e mexer no quadro.
        "lacunas": ["Pede 3+ anos como PO; perfil tem menos tempo na função"],
        "alertas": ["Contrato PJ"],
        "modelo_trabalho": "remoto",
-       "senioridade": ["pleno"]
+       "senioridade": ["pleno"],
+       "senioridade_origem": "sugerida"
      }
    ]
    ```
 
    `modelo_trabalho`: `remoto`, `hibrido`, `presencial` ou `nao_informado`.
    `senioridade`: os níveis que a vaga aceita, entre `junior`, `pleno` e `senior`
-   (pode ser mais de um, como em "PL/SR"). Use o nível que o título ou a descrição
-   declaram; se nenhum declara, deduza pelos anos de experiência exigidos (até 2
-   júnior, 3 a 5 pleno, 6 ou mais sênior); sem nenhum indício, `[]`. O dashboard filtra
-   por esse campo. Critérios da nota em "Como dar a nota".
+   (pode ser mais de um, como em "PL/SR"), com `senioridade_origem`:
+   - `declarada`: o título ou a descrição dizem o nível.
+   - `sugerida`: o anúncio não diz; sugira pelo que ele pede. Anos de experiência
+     exigidos (até 2 júnior, 3 a 5 pleno, 6 ou mais sênior) e, sem eles, o escopo e a
+     autonomia esperados. O dashboard mostra o nível como "(sugerida)".
+   Só use `[]` (sem `senioridade_origem`) quando o anúncio não der nenhum indício. O
+   dashboard filtra por esse campo. Critérios da nota em "Como dar a nota".
 
 4. **Gravar.** `PY vagas.py gravar` junta os dados da vaga (título, empresa, link,
    data, descrição) com a sua avaliação, para você nunca redigitar link ou ID, e grava

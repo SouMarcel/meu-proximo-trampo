@@ -35,6 +35,7 @@ RESULTADOS = ("nao_aprovado", "desisti", "cancelada", "contratado")
 PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Outra")
 MODELOS = ("remoto", "hibrido", "presencial", "nao_informado")
 SENIORIDADES = ("junior", "pleno", "senior")
+ORIGENS_SENIORIDADE = ("declarada", "sugerida")
 ID_VALIDO = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 DATA_VALIDA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -210,6 +211,11 @@ def validar_analise(a: dict) -> dict:
         if any(n not in SENIORIDADES for n in niveis):
             raise ValueError(f"senioridade deve ser uma lista com {SENIORIDADES}")
         limpos["senioridade"] = [n for n in SENIORIDADES if n in niveis]
+        if limpos["senioridade"]:
+            origem = a.get("senioridade_origem")
+            if origem not in ORIGENS_SENIORIDADE:
+                raise ValueError(f"senioridade_origem deve ser um de {ORIGENS_SENIORIDADE}")
+            limpos["senioridade_origem"] = origem
     return limpos
 
 
