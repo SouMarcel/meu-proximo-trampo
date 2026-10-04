@@ -174,12 +174,25 @@ Opções pontuais, sem mexer no arquivo: `python vagas.py buscar --help`.
 - Dica: mantenha a ferramenta na branch `master` e os seus ajustes pessoais numa
   branch local (por exemplo `minha`), trazendo as melhorias com `git merge master`.
 
-## Combina com: skills de LinkedIn
+## Recomendado: skills de LinkedIn (Liftli)
 
-Enquanto procura emprego, vale caprichar no LinkedIn. O
-[linkedin-agent-skills](https://github.com/liftli-ai/linkedin-agent-skills) é um
-conjunto de skills para o Claude Code que escreve e revisa headline, About, posts,
-comentários e carrosséis no seu tom de voz. Para instalar, no Claude Code:
+Recrutador olha o seu LinkedIn antes de chamar para entrevista, então vale cuidar dele
+junto com as candidaturas. Recomendamos o
+[linkedin-agent-skills](https://github.com/liftli-ai/linkedin-agent-skills), um conjunto
+de skills para o Claude Code que audita o perfil, escreve headline e About e cria posts
+e comentários no seu tom de voz. Para quem procura emprego, comece por
+`linkedin-profile-checklist`, `linkedin-headline-generator` e
+`linkedin-about-generator`.
+
+**Não fazemos parte dele.** É um projeto da [Liftli](https://liftli.ai), mantido por
+eles e com licença MIT; o código não está copiado aqui. Este repositório só o declara
+em `.claude/settings.json`: ao abrir a pasta no Claude Code (e confiar nela), você
+recebe a oferta de instalar o plugin direto do repositório deles, sempre na versão
+atual. Antes de usar, leia o
+[README do linkedin-agent-skills](https://github.com/liftli-ai/linkedin-agent-skills#readme)
+para saber o que cada skill faz e como montar o arquivo de voz que elas usam.
+
+Para instalar à mão, no Claude Code:
 
 ```
 /plugin marketplace add liftli-ai/linkedin-agent-skills

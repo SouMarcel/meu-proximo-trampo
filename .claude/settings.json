@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "liftli": {
+      "source": {
+        "source": "github",
+        "repo": "liftli-ai/linkedin-agent-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "linkedin-agent-skills@liftli": true
+  }
+}
