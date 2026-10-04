@@ -21,8 +21,10 @@ from urllib.parse import unquote, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
+import analise  # noqa: E402  (análise automática pelo Claude Code)
 import banco  # noqa: E402
 import filtros  # noqa: E402  (filtros.py, na raiz: lê e grava os filtros da busca no config.json)
+from fontes import link  # noqa: E402  (lê a vaga a partir do link)
 
 PAGINA = banco.DASH / "dashboard.html"
 PORTA_PADRAO = 8765
@@ -100,7 +102,18 @@ class Handler(BaseHTTPRequestHandler):
             if not self._escrita_ok():
                 return self._erro(403, "pedido recusado")
             if metodo == "POST" and caminho == "/api/vagas":
-                return self._json(201, {"vaga": banco.criar_manual(self._corpo())})
+                vaga = banco.criar_manual(self._corpo())
+                auto = analise.precisa(vaga) and analise.FILA.pedir()
+                return self._json(201, {"vaga": vaga, "analise_automatica": auto})
+            if metodo == "POST" and caminho == "/api/vagas/link":
+                url = str(self._corpo().get("url") or "").strip()[:1000]
+                try:
+                    dados = link.ler(url)
+                except link.LinkErro as e:  # o dashboard abre o formulário com o que deu para ler
+                    return self._json(422, {"erro": str(e), "parcial": {**e.parcial, "url": url}})
+                vaga, nova = banco.criar_de_link(dados)
+                auto = nova and analise.precisa(vaga) and analise.FILA.pedir()
+                return self._json(201 if nova else 200, {"vaga": vaga, "nova": nova, "analise_automatica": auto})
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             vid = self._id_da_rota(caminho)
@@ -124,7 +137,7 @@ class Handler(BaseHTTPRequestHandler):
         if caminho in ("/", "/index.html"):
             return self._enviar(200, PAGINA.read_bytes(), "text/html; charset=utf-8")
         if caminho == "/api/versao":
-            return self._json(200, {"versao": banco.versao()})
+            return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando})
         if caminho == "/api/vagas":
             return self._json(200, {"versao": banco.versao(), "vagas": banco.listar_vagas()})
         if caminho == "/api/buscas/ultima":
@@ -210,6 +223,10 @@ def main() -> int:
     print(f"  Dados: {banco.ARQUIVO}")
     if copia:
         print(f"  Backup do dia: {copia.name}")
+    if analise.comando():
+        print("  Análise automática: ligada (Claude Code)")
+        if any(analise.precisa(v) for v in banco.listar_vagas()):
+            analise.FILA.pedir()  # vagas que ficaram esperando nota
     print("Feche esta janela (ou Ctrl+C) para parar.")
     if not args.sem_navegador:
         webbrowser.open(endereco)

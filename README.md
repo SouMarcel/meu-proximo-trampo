@@ -23,8 +23,11 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   filtrar por senioridade, modo de trabalho, aderência mínima e dias desde a
   publicação, e cada vaga mostra o termo de busca que a encontrou.
 - **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
-  Recebida → Encerrada, com anotações, resultado e filtro por plataforma. O botão
-  **Adicionar Vaga** registra vagas de qualquer site (LinkedIn, Gupy, InHire…).
+  Recebida → Encerrada, com anotações, resultado e filtro por plataforma.
+- **Adicionar Vaga pelo link:** cole o link de uma vaga que você achou em outro lugar
+  (Indeed, LinkedIn, Gupy, site da empresa…). O dashboard lê os dados, põe a vaga no
+  relatório como as da busca e, com o Claude Code instalado, ela recebe a nota
+  sozinha em cerca de 1 minuto. Se o site não deixar ler, o formulário pede o resto.
 - **Com IA:** nota de 0 a 100 por vaga, encaixes, lacunas e alertas (híbrido
   disfarçado de remoto, PJ, inglês fluente, vaga afirmativa).
 
@@ -40,7 +43,7 @@ vagas por você.
 | Buscar vagas | `python vagas.py buscar --gravar` | "busca vagas novas pra mim" |
 | Relatório e quadro | Sim | Sim |
 | Nota de aderência, encaixes, lacunas e alertas | Não | Sim |
-| Analisar vagas que você adicionou à mão | Não | Sim |
+| Analisar vagas que você adicionou pelo link ou à mão | Não | Sim, sozinho em ~1 minuto se o Claude Code estiver instalado |
 | Montar a configuração e o perfil | À mão | Guiado, a partir do seu currículo |
 | Gerar o currículo (.docx e PDF) | `python curriculo.py` com um JSON seu | Escrito e conferido com você, a partir do perfil |
 
@@ -150,7 +153,12 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 
 > **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
 > Claude (Anthropic) para a análise. Sem IA, nada sai do seu computador além das
-> consultas ao Indeed.
+> consultas ao Indeed e da leitura dos links que você adicionar.
+>
+> **Análise automática:** com o Claude Code instalado, o dashboard analisa sozinho as
+> vagas que você adiciona, usando a sua assinatura. O Claude roda sem nenhuma
+> ferramenta (não executa comandos nem abre sites): recebe o perfil e a vaga e só
+> devolve a nota. Para desligar, ponha `"analise_automatica": false` no `config.json`.
 
 ## Configuração (`config.json`)
 
@@ -169,6 +177,7 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 | `resultados_por_termo` | Máximo de vagas por termo |
 | `titulo_excluir` | Descarta vagas cujo título tenha alguma dessas palavras (ex.: `estagio`) |
 | `titulo_incluir` | Se preenchido, só fica vaga cujo título tenha alguma dessas palavras |
+| `analise_automatica` | `false` desliga a análise automática das vagas adicionadas no dashboard (padrão: ligada se o Claude Code estiver instalado) |
 
 Quase tudo isso se ajusta no painel **Filtros da busca** (aba Relatório de Vagas do
 dashboard), que grava o `config.json` por você. Vaga que fura algum filtro vai para a

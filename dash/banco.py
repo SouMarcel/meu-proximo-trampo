@@ -247,13 +247,34 @@ def validar_analise(a: dict) -> dict:
 
 # ---------------------------------------------------------------- escrita
 
+def aplicar_criterios(doc: dict) -> None:
+    """Vaga do relatório que fura os filtros da busca vai para Fora dos critérios, como as da busca."""
+    if doc.get("origem") == "manual" or doc.get("triagem") != "pendente":
+        return
+    try:
+        raiz = str(DASH.parent)
+        if raiz not in sys.path:
+            sys.path.insert(0, raiz)
+        import filtros  # filtros.py, na raiz do projeto
+        motivos = filtros.criterios(doc, filtros.efetivos(filtros.ler_config()))
+    except Exception:  # config ausente ou com erro não impede gravar a vaga
+        return
+    if motivos:
+        doc.update(triagem="fora", triada_em=hoje(), motivo_fora=motivos)
+
+
 def criar_manual(campos: dict) -> dict:
-    """Vaga trazida pelo usuário pelo botão Adicionar Vaga."""
+    """Vaga trazida pelo usuário pelo botão Adicionar Vaga (preenchida à mão).
+
+    Com etapa "relatorio", vai para o Relatório de Vagas como as da busca (origem "link");
+    nas outras etapas, direto para o quadro.
+    """
     titulo = _texto(campos.get("titulo"), 200)
     empresa = _texto(campos.get("empresa"), 120)
     if not titulo or not empresa:
         raise ValueError("cargo e empresa são obrigatórios")
     plataforma = campos.get("plataforma") if campos.get("plataforma") in PLATAFORMAS else "Outra"
+    no_relatorio = campos.get("etapa") == "relatorio"
     etapa = campos.get("etapa") if campos.get("etapa") in ETAPAS else "salva"
     url = _texto(campos.get("url"), 1000)
     if url and not re.match(r"^https?://", url, re.I):
@@ -262,17 +283,54 @@ def criar_manual(campos: dict) -> dict:
     m = re.search(r"[?&]jk=([0-9a-f]{16})", url, re.I)
     vid = "m-" + datetime.now().strftime("%y%m%d%H%M%S") + secrets.token_hex(2)
     doc = {
-        "origem": "manual", "plataforma": plataforma, "titulo": titulo, "empresa": empresa,
+        "origem": "link" if no_relatorio else "manual", "plataforma": plataforma, "titulo": titulo, "empresa": empresa,
         "local": _texto(campos.get("local"), 120), "url": url, "jk": m.group(1).lower() if m else None,
-        "descricao": descricao, "triagem": "seguir", "etapa": etapa, "etapa_em": hoje(),
+        "descricao": descricao, "triagem": "pendente" if no_relatorio else "seguir",
+        "etapa": None if no_relatorio else etapa, "etapa_em": None if no_relatorio else hoje(),
         "encontrada_em": hoje(), "resultado": None, "anotacao": "",
-        "analise_status": "pendente" if (descricao or url) else "sem_dados",
+        "analise_status": "pendente" if descricao or (url and not no_relatorio) else "sem_dados",
         "criada_em": agora(), "atualizada_em": agora(),
     }
+    if no_relatorio:
+        doc["termos"] = []
+        aplicar_criterios(doc)
     with escrita() as con:
         _gravar(con, vid, doc)
     doc["id"] = vid
     return doc
+
+
+def criar_de_link(dados: dict) -> tuple[dict, bool]:
+    """Vaga lida pelo link (fontes/link.py): vai para o Relatório de Vagas, como as da busca.
+
+    Devolve (vaga, nova). Se a vaga já está no banco (ex.: a busca já tinha trazido),
+    devolve a que existe, sem mudar nada.
+    """
+    vid = str(dados.get("id") or "")
+    if not ID_VALIDO.match(vid):
+        raise ValueError("id de vaga inválido")
+    descricao = _texto(dados.get("descricao"), 20000)
+    doc = {
+        "origem": "link", "plataforma": dados.get("plataforma") if dados.get("plataforma") in PLATAFORMAS else "Outra",
+        "titulo": _texto(dados.get("titulo"), 200), "empresa": _texto(dados.get("empresa"), 120),
+        "local": _texto(dados.get("local"), 120), "remoto": bool(dados.get("remoto")),
+        "publicada_em": _data_ou_nulo(dados.get("publicada_em")), "url": _texto(dados.get("url"), 1000),
+        "tipo": _texto(dados.get("tipo"), 80) or None, "descricao": descricao, "termos": [],
+        "analise_status": "pendente" if descricao else "sem_dados",
+        "triagem": "pendente", "triada_em": None, "etapa": None, "etapa_em": None, "resultado": None, "anotacao": "",
+        "encontrada_em": hoje(), "criada_em": agora(), "atualizada_em": agora(),
+    }
+    if not doc["titulo"] or not doc["empresa"]:
+        raise ValueError("cargo e empresa são obrigatórios")
+    aplicar_criterios(doc)
+    with escrita() as con:
+        atual = _ler(con, vid)
+        if atual is not None:
+            atual["id"] = vid
+            return atual, False
+        _gravar(con, vid, doc)
+    doc["id"] = vid
+    return doc, True
 
 
 def atualizar_usuario(vid: str, campos: dict) -> dict:
@@ -337,7 +395,8 @@ def registrar_busca(bid: str, dados: dict) -> None:
 
 
 def aplicar_analises(analises: list[dict]) -> tuple[list[str], list[str]]:
-    """Grava análises do Claude; não toca em etapa, triagem, resultado nem anotações."""
+    """Grava análises do Claude. Não toca em etapa, resultado nem anotações; vaga do relatório
+    ainda sem decisão que furar os filtros da busca vai para Fora dos critérios."""
     ok, problemas = [], []
     with escrita() as con:
         for a in analises:
@@ -351,6 +410,7 @@ def aplicar_analises(analises: list[dict]) -> tuple[list[str], list[str]]:
             except ValueError as e:
                 problemas.append(f"{vid}: {e}")
                 continue
+            aplicar_criterios(doc)
             doc["atualizada_em"] = agora()
             _gravar(con, vid, doc)
             ok.append(vid)

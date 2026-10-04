@@ -161,6 +161,9 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .motivo-fora b { color: var(--warn); }
 .rel-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .btn-filtros { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; }
+.rel-meta .analisando { color: var(--info); }
+#a-status:empty { display: none; }
+#a-status[data-erro] { color: var(--warn); }
 
 /* Filtros da busca (painel que grava o config.json) */
 #dlg-filtros { width: min(760px, calc(100vw - 32px)); }
@@ -344,14 +347,20 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <dialog id="dlg-add" aria-labelledby="add-title">
-  <form class="dlg" id="form-add" method="dialog">
+  <form class="dlg" id="form-add" method="dialog" novalidate>
     <div class="dlg-head">
       <div>
         <h2 id="add-title">Adicionar vaga</h2>
-        <p>Vagas que você encontrou em outro lugar. Cole a descrição para o Claude analisar a aderência.</p>
+        <p>Cole o link de uma vaga que você achou em outro lugar: o dashboard lê os dados, coloca a vaga no Relatório de Vagas e o Claude analisa a aderência, como nas vagas da busca.</p>
       </div>
     </div>
-    <div class="form">
+    <div class="field full">
+      <label for="a-link">Link da vaga</label>
+      <div class="add-row"><input type="text" id="a-link" inputmode="url" autocomplete="off" placeholder="https://… (Indeed, LinkedIn, Gupy, site da empresa…)"><button type="button" class="btn-primary" id="a-buscar">Buscar dados</button></div>
+      <p class="hint" id="a-status" role="status"></p>
+    </div>
+    <p class="hint" id="a-manual-wrap">Sem link ou prefere digitar? <button type="button" class="link-btn" id="a-manual">Preencher à mão</button></p>
+    <div class="form" id="a-form" hidden>
       <div class="field full"><label for="a-titulo">Cargo</label><input id="a-titulo" name="titulo" required maxlength="200" placeholder="Ex.: Scrum Master Sênior"></div>
       <div class="field"><label for="a-empresa">Empresa</label><input id="a-empresa" name="empresa" required maxlength="120"></div>
       <div class="field"><label for="a-plataforma">Plataforma</label><select id="a-plataforma" name="plataforma"></select></div>
@@ -359,11 +368,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       <div class="field"><label for="a-local">Local / modelo</label><input id="a-local" name="local" maxlength="120" placeholder="Remoto, Híbrido SP…"></div>
       <div class="field"><label for="a-etapa">Etapa</label><select id="a-etapa" name="etapa"></select></div>
       <div class="field full"><label for="a-descricao">Descrição da vaga</label><textarea id="a-descricao" name="descricao" maxlength="20000" placeholder="Cole aqui o texto da vaga (requisitos, responsabilidades…)"></textarea>
-        <p class="hint">Opcional: com o Claude Code, peça "analisa as vagas que adicionei no dashboard" para receber a nota de aderência ao seu perfil.</p></div>
+        <p class="hint">Com a descrição, o Claude analisa a aderência ao seu perfil: sozinho, se o Claude Code estiver instalado; senão, peça "analisa as vagas que adicionei no dashboard".</p></div>
     </div>
     <div class="dlg-foot">
       <button type="button" class="btn-plain" id="add-cancel">Cancelar</button>
-      <button type="submit" class="btn-primary" id="add-save">Adicionar ao quadro</button>
+      <button type="submit" class="btn-primary" id="add-save" hidden>Adicionar</button>
     </div>
   </form>
 </dialog>
@@ -415,7 +424,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   // Servidor local (dash/servidor.py)
   function resposta(r) {
     return r.json().catch(function () { return {}; }).then(function (j) {
-      if (!r.ok) { var e = new Error(j.erro || ("HTTP " + r.status)); e.status = r.status; throw e; }
+      if (!r.ok) { var e = new Error(j.erro || ("HTTP " + r.status)); e.status = r.status; e.dados = j; throw e; }
       return j;
     });
   }
@@ -654,6 +663,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (d != null) meta.push('<span class="' + (d <= 3 ? "fresh" : "") + '">publicada ' + (d === 0 ? "hoje" : d === 1 ? "há 1 dia" : "há " + d + " dias") + "</span>");
     if (v.salario) meta.push(esc(v.salario));
     if (v.termos && v.termos.length) meta.push('<span class="termos" title="Termos de busca que encontraram esta vaga">busca: ' + esc(termosDe(v)) + "</span>");
+    else if (v.origem === "link") meta.push('<span class="termos">adicionada pelo link</span>');
     var decide;
     if (v.triagem === "pendente") {
       decide = '<button class="btn-go" data-seguir="' + esc(v.id) + '"' + (S.canWrite ? "" : " disabled") + ">Seguir com a vaga</button>" +
@@ -666,7 +676,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
                '<button class="btn-skip" data-desfazer="' + esc(v.id) + '"' + (S.canWrite ? "" : " disabled") + ">Voltar para triagem</button>";
     }
     return '<article class="rel-item">' +
-      '<div class="score" data-b="' + bnd + '" title="' + (temNota(v) ? "Aderência ao seu perfil (0 a 100)" : "Vaga sem nota de aderência") + '"><b>' + (temNota(v) ? v.aderencia : "—") + "</b><small>" + (temNota(v) ? rotuloBanda(bnd) : "sem nota") + "</small></div>" +
+      '<div class="score" data-b="' + bnd + '" title="' + (temNota(v) ? "Aderência ao seu perfil (0 a 100)" : "Vaga sem nota de aderência") + '"><b>' + (temNota(v) ? v.aderencia : "—") + "</b><small>" + (temNota(v) ? rotuloBanda(bnd) : v.analise_status === "pendente" ? "aguardando" : "sem nota") + "</small></div>" +
       '<div class="rel-body"><h3>' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(v.titulo) + "</a>" : esc(v.titulo)) + "</h3>" +
       '<p class="meta">' + meta.filter(Boolean).map(function (m) { return "<span>" + m + "</span>"; }).join("") + "</p>" +
       ((v.motivo_fora || []).length ? '<p class="motivo-fora"><b>Fora dos critérios:</b> ' + esc(v.motivo_fora.join("; ")) + "</p>" : "") +
@@ -689,6 +699,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         " · " + (b.brutas || 0) + " vagas encontradas, " + (b.avaliadas || 0) + (b.com_nota === false ? " novas (sem nota)" : " novas avaliadas") +
         (b.fora_criterios ? ", " + b.fora_criterios + " fora dos critérios" : "")
       : "Nenhuma busca registrada ainda.";
+    if (S.analisando) meta += ' · <strong class="analisando">Claude analisando vagas adicionadas…</strong>';
     var h = '<div class="rel-head"><p class="rel-meta">' + meta + "</p>" +
       '<div class="rel-acoes"><div class="seg" role="group" aria-label="Filtrar triagem">' +
       [["pendente", "Para decidir"], ["seguir", "Seguidas"], ["visitada", "Não seguidas"], ["fora", "Fora dos critérios"]].map(function (p) {
@@ -967,6 +978,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var sel = $("f-plataforma"), selA = $("a-plataforma"), selE = $("a-etapa");
     PLATAFORMAS.forEach(function (p) { sel.add(new Option(p, p)); selA.add(new Option(p, p)); });
     selA.value = "LinkedIn";
+    selE.add(new Option("Relatório (decidir depois)", "relatorio"));
     ETAPAS.forEach(function (e) { selE.add(new Option(e.label, e.k)); });
     try { var pv = localStorage.getItem("cand.vista"); if (pv === "lista" || pv === "quadro") S.vista = pv; } catch (e) {}
     try {
@@ -990,18 +1002,75 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     $("tab-quadro").addEventListener("click", function () { S.aba = "quadro"; render(); });
     $("tab-relatorio").addEventListener("click", function () { S.aba = "relatorio"; render(); });
 
-    $("btn-add").addEventListener("click", function () { $("form-add").reset(); selA.value = "LinkedIn"; $("dlg-add").showModal(); $("a-titulo").focus(); });
+    // Adicionar vaga: primeiro pelo link; se não der para ler, o formulário pede o resto
+    function abrirAdicionar() {
+      $("form-add").reset(); selA.value = "LinkedIn";
+      $("a-form").hidden = true; $("add-save").hidden = true; $("a-manual-wrap").hidden = false;
+      $("a-status").textContent = ""; $("a-status").removeAttribute("data-erro");
+      $("dlg-add").showModal(); $("a-link").focus();
+    }
+    function plataformaDoLink(u) {
+      var h = "";
+      try { h = new URL(u).hostname.toLowerCase(); } catch (e) { return "Outra"; }
+      var pares = [["indeed.", "Indeed"], ["linkedin.", "LinkedIn"], ["gupy.io", "Gupy"], ["inhire", "InHire"], ["catho.", "Catho"]];
+      for (var i = 0; i < pares.length; i++) if (h.indexOf(pares[i][0]) >= 0) return pares[i][1];
+      return "Outra";
+    }
+    function mostrarFormulario(etapa, parcial) {
+      parcial = parcial || {};
+      $("a-form").hidden = false; $("add-save").hidden = false; $("a-manual-wrap").hidden = true;
+      $("a-url").value = parcial.url || $("a-link").value.trim();
+      ["titulo", "empresa", "local", "descricao"].forEach(function (k) { if (parcial[k]) $("a-" + k).value = parcial[k]; });
+      selA.value = PLATAFORMAS.indexOf(parcial.plataforma) >= 0 ? parcial.plataforma : ($("a-url").value ? plataformaDoLink($("a-url").value) : "LinkedIn");
+      selE.value = etapa;
+      $("a-titulo").focus();
+    }
+    function avisoAdicionada(v, auto) {
+      if (v.triagem === "fora") return "Vaga adicionada em Fora dos critérios: " + (v.motivo_fora || []).join("; ");
+      if (v.analise_status !== "pendente") return noQuadro(v) ? "Vaga adicionada ao quadro" : "Vaga adicionada ao relatório";
+      return auto ? "Vaga adicionada. O Claude está analisando a aderência (cerca de 1 minuto)."
+                  : "Vaga adicionada. Para a nota, peça ao Claude: analisa as vagas que adicionei no dashboard.";
+    }
+    function irPara(v) {
+      if (noQuadro(v)) { S.aba = "quadro"; return; }
+      S.aba = "relatorio";
+      S.triagem = v.triagem === "fora" || v.triagem === "visitada" || v.triagem === "seguir" ? v.triagem : "pendente";
+    }
+    function buscarLink() {
+      var url = $("a-link").value.trim(), st = $("a-status"), btn = $("a-buscar");
+      st.removeAttribute("data-erro");
+      if (!url) { st.textContent = "Cole o link da vaga."; $("a-link").focus(); return; }
+      btn.disabled = true; st.textContent = "Lendo a vaga…";
+      API.send("POST", "/api/vagas/link", { url: url }).then(function (j) {
+        $("dlg-add").close();
+        trocarLocal(j.vaga); irPara(j.vaga);
+        toast(j.nova ? avisoAdicionada(j.vaga, j.analise_automatica) : "Essa vaga já estava no dashboard.");
+        render();
+      }).catch(function (e) {
+        st.setAttribute("data-erro", "");
+        if (e && e.status === 422) {
+          st.textContent = "Não consegui ler a vaga (" + e.message + "). Complete os dados abaixo.";
+          mostrarFormulario("relatorio", e.dados && e.dados.parcial);
+        } else st.textContent = e && e.status === 400 ? e.message : erroMsg(e);
+      }).then(function () { btn.disabled = false; });
+    }
+    $("btn-add").addEventListener("click", abrirAdicionar);
+    $("a-buscar").addEventListener("click", buscarLink);
+    $("a-manual").addEventListener("click", function () { $("a-status").textContent = ""; mostrarFormulario("salva"); });
+    $("a-link").addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); buscarLink(); } });
     $("add-cancel").addEventListener("click", function () { $("dlg-add").close(); });
     $("form-add").addEventListener("submit", function (ev) {
       ev.preventDefault();
+      if ($("a-form").hidden) { buscarLink(); return; }
       var f = new FormData(ev.target);
       var corpo = {};
       ["titulo", "empresa", "plataforma", "url", "local", "etapa", "descricao"].forEach(function (k) { corpo[k] = String(f.get(k) || "").trim(); });
+      if (!corpo.titulo || !corpo.empresa) { toast("Informe pelo menos o cargo e a empresa.", true); return; }
       var btn = $("add-save"); btn.disabled = true;
       API.send("POST", "/api/vagas", corpo).then(function (j) {
-        $("dlg-add").close(); S.aba = "quadro";
-        if (j.vaga) trocarLocal(j.vaga);
-        toast(j.vaga && j.vaga.analise_status === "pendente" ? "Vaga adicionada. Peça ao Claude para analisá-la." : "Vaga adicionada ao quadro");
+        $("dlg-add").close();
+        if (j.vaga) { trocarLocal(j.vaga); irPara(j.vaga); }
+        toast(j.vaga ? avisoAdicionada(j.vaga, j.analise_automatica) : "Vaga adicionada");
         render();
       }).catch(function (e) { toast(e && e.status === 400 ? e.message : erroMsg(e), true); }).then(function () { btn.disabled = false; });
     });
@@ -1101,7 +1170,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function conferir() {
     if (document.hidden) return;
     API.get("/api/versao").then(function (j) {
+      var mudou = !!j.analisando !== !!S.analisando;
+      S.analisando = !!j.analisando;
       if (S.offline || j.versao !== S.versao) carregar();
+      else if (mudou) render();
     }).catch(function () { if (!S.offline) { S.offline = true; render(); } });
   }
   setInterval(conferir, 4000);

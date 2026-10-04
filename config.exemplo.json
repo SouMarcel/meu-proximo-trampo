@@ -11,5 +11,6 @@
   "empresas_excluir": [],
   "resultados_por_termo": 40,
   "titulo_excluir": ["estagio", "estagiario", "estagiaria", "jovem aprendiz", "trainee"],
-  "titulo_incluir": []
+  "titulo_incluir": [],
+  "analise_automatica": true
 }

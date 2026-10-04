@@ -12,7 +12,12 @@ No Windows dá para dar dois cliques em `abrir-dashboard.bat`; no macOS/Linux, `
 - **Quadro:** kanban Salva → Aplicação Enviada → Entrevista → Proposta Recebida →
   Encerrada (arraste os cartões ou use o menu ⋯), com anotações, resultado (não
   aprovado, desisti, vaga cancelada, contratado), filtro por plataforma e visão em
-  lista. **Adicionar Vaga** registra vagas de qualquer site.
+  lista.
+- **Adicionar Vaga:** cole o link. O servidor lê a vaga (Indeed e LinkedIn pelas APIs
+  públicas; outros sites pelos dados estruturados JobPosting da página), grava no
+  Relatório de Vagas e, se o Claude Code estiver instalado, pede a análise em segundo
+  plano (`analise.py`). Se não der para ler, o formulário abre com o que deu, para
+  completar; dali dá para mandar para o relatório ou direto para o quadro.
 - **Relatório de Vagas:** o que as buscas trouxeram, em quatro abas: Para decidir,
   Seguidas, Não seguidas e **Fora dos critérios** (vagas que furaram os filtros da
   busca, com o motivo). "Seguir com a vaga" manda para a coluna Salva, inclusive a
@@ -32,8 +37,9 @@ sozinha.
 
 | Arquivo | Para quê |
 |---|---|
-| `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/versao`, `/api/buscas/ultima`, `/api/config` para ler e gravar os filtros da busca). Só aceita pedidos da própria página. |
+| `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/vagas/link` para adicionar pelo link, `/api/versao` com o aviso de análise em andamento, `/api/buscas/ultima`, `/api/config` para ler e gravar os filtros da busca). Só aceita pedidos da própria página. |
 | `banco.py` | Acesso ao SQLite e comandos `quadro`, `pendentes`, `analisar`, `vaga` (dados completos de uma vaga) e `anotar` (acrescenta uma linha às anotações). |
+| `analise.py` | Análise automática: roda `claude -p` sem ferramentas com o perfil, as regras de nota da skill e as vagas que esperam nota, e grava a resposta. Uma análise por vez. |
 | `dashboard.html` | A página. |
 | `abrir-dashboard.bat` / `.sh` | Atalhos para iniciar o servidor. |
 | `dados/` | `candidaturas.db` e `backup/` (uma cópia por dia, guarda as 10 últimas). Fora do Git. |
@@ -42,12 +48,12 @@ sozinha.
 
 ### Tabela `vagas` (um registro por vaga)
 
-O ID é o do portal (no Indeed, o `jk` de 16 caracteres) nas vagas da busca, e `m-…`
-nas adicionadas à mão.
+O ID é o do portal nas vagas da busca e nas do Indeed adicionadas pelo link (o `jk` de 16
+caracteres), `li-…` nas do LinkedIn, `web-…` nas de outros sites e `m-…` nas preenchidas à mão.
 
 | Campo | Valores |
 |---|---|
-| `origem` | `busca` (veio de `vagas.py`) ou `manual` (botão Adicionar Vaga) |
+| `origem` | `busca` (veio de `vagas.py`), `link` (Adicionar Vaga pelo link; fica no relatório como as da busca) ou `manual` (formulário, direto no quadro) |
 | `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Outra` |
 | `titulo`, `empresa`, `local`, `url`, `descricao` | dados da vaga |
 | `publicada_em`, `encontrada_em` | `AAAA-MM-DD` |
@@ -58,7 +64,7 @@ nas adicionadas à mão.
 | `etapa` | `salva`, `aplicada`, `entrevista`, `proposta`, `encerrada` ou `null` (fora do quadro) |
 | `etapa_em`, `triada_em` | `AAAA-MM-DD` da última mudança |
 | `resultado` | só em `encerrada`: `nao_aprovado`, `desisti`, `cancelada`, `contratado` |
-| `analise_status` | `feita`, `sem_analise` (gravada sem IA), `pendente` (adicionada à mão, esperando a IA), `sem_dados` |
+| `analise_status` | `feita`, `sem_analise` (gravada sem IA), `pendente` (adicionada no dashboard, esperando a IA), `sem_dados` |
 | `aderencia` | 0–100 (só com IA); faixas: ≥80 forte, 65–79 boa, 50–64 parcial, <50 baixa |
 | `resumo`, `encaixe[]`, `lacunas[]`, `alertas[]`, `modelo_trabalho` | análise da IA |
 | `senioridade[]`, `senioridade_origem` | análise da IA: `junior`, `pleno`, `senior` (pode ter mais de um; `[]` = não informada), `declarada` pelo anúncio ou `sugerida` pela IA quando o anúncio não diz. Sem esse campo, o dashboard deduz pelo título (Jr, Pl, Sr, Pleno, Sênior, Snr, Mid-level, Intermediate, Semi Senior/SSr como pleno, II, III, Principal). O relatório mostra os níveis abreviados: Jr, Pl, Sr |
