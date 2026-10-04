@@ -23,19 +23,19 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
 CACHE = RAIZ / ".cache"
-CONFIG = RAIZ / "config.json"
 URL_DASHBOARD = "http://127.0.0.1:8765/"
 
 sys.path.insert(0, str(RAIZ / "dash"))
 import banco  # noqa: E402  (dash/banco.py)
+import filtros  # noqa: E402
 from fontes import FONTES  # noqa: E402
 
 
 def carregar_config() -> dict:
-    if not CONFIG.exists():
-        sys.exit("Falta o config.json. Copie config.exemplo.json para config.json e ajuste os termos de busca.")
-    with open(CONFIG, encoding="utf-8") as f:
-        return json.load(f)
+    if not filtros.CONFIG.exists():
+        sys.exit("Falta o config.json. Copie config.exemplo.json para config.json (ou use o painel Filtros da busca "
+                 "do dashboard) e ajuste os cargos.")
+    return filtros.ler_config()
 
 
 def normalizar(txt: str) -> str:
@@ -54,14 +54,28 @@ def bate_algum(titulo_norm: str, termos: list[str]) -> str | None:
 
 # ---------------------------------------------------------------- buscar
 
+def rotulo_grupo(grupo: str, f: dict) -> str:
+    if grupo.startswith("internacional:"):
+        return grupo.split(":", 1)[1]
+    return {"remoto": "remoto", "pais": "país todo", "local": filtros.cidade_rotulo(f)}.get(grupo, grupo)
+
+
 def cmd_buscar(args) -> int:
     cfg = carregar_config()
-    termos = args.termos or cfg["termos"]
-    horas = args.janela_horas or cfg.get("janela_horas", 168)
-    por_termo = args.resultados or cfg.get("resultados_por_termo", 40)
-    remoto = cfg.get("somente_remoto", True) and not args.incluir_presencial
+    f = filtros.efetivos(cfg)
+    if args.termos:
+        f["termos"] = args.termos
+    if args.janela_horas:
+        f["janela_horas"] = args.janela_horas
     if args.local:
-        cfg["local"] = args.local
+        f["local_legado"] = args.local
+    if not f["termos"]:
+        print("Nenhum cargo para buscar: informe os termos no painel Filtros da busca ou no config.json.", file=sys.stderr)
+        return 2
+    termos = f["termos"]
+    horas = f["janela_horas"]
+    por_termo = args.resultados or cfg.get("resultados_por_termo", 40)
+    plano = filtros.consultas(f, incluir_presencial=args.incluir_presencial)
     nomes_fontes = args.fontes or cfg.get("fontes", ["indeed"])
     desconhecidas = [n for n in nomes_fontes if n not in FONTES]
     if desconhecidas:
@@ -74,24 +88,24 @@ def cmd_buscar(args) -> int:
     primeira = True
     for nome in nomes_fontes:
         fonte = FONTES[nome]
-        for termo in termos:
+        for c in plano:
             if not primeira:
                 time.sleep(args.pausa)
             primeira = False
             try:
-                vagas, errs = fonte.buscar(termo, cfg, horas, por_termo, remoto)
+                vagas, errs = fonte.buscar(c, horas, por_termo)
             except ImportError as e:
                 print(f"ERRO: dependência ausente ({e}). Rode: pip install -r requirements.txt", file=sys.stderr)
                 return 2
-            erros += [f"{nome} / {termo}: {m}" for m in errs]
-            por_busca[f"{nome}: {termo}"] = len(vagas)
+            rotulo = f"{nome}: {c['termo']}" + ("" if c["grupo"] == "remoto" else f" [{rotulo_grupo(c['grupo'], f)}]")
+            erros += [f"{rotulo}: {m}" for m in errs]
+            por_busca[rotulo] = len(vagas)
             for v in vagas:
-                if v["id"] in brutas:
-                    if termo not in brutas[v["id"]]["termos"]:
-                        brutas[v["id"]]["termos"].append(termo)
-                else:
-                    v["termos"] = [termo]
-                    brutas[v["id"]] = v
+                atual = brutas.setdefault(v["id"], {**v, "termos": [], "grupos": []})
+                if c["termo"] not in atual["termos"]:
+                    atual["termos"].append(c["termo"])
+                if c["grupo"] not in atual["grupos"]:
+                    atual["grupos"].append(c["grupo"])
 
     excluir = cfg.get("titulo_excluir", [])
     incluir = cfg.get("titulo_incluir", [])
@@ -117,14 +131,20 @@ def cmd_buscar(args) -> int:
             g = grupos[chave]
             g["ids_relacionados"].append(v["id"])
             g["termos"] += [t for t in v["termos"] if t not in g["termos"]]
+            g["grupos"] += [x for x in v["grupos"] if x not in g["grupos"]]
             continue
         v["ids_relacionados"] = []
         grupos[chave] = v
 
-    candidatas, ja_vistas = [], 0
+    candidatas, fora, ja_vistas = [], [], 0
     for v in grupos.values():
         if {v["id"], *v["ids_relacionados"]} & vistos:
             ja_vistas += 1
+            continue
+        motivos = filtros.criterios(v, f)  # antes da IA: empresa excluída e senioridade do título
+        if motivos:
+            v["motivo_fora"] = motivos
+            fora.append(v)
         else:
             candidatas.append(v)
     candidatas.sort(key=lambda r: r.get("publicada_em") or "", reverse=True)
@@ -132,8 +152,8 @@ def cmd_buscar(args) -> int:
     CACHE.mkdir(parents=True, exist_ok=True)
     resultado = {
         "gerado_em": datetime.now().isoformat(timespec="seconds"),
-        "parametros": {"fontes": nomes_fontes, "termos": termos, "janela_horas": horas, "local": cfg.get("local"),
-                       "somente_remoto": remoto, "resultados_por_termo": por_termo},
+        "parametros": {"fontes": nomes_fontes, "termos": termos, "janela_horas": horas, "consultas": len(plano),
+                       "resumo": filtros.resumo(f), "filtros": f, "resultados_por_termo": por_termo},
         "por_busca": por_busca,
         "brutas": len(brutas),
         "fora_da_janela": antigas,
@@ -141,14 +161,19 @@ def cmd_buscar(args) -> int:
         "ja_vistas": ja_vistas,
         "erros": erros,
         "candidatas": candidatas,
+        "fora": fora,
     }
     (CACHE / "candidatas.json").write_text(json.dumps(resultado, ensure_ascii=False, indent=1), encoding="utf-8")
     escrever_digest(resultado, args.trecho)
 
+    print(f"Consultas: {len(plano)} ({filtros.resumo(f)})")
     print(f"Vagas encontradas: {len(brutas)}  ({', '.join(f'{k}: {n}' for k, n in por_busca.items())})")
     print(f"Publicadas antes da janela (descartadas): {antigas}")
     print(f"Cortadas pelo título: {len(excluidas)}")
     print(f"Já vistas (já estão no dashboard): {ja_vistas}")
+    print(f"Fora dos critérios (vão para a aba Fora dos critérios, sem avaliação): {len(fora)}")
+    for v in fora:
+        print(f"  - {v['titulo'][:55]} | {v['empresa'][:28]}: {'; '.join(v['motivo_fora'])}")
     print(f"CANDIDATAS: {len(candidatas)}")
     if erros:
         print("\nErros reportados pelos portais:")
@@ -178,13 +203,19 @@ def cmd_buscar(args) -> int:
 
 def escrever_digest(resultado: dict, trecho: int) -> None:
     p = resultado["parametros"]
+    f = p["filtros"]
     cand = resultado["candidatas"]
+    crit = [p["resumo"]]
+    if f["senioridades"]:
+        crit.append("senioridade " + "/".join(filtros.SENIORIDADES[s] for s in f["senioridades"]))
+    if f["tipos_emprego"]:
+        crit.append("tipo " + ", ".join(filtros.TIPOS_EMPREGO[t] for t in f["tipos_emprego"]))
     linhas = [
         f"# Candidatas — {resultado['gerado_em'][:16].replace('T', ' ')}",
-        f"Fontes: {', '.join(p['fontes'])} · termos: {', '.join(p['termos'])} · janela {p['janela_horas']}h · "
-        f"{'só remoto' if p['somente_remoto'] else 'qualquer modelo'}",
+        f"Fontes: {', '.join(p['fontes'])} · termos: {', '.join(p['termos'])} · janela {p['janela_horas']}h",
+        f"Critérios do usuário: {'; '.join(crit)}",
         f"{len(cand)} candidatas (de {resultado['brutas']} vagas encontradas; {resultado['excluidas_titulo']} cortadas "
-        f"pelo título; {resultado['ja_vistas']} já vistas)",
+        f"pelo título; {resultado['ja_vistas']} já vistas; {len(resultado['fora'])} fora dos critérios)",
         "",
     ]
     for i, c in enumerate(cand, 1):
@@ -196,7 +227,8 @@ def escrever_digest(resultado: dict, trecho: int) -> None:
             "---",
             f"## {i}. {c['titulo']} — {c['empresa']}",
             f"id: {c['id']} · {c['plataforma']} · {c['local'] or 'local não informado'} · publicada "
-            f"{c['publicada_em'] or '?'} · salário: {c['salario'] or 'não informado'} · termos: {', '.join(c['termos'])}{rep}",
+            f"{c['publicada_em'] or '?'} · salário: {c['salario'] or 'não informado'} · termos: {', '.join(c['termos'])}"
+            f" · busca: {', '.join(rotulo_grupo(g, f) for g in c['grupos'])}{rep}",
             "",
             desc or "(sem descrição)",
             "",
@@ -245,11 +277,29 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None) -> int:
         bruto = json.loads(arq_aval.read_text(encoding="utf-8"))
         avals = bruto.get("avaliacoes", []) if isinstance(bruto, dict) else bruto
 
+    p = dados.get("parametros", {})
+    f = p.get("filtros") or filtros.efetivos(filtros.ler_config())
     agora = datetime.now().isoformat(timespec="seconds")
     hoje = date.today().isoformat()
     busca_id = datetime.now().strftime("%Y%m%d-%H%M%S")
     docs, problemas, notas = [], [], []
     avaliadas: set[str] = set()
+
+    def documento(c: dict, analise: dict, motivos: list[str]) -> dict:
+        d = {
+            "id": c["id"], "origem": "busca", "plataforma": c["plataforma"],
+            "titulo": c["titulo"], "empresa": c["empresa"], "local": c["local"], "remoto": c["remoto"],
+            "publicada_em": c["publicada_em"], "url": c["url"], "url_candidatura": c.get("url_candidatura"),
+            "salario": c["salario"], "tipo": c["tipo"], "descricao": c["descricao"],
+            "termos": c["termos"], "grupos": c.get("grupos", []), "ids_relacionados": c["ids_relacionados"],
+            **analise,
+            "triagem": "pendente", "triada_em": None,
+            "etapa": None, "etapa_em": None, "resultado": None, "anotacao": "",
+            "busca_id": busca_id, "encontrada_em": hoje, "criada_em": agora, "atualizada_em": agora,
+        }
+        if motivos:  # fura algum filtro: vai para a aba Fora dos critérios, de onde dá para seguir com ela
+            d.update(triagem="fora", triada_em=hoje, motivo_fora=motivos)
+        return d
 
     for a in avals:
         jid = str(a.get("id", "")).strip()
@@ -268,30 +318,23 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None) -> int:
                 problemas.append(f"id {jid}: {e}; ignorado")
                 continue
         c = cand[jid]
-        docs.append({
-            "id": jid, "origem": "busca", "plataforma": c["plataforma"],
-            "titulo": c["titulo"], "empresa": c["empresa"], "local": c["local"], "remoto": c["remoto"],
-            "publicada_em": c["publicada_em"], "url": c["url"], "url_candidatura": c.get("url_candidatura"),
-            "salario": c["salario"], "tipo": c["tipo"], "descricao": c["descricao"],
-            "termos": c["termos"], "ids_relacionados": c["ids_relacionados"],
-            **analise,
-            "triagem": "pendente", "triada_em": None,
-            "etapa": None, "etapa_em": None, "resultado": None, "anotacao": "",
-            "busca_id": busca_id, "encontrada_em": hoje, "criada_em": agora, "atualizada_em": agora,
-        })
+        docs.append(documento(c, analise, filtros.criterios({**c, **analise}, f)))
         avaliadas.add(jid)
         notas.append((analise.get("aderencia"), c))
+    for c in dados.get("fora", []):  # cortadas antes da IA (empresa excluída, senioridade do título)
+        docs.append(documento(c, {"analise_status": "sem_analise"}, c["motivo_fora"]))
 
     novas, existentes = banco.inserir_vagas(docs)
+    fora_novas = [d for d in docs if d["triagem"] == "fora" and d["id"] in novas]
+    ids_fora = {d["id"] for d in fora_novas}
     faltando = [jid for jid in cand if jid not in avaliadas]
-    faixas = [n for n, c in notas if c["id"] in novas and n is not None]
-    p = dados.get("parametros", {})
+    faixas = [n for n, c in notas if c["id"] in novas and c["id"] not in ids_fora and n is not None]
     banco.registrar_busca(busca_id, {
         "data": agora, "fontes": p.get("fontes", []), "termos": p.get("termos", []),
-        "janela_horas": p.get("janela_horas"), "somente_remoto": p.get("somente_remoto"),
+        "janela_horas": p.get("janela_horas"), "resumo": p.get("resumo"), "consultas": p.get("consultas"),
         "brutas": dados.get("brutas", 0), "excluidas_titulo": dados.get("excluidas_titulo", 0),
         "ja_vistas": dados.get("ja_vistas", 0) + len(existentes), "candidatas": len(cand),
-        "avaliadas": len(novas), "com_nota": not sem_avaliacao,
+        "avaliadas": len(novas) - len(fora_novas), "fora_criterios": len(fora_novas), "com_nota": not sem_avaliacao,
         "fortes": sum(n >= 80 for n in faixas), "boas": sum(65 <= n < 80 for n in faixas),
         "parciais": sum(50 <= n < 65 for n in faixas), "baixas": sum(n < 50 for n in faixas),
     })
@@ -305,14 +348,20 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None) -> int:
               + ", ".join(faltando))
     if existentes:
         print(f"Já estavam no dashboard (não alteradas): {', '.join(existentes)}")
-    print(f"Gravadas no dashboard: {len(novas)} vaga(s) nova(s), busca {busca_id}.")
+    print(f"Gravadas no dashboard: {len(novas) - len(fora_novas)} vaga(s) nova(s) para decidir, busca {busca_id}.")
+    if fora_novas:
+        print(f"Fora dos critérios: {len(fora_novas)} (aba Fora dos critérios do relatório; dá para seguir com elas de lá)")
+        for d in fora_novas:
+            print(f"  - {d['titulo'][:55]} | {d['empresa'][:28]}: {'; '.join(d['motivo_fora'])}")
     print(f"Dashboard: {URL_DASHBOARD}#relatorio  (se não abrir, rode: python dash/servidor.py)")
 
     if not sem_avaliacao and notas:
         notas.sort(key=lambda x: (-(x[0] or 0), x[1].get("publicada_em") or ""))
-        print("\nRanking desta busca:")
+        print()
+        print("Ranking desta busca:")
         for n, c in notas:
-            print(f"  {n:3d}  {c['titulo'][:55]} | {c['empresa'][:28]} | {c['publicada_em'] or '?'} | {c['url']}")
+            marca = "  [fora dos critérios]" if c["id"] in ids_fora else ""
+            print(f"  {n:3d}  {c['titulo'][:55]} | {c['empresa'][:28]} | {c['publicada_em'] or '?'} | {c['url']}{marca}")
     return 0 if novas or not docs else 1
 
 

@@ -20,7 +20,9 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 import banco  # noqa: E402
+import filtros  # noqa: E402  (filtros.py, na raiz: lê e grava os filtros da busca no config.json)
 
 PAGINA = banco.DASH / "dashboard.html"
 PORTA_PADRAO = 8765
@@ -99,6 +101,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._erro(403, "pedido recusado")
             if metodo == "POST" and caminho == "/api/vagas":
                 return self._json(201, {"vaga": banco.criar_manual(self._corpo())})
+            if metodo == "PUT" and caminho == "/api/config":
+                return self._json(200, self._config(filtros.salvar(self._corpo())))
             vid = self._id_da_rota(caminho)
             if vid is None:
                 return self._erro(404, "rota não encontrada")
@@ -125,6 +129,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"versao": banco.versao(), "vagas": banco.listar_vagas()})
         if caminho == "/api/buscas/ultima":
             return self._json(200, {"busca": banco.ultima_busca()})
+        if caminho == "/api/config":
+            cfg = filtros.ler_config()
+            return self._json(200, {**self._config(filtros.efetivos(cfg)), "existe": bool(cfg)})
         if caminho == "/favicon.ico":
             return self._enviar(204, b"", "image/x-icon")
         return self._erro(404, "rota não encontrada")
@@ -138,8 +145,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_PATCH(self):
         self._tratar("PATCH")
 
+    def do_PUT(self):
+        self._tratar("PUT")
+
     def do_DELETE(self):
         self._tratar("DELETE")
+
+    @staticmethod
+    def _config(f: dict) -> dict:
+        f = {k: v for k, v in f.items() if k != "local_legado"}
+        return {"filtros": f, "consultas": len(filtros.consultas(f)), "opcoes": filtros.opcoes()}
 
 
 def ja_rodando(porta: int) -> bool:

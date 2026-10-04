@@ -33,12 +33,13 @@ BACKUPS = DADOS / "backup"
 MANTER_BACKUPS = 10
 
 ETAPAS = ("salva", "aplicada", "entrevista", "proposta", "encerrada")
-TRIAGENS = ("pendente", "seguir", "visitada")
+TRIAGENS = ("pendente", "seguir", "visitada", "fora")  # fora = furou os filtros da busca
 RESULTADOS = ("nao_aprovado", "desisti", "cancelada", "contratado")
 PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Outra")
 MODELOS = ("remoto", "hibrido", "presencial", "nao_informado")
 SENIORIDADES = ("junior", "pleno", "senior")
 ORIGENS_SENIORIDADE = ("declarada", "sugerida")
+TIPOS_EMPREGO = ("tempo_integral", "pj", "meio_periodo", "estagio", "temporario")  # as chaves de filtros.TIPOS_EMPREGO
 ID_VALIDO = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 DATA_VALIDA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -233,6 +234,14 @@ def validar_analise(a: dict) -> dict:
             if origem not in ORIGENS_SENIORIDADE:
                 raise ValueError(f"senioridade_origem deve ser um de {ORIGENS_SENIORIDADE}")
             limpos["senioridade_origem"] = origem
+    tipos = a.get("tipo_emprego")
+    if tipos is not None:
+        tipos = _lista(tipos)
+        if any(t not in TIPOS_EMPREGO for t in tipos):
+            raise ValueError(f"tipo_emprego deve ser uma lista com {TIPOS_EMPREGO}")
+        limpos["tipo_emprego"] = [t for t in TIPOS_EMPREGO if t in tipos]
+    if a.get("fora_dos_criterios"):
+        limpos["fora_dos_criterios"] = _texto(a["fora_dos_criterios"], 200)
     return limpos
 
 
@@ -368,8 +377,10 @@ def _cmd_quadro(args) -> int:
     vagas = [v for v in listar_vagas() if v.get("etapa") and (v.get("origem") == "manual" or v.get("triagem") == "seguir")]
     if args.etapa:
         vagas = [v for v in vagas if v["etapa"] == args.etapa]
-    pend = sum(1 for v in listar_vagas() if v.get("origem") != "manual" and v.get("triagem") == "pendente")
-    print(f"Relatório de Vagas: {pend} vaga(s) esperando decisão.")
+    todas = listar_vagas()
+    pend = sum(1 for v in todas if v.get("origem") != "manual" and v.get("triagem") == "pendente")
+    fora = sum(1 for v in todas if v.get("triagem") == "fora")
+    print(f"Relatório de Vagas: {pend} vaga(s) esperando decisão; {fora} fora dos critérios.")
     for etapa in ETAPAS:
         grupo = sorted((v for v in vagas if v["etapa"] == etapa), key=lambda v: v.get("etapa_em") or "", reverse=True)
         if not grupo and args.etapa:
@@ -393,7 +404,7 @@ def precisa_analise(v: dict) -> bool:
     """Adicionada à mão esperando análise, ou trazida pela busca sem nota e ainda não descartada."""
     if v.get("analise_status") == "pendente":
         return True
-    return v.get("analise_status") == "sem_analise" and v.get("triagem") != "visitada"
+    return v.get("analise_status") == "sem_analise" and v.get("triagem") not in ("visitada", "fora")
 
 
 def _cmd_pendentes(args) -> int:
@@ -433,6 +444,10 @@ def _cmd_vaga(args) -> int:
     print(" · ".join(linha))
     print(f"Link: {v.get('url') or '-'}")
     print(f"Etapa: {v.get('etapa') or '-'} · triagem: {v.get('triagem') or '-'}")
+    if v.get("termos"):
+        print(f"Encontrada pelos termos: {', '.join(v['termos'])}")
+    if v.get("motivo_fora"):
+        print(f"Fora dos critérios: {'; '.join(v['motivo_fora'])}")
     if v.get("senioridade"):
         print(f"Senioridade: {'/'.join(v['senioridade'])} ({v.get('senioridade_origem') or 'pelo título'})")
     if isinstance(v.get("aderencia"), int):

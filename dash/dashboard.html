@@ -155,6 +155,47 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .meta { margin: 0; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .meta .fresh { color: var(--good); }
 .meta .sugerida { font-style: italic; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.meta .termos, .termos { font-family: var(--font-mono); font-size: 11.5px; color: var(--faint); }
+.card .termos, .dlg-head .termos { margin: 0; overflow-wrap: anywhere; }
+.motivo-fora { margin: 0; padding: 8px 10px; border-left: 2px solid var(--warn); background: color-mix(in srgb, var(--warn) 8%, transparent); border-radius: 0 8px 8px 0; font-size: 13px; }
+.motivo-fora b { color: var(--warn); }
+.rel-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.btn-filtros { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; }
+
+/* Filtros da busca (painel que grava o config.json) */
+#dlg-filtros { width: min(760px, calc(100vw - 32px)); }
+.fb { display: flex; flex-direction: column; gap: 20px; max-height: calc(100vh - 260px); overflow-y: auto; padding-right: 4px; }
+.fb-sec { display: flex; flex-direction: column; gap: 8px; }
+.fb-sec h3 { margin: 0; font-size: 11.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.fb-sub { margin-left: 26px; display: flex; flex-direction: column; gap: 8px; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 13px; }
+.pill:hover { background: var(--col); }
+.pill[aria-pressed="true"] { background: color-mix(in srgb, var(--good) 16%, transparent); border-color: var(--good); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { display: inline-flex; align-items: center; gap: 2px; background: var(--col); border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 3px 2px 11px; font-size: 12.5px; overflow-wrap: anywhere; }
+.tag button { background: none; border: 0; color: var(--muted); width: 24px; height: 24px; border-radius: 50%; flex: none; }
+.tag button:hover { background: var(--line); color: var(--fg); }
+.add-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.add-row input[type="text"], #fb-pais-busca { min-width: 0; background: var(--col); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; }
+.add-row input[type="text"] { flex: 1 1 200px; }
+.add-row .btn-plain { padding: 8px 14px; }
+.check { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.check input { width: 16px; height: 16px; accent-color: var(--good); margin: 0; }
+.check small { font-weight: 400; color: var(--muted); }
+.fb-grid { display: grid; grid-template-columns: 1.3fr .7fr 1.3fr .7fr; gap: 10px; }
+.paises-lista { max-height: 176px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0 10px; }
+.paises-lista label { display: flex; gap: 8px; align-items: center; padding: 4px; font-size: 13px; }
+.paises-lista input { accent-color: var(--good); }
+.fb-conta { margin-right: auto; color: var(--muted); font-size: 13px; align-self: center; }
+.fb-conta[data-muitas] { color: var(--warn); }
+.fb-erro { margin: 0; color: var(--bad); font-weight: 600; }
+@media (max-width: 720px) {
+  .fb-grid { grid-template-columns: 1fr 1fr; }
+  .fb-sub { margin-left: 0; }
+  .fb { max-height: calc(100vh - 340px); }
+  .fb-conta { flex: 1 1 100%; }
+}
 .resumo { margin: 0; max-width: 75ch; }
 .facets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .facet h4 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
@@ -277,6 +318,15 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
           <button type="button" data-nivel="ni" aria-pressed="false" title="Vagas que não dizem o nível">Não informada</button>
         </div>
       </div>
+      <div class="filtro">
+        <span class="filtro-lbl" id="fl-modo">Modo de trabalho</span>
+        <div class="seg" role="group" aria-labelledby="fl-modo">
+          <button type="button" data-modo="remoto" aria-pressed="false">Remoto</button>
+          <button type="button" data-modo="hibrido" aria-pressed="false">Híbrido</button>
+          <button type="button" data-modo="presencial" aria-pressed="false">Presencial</button>
+          <button type="button" data-modo="ni" aria-pressed="false" title="A vaga não diz o modelo de trabalho">Não informado</button>
+        </div>
+      </div>
       <label class="filtro">
         <span class="filtro-lbl">Aderência mínima</span>
         <span class="num-wrap"><input id="f-ader" type="number" inputmode="numeric" min="0" max="100" step="5" placeholder="0"></span>
@@ -322,6 +372,25 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   <div class="dlg" id="det"></div>
 </dialog>
 
+<dialog id="dlg-filtros" aria-labelledby="fb-title">
+  <form class="dlg" id="form-filtros" novalidate>
+    <div class="dlg-head">
+      <div>
+        <h2 id="fb-title">Filtros da busca</h2>
+        <p>O que procurar nos portais. Vale a partir da próxima busca; vaga que furar estes filtros vai para a aba Fora dos critérios, de onde você ainda pode seguir com ela.</p>
+      </div>
+      <button type="button" class="more" data-fechar-filtros aria-label="Fechar">✕</button>
+    </div>
+    <div class="fb" id="fb-corpo"></div>
+    <p class="fb-erro" id="fb-erro" role="alert" hidden></p>
+    <div class="dlg-foot">
+      <span class="fb-conta" id="fb-conta" aria-live="polite"></span>
+      <button type="button" class="btn-plain" data-fechar-filtros>Cancelar</button>
+      <button type="submit" class="btn-primary" id="fb-salvar">Salvar filtros</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 (function () {
   "use strict";
@@ -339,7 +408,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   var S = {
     vagas: [], busca: null, loaded: false, offline: false, versao: null, canWrite: true,
     aba: "quadro", vista: "quadro", plataforma: "", triagem: "pendente", detId: null, menuFor: null,
-    filtro: { niveis: [], ader: null, dias: null }
+    filtro: { niveis: [], modos: [], ader: null, dias: null }
   };
   var fila = {}; // uma escrita por vez por vaga
 
@@ -382,8 +451,17 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (/ (sr|snr|senior|iii|principal) /.test(t)) r.push("senior");
     return r;
   }
-  // Filtros do relatório ("ni" = nível não informado)
-  function filtrando() { var f = S.filtro; return f.niveis.length > 0 || f.ader != null || f.dias != null; }
+  // Modo de trabalho: o que a análise leu na descrição; sem análise, a marcação do portal
+  var MODOS = { remoto: "Remoto", hibrido: "Híbrido", presencial: "Presencial" };
+  function modo(v) {
+    if (MODOS[v.modelo_trabalho]) return v.modelo_trabalho;
+    if (v.modelo_trabalho === "nao_informado") return "ni";
+    return v.remoto === true ? "remoto" : "ni";
+  }
+  function termosDe(v) { return (v.termos || []).map(function (t) { return String(t).replace(/"/g, ""); }).join(", "); }
+  // Filtros do relatório ("ni" = não informado)
+  function filtroVazio() { return { niveis: [], modos: [], ader: null, dias: null }; }
+  function filtrando() { var f = S.filtro; return f.niveis.length > 0 || f.modos.length > 0 || f.ader != null || f.dias != null; }
   function passaFiltro(v) {
     var f = S.filtro;
     if (f.niveis.length) {
@@ -391,13 +469,14 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       var ok = nv.length ? nv.some(function (x) { return f.niveis.indexOf(x) >= 0; }) : f.niveis.indexOf("ni") >= 0;
       if (!ok) return false;
     }
+    if (f.modos.length && f.modos.indexOf(modo(v)) < 0) return false;
     if (f.ader != null && !(temNota(v) && v.aderencia >= f.ader)) return false;
     if (f.dias != null) { var d = dias(v.publicada_em); if (d == null || d > f.dias) return false; }
     return true;
   }
   function salvarFiltro() { try { localStorage.setItem("cand.filtro", JSON.stringify(S.filtro)); } catch (e) {} }
   function limparFiltro() {
-    S.filtro = { niveis: [], ader: null, dias: null };
+    S.filtro = filtroVazio();
     $("f-ader").value = ""; $("f-dias").value = "";
     salvarFiltro(); render();
   }
@@ -405,6 +484,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   var ICON = {
     ext: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
     chart: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 20V12M12 20V5M18 20v-6"/></svg>',
+    sliders: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
     dots: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>',
     grip: '<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true"><circle cx="2.5" cy="3" r="1.3"/><circle cx="7.5" cy="3" r="1.3"/><circle cx="2.5" cy="8" r="1.3"/><circle cx="7.5" cy="8" r="1.3"/><circle cx="2.5" cy="13" r="1.3"/><circle cx="7.5" cy="13" r="1.3"/></svg>'
   };
@@ -507,7 +587,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<div class="card-top"><span class="plat" data-p="' + esc(v.plataforma || "Outra") + '"><i></i>' + esc(v.plataforma || "Outra") + "</span>" +
       '<time datetime="' + esc(v.etapa_em || "") + '">' + esc(ddmm(v.etapa_em || v.encontrada_em)) + "</time>" +
       '<button class="more" data-menu="' + esc(v.id) + '" aria-label="Opções de ' + esc(v.titulo) + '" aria-haspopup="menu">' + ICON.dots + "</button></div>" +
-      "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" + chipsDe(v) +
+      "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" +
+      (v.termos && v.termos.length ? '<p class="termos" title="Termos de busca que encontraram esta vaga">busca: ' + esc(termosDe(v)) + "</p>" : "") + chipsDe(v) +
       '<div class="card-actions">' +
       (url ? '<a class="btn-ghost" href="' + esc(url) + '" target="_blank" rel="noopener">' + ICON.ext + " Link da Vaga</a>"
            : '<span class="btn-ghost" aria-disabled="true">' + ICON.ext + " Sem link</span>") +
@@ -569,12 +650,17 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       var rot = nv.map(function (x) { return NIVEIS[x]; }).join("/");
       meta.push(nivelSugerido(v) ? '<span class="sugerida" title="O anúncio não declara o nível; esta é a sugestão da análise">' + rot + " (sugerida)</span>" : rot);
     }
+    if (MODOS[v.modelo_trabalho]) meta.push(MODOS[v.modelo_trabalho]);
     if (d != null) meta.push('<span class="' + (d <= 3 ? "fresh" : "") + '">publicada ' + (d === 0 ? "hoje" : d === 1 ? "há 1 dia" : "há " + d + " dias") + "</span>");
     if (v.salario) meta.push(esc(v.salario));
+    if (v.termos && v.termos.length) meta.push('<span class="termos" title="Termos de busca que encontraram esta vaga">busca: ' + esc(termosDe(v)) + "</span>");
     var decide;
     if (v.triagem === "pendente") {
       decide = '<button class="btn-go" data-seguir="' + esc(v.id) + '"' + (S.canWrite ? "" : " disabled") + ">Seguir com a vaga</button>" +
                '<button class="btn-skip" data-pular="' + esc(v.id) + '"' + (S.canWrite ? "" : " disabled") + ">Não seguir</button>";
+    } else if (v.triagem === "fora") {
+      decide = '<p class="decided">Fora dos critérios desde ' + esc(ddmm(v.triada_em)) + "</p>" +
+               '<button class="btn-go" data-seguir="' + esc(v.id) + '"' + (S.canWrite ? "" : " disabled") + ">Seguir com a vaga</button>";
     } else {
       decide = '<p class="decided">' + (v.triagem === "seguir" ? "No quadro desde " + esc(ddmm(v.triada_em)) : "Marcada como visitada em " + esc(ddmm(v.triada_em))) + "</p>" +
                '<button class="btn-skip" data-desfazer="' + esc(v.id) + '"' + (S.canWrite ? "" : " disabled") + ">Voltar para triagem</button>";
@@ -583,6 +669,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<div class="score" data-b="' + bnd + '" title="' + (temNota(v) ? "Aderência ao seu perfil (0 a 100)" : "Vaga sem nota de aderência") + '"><b>' + (temNota(v) ? v.aderencia : "—") + "</b><small>" + (temNota(v) ? rotuloBanda(bnd) : "sem nota") + "</small></div>" +
       '<div class="rel-body"><h3>' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(v.titulo) + "</a>" : esc(v.titulo)) + "</h3>" +
       '<p class="meta">' + meta.filter(Boolean).map(function (m) { return "<span>" + m + "</span>"; }).join("") + "</p>" +
+      ((v.motivo_fora || []).length ? '<p class="motivo-fora"><b>Fora dos critérios:</b> ' + esc(v.motivo_fora.join("; ")) + "</p>" : "") +
       (v.resumo ? '<p class="resumo">' + esc(v.resumo) + "</p>" : "") +
       (analisada ? '<div class="facets">' + facet("encaixe", "Encaixe", v.encaixe) + facet("lacunas", "Lacunas", v.lacunas) + facet("alertas", "Atenção", v.alertas) + "</div>" : "") +
       (v.descricao ? '<details class="desc"><summary>Descrição completa</summary><div class="desc-body">' + md(v.descricao) + "</div></details>" : "") +
@@ -594,21 +681,26 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var abertos = {};
     document.querySelectorAll("#pane-relatorio details[data-key]").forEach(function (d) { abertos[d.getAttribute("data-key")] = d.open; });
     var todas = S.vagas.filter(function (v) { return v.origem !== "manual"; });
-    var n = { pendente: 0, seguir: 0, visitada: 0 };
+    var n = { pendente: 0, seguir: 0, visitada: 0, fora: 0 };
     todas.forEach(function (v) { if (n[v.triagem] != null) n[v.triagem]++; });
     var b = S.busca;
     var meta = b
       ? "Última busca em <strong>" + esc(ddmm(b.data)) + " às " + esc(String(b.data || "").slice(11, 16)) + "</strong> · " + esc((b.termos || []).join(", ")) +
-        " · " + (b.brutas || 0) + " vagas encontradas, " + (b.avaliadas || 0) + (b.com_nota === false ? " novas (sem nota)" : " novas avaliadas")
+        " · " + (b.brutas || 0) + " vagas encontradas, " + (b.avaliadas || 0) + (b.com_nota === false ? " novas (sem nota)" : " novas avaliadas") +
+        (b.fora_criterios ? ", " + b.fora_criterios + " fora dos critérios" : "")
       : "Nenhuma busca registrada ainda.";
     var h = '<div class="rel-head"><p class="rel-meta">' + meta + "</p>" +
-      '<div class="seg" role="group" aria-label="Filtrar triagem">' +
-      [["pendente", "Para decidir"], ["seguir", "Seguidas"], ["visitada", "Não seguidas"]].map(function (p) {
+      '<div class="rel-acoes"><div class="seg" role="group" aria-label="Filtrar triagem">' +
+      [["pendente", "Para decidir"], ["seguir", "Seguidas"], ["visitada", "Não seguidas"], ["fora", "Fora dos critérios"]].map(function (p) {
         return '<button data-tri="' + p[0] + '" aria-pressed="' + (S.triagem === p[0]) + '">' + p[1] + '<span class="n">' + n[p[0]] + "</span></button>";
-      }).join("") + "</div></div>";
+      }).join("") + "</div>" +
+      '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button></div></div>";
     $("rel-topo").innerHTML = h;
     document.querySelectorAll("[data-nivel]").forEach(function (b) {
       b.setAttribute("aria-pressed", S.filtro.niveis.indexOf(b.getAttribute("data-nivel")) >= 0);
+    });
+    document.querySelectorAll("[data-modo]").forEach(function (b) {
+      b.setAttribute("aria-pressed", S.filtro.modos.indexOf(b.getAttribute("data-modo")) >= 0);
     });
 
     var daTriagem = todas.filter(function (v) { return v.triagem === S.triagem; });
@@ -626,6 +718,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     } else if (!lista.length) {
       h += '<div class="empty">' + (S.triagem === "pendente"
         ? "Nenhuma vaga esperando decisão. Rode <code>python vagas.py buscar --gravar</code> ou, com o Claude Code, peça <code>busca vagas novas</code>."
+        : S.triagem === "fora"
+        ? "Nenhuma vaga fora dos critérios. Quando uma busca trouxer vagas que furam os seus filtros (modelo de trabalho, cidade, senioridade, tipo de emprego, empresa), elas aparecem aqui com o motivo."
         : "Nada por aqui ainda.") + "</div>";
     } else if (S.triagem === "pendente") {
       var baixas = lista.filter(function (v) { return temNota(v) && v.aderencia < 50; });
@@ -663,7 +757,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     else analise = '<p class="hint">Sem análise para esta vaga.</p>';
     var dis = S.canWrite ? "" : " disabled";
     box.innerHTML =
-      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(v.plataforma || "Outra") + "</p></div>" +
+      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(v.plataforma || "Outra") + "</p>" +
+      (v.termos && v.termos.length ? '<p class="termos">Encontrada pela busca: ' + esc(termosDe(v)) + "</p>" : "") + "</div>" +
       '<button class="more" data-fechar aria-label="Fechar">✕</button></div>' + analise +
       '<div class="det-grid">' +
       '<div class="field"><label for="d-etapa">Etapa</label><select id="d-etapa"' + dis + ">" + ETAPAS.map(function (e) { return '<option value="' + e.k + '"' + (v.etapa === e.k ? " selected" : "") + ">" + e.label + "</option>"; }).join("") + "</select></div>" +
@@ -701,6 +796,172 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   }
   function fecharMenu() { $("menu").hidden = true; S.menuFor = null; }
 
+  /* ---------- filtros da busca (config.json, pelo servidor) ---------- */
+  var FB = { d: null, op: null }; // rascunho dos filtros e opções do servidor
+  function semAcento(s) {
+    return String(s || "").normalize("NFD").split("").filter(function (c) { var k = c.charCodeAt(0); return k < 768 || k > 879; }).join("").toLowerCase();
+  }
+  function contarConsultas(d) { // mesma conta de filtros.consultas()
+    var m = d.modelos, t = d.termos.length, locais = m.hibrido || m.presencial, cidade = !!d.localidade.cidade;
+    var n = (m.remoto || (locais && !cidade)) ? t : 0;
+    if (locais && cidade) n += t;
+    if (m.remoto && d.internacional.ativo) n += d.internacional.paises.length * (d.internacional.termos.length || t);
+    return n;
+  }
+  function abrirFiltros() {
+    FB.d = null;
+    $("fb-erro").hidden = true; $("fb-conta").textContent = ""; $("fb-salvar").disabled = true;
+    $("fb-corpo").innerHTML = '<p class="hint">Carregando…</p>';
+    if (!$("dlg-filtros").open) $("dlg-filtros").showModal();
+    API.get("/api/config").then(function (j) {
+      FB.op = j.opcoes; FB.d = JSON.parse(JSON.stringify(j.filtros));
+      montarFiltros(); $("fb-salvar").disabled = !S.canWrite;
+    }).catch(function (e) { $("fb-corpo").innerHTML = '<p class="banner">Não foi possível ler os filtros: ' + esc(erroMsg(e)) + "</p>"; });
+  }
+  function pills(attr, mapa, marcados) {
+    return '<div class="pills">' + Object.keys(mapa).map(function (k) {
+      return '<button type="button" class="pill" ' + attr + '="' + esc(k) + '" aria-pressed="' + (marcados.indexOf(k) >= 0) + '">' + esc(mapa[k]) + "</button>";
+    }).join("") + "</div>";
+  }
+  function marcarPills(attr, marcados) {
+    document.querySelectorAll("#fb-corpo [" + attr + "]").forEach(function (b) { b.setAttribute("aria-pressed", marcados.indexOf(b.getAttribute(attr)) >= 0); });
+  }
+  function alternar(lista, k) { var i = lista.indexOf(k); if (i >= 0) lista.splice(i, 1); else lista.push(k); }
+  function linhaAdicionar(id, exemplo, exata, rotulo) {
+    return '<div class="add-row"><input type="text" id="' + id + '" maxlength="80" placeholder="' + esc(exemplo) + '" aria-label="' + esc(rotulo) + '">' +
+      (exata ? '<label class="check"><input type="checkbox" id="' + id + '-exata" checked> frase exata</label>' : "") +
+      '<button type="button" class="btn-plain" data-add="' + id + '">Adicionar</button></div>';
+  }
+  function montarFiltros() {
+    var d = FB.d, op = FB.op, loc = d.localidade;
+    $("fb-corpo").innerHTML =
+      '<section class="fb-sec"><h3>Cargos</h3><p class="hint">Cada cargo vira uma busca. Frase exata (entre aspas) traz só anúncios com aquela expressão, o que corta muito ruído.</p>' +
+        '<div class="tags" id="fb-l-termos"></div>' + linhaAdicionar("fb-termo", "Ex.: scrum master", true, "Novo cargo") + "</section>" +
+      '<section class="fb-sec"><h3>Localidade</h3><div class="fb-grid">' +
+        '<div class="field"><label for="fb-pais">País</label><select id="fb-pais">' + op.paises.map(function (p) {
+          return "<option" + (p === loc.pais ? " selected" : "") + ">" + esc(p) + "</option>"; }).join("") + "</select></div>" +
+        '<div class="field"><label for="fb-estado">Estado</label><input id="fb-estado" maxlength="40" placeholder="SP" value="' + esc(loc.estado) + '"></div>' +
+        '<div class="field"><label for="fb-cidade">Cidade</label><input id="fb-cidade" maxlength="80" placeholder="Campinas" value="' + esc(loc.cidade) + '"></div>' +
+        '<div class="field"><label for="fb-raio">Raio</label><select id="fb-raio">' + op.raios_km.map(function (r) {
+          return '<option value="' + r + '"' + (r === loc.raio_km ? " selected" : "") + ">" + r + " km</option>"; }).join("") + "</select></div>" +
+      '</div><p class="hint">Cidade e raio valem para vagas híbridas e presenciais. O Indeed não busca por estado inteiro; o estado só completa o nome da cidade.</p></section>' +
+      '<section class="fb-sec"><h3>Modo de trabalho</h3>' +
+        '<label class="check"><input type="checkbox" id="fb-m-remoto"' + (d.modelos.remoto ? " checked" : "") + "> Remoto</label>" +
+        '<div class="fb-sub" id="fb-remoto-sub">' +
+          '<label class="check"><input type="radio" name="fb-alcance" value="pais"' + (d.internacional.ativo ? "" : " checked") + '> Apenas no meu país <small id="fb-pais-nome"></small></label>' +
+          '<label class="check"><input type="radio" name="fb-alcance" value="exterior"' + (d.internacional.ativo ? " checked" : "") + "> Também vagas remotas no exterior</label>" +
+          '<div class="fb-sub" id="fb-exterior">' +
+            '<input type="text" id="fb-pais-busca" placeholder="Buscar país…" aria-label="Buscar país">' +
+            '<div class="paises-lista" id="fb-paises"></div>' +
+            '<div class="tags" id="fb-l-paises"></div>' +
+            '<p class="hint">Cargos para o exterior: poucos e no idioma das vagas de lá. Cada país × cargo é uma consulta a mais.</p>' +
+            '<div class="tags" id="fb-l-termos-int"></div>' + linhaAdicionar("fb-termo-int", "Ex.: scrum master", true, "Novo cargo para o exterior") +
+          "</div></div>" +
+        '<label class="check"><input type="checkbox" id="fb-m-hibrido"' + (d.modelos.hibrido ? " checked" : "") + '> Híbrido <small class="fb-onde"></small></label>' +
+        '<label class="check"><input type="checkbox" id="fb-m-presencial"' + (d.modelos.presencial ? " checked" : "") + '> Presencial <small class="fb-onde"></small></label>' +
+      "</section>" +
+      '<section class="fb-sec"><h3>Data de publicação</h3>' + pills("data-janela", op.janelas, [String(d.janela_horas)]) + "</section>" +
+      '<section class="fb-sec"><h3>Tipo de emprego</h3>' + pills("data-tipo", op.tipos_emprego, d.tipos_emprego) +
+        '<p class="hint">Nenhum marcado = todos. A IA confere o tipo lendo a descrição da vaga.</p></section>' +
+      '<section class="fb-sec"><h3>Senioridade</h3>' + pills("data-sen", op.senioridades, d.senioridades) +
+        '<p class="hint">Nenhuma marcada = todas. Vale o nível do título ou o que a IA ler na descrição; vaga que não diz o nível não é cortada.</p></section>' +
+      '<section class="fb-sec"><h3>Empresas a excluir</h3><div class="tags" id="fb-l-empresas"></div>' +
+        linhaAdicionar("fb-empresa", "Nome da empresa", false, "Empresa a excluir") + "</section>";
+    atualizarFiltros();
+  }
+  function tagsHTML(lista, tipo) {
+    return lista.map(function (x, i) {
+      return '<span class="tag">' + esc(x) + '<button type="button" data-rm="' + tipo + '" data-i="' + i + '" aria-label="Remover ' + esc(x) + '">✕</button></span>';
+    }).join("") || '<span class="hint">Nenhum.</span>';
+  }
+  function listaDe(tipo) {
+    var d = FB.d;
+    return { "termos": d.termos, "termos-int": d.internacional.termos, "paises": d.internacional.paises, "empresas": d.empresas_excluir,
+             "fb-termo": d.termos, "fb-termo-int": d.internacional.termos, "fb-empresa": d.empresas_excluir }[tipo];
+  }
+  function atualizarFiltros() {
+    var d = FB.d, loc = d.localidade;
+    $("fb-l-termos").innerHTML = tagsHTML(d.termos, "termos");
+    $("fb-l-termos-int").innerHTML = tagsHTML(d.internacional.termos, "termos-int");
+    $("fb-l-paises").innerHTML = tagsHTML(d.internacional.paises, "paises");
+    $("fb-l-empresas").innerHTML = tagsHTML(d.empresas_excluir, "empresas");
+    $("fb-pais-nome").textContent = "(" + loc.pais + ")";
+    var cidade = [loc.cidade, loc.estado].filter(Boolean).join(", ");
+    document.querySelectorAll(".fb-onde").forEach(function (s) { s.textContent = cidade ? "em " + cidade + " (" + loc.raio_km + " km)" : "informe a cidade acima"; });
+    $("fb-remoto-sub").hidden = !d.modelos.remoto;
+    $("fb-exterior").hidden = !d.internacional.ativo;
+    var busca = semAcento($("fb-pais-busca").value.trim());
+    $("fb-paises").innerHTML = FB.op.paises.filter(function (p) { return p !== loc.pais && semAcento(p).indexOf(busca) >= 0; }).map(function (p) {
+      return '<label><input type="checkbox" data-pais="' + esc(p) + '"' + (d.internacional.paises.indexOf(p) >= 0 ? " checked" : "") + "> " + esc(p) + "</label>";
+    }).join("") || '<span class="hint">Nenhum país com esse nome.</span>';
+    var n = contarConsultas(d), c = $("fb-conta");
+    c.textContent = "Esta busca fará " + n + (n === 1 ? " consulta" : " consultas") + " ao Indeed" + (n > 20 ? ": muitas consultas aumentam o risco de bloqueio" : "");
+    if (n > 20) c.setAttribute("data-muitas", ""); else c.removeAttribute("data-muitas");
+  }
+  function adicionar(id) {
+    var inp = $(id), txt = inp.value.trim();
+    if (!txt) return;
+    var exata = $(id + "-exata");
+    if (exata && exata.checked) txt = '"' + txt.replace(/"/g, "") + '"';
+    var lista = listaDe(id);
+    if (!lista.some(function (x) { return semAcento(x) === semAcento(txt); })) lista.push(txt);
+    inp.value = ""; inp.focus(); atualizarFiltros();
+  }
+  function bindFiltros() {
+    var ff = $("form-filtros");
+    ff.addEventListener("click", function (ev) {
+      var t = ev.target.closest("button");
+      if (!t) return;
+      if (t.hasAttribute("data-fechar-filtros")) { $("dlg-filtros").close(); return; }
+      var d = FB.d;
+      if (!d) return;
+      if (t.hasAttribute("data-rm")) { listaDe(t.getAttribute("data-rm")).splice(+t.getAttribute("data-i"), 1); atualizarFiltros(); return; }
+      if (t.hasAttribute("data-add")) { adicionar(t.getAttribute("data-add")); return; }
+      if (t.hasAttribute("data-janela")) { d.janela_horas = +t.getAttribute("data-janela"); marcarPills("data-janela", [t.getAttribute("data-janela")]); return; }
+      if (t.hasAttribute("data-tipo")) { alternar(d.tipos_emprego, t.getAttribute("data-tipo")); marcarPills("data-tipo", d.tipos_emprego); return; }
+      if (t.hasAttribute("data-sen")) { alternar(d.senioridades, t.getAttribute("data-sen")); marcarPills("data-sen", d.senioridades); return; }
+    });
+    ff.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Enter" || ev.target.tagName !== "INPUT" || ev.target.type === "checkbox" || ev.target.type === "radio") return;
+      ev.preventDefault(); // Enter num campo não salva o painel
+      if (ev.target.id === "fb-termo" || ev.target.id === "fb-termo-int" || ev.target.id === "fb-empresa") adicionar(ev.target.id);
+    });
+    ff.addEventListener("change", function (ev) {
+      var t = ev.target, d = FB.d;
+      if (!d) return;
+      if (t.id === "fb-pais") {
+        d.localidade.pais = t.value;
+        d.internacional.paises = d.internacional.paises.filter(function (p) { return p !== t.value; });
+      } else if (t.id === "fb-raio") d.localidade.raio_km = +t.value;
+      else if (t.id === "fb-m-remoto" || t.id === "fb-m-hibrido" || t.id === "fb-m-presencial") d.modelos[t.id.slice(5)] = t.checked;
+      else if (t.name === "fb-alcance") d.internacional.ativo = t.value === "exterior";
+      else if (t.hasAttribute("data-pais")) {
+        var p = t.getAttribute("data-pais");
+        if (t.checked) { if (d.internacional.paises.indexOf(p) < 0) d.internacional.paises.push(p); }
+        else d.internacional.paises = d.internacional.paises.filter(function (x) { return x !== p; });
+      } else return;
+      atualizarFiltros();
+    });
+    ff.addEventListener("input", function (ev) {
+      var t = ev.target, d = FB.d;
+      if (!d) return;
+      if (t.id === "fb-estado") d.localidade.estado = t.value.trim();
+      else if (t.id === "fb-cidade") d.localidade.cidade = t.value.trim();
+      else if (t.id !== "fb-pais-busca") return;
+      atualizarFiltros();
+    });
+    ff.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      if (!FB.d) return;
+      var btn = $("fb-salvar"); btn.disabled = true; $("fb-erro").hidden = true;
+      API.send("PUT", "/api/config", FB.d).then(function () {
+        $("dlg-filtros").close(); toast("Filtros salvos. Valem a partir da próxima busca.");
+      }).catch(function (e) {
+        var er = $("fb-erro"); er.textContent = e && e.status === 400 ? e.message : erroMsg(e); er.hidden = false;
+      }).then(function () { btn.disabled = !S.canWrite; });
+    });
+  }
+
   /* ---------- eventos ---------- */
   function bind() {
     var sel = $("f-plataforma"), selA = $("a-plataforma"), selE = $("a-etapa");
@@ -712,6 +973,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       var pf = JSON.parse(localStorage.getItem("cand.filtro") || "null");
       if (pf) S.filtro = {
         niveis: (Array.isArray(pf.niveis) ? pf.niveis : []).filter(function (x) { return x === "ni" || NIVEIS.hasOwnProperty(x); }),
+        modos: (Array.isArray(pf.modos) ? pf.modos : []).filter(function (x) { return x === "ni" || MODOS.hasOwnProperty(x); }),
         ader: typeof pf.ader === "number" ? pf.ader : null,
         dias: typeof pf.dias === "number" ? pf.dias : null
       };
@@ -763,11 +1025,13 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (t.hasAttribute("data-pular")) { t.disabled = true; salvar(t.getAttribute("data-pular"), { triagem: "visitada", etapa: null, triada_em: hoje() }, "Marcada como visitada"); return; }
       if (t.hasAttribute("data-desfazer")) { t.disabled = true; salvar(t.getAttribute("data-desfazer"), { triagem: "pendente", etapa: null, resultado: null, triada_em: null }, "Vaga voltou para triagem"); return; }
       if (t.hasAttribute("data-tri")) { S.triagem = t.getAttribute("data-tri"); render(); return; }
-      if (t.hasAttribute("data-nivel")) {
-        var nv = t.getAttribute("data-nivel"), i = S.filtro.niveis.indexOf(nv);
-        if (i >= 0) S.filtro.niveis.splice(i, 1); else S.filtro.niveis.push(nv);
+      if (t.hasAttribute("data-nivel") || t.hasAttribute("data-modo")) {
+        var marcados = t.hasAttribute("data-nivel") ? S.filtro.niveis : S.filtro.modos;
+        var nv = t.getAttribute("data-nivel") || t.getAttribute("data-modo"), i = marcados.indexOf(nv);
+        if (i >= 0) marcados.splice(i, 1); else marcados.push(nv);
         salvarFiltro(); render(); return;
       }
+      if (t.hasAttribute("data-abrir-filtros")) { abrirFiltros(); return; }
       if (t.hasAttribute("data-limpar-filtros")) { limparFiltro(); return; }
       if (t.id === "pular-baixas") {
         if (!t.getAttribute("data-confirm")) { t.setAttribute("data-confirm", "1"); t.textContent = "Confirmar: marcar todas"; return; }
@@ -790,6 +1054,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     });
     document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !$("menu").hidden) fecharMenu(); });
     $("dlg-det").addEventListener("close", function () { S.detId = null; });
+    bindFiltros();
     window.addEventListener("resize", fecharMenu);
     document.addEventListener("scroll", fecharMenu, true);
 

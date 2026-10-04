@@ -11,13 +11,17 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ## O que ela faz
 
-- **Busca** vagas no Indeed com os seus termos (frase exata, só remoto, últimos N
-  dias). Tira o ruído pelo título, junta anúncios repetidos e esconde vagas que você
-  já viu.
+- **Busca** vagas no Indeed com os seus cargos e filtros, que você ajusta no painel
+  **Filtros da busca** do dashboard: remoto no seu país (e, se quiser, em outros
+  países), híbrido e presencial só na sua cidade, data de publicação, tipo de emprego,
+  senioridade e empresas a excluir. Tira o ruído pelo título, junta anúncios repetidos
+  e esconde vagas que você já viu.
 - **Relatório de Vagas:** para cada vaga você decide **Seguir**, e ela vai para o
-  quadro, ou **Não seguir**, e ela não aparece mais nas próximas buscas. Dá para
-  filtrar por senioridade (júnior, pleno, sênior), aderência mínima e dias desde a
-  publicação.
+  quadro, ou **Não seguir**, e ela não aparece mais nas próximas buscas. O que fura os
+  seus filtros (ex.: "remota" no portal, mas híbrida em outra cidade) vai para a aba
+  **Fora dos critérios**, com o motivo, e ainda dá para seguir com ela. Dá para
+  filtrar por senioridade, modo de trabalho, aderência mínima e dias desde a
+  publicação, e cada vaga mostra o termo de busca que a encontrou.
 - **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
   Recebida → Encerrada, com anotações, resultado e filtro por plataforma. O botão
   **Adicionar Vaga** registra vagas de qualquer site (LinkedIn, Gupy, InHire…).
@@ -155,15 +159,22 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 | `perfil` | Arquivo do seu perfil de carreira (usado só pela IA). Padrão: `perfil.md` |
 | `fontes` | Portais onde buscar. Hoje: `["indeed"]` |
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
-| `local` | Onde buscar (ex.: `Brasil`, `São Paulo, SP`) |
-| `pais_indeed` | Site do Indeed (ex.: `Brazil`, `Portugal`, `USA`) |
-| `somente_remoto` | `true` para só vagas remotas |
+| `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro |
+| `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
+| `internacional` | `ativo`, `paises` e `termos`: vagas remotas em outros países, com uma lista curta de cargos própria (cada país × cargo é uma consulta a mais) |
 | `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias) |
+| `tipos_emprego` | `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario`. Vazio = todos; com IA, conferido na descrição |
+| `senioridades` | `junior`, `pleno`, `senior`. Vazio = todas |
+| `empresas_excluir` | Empresas que você não quer ver |
 | `resultados_por_termo` | Máximo de vagas por termo |
 | `titulo_excluir` | Descarta vagas cujo título tenha alguma dessas palavras (ex.: `estagio`) |
 | `titulo_incluir` | Se preenchido, só fica vaga cujo título tenha alguma dessas palavras |
 
-Opções pontuais, sem mexer no arquivo: `python vagas.py buscar --help`.
+Quase tudo isso se ajusta no painel **Filtros da busca** (aba Relatório de Vagas do
+dashboard), que grava o `config.json` por você. Vaga que fura algum filtro vai para a
+aba Fora dos critérios. O formato antigo (`local`, `pais_indeed`, `somente_remoto`)
+continua funcionando. Opções pontuais, sem mexer no arquivo:
+`python vagas.py buscar --help`.
 
 ## Seus dados
 

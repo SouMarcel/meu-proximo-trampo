@@ -5,8 +5,10 @@ Cada fonte é um módulo nesta pasta com:
     NOME = "indeed"              # nome usado em config.json -> "fontes"
     PLATAFORMA = "Indeed"        # como aparece no dashboard
 
-    def buscar(termo: str, cfg: dict, horas: int, por_termo: int, remoto: bool) -> tuple[list[dict], list[str]]:
-        '''Devolve (vagas, erros). Cada vaga no formato comum:
+    def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list[str]]:
+        '''consulta (montada por filtros.consultas): termo, pais (nome do jobspy, ex.
+        "brazil"), local (texto ou None = país inteiro), raio_km (ou None) e remoto (bool).
+        Devolve (vagas, erros). Cada vaga no formato comum:
         id, titulo, empresa, local, remoto, publicada_em (AAAA-MM-DD), url,
         url_candidatura, salario, tipo, descricao, plataforma'''
 

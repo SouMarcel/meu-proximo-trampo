@@ -12,8 +12,21 @@ volta nas próximas buscas.
 
 ## Onde está cada coisa (raiz do projeto)
 
-- `config.json`: portais, termos de busca, janela, filtros de título e o caminho do
-  perfil (`perfil`). Termo entre aspas é frase exata, o que corta muito ruído.
+- `config.json`: portais, termos de busca (cargos), filtros da busca, filtros de título
+  e o caminho do perfil (`perfil`). Termo entre aspas é frase exata, o que corta muito
+  ruído. O usuário edita os filtros pelo painel **Filtros da busca** do dashboard
+  (relatório); o arquivo segue o formato de `config.exemplo.json`:
+  - `localidade` (`pais`, `estado`, `cidade`, `raio_km`) e `modelos` (`remoto`,
+    `hibrido`, `presencial`): remoto vale no país inteiro; híbrido e presencial, só na
+    cidade e no raio.
+  - `internacional` (`ativo`, `paises`, `termos`): vagas remotas em outros países, com
+    uma lista curta de cargos própria.
+  - `janela_horas`, `tipos_emprego` (`tempo_integral`, `pj`, `meio_periodo`, `estagio`,
+    `temporario`), `senioridades` (`junior`, `pleno`, `senior`) e `empresas_excluir`.
+    Lista vazia = sem restrição.
+  - O formato antigo (`local`, `pais_indeed`, `somente_remoto`) ainda funciona.
+- `filtros.py`: lê e grava esses filtros, monta as consultas e diz por que uma vaga fura
+  os critérios.
 - O arquivo de perfil apontado em `config.json` (padrão `perfil.md`): a única fonte
   sobre o usuário. Não complete lacunas com suposições.
 - `vagas.py`: `buscar`, `ver` e `gravar`. As buscas de cada portal ficam em `fontes/`.
@@ -35,10 +48,12 @@ Confira na ordem e resolva só o que faltar:
 
 1. **Ambiente.** Sem `.venv`: crie (`python -m venv .venv`) e instale
    `PY -m pip install -r requirements.txt`.
-2. **Configuração.** Sem `config.json`: copie `config.exemplo.json` e pergunte ao
-   usuário que cargos procura, se aceita híbrido ou presencial e em que país. Monte os
-   `termos` entre aspas, um por cargo e por variação comum (inclusive em inglês, se ele
-   aceita vaga internacional), e um `titulo_excluir` com áreas que ele não quer.
+2. **Configuração.** Sem `config.json`: o jeito mais fácil é o usuário abrir o
+   dashboard e preencher o painel **Filtros da busca** (cria o arquivo ao salvar).
+   Pelo chat: copie `config.exemplo.json` e pergunte que cargos procura, em que país e
+   cidade mora, se aceita híbrido ou presencial (só na cidade dele) e se quer vagas
+   remotas de outros países. Monte os `termos` entre aspas, um por cargo e por variação
+   comum, e um `titulo_excluir` com áreas que ele não quer.
 3. **Perfil.** Se o arquivo de `perfil` não existe: ofereça montar a partir de
    `perfil.exemplo.md`, com o currículo ou o PDF do LinkedIn que o usuário mandar
    (procure primeiro em `anexos/`; se não houver, peça para ele deixar lá).
@@ -59,12 +74,16 @@ servidor; ele só serve para ver e mexer no quadro.
 
 1. **Parâmetros.** O padrão vem do `config.json`. Ajuste pelo pedido com opções do
    `buscar`: "últimos 3 dias" → `--janela-horas 72`; outro cargo →
-   `--termos '"product owner"'`; "pode ser híbrido" → `--incluir-presencial`. Pedido
-   pontual não altera o `config.json`; só mude o arquivo quando o usuário quiser mudar
-   o padrão.
+   `--termos '"product owner"'`; "pode ser presencial em qualquer lugar" →
+   `--incluir-presencial`. Pedido pontual não altera o `config.json`; para mudar o
+   padrão, sugira o painel Filtros da busca (ou edite o arquivo, se ele pedir).
 
-2. **Buscar.** `PY vagas.py buscar [opções]` (cerca de 1 minuto). O script já ignora o
-   que está no dashboard, inclusive o que o usuário marcou como "não seguir". Mostra
+2. **Buscar.** `PY vagas.py buscar [opções]` (cerca de 1 minuto; mais se houver cidade
+   ou países do exterior). Cada termo vira uma consulta por grupo: remoto no país,
+   cidade (híbrido/presencial) e cada país do exterior. O script já ignora o que está
+   no dashboard, inclusive o que o usuário marcou como "não seguir", e já separa o que
+   fura os filtros sem precisar de leitura (empresa excluída, senioridade declarada no
+   título): essas vão direto para a aba **Fora dos critérios**, sem avaliação. Mostra
    contagens, os títulos cortados pelo filtro e a lista de candidatas.
    - Código de saída 3 = o portal não respondeu. Avise o usuário e pare; veja "Se o
      portal bloquear". Não repita a busca em seguida.
@@ -94,12 +113,16 @@ servidor; ele só serve para ver e mexer no quadro.
        "alertas": ["Contrato PJ"],
        "modelo_trabalho": "remoto",
        "senioridade": ["pleno"],
-       "senioridade_origem": "sugerida"
+       "senioridade_origem": "sugerida",
+       "tipo_emprego": ["pj"]
      }
    ]
    ```
 
-   `modelo_trabalho`: `remoto`, `hibrido`, `presencial` ou `nao_informado`.
+   `modelo_trabalho`: `remoto`, `hibrido`, `presencial` ou `nao_informado`, pelo que a
+   descrição diz (o "remoto" do Indeed é o anunciante que marca e deixa passar
+   híbrido). Na linha `busca:` de cada candidata está de onde ela veio (remoto, a
+   cidade do usuário ou um país do exterior).
    `senioridade`: os níveis que a vaga aceita, entre `junior`, `pleno` e `senior`
    (pode ser mais de um, como em "PL/SR"), com `senioridade_origem`:
    - `declarada`: o título ou a descrição dizem o nível.
@@ -107,20 +130,31 @@ servidor; ele só serve para ver e mexer no quadro.
      exigidos (até 2 júnior, 3 a 5 pleno, 6 ou mais sênior) e, sem eles, o escopo e a
      autonomia esperados. O dashboard mostra o nível como "(sugerida)".
    Só use `[]` (sem `senioridade_origem`) quando o anúncio não der nenhum indício. O
-   dashboard filtra por esse campo. Critérios da nota em "Como dar a nota".
+   dashboard filtra por esse campo.
+   `tipo_emprego` (opcional): o que a descrição diz, entre `tempo_integral` (CLT),
+   `pj`, `meio_periodo`, `estagio` e `temporario`; omita se ela não diz.
+   `fora_dos_criterios` (opcional): uma frase curta quando a vaga fura o que o usuário
+   pediu de um jeito que os campos acima não pegam, como exigir residência ou
+   autorização de trabalho em outro país numa vaga do exterior, ou exigir morar numa
+   cidade que não é a dele. Não use para nota baixa: isso é a aderência.
+   Critérios da nota em "Como dar a nota".
 
 4. **Gravar.** `PY vagas.py gravar` junta os dados da vaga (título, empresa, link,
    data, descrição) com a sua avaliação, para você nunca redigitar link ou ID, e grava
-   no banco. Vaga que já existia não é alterada. O dashboard aberto se atualiza sozinho
-   em alguns segundos. Se `gravar` reclamar de algum campo, corrija o
-   `avaliacoes.json` e rode de novo. Se falhar por outro motivo, diga ao usuário que as
-   avaliações estão em `.cache/avaliacoes.json` e não foram gravadas.
+   no banco. Vaga que já existia não é alterada. Com a sua leitura, ele confere de novo
+   os filtros (modelo e cidade, senioridade, tipo de emprego, `fora_dos_criterios`) e
+   manda para a aba **Fora dos critérios** o que furar, com o motivo; de lá o usuário
+   ainda pode seguir com a vaga. O dashboard aberto se atualiza sozinho em alguns
+   segundos. Se `gravar` reclamar de algum campo, corrija o `avaliacoes.json` e rode
+   de novo. Se falhar por outro motivo, diga ao usuário que as avaliações estão em
+   `.cache/avaliacoes.json` e não foram gravadas.
 
 5. **Pendentes de análise.** Rode `PY dash/banco.py pendentes`. Se houver vagas
    esperando análise, analise-as (fluxo B) e inclua no resumo.
 
 6. **Responder no chat**, curto:
-   - números: encontradas → cortadas → já vistas → avaliadas agora;
+   - números: encontradas → cortadas → já vistas → avaliadas agora → fora dos
+     critérios (com os motivos, em uma linha);
    - tabela das melhores (nota 65 ou mais; se não houver, as 3 maiores): nota, vaga,
      empresa, publicada, link;
    - para as 2 ou 3 primeiras, uma linha com o porquê e a principal lacuna;
@@ -160,7 +194,7 @@ dado o perfil dele?
 |---|---|
 | 40 | **Função.** É um dos cargos-alvo do perfil? Julgue por título e responsabilidades. O cargo-alvo pontua alto; um papel vizinho com boa parte das mesmas atividades, médio; outro papel pontua baixo mesmo que o texto use palavras da área. |
 | 30 | **Requisitos.** Quantos dos obrigatórios o perfil cobre com evidência real. Tempo de experiência conta pelos períodos do perfil; períodos sobrepostos não somam. |
-| 15 | **Modelo.** Atende ao modelo que o perfil aceita (remoto, híbrido na cidade dele…) vale 15. Fora disso, 0 a 3, com alerta. |
+| 15 | **Modelo.** Atende ao modelo que o usuário aceita (filtros da busca e perfil: remoto, híbrido na cidade dele…) vale 15. Fora disso, 0 a 3, com alerta. |
 | 15 | **Condições.** Senioridade compatível e idioma exigido x nível do perfil. Contrato e salário só pesam quando informados e incompatíveis com o perfil; não informado não tira ponto. |
 
 Faixas, iguais às do dashboard: 80 ou mais é forte; 65 a 79, boa; 50 a 64, parcial;

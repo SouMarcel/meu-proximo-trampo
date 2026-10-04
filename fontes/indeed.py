@@ -78,17 +78,19 @@ class _ColetorErros(logging.Handler):
         self.mensagens.append(record.getMessage())
 
 
-def buscar(termo: str, cfg: dict, horas: int, por_termo: int, remoto: bool) -> tuple[list[dict], list[str]]:
+def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list[str]]:
     from jobspy import scrape_jobs  # ImportError é tratado por quem chama
 
     coletor = _ColetorErros()
     logger = logging.getLogger("JobSpy:Indeed")
     logger.addHandler(coletor)
+    raio = consulta.get("raio_km")
     try:
         df = scrape_jobs(
-            site_name=["indeed"], search_term=termo, location=cfg.get("local") or None,
-            results_wanted=por_termo, hours_old=horas, country_indeed=cfg.get("pais_indeed", "Brazil"),
-            is_remote=remoto, description_format="markdown", verbose=0,
+            site_name=["indeed"], search_term=consulta["termo"], location=consulta.get("local") or None,
+            distance=max(1, round(raio / 1.609)) if raio else 50,  # o Indeed mede o raio em milhas
+            results_wanted=por_termo, hours_old=horas, country_indeed=consulta["pais"],
+            is_remote=consulta["remoto"], description_format="markdown", verbose=0,
         )
     except Exception as e:  # a biblioteca levanta tipos variados
         return [], [str(e)]
