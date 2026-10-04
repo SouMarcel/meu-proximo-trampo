@@ -323,7 +323,7 @@ def _cmd_quadro(args) -> int:
     if args.etapa:
         vagas = [v for v in vagas if v["etapa"] == args.etapa]
     pend = sum(1 for v in listar_vagas() if v.get("origem") != "manual" and v.get("triagem") == "pendente")
-    print(f"Relatório Indeed: {pend} vaga(s) esperando decisão.")
+    print(f"Relatório de Vagas: {pend} vaga(s) esperando decisão.")
     for etapa in ETAPAS:
         grupo = sorted((v for v in vagas if v["etapa"] == etapa), key=lambda v: v.get("etapa_em") or "", reverse=True)
         if not grupo and args.etapa:
