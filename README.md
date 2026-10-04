@@ -15,7 +15,9 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   dias). Tira o ruído pelo título, junta anúncios repetidos e esconde vagas que você
   já viu.
 - **Relatório de Vagas:** para cada vaga você decide **Seguir**, e ela vai para o
-  quadro, ou **Não seguir**, e ela não aparece mais nas próximas buscas.
+  quadro, ou **Não seguir**, e ela não aparece mais nas próximas buscas. Dá para
+  filtrar por senioridade (júnior, pleno, sênior), aderência mínima e dias desde a
+  publicação.
 - **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
   Recebida → Encerrada, com anotações, resultado e filtro por plataforma. O botão
   **Adicionar Vaga** registra vagas de qualquer site (LinkedIn, Gupy, InHire…).

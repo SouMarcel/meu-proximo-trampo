@@ -15,7 +15,9 @@ No Windows dá para dar dois cliques em `abrir-dashboard.bat`; no macOS/Linux, `
   lista. **Adicionar Vaga** registra vagas de qualquer site.
 - **Relatório de Vagas:** o que as buscas trouxeram. "Seguir com a vaga" manda para a
   coluna Salva; "Não seguir" marca como visitada e a vaga não volta nas próximas
-  buscas. Vagas com nota abaixo de 50 ficam recolhidas.
+  buscas. Vagas com nota abaixo de 50 ficam recolhidas. Filtros por senioridade
+  (júnior, pleno, sênior ou não informada), aderência mínima e dias desde a
+  publicação; a página lembra os filtros escolhidos.
 
 A página confere o banco a cada poucos segundos, então uma busca gravada aparece
 sozinha.
@@ -52,6 +54,7 @@ nas adicionadas à mão.
 | `analise_status` | `feita`, `sem_analise` (gravada sem IA), `pendente` (adicionada à mão, esperando a IA), `sem_dados` |
 | `aderencia` | 0–100 (só com IA); faixas: ≥80 forte, 65–79 boa, 50–64 parcial, <50 baixa |
 | `resumo`, `encaixe[]`, `lacunas[]`, `alertas[]`, `modelo_trabalho` | análise da IA |
+| `senioridade[]` | análise da IA: `junior`, `pleno`, `senior` (pode ter mais de um; `[]` = não informada). Sem esse campo, o dashboard deduz pelo título (Jr, Pleno, PL/SR, Sr, II, III, Principal) |
 | `anotacao` | suas anotações |
 | `criada_em`, `atualizada_em`, `analisada_em` | carimbos de data |
 

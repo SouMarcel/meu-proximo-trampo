@@ -88,13 +88,18 @@ servidor; ele só serve para ver e mexer no quadro.
        "encaixe": ["Gestão de backlog e refinamento com o time", "Jira e Confluence"],
        "lacunas": ["Pede 3+ anos como PO; perfil tem menos tempo na função"],
        "alertas": ["Contrato PJ"],
-       "modelo_trabalho": "remoto"
+       "modelo_trabalho": "remoto",
+       "senioridade": ["pleno"]
      }
    ]
    ```
 
-   `modelo_trabalho`: `remoto`, `hibrido`, `presencial` ou `nao_informado`. Critérios
-   em "Como dar a nota".
+   `modelo_trabalho`: `remoto`, `hibrido`, `presencial` ou `nao_informado`.
+   `senioridade`: os níveis que a vaga aceita, entre `junior`, `pleno` e `senior`
+   (pode ser mais de um, como em "PL/SR"). Use o nível que o título ou a descrição
+   declaram; se nenhum declara, deduza pelos anos de experiência exigidos (até 2
+   júnior, 3 a 5 pleno, 6 ou mais sênior); sem nenhum indício, `[]`. O dashboard filtra
+   por esse campo. Critérios da nota em "Como dar a nota".
 
 4. **Gravar.** `PY vagas.py gravar` junta os dados da vaga (título, empresa, link,
    data, descrição) com a sua avaliação, para você nunca redigitar link ou ID, e grava
