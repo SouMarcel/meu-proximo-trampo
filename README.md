@@ -38,10 +38,11 @@ vagas por você.
 | Nota de aderência, encaixes, lacunas e alertas | Não | Sim |
 | Analisar vagas que você adicionou à mão | Não | Sim |
 | Montar a configuração e o perfil | À mão | Guiado, a partir do seu currículo |
+| Gerar o currículo (.docx e PDF) | `python curriculo.py` com um JSON seu | Escrito e conferido com você, a partir do perfil |
 
 Para usar com IA você precisa do Claude Code, com uma assinatura Claude (Pro ou Max) ou
-uma chave de API da Anthropic. A skill que ensina o Claude a fazer tudo isso já vem
-neste repositório, em `.claude/skills/buscar-vagas/`.
+uma chave de API da Anthropic. As skills que ensinam o Claude a fazer tudo isso já vêm
+neste repositório, em `.claude/skills/` (`buscar-vagas` e `gerar-curriculo`).
 
 ## Como funciona
 
@@ -128,9 +129,20 @@ Algumas buscas por semana bastam.
    - "busca vagas de product owner dos últimos 3 dias, pode ser híbrido"
    - "analisa as vagas que adicionei no dashboard"
    - "o que está em entrevista?"
+   - "monta meu currículo" / "adapta o currículo para a vaga da empresa X"
 
 O Claude roda a busca, lê cada vaga, dá a nota, grava no dashboard e responde com um
 resumo das melhores. A decisão de seguir continua sendo sua, no relatório.
+
+### Currículo
+
+A skill `gerar-curriculo` monta um **currículo base** a partir do seu perfil e do que
+estiver em `anexos/`, só com fatos que você confirmou, e gera `.docx` e PDF num layout
+de uma coluna que os sistemas de triagem (ATS) leem bem. Versão para uma vaga
+específica só quando você pedir; se a vaga estiver no dashboard, o Claude usa a
+descrição gravada e anota no card que gerou o currículo. Os arquivos ficam em
+`curriculos/` (o `.json` é o conteúdo; editar e gerar de novo mantém tudo igual). O PDF
+sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 
 > **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
 > Claude (Anthropic) para a análise. Sem IA, nada sai do seu computador além das
@@ -157,8 +169,8 @@ Opções pontuais, sem mexer no arquivo: `python vagas.py buscar --help`.
 
 - Vagas e candidaturas: `dash/dados/candidaturas.db` (SQLite), com uma cópia de
   segurança por dia em `dash/dados/backup/`.
-- `config.json`, `perfil.md`, `anexos/`, `dash/dados/` e `.cache/` estão no
-  `.gitignore` e não vão para o GitHub. Se você fizer um fork, o seu histórico continua só com você.
+- `config.json`, `perfil.md`, `anexos/`, `curriculos/`, `dash/dados/` e `.cache/` estão
+  no `.gitignore` e não vão para o GitHub. Se você fizer um fork, o seu histórico continua só com você.
 - Dica: mantenha a ferramenta na branch `master` e os seus ajustes pessoais numa
   branch local (por exemplo `minha`), trazendo as melhorias com `git merge master`.
 

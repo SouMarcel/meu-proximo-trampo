@@ -7,6 +7,8 @@ comandos para consultar e analisar vagas sem abrir o navegador:
   python dash/banco.py quadro [--etapa entrevista]   resumo do quadro
   python dash/banco.py pendentes                      vagas esperando análise (JSON)
   python dash/banco.py analisar ARQUIVO.json          grava análises dessas vagas
+  python dash/banco.py vaga "acme product owner"      dados completos de uma vaga (ID ou trecho do cargo/empresa)
+  python dash/banco.py anotar ID "texto"              acrescenta uma linha às anotações da vaga
 
 O arquivo do banco é dash/dados/candidaturas.db (ou o caminho em TRAMPO_BANCO).
 """
@@ -19,6 +21,7 @@ import re
 import secrets
 import sqlite3
 import sys
+import unicodedata
 from contextlib import closing, contextmanager
 from datetime import date, datetime
 from pathlib import Path
@@ -106,6 +109,20 @@ def listar_vagas() -> list[dict]:
 def obter(vid: str) -> dict | None:
     with closing(conectar()) as con:
         return _ler(con, vid)
+
+
+def _sem_acento(s) -> str:
+    return unicodedata.normalize("NFD", str(s or "")).encode("ascii", "ignore").decode().lower()
+
+
+def procurar(texto: str) -> list[dict]:
+    """Vaga pelo ID exato ou pelas palavras do texto no cargo/empresa (sem diferenciar acento e caixa)."""
+    vagas = listar_vagas()
+    exata = [v for v in vagas if v["id"] == texto.strip()]
+    if exata:
+        return exata
+    palavras = _sem_acento(texto).split()
+    return [v for v in vagas if palavras and all(p in _sem_acento(f"{v.get('titulo')} {v.get('empresa')}") for p in palavras)]
 
 
 def ultima_busca() -> dict | None:
@@ -261,6 +278,22 @@ def atualizar_usuario(vid: str, campos: dict) -> dict:
     return doc
 
 
+def anotar(vid: str, texto: str) -> dict:
+    """Acrescenta uma linha às anotações da vaga, sem apagar o que já está lá."""
+    texto = _texto(texto, 500)
+    if not texto:
+        raise ValueError("texto vazio")
+    with escrita() as con:
+        doc = _ler(con, vid)
+        if doc is None:
+            raise KeyError(vid)
+        atual = (doc.get("anotacao") or "").rstrip()
+        doc["anotacao"] = _texto(f"{atual}\n{texto}" if atual else texto, 5000)
+        doc["atualizada_em"] = agora()
+        _gravar(con, vid, doc)
+    return doc
+
+
 def remover(vid: str) -> None:
     """Vaga manual é apagada; vaga do Indeed só sai do quadro (continua como visitada)."""
     with escrita() as con:
@@ -381,6 +414,51 @@ def _cmd_analisar(args) -> int:
     return 1 if problemas and not ok else 0
 
 
+def _cmd_vaga(args) -> int:
+    achadas = procurar(args.texto)
+    if not achadas:
+        print(f"Nenhuma vaga com {args.texto!r}.", file=sys.stderr)
+        return 1
+    if len(achadas) > 1:
+        print(f"{len(achadas)} vagas com {args.texto!r}; use o ID ou um trecho mais específico:")
+        for v in achadas:
+            onde = v.get("etapa") or f"relatório ({v.get('triagem')})"
+            print(f"- {v['id']} | {v.get('titulo')} | {v.get('empresa')} | {onde}")
+        return 1
+    v = achadas[0]
+    print(f"## {v.get('titulo')} — {v.get('empresa')} ({v['id']})")
+    linha = [v.get("plataforma") or "", v.get("local") or "local não informado", f"publicada {v.get('publicada_em') or '?'}"]
+    if v.get("salario"):
+        linha.append(f"salário: {v['salario']}")
+    print(" · ".join(linha))
+    print(f"Link: {v.get('url') or '-'}")
+    print(f"Etapa: {v.get('etapa') or '-'} · triagem: {v.get('triagem') or '-'}")
+    if v.get("senioridade"):
+        print(f"Senioridade: {'/'.join(v['senioridade'])} ({v.get('senioridade_origem') or 'pelo título'})")
+    if isinstance(v.get("aderencia"), int):
+        print(f"\nAderência {v['aderencia']}: {v.get('resumo') or ''}")
+        for rotulo, campo in (("Encaixe", "encaixe"), ("Lacunas", "lacunas"), ("Alertas", "alertas")):
+            if v.get(campo):
+                print(f"{rotulo}: " + "; ".join(v[campo]))
+    if v.get("anotacao"):
+        print(f"\nAnotações:\n{v['anotacao']}")
+    print(f"\n{v.get('descricao') or '(sem descrição)'}")
+    return 0
+
+
+def _cmd_anotar(args) -> int:
+    try:
+        v = anotar(args.id, args.texto)
+    except KeyError:
+        print(f"Vaga {args.id} não existe.", file=sys.stderr)
+        return 1
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    print(f"Anotado em {v.get('titulo')} — {v.get('empresa')}.")
+    return 0
+
+
 def main() -> int:
     for fluxo in (sys.stdout, sys.stderr):
         try:
@@ -394,8 +472,14 @@ def main() -> int:
     sub.add_parser("pendentes", help="vagas adicionadas à mão aguardando análise (JSON)")
     a = sub.add_parser("analisar", help="grava análises de um arquivo JSON")
     a.add_argument("arquivo")
+    v = sub.add_parser("vaga", help="dados completos de uma vaga (ID ou trecho do cargo/empresa)")
+    v.add_argument("texto")
+    n = sub.add_parser("anotar", help="acrescenta uma linha às anotações da vaga")
+    n.add_argument("id")
+    n.add_argument("texto")
     args = ap.parse_args()
-    return {"quadro": _cmd_quadro, "pendentes": _cmd_pendentes, "analisar": _cmd_analisar}[args.cmd](args)
+    return {"quadro": _cmd_quadro, "pendentes": _cmd_pendentes, "analisar": _cmd_analisar,
+            "vaga": _cmd_vaga, "anotar": _cmd_anotar}[args.cmd](args)
 
 
 if __name__ == "__main__":

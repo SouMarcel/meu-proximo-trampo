@@ -27,7 +27,7 @@ sozinha.
 | Arquivo | Para quê |
 |---|---|
 | `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/versao`, `/api/buscas/ultima`). Só aceita pedidos da própria página. |
-| `banco.py` | Acesso ao SQLite e comandos `quadro`, `pendentes`, `analisar`. |
+| `banco.py` | Acesso ao SQLite e comandos `quadro`, `pendentes`, `analisar`, `vaga` (dados completos de uma vaga) e `anotar` (acrescenta uma linha às anotações). |
 | `dashboard.html` | A página. |
 | `abrir-dashboard.bat` / `.sh` | Atalhos para iniciar o servidor. |
 | `dados/` | `candidaturas.db` e `backup/` (uma cópia por dia, guarda as 10 últimas). Fora do Git. |
