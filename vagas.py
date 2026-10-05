@@ -76,7 +76,7 @@ def cmd_buscar(args) -> int:
     horas = f["janela_horas"]
     por_termo = args.resultados or cfg.get("resultados_por_termo", 40)
     plano = filtros.consultas(f, incluir_presencial=args.incluir_presencial)
-    nomes_fontes = args.fontes or cfg.get("fontes", ["indeed"])
+    nomes_fontes = args.fontes or cfg.get("fontes", ["indeed", "gupy"])
     desconhecidas = [n for n in nomes_fontes if n not in FONTES]
     if desconhecidas:
         print(f"Fonte(s) desconhecida(s): {', '.join(desconhecidas)}. Disponíveis: {', '.join(FONTES)}", file=sys.stderr)

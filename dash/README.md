@@ -14,7 +14,8 @@ No Windows dá para dar dois cliques em `abrir-dashboard.bat`; no macOS/Linux, `
   aprovado, desisti, vaga cancelada, contratado), filtro por plataforma e visão em
   lista.
 - **Adicionar Vaga:** cole o link. O servidor lê a vaga (Indeed e LinkedIn pelas APIs
-  públicas; outros sites pelos dados estruturados JobPosting da página), grava no
+  públicas; Gupy pelo MCP público de candidatos dela; outros sites pelos dados
+  estruturados JobPosting da página), grava no
   Relatório de Vagas e, se o Claude Code estiver instalado, pede a análise em segundo
   plano (`analise.py`). Se não der para ler, o formulário abre com o que deu, para
   completar; dali dá para mandar para o relatório ou direto para o quadro.
@@ -49,7 +50,8 @@ sozinha.
 ### Tabela `vagas` (um registro por vaga)
 
 O ID é o do portal nas vagas da busca e nas do Indeed adicionadas pelo link (o `jk` de 16
-caracteres), `li-…` nas do LinkedIn, `web-…` nas de outros sites e `m-…` nas preenchidas à mão.
+caracteres), `gupy-…` nas da Gupy (busca e link), `li-…` nas do LinkedIn, `web-…` nas de
+outros sites e `m-…` nas preenchidas à mão.
 
 | Campo | Valores |
 |---|---|

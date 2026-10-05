@@ -7,8 +7,9 @@ Cada fonte é um módulo nesta pasta com:
 
     def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list[str]]:
         '''consulta (montada por filtros.consultas): termo, pais (nome do jobspy, ex.
-        "brazil"), local (texto ou None = país inteiro), raio_km (ou None) e remoto (bool).
-        Devolve (vagas, erros). Cada vaga no formato comum:
+        "brazil"), pais_nome (em português, ex. "Brasil"), local (texto ou None = país
+        inteiro), raio_km (ou None), remoto (bool) e, na busca na cidade, cidade e estado
+        separados. Devolve (vagas, erros). Cada vaga no formato comum:
         id, titulo, empresa, local, remoto, publicada_em (AAAA-MM-DD), url,
         url_candidatura, salario, tipo, descricao, plataforma'''
 
@@ -19,6 +20,6 @@ fonte (ex.: "gupy-12345") para não colidir com outros portais.
 Para adicionar um portal: crie fontes/<nome>.py seguindo esse contrato e registre
 abaixo em FONTES.
 """
-from . import indeed
+from . import gupy, indeed
 
-FONTES = {indeed.NOME: indeed}
+FONTES = {indeed.NOME: indeed, gupy.NOME: gupy}

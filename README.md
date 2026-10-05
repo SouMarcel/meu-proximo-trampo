@@ -1,7 +1,7 @@
 # meu-proximo-trampo
 
-Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, monta um
-relatório para você decidir o que vale a pena e acompanha suas candidaturas num
+Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed e na Gupy, monta
+um relatório para você decidir o que vale a pena e acompanha suas candidaturas num
 quadro kanban. Com IA (opcional), cada vaga recebe uma nota de aderência ao seu perfil,
 com o que bate, o que falta e o que o anúncio esconde.
 
@@ -11,7 +11,7 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ## O que ela faz
 
-- **Busca** vagas no Indeed com os seus cargos e filtros, que você ajusta no painel
+- **Busca** vagas no Indeed e na Gupy com os seus cargos e filtros, que você ajusta no painel
   **Filtros da busca** do dashboard: remoto no seu país (e, se quiser, em outros
   países), híbrido e presencial só na sua cidade, data de publicação, tipo de emprego,
   senioridade, moedas aceitas para vagas de fora e empresas a excluir. Tira o ruído
@@ -44,18 +44,20 @@ vagas por você.
 | Relatório e quadro | Sim | Sim |
 | Nota de aderência, encaixes, lacunas e alertas | Não | Sim |
 | Analisar vagas que você adicionou pelo link ou à mão | Não | Sim, sozinho em ~1 minuto se o Claude Code estiver instalado |
+| Perguntas pontuais na Gupy (vagas de uma empresa, vagas PCD, salário) | Não | Sim, pelo MCP público da Gupy |
 | Montar a configuração e o perfil | À mão | Guiado, a partir do seu currículo |
 | Gerar o currículo (.docx e PDF) | `python curriculo.py` com um JSON seu | Escrito e conferido com você, a partir do perfil |
 
 Para usar com IA você precisa do Claude Code, com uma assinatura Claude (Pro ou Max) ou
 uma chave de API da Anthropic. As skills que ensinam o Claude a fazer tudo isso já vêm
-neste repositório, em `.claude/skills/` (`buscar-vagas` e `gerar-curriculo`).
+neste repositório, em `.claude/skills/` (`buscar-vagas`, `consultar-gupy` e
+`gerar-curriculo`).
 
 ## Como funciona
 
 ```mermaid
 flowchart LR
-  A[Indeed] --> B[vagas.py buscar]
+  A[Indeed e Gupy] --> B[vagas.py buscar]
   B -->|sem IA| D[(banco local)]
   B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
   C --> D
@@ -136,10 +138,16 @@ Algumas buscas por semana bastam.
    - "busca vagas de product owner dos últimos 3 dias, pode ser híbrido"
    - "analisa as vagas que adicionei no dashboard"
    - "o que está em entrevista?"
+   - "quais vagas PCD de analista de dados tem na Gupy?" / "o que a empresa X tem
+     aberto na Gupy?"
    - "monta meu currículo" / "adapta o currículo para a vaga da empresa X"
 
 O Claude roda a busca, lê cada vaga, dá a nota, grava no dashboard e responde com um
 resumo das melhores. A decisão de seguir continua sendo sua, no relatório.
+
+As perguntas pontuais sobre a Gupy usam o MCP público de candidatos da Gupy, declarado
+em `.mcp.json` com o nome `gupy-candidato`. Na primeira vez, o Claude Code pede para
+você aprovar esse servidor (ou rode `/mcp`). A busca de rotina não depende dele.
 
 ### Currículo
 
@@ -153,7 +161,7 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 
 > **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
 > Claude (Anthropic) para a análise. Sem IA, nada sai do seu computador além das
-> consultas ao Indeed e da leitura dos links que você adicionar.
+> consultas ao Indeed e à Gupy e da leitura dos links que você adicionar.
 >
 > **Análise automática:** com o Claude Code instalado, o dashboard analisa sozinho as
 > vagas que você adiciona, usando a sua assinatura. O Claude roda sem nenhuma
@@ -165,9 +173,9 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 | Campo | O que é |
 |---|---|
 | `perfil` | Arquivo do seu perfil de carreira (usado só pela IA). Padrão: `perfil.md` |
-| `fontes` | Portais onde buscar. Hoje: `["indeed"]` |
+| `fontes` | Portais onde buscar: `indeed` e `gupy` (padrão: os dois) |
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
-| `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro |
+| `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
 | `internacional` | `ativo`, `paises` e `termos`: vagas remotas em outros países, com uma lista curta de cargos própria (cada país × cargo é uma consulta a mais) |
 | `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias) |
@@ -226,19 +234,25 @@ Para instalar à mão, no Claude Code:
   que acessa o Indeed de forma não oficial. Ela pode parar de funcionar se o Indeed
   mudar algo, e uso exagerado pode gerar bloqueio temporário. Use para a sua busca
   pessoal, com moderação, e respeite os termos de uso do portal.
+- A busca na Gupy usa o MCP público de candidatos da própria Gupy
+  (`https://candidates.mcp.api.gupy.io/mcp`), oficial, sem login e só de leitura. Ele
+  não filtra por data nem busca frase exata: a ferramenta ordena pela publicação e para
+  na janela escolhida, e o filtro de título tira o ruído.
 - A nota da IA serve para triagem; ela não substitui ler a vaga.
 
 ## Próximos passos
 
 - [x] Indeed (Brasil e outros países)
-- [ ] Outros portais: LinkedIn, Gupy, InHire, Catho, Glassdoor
+- [x] Gupy
+- [ ] Outros portais: LinkedIn, InHire, Catho, Glassdoor
 - [ ] Simular entrevista para as vagas na coluna Entrevista
 
 ### Adicionar um portal
 
 Cada portal é um módulo em `fontes/` com uma função `buscar()` que devolve as vagas
 num formato comum. O contrato está em [`fontes/__init__.py`](fontes/__init__.py), e o
-[`fontes/indeed.py`](fontes/indeed.py) serve de exemplo. Contribuições são bem-vindas.
+[`fontes/indeed.py`](fontes/indeed.py) e o [`fontes/gupy.py`](fontes/gupy.py) servem de
+exemplo. Contribuições são bem-vindas.
 
 ## Licença
 

@@ -3,7 +3,9 @@
 - Indeed: a página bloqueia leitura automática, então usa a API do app do Indeed pelo
   código da vaga (jk), com os cabeçalhos do python-jobspy.
 - LinkedIn: a API pública de visitante (sem login), pelo número da vaga.
-- Outros sites (Gupy, InHire, Greenhouse, Lever, páginas de empresa): os dados
+- Gupy: o MCP público de candidatos da Gupy (fontes/gupy.py), pelo número da vaga; se
+  ele falhar, os dados estruturados da página, como nos outros sites.
+- Outros sites (InHire, Greenhouse, Lever, páginas de empresa): os dados
   estruturados de vaga da página (schema.org JobPosting, o formato que o Google usa).
 
 Se não der para ler, levanta LinkErro com o que conseguiu (o dashboard abre o
@@ -21,6 +23,8 @@ import urllib.request
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlsplit
+
+from . import gupy
 
 NL = chr(10)
 LIMITE_BYTES = 3_000_000
@@ -261,6 +265,14 @@ def _ler_linkedin(partes) -> dict:
     }
 
 
+def _ler_gupy(url: str, vid: str) -> dict:
+    try:
+        vaga = gupy.ler(vid)
+    except gupy.GupyErro:
+        vaga = extrair_jobposting(_baixar(url), "Gupy")
+    return {**vaga, "id": vid, "url": url}
+
+
 def _achar_vaga(obj):
     if isinstance(obj, list):
         for x in obj:
@@ -330,6 +342,8 @@ def ler(url: str) -> dict:
         vaga = _ler_indeed(partes)
     elif plat == "LinkedIn":
         vaga = _ler_linkedin(partes)
+    elif plat == "Gupy" and gupy.id_do_link(url):
+        vaga = _ler_gupy(url, gupy.id_do_link(url))
     else:
         vaga = extrair_jobposting(_baixar(url), plat)
         vaga["id"] = "web-" + hashlib.sha1((partes.netloc + partes.path).lower().encode("utf-8")).hexdigest()[:16]

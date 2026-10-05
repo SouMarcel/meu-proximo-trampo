@@ -137,7 +137,15 @@ def ultima_busca() -> dict | None:
 
 
 def ids_vistos() -> set[str]:
-    """Todos os IDs do Indeed já registrados (inclusive anúncios repetidos e vagas manuais com link do Indeed)."""
+    """Todos os IDs de vaga já registrados, inclusive anúncios repetidos e os que saem do link das vagas
+    manuais (o jk do Indeed, o número da vaga da Gupy), para a busca não trazer de volta o que já está aqui."""
+    try:
+        raiz = str(DASH.parent)
+        if raiz not in sys.path:
+            sys.path.insert(0, raiz)
+        from fontes.gupy import id_do_link as id_gupy  # fontes/gupy.py, na raiz do projeto
+    except ImportError:
+        id_gupy = None
     vistos: set[str] = set()
     for doc in listar_vagas():
         vistos.add(doc["id"])
@@ -147,6 +155,9 @@ def ids_vistos() -> set[str]:
         m = re.search(r"[?&]jk=([0-9a-f]{16})", str(doc.get("url") or ""))
         if m:
             vistos.add(m.group(1))
+        g = id_gupy(doc.get("url")) if id_gupy else None
+        if g:
+            vistos.add(g)
     return vistos
 
 

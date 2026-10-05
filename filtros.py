@@ -254,15 +254,17 @@ def consultas(f: dict, incluir_presencial: bool = False) -> list[dict]:
     if m["remoto"] or pais_sem_filtro:
         for t in f["termos"]:
             lista.append({"grupo": "pais" if pais_sem_filtro else "remoto", "termo": t, "pais": pais,
-                          "local": f.get("local_legado"), "raio_km": None, "remoto": not pais_sem_filtro})
+                          "pais_nome": loc["pais"], "local": f.get("local_legado"), "raio_km": None,
+                          "remoto": not pais_sem_filtro})
     if cidade and (m["hibrido"] or m["presencial"]):
         for t in f["termos"]:
-            lista.append({"grupo": "local", "termo": t, "pais": pais, "local": cidade,
-                          "raio_km": loc["raio_km"], "remoto": False})
+            lista.append({"grupo": "local", "termo": t, "pais": pais, "pais_nome": loc["pais"], "local": cidade,
+                          "cidade": loc["cidade"], "estado": loc["estado"], "raio_km": loc["raio_km"],
+                          "remoto": False})
     if m["remoto"] and inter["ativo"]:
         for p in inter["paises"]:
             for t in inter["termos"] or f["termos"]:
-                lista.append({"grupo": f"internacional:{p}", "termo": t, "pais": PAISES[p],
+                lista.append({"grupo": f"internacional:{p}", "termo": t, "pais": PAISES[p], "pais_nome": p,
                               "local": None, "raio_km": None, "remoto": True})
     return lista
 

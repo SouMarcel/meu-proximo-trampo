@@ -855,7 +855,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         '<div class="field"><label for="fb-cidade">Cidade</label><input id="fb-cidade" maxlength="80" placeholder="Campinas" value="' + esc(loc.cidade) + '"></div>' +
         '<div class="field"><label for="fb-raio">Raio</label><select id="fb-raio">' + op.raios_km.map(function (r) {
           return '<option value="' + r + '"' + (r === loc.raio_km ? " selected" : "") + ">" + r + " km</option>"; }).join("") + "</select></div>" +
-      '</div><p class="hint">Cidade e raio valem para vagas híbridas e presenciais. O Indeed não busca por estado inteiro; o estado só completa o nome da cidade.</p></section>' +
+      '</div><p class="hint">Cidade e raio valem para vagas híbridas e presenciais. O Indeed não busca por estado inteiro; o estado só completa o nome da cidade. A Gupy busca só na cidade, sem raio.</p></section>' +
       '<section class="fb-sec"><h3>Modo de trabalho</h3>' +
         '<label class="check"><input type="checkbox" id="fb-m-remoto"' + (d.modelos.remoto ? " checked" : "") + "> Remoto</label>" +
         '<div class="fb-sub" id="fb-remoto-sub">' +
