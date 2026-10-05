@@ -3,6 +3,8 @@ config.json
 perfil.md
 dash/dados/
 .cache/
+# Chaves de API (ex.: MCP_STARTUP_JOBS do startup.jobs)
+.env
 # Arquivos que você deixa para o Claude (currículo, PDF do LinkedIn, vagas…): só o README vai para o Git
 anexos/*
 !anexos/README.md
