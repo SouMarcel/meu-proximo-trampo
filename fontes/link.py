@@ -5,6 +5,8 @@
 - LinkedIn: a API pública de visitante (sem login), pelo número da vaga.
 - Gupy: o MCP público de candidatos da Gupy (fontes/gupy.py), pelo número da vaga; se
   ele falhar, os dados estruturados da página, como nos outros sites.
+- startup.jobs: o MCP público do site (fontes/startupjobs.py), pelo número da vaga; se
+  ele falhar, os dados estruturados da página.
 - Outros sites (InHire, Greenhouse, Lever, páginas de empresa): os dados
   estruturados de vaga da página (schema.org JobPosting, o formato que o Google usa).
 
@@ -24,7 +26,7 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlsplit
 
-from . import gupy
+from . import gupy, startupjobs
 
 NL = chr(10)
 LIMITE_BYTES = 3_000_000
@@ -45,7 +47,7 @@ class LinkErro(Exception):
 def plataforma(host: str) -> str:
     host = (host or "").lower()
     for chave, nome in (("indeed.", "Indeed"), ("linkedin.", "LinkedIn"), ("gupy.io", "Gupy"),
-                        ("inhire", "InHire"), ("catho.", "Catho")):
+                        ("inhire", "InHire"), ("catho.", "Catho"), ("startup.jobs", "Startup Jobs")):
         if chave in host:
             return nome
     return "Outra"
@@ -273,6 +275,14 @@ def _ler_gupy(url: str, vid: str) -> dict:
     return {**vaga, "id": vid, "url": url}
 
 
+def _ler_startupjobs(url: str, vid: str) -> dict:
+    try:
+        vaga = startupjobs.ler(vid)
+    except startupjobs.StartupJobsErro:
+        vaga = extrair_jobposting(_baixar(url), "Startup Jobs")
+    return {**vaga, "id": vid, "url": url}
+
+
 def _achar_vaga(obj):
     if isinstance(obj, list):
         for x in obj:
@@ -344,6 +354,8 @@ def ler(url: str) -> dict:
         vaga = _ler_linkedin(partes)
     elif plat == "Gupy" and gupy.id_do_link(url):
         vaga = _ler_gupy(url, gupy.id_do_link(url))
+    elif plat == "Startup Jobs" and startupjobs.id_do_link(url):
+        vaga = _ler_startupjobs(url, startupjobs.id_do_link(url))
     else:
         vaga = extrair_jobposting(_baixar(url), plat)
         vaga["id"] = "web-" + hashlib.sha1((partes.netloc + partes.path).lower().encode("utf-8")).hexdigest()[:16]

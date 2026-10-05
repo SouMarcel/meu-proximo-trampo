@@ -155,6 +155,14 @@ def cmd_buscar(args) -> int:
             fora.append(v)
         else:
             candidatas.append(v)
+    por_plataforma = {x.PLATAFORMA: x for x in FONTES.values()}
+    for v in candidatas + fora:  # portais cuja busca não traz a descrição: só para as vagas que vão para o relatório
+        fonte = por_plataforma.get(v["plataforma"])
+        if hasattr(fonte, "descrever"):
+            try:
+                v["descricao"] = fonte.descrever(v)
+            except Exception as e:  # cada portal tem o seu tipo de erro; a vaga segue com o que já tinha
+                erros.append(f"{fonte.NOME}: descrição de {v['id']}: {e}")
     candidatas.sort(key=lambda r: r.get("publicada_em") or "", reverse=True)
 
     CACHE.mkdir(parents=True, exist_ok=True)

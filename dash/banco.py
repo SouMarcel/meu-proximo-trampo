@@ -35,7 +35,7 @@ MANTER_BACKUPS = 10
 ETAPAS = ("salva", "aplicada", "entrevista", "proposta", "encerrada")
 TRIAGENS = ("pendente", "seguir", "visitada", "fora")  # fora = furou os filtros da busca
 RESULTADOS = ("nao_aprovado", "desisti", "cancelada", "contratado")
-PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Outra")
+PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Outra")
 MODELOS = ("remoto", "hibrido", "presencial", "nao_informado")
 SENIORIDADES = ("junior", "pleno", "senior")
 ORIGENS_SENIORIDADE = ("declarada", "sugerida")

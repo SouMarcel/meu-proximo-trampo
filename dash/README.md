@@ -19,7 +19,8 @@ só entrega o arquivo.
   aprovado, desisti, vaga cancelada, contratado), filtro por plataforma e visão em
   lista.
 - **Adicionar Vaga:** cole o link. O servidor lê a vaga (Indeed e LinkedIn pelas APIs
-  públicas; Gupy pelo MCP público de candidatos dela; outros sites pelos dados
+  públicas; Gupy pelo MCP público de candidatos dela; startup.jobs pelo MCP público do
+  site; outros sites pelos dados
   estruturados JobPosting da página), grava no Relatório de Vagas e, se o Claude Code
   estiver instalado, pede a análise em segundo plano (`analise.py`). Se a vaga já está
   no dashboard, mesmo vinda de outro portal (link igual ao de candidatura de um cartão,
@@ -59,13 +60,14 @@ sozinha.
 ### Tabela `vagas` (um registro por vaga)
 
 O ID é o do portal nas vagas da busca e nas do Indeed adicionadas pelo link (o `jk` de 16
-caracteres), `gupy-…` nas da Gupy (busca e link), `li-…` nas do LinkedIn, `web-…` nas de
+caracteres), `gupy-…` nas da Gupy (busca e link),
+`startupjobs-…` nas do startup.jobs (busca e link), `li-…` nas do LinkedIn, `web-…` nas de
 outros sites e `m-…` nas preenchidas à mão.
 
 | Campo | Valores |
 |---|---|
 | `origem` | `busca` (veio de `vagas.py`), `link` (Adicionar Vaga pelo link; fica no relatório como as da busca) ou `manual` (formulário, direto no quadro) |
-| `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Outra` |
+| `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Startup Jobs`, `Outra` |
 | `outras_plataformas` | outros portais onde a mesma vaga apareceu (na mesma busca, numa busca seguinte ou pelo Adicionar Vaga). O dashboard mostra uma etiqueta por plataforma, inclusive a do link de candidatura (vaga do Indeed com candidatura na Gupy também leva a etiqueta Gupy), e o filtro de plataforma acha a vaga por qualquer uma |
 | `titulo`, `empresa`, `local`, `url`, `descricao` | dados da vaga |
 | `publicada_em`, `encontrada_em` | `AAAA-MM-DD` |

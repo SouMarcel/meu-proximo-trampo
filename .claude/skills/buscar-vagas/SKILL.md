@@ -1,6 +1,6 @@
 ---
 name: buscar-vagas
-description: Busca vagas de emprego (Indeed e Gupy; outros portais depois), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir uma busca no Indeed ou na Gupy, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
+description: Busca vagas de emprego (Indeed e Gupy; startup.jobs se estiver ligado), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir uma busca no Indeed, na Gupy ou no startup.jobs, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
 
 # Buscar vagas
@@ -32,7 +32,8 @@ volta nas próximas buscas.
 - O arquivo de perfil apontado em `config.json` (padrão `perfil.md`): a única fonte
   sobre o usuário. Não complete lacunas com suposições.
 - `vagas.py`: `buscar`, `ver` e `gravar`. As buscas de cada portal ficam em `fontes/`
-  (`indeed.py`, `gupy.py`); os portais usados vêm de `fontes` no `config.json`.
+  (`indeed.py`, `gupy.py`, `startupjobs.py`); os portais usados vêm de `fontes` no
+  `config.json` (o `startupjobs` só entra se estiver lá).
 - `dash/`: o dashboard. `servidor.py` (porta 8765), `dashboard.html`, `banco.py` (dados
   em `dash/dados/candidaturas.db`, com comandos `quadro`, `pendentes` e `analisar`) e
   `README.md` (campos e valores).
@@ -78,7 +79,8 @@ servidor; ele só serve para ver e mexer no quadro.
 1. **Parâmetros.** O padrão vem do `config.json`. Ajuste pelo pedido com opções do
    `buscar`: "últimos 3 dias" → `--janela-horas 72`; outro cargo →
    `--termos '"product owner"'`; "pode ser presencial em qualquer lugar" →
-   `--incluir-presencial`; "só na Gupy" → `--fontes gupy`. Pedido pontual não altera
+   `--incluir-presencial`; "só na Gupy" → `--fontes gupy`; "procura também no
+   startup.jobs" → `--fontes indeed gupy startupjobs`. Pedido pontual não altera
    o `config.json`; para mudar o padrão, sugira o painel Filtros da busca (ou edite o
    arquivo, se ele pedir).
 
@@ -132,7 +134,8 @@ servidor; ele só serve para ver e mexer no quadro.
    cidade do usuário ou um país do exterior). Nas vagas da Gupy, a linha "Na Gupy:"
    no fim da descrição traz o que a empresa marcou (modelo, contrato, prazo de
    inscrição, se aceita PCD); a Gupy não informa a cidade da vaga, então o local das
-   vagas da busca na cidade é a cidade do usuário.
+   vagas da busca na cidade é a cidade do usuário. Nas do startup.jobs, a linha "No
+   startup.jobs:" traz o modelo e o tipo de contrato que o site informa.
    `senioridade`: os níveis que a vaga aceita, entre `junior`, `pleno` e `senior`
    (pode ser mais de um, como em "PL/SR"), com `senioridade_origem`:
    - `declarada`: o título ou a descrição dizem o nível.
@@ -251,6 +254,13 @@ A Gupy é consultada pelo MCP público oficial de candidatos dela (`fontes/gupy.
 sem login e sem bloqueio conhecido; erro ali costuma ser instabilidade passageira.
 Para buscar num portal só enquanto o outro falha: `--fontes indeed` ou
 `--fontes gupy`.
+
+O startup.jobs é consultado pelo MCP público do site (`fontes/startupjobs.py`), sem
+login. Sem conta, ele aceita 20 consultas por minuto e mostra só as vagas dos últimos
+14 dias; o script espaça as consultas sozinho, e a descrição (uma consulta por vaga)
+só é buscada para as candidatas. A chave de API é opcional e fica em
+`MCP_STARTUP_JOBS` no `.env`; se o site recusar a chave, a busca segue sem ela e
+avisa nos erros.
 
 Algumas buscas por semana bastam. Não rode em loop: além de não trazer vagas novas,
 aumenta a chance de bloqueio.

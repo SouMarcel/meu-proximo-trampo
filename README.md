@@ -1,9 +1,9 @@
 # meu-proximo-trampo
 
-Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed e na Gupy, monta
-um relatório para você decidir o que vale a pena e acompanha suas candidaturas num
-quadro kanban. Com IA (opcional), cada vaga recebe uma nota de aderência ao seu perfil,
-com o que bate, o que falta e o que o anúncio esconde.
+Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed e na Gupy (e, se
+você quiser, no startup.jobs), monta um relatório para você decidir o que vale a pena e
+acompanha suas candidaturas num quadro kanban. Com IA (opcional), cada vaga recebe uma
+nota de aderência ao seu perfil, com o que bate, o que falta e o que o anúncio esconde.
 
 Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
@@ -11,11 +11,12 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ## O que ela faz
 
-- **Busca** vagas no Indeed e na Gupy com os seus cargos e filtros, que você ajusta no painel
-  **Filtros da busca** do dashboard: remoto no seu país (e, se quiser, em outros
-  países), híbrido e presencial só na sua cidade, data de publicação, tipo de emprego,
-  senioridade, moedas aceitas para vagas de fora e empresas a excluir. Tira o ruído
-  pelo título, junta anúncios repetidos e esconde vagas que você já viu.
+- **Busca** vagas no Indeed e na Gupy (e no startup.jobs, de startups, se você ligar) com
+  os seus cargos e filtros, que você ajusta no painel **Filtros da busca** do dashboard:
+  remoto no seu país (e, se quiser, em outros países), híbrido e presencial só na sua
+  cidade, data de publicação, tipo de emprego, senioridade, moedas aceitas para vagas de
+  fora e empresas a excluir. Tira o ruído pelo título, junta anúncios repetidos e
+  esconde vagas que você já viu.
 - **Relatório de Vagas:** para cada vaga você decide **Seguir**, e ela vai para o
   quadro, ou **Não seguir**, e ela não aparece mais nas próximas buscas. O que fura os
   seus filtros (ex.: "remota" no portal, mas híbrida em outra cidade) vai para a aba
@@ -26,8 +27,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 - **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
   Recebida → Encerrada, com anotações, resultado e filtro por plataforma.
 - **Adicionar Vaga pelo link:** cole o link de uma vaga que você achou em outro lugar
-  (Indeed, LinkedIn, Gupy, site da empresa…). O dashboard lê os dados, põe a vaga no
-  relatório como as da busca e, com o Claude Code instalado, ela recebe a nota
+  (Indeed, LinkedIn, Gupy, startup.jobs, site da empresa…). O dashboard lê os dados, põe
+  a vaga no relatório como as da busca e, com o Claude Code instalado, ela recebe a nota
   sozinha em cerca de 1 minuto. Se o site não deixar ler, o formulário pede o resto.
 - **Com IA:** nota de 0 a 100 por vaga, encaixes, lacunas e alertas (híbrido
   disfarçado de remoto, PJ, inglês fluente, vaga afirmativa).
@@ -58,7 +59,7 @@ neste repositório, em `.claude/skills/` (`buscar-vagas`, `consultar-gupy` e
 
 ```mermaid
 flowchart LR
-  A[Indeed e Gupy] --> B[vagas.py buscar]
+  A[Indeed, Gupy<br/>e startup.jobs] --> B[vagas.py buscar]
   B -->|sem IA| D[(banco local)]
   B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
   C --> D
@@ -167,7 +168,7 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 
 > **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
 > Claude (Anthropic) para a análise. Sem IA, nada sai do seu computador além das
-> consultas ao Indeed e à Gupy e da leitura dos links que você adicionar.
+> consultas aos portais e da leitura dos links que você adicionar.
 >
 > **Análise automática:** com o Claude Code instalado, o dashboard analisa sozinho as
 > vagas que você adiciona, usando a sua assinatura. O Claude roda sem nenhuma
@@ -179,7 +180,7 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 | Campo | O que é |
 |---|---|
 | `perfil` | Arquivo do seu perfil de carreira (usado só pela IA). Padrão: `perfil.md` |
-| `fontes` | Portais onde buscar: `indeed` e `gupy` (padrão: os dois) |
+| `fontes` | Portais onde buscar: `indeed`, `gupy` e `startupjobs` (padrão: `indeed` e `gupy`). O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos |
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
@@ -206,7 +207,9 @@ continua funcionando. Opções pontuais, sem mexer no arquivo:
   segurança por dia em `dash/dados/backup/`.
 - `config.json`, `perfil.md`, `anexos/`, `curriculos/`, `dash/dados/` e `.cache/` estão
   no `.gitignore` e não vão para o GitHub. O mesmo vale para `.liftli/` (o tom de voz
-  das skills de LinkedIn) e `linkedin/` (banners e imagens dos seus posts). Se você fizer um fork, o seu histórico continua só com você.
+  das skills de LinkedIn), `linkedin/` (banners e imagens dos seus posts) e `.env`
+  (chaves de API, como a opcional do startup.jobs). Se você fizer um fork, o seu
+  histórico continua só com você.
 - Dica: mantenha a ferramenta na branch `master` e os seus ajustes pessoais numa
   branch local (por exemplo `minha`), trazendo as melhorias com `git merge master`.
 
@@ -245,12 +248,20 @@ Para instalar à mão, no Claude Code:
   (`https://candidates.mcp.api.gupy.io/mcp`), oficial, sem login e só de leitura. Ele
   não filtra por data nem busca frase exata: a ferramenta ordena pela publicação e para
   na janela escolhida, e o filtro de título tira o ruído.
+- A busca no startup.jobs usa o MCP público do próprio site (`https://api.startup.jobs/mcp`),
+  sem login e só de leitura. Sem conta, ele mostra só as vagas dos últimos 14 dias e
+  aceita 20 consultas por minuto; a ferramenta espaça as consultas sozinha. Ele filtra
+  só por país: na busca na cidade, ficam as vagas cujo local é a sua cidade, sem raio. A
+  chave de API é opcional (identifica o seu uso; o acesso total o site libera por
+  e-mail): ponha `MCP_STARTUP_JOBS=sua_chave` no arquivo `.env` da raiz, que fica fora
+  do Git. Se o site recusar a chave, a busca segue sem ela e avisa.
 - A nota da IA serve para triagem; ela não substitui ler a vaga.
 
 ## Próximos passos
 
 - [x] Indeed (Brasil e outros países)
 - [x] Gupy
+- [x] startup.jobs (vagas de startups; opcional)
 - [ ] Outros portais: LinkedIn, InHire, Catho, Glassdoor
 - [ ] Simular entrevista para as vagas na coluna Entrevista
 
@@ -259,7 +270,8 @@ Para instalar à mão, no Claude Code:
 Cada portal é um módulo em `fontes/` com uma função `buscar()` que devolve as vagas
 num formato comum. O contrato está em [`fontes/__init__.py`](fontes/__init__.py), e o
 [`fontes/indeed.py`](fontes/indeed.py) e o [`fontes/gupy.py`](fontes/gupy.py) servem de
-exemplo. Contribuições são bem-vindas.
+exemplo; o [`fontes/startupjobs.py`](fontes/startupjobs.py) mostra o `descrever()`, para
+portal cuja busca não traz a descrição. Contribuições são bem-vindas.
 
 ## Licença
 
