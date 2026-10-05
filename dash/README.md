@@ -15,10 +15,12 @@ No Windows dá para dar dois cliques em `abrir-dashboard.bat`; no macOS/Linux, `
   lista.
 - **Adicionar Vaga:** cole o link. O servidor lê a vaga (Indeed e LinkedIn pelas APIs
   públicas; Gupy pelo MCP público de candidatos dela; outros sites pelos dados
-  estruturados JobPosting da página), grava no
-  Relatório de Vagas e, se o Claude Code estiver instalado, pede a análise em segundo
-  plano (`analise.py`). Se não der para ler, o formulário abre com o que deu, para
-  completar; dali dá para mandar para o relatório ou direto para o quadro.
+  estruturados JobPosting da página), grava no Relatório de Vagas e, se o Claude Code
+  estiver instalado, pede a análise em segundo plano (`analise.py`). Se a vaga já está
+  no dashboard, mesmo vinda de outro portal (link igual ao de candidatura de um cartão,
+  ou mesmo cargo e empresa encontrados nos últimos 60 dias), avisa onde ela está e não
+  duplica. Se não der para ler, o formulário abre com o que deu, para completar; dali
+  dá para mandar para o relatório ou direto para o quadro.
 - **Relatório de Vagas:** o que as buscas trouxeram, em quatro abas: Para decidir,
   Seguidas, Não seguidas e **Fora dos critérios** (vagas que furaram os filtros da
   busca, com o motivo). "Seguir com a vaga" manda para a coluna Salva, inclusive a

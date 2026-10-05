@@ -85,7 +85,8 @@ servidor; ele só serve para ver e mexer no quadro.
 2. **Buscar.** `PY vagas.py buscar [opções]` (cerca de 1 minuto; mais se houver cidade
    ou países do exterior). Cada termo vira uma consulta por grupo: remoto no país,
    cidade (híbrido/presencial) e cada país do exterior. O script já ignora o que está
-   no dashboard, inclusive o que o usuário marcou como "não seguir", e já separa o que
+   no dashboard, inclusive o que o usuário marcou como "não seguir" e a mesma vaga
+   vinda de outro portal (pelos links ou por cargo + empresa), e já separa o que
    fura os filtros sem precisar de leitura (empresa excluída, senioridade declarada no
    título): essas vão direto para a aba **Fora dos critérios**, sem avaliação. Mostra
    contagens, os títulos cortados pelo filtro e a lista de candidatas.

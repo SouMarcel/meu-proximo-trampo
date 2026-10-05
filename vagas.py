@@ -110,6 +110,7 @@ def cmd_buscar(args) -> int:
     excluir = cfg.get("titulo_excluir", [])
     incluir = cfg.get("titulo_incluir", [])
     vistos = banco.ids_vistos()
+    chaves_vistas = banco.chaves_vistas()  # a mesma vaga vinda de outro portal tem outro id, mas o mesmo cargo + empresa
     # o filtro de data dos portais às vezes deixa passar republicações antigas
     limite_data = (date.today() - timedelta(days=math.ceil(horas / 24) + 1)).isoformat()
     grupos: dict[tuple[str, str], dict] = {}
@@ -138,7 +139,7 @@ def cmd_buscar(args) -> int:
 
     candidatas, fora, ja_vistas = [], [], 0
     for v in grupos.values():
-        if {v["id"], *v["ids_relacionados"]} & vistos:
+        if (banco.ids_da_vaga(v) & vistos) or banco.chave_vaga(v["titulo"], v["empresa"]) in chaves_vistas:
             ja_vistas += 1
             continue
         motivos = filtros.criterios(v, f)  # antes da IA: empresa excluída e senioridade do título

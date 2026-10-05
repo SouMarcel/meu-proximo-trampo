@@ -23,7 +23,7 @@ import sqlite3
 import sys
 import unicodedata
 from contextlib import closing, contextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 DASH = Path(__file__).resolve().parent
@@ -136,29 +136,85 @@ def ultima_busca() -> dict | None:
     return doc
 
 
-def ids_vistos() -> set[str]:
-    """Todos os IDs de vaga já registrados, inclusive anúncios repetidos e os que saem do link das vagas
-    manuais (o jk do Indeed, o número da vaga da Gupy), para a busca não trazer de volta o que já está aqui."""
+# ---------------------------------------------------------------- vaga repetida
+
+REPETIDA_DIAS = 60  # cargo + empresa iguais só contam como a mesma vaga se ela foi encontrada há até tantos dias
+EMPRESAS_GENERICAS = {"", "empresa nao informada", "empresa confidencial", "confidencial"}
+
+
+def _id_gupy():
+    """fontes.gupy.id_do_link, carregado sob demanda (fontes/ fica na raiz do projeto)."""
     try:
         raiz = str(DASH.parent)
         if raiz not in sys.path:
             sys.path.insert(0, raiz)
-        from fontes.gupy import id_do_link as id_gupy  # fontes/gupy.py, na raiz do projeto
+        from fontes.gupy import id_do_link
+        return id_do_link
     except ImportError:
-        id_gupy = None
+        return lambda url: None
+
+
+def ids_da_vaga(doc: dict, id_gupy=None) -> set[str]:
+    """IDs pelos quais a vaga pode voltar: o dela, os dos anúncios repetidos e os que saem dos links, inclusive
+    o de candidatura (o jk do Indeed, o número da vaga da Gupy). Assim a vaga do Indeed que manda para a Gupy
+    é reconhecida quando aparece de novo pela Gupy."""
+    id_gupy = id_gupy or _id_gupy()
+    ids = {str(doc["id"])} if doc.get("id") else set()
+    if doc.get("jk"):
+        ids.add(str(doc["jk"]))
+    ids.update(str(x) for x in doc.get("ids_relacionados") or [])
+    for url in (doc.get("url"), doc.get("url_candidatura")):
+        m = re.search(r"[?&]jk=([0-9a-f]{16})", str(url or ""))
+        if m:
+            ids.add(m.group(1))
+        g = id_gupy(url)
+        if g:
+            ids.add(g)
+    return ids
+
+
+def chave_vaga(titulo, empresa) -> str | None:
+    """Cargo + empresa sem acento, caixa e espaços extras: o mesmo anúncio em outro portal tem a mesma chave.
+    Sem empresa conhecida não há chave (dois "Analista" de empresas confidenciais não são a mesma vaga)."""
+    empresa = " ".join(_sem_acento(empresa).split())
+    titulo = " ".join(_sem_acento(titulo).split())
+    if not titulo or empresa in EMPRESAS_GENERICAS:
+        return None
+    return f"{titulo}|{empresa}"
+
+
+def _recente(doc: dict) -> bool:
+    data = str(doc.get("encontrada_em") or doc.get("criada_em") or "")[:10]
+    return data >= (date.today() - timedelta(days=REPETIDA_DIAS)).isoformat()
+
+
+def ids_vistos() -> set[str]:
+    """Todos os IDs de vaga já registrados (ids_da_vaga de cada uma), para a busca não trazer de volta o que já está aqui."""
+    id_gupy = _id_gupy()
     vistos: set[str] = set()
     for doc in listar_vagas():
-        vistos.add(doc["id"])
-        if doc.get("jk"):
-            vistos.add(str(doc["jk"]))
-        vistos.update(str(x) for x in doc.get("ids_relacionados") or [])
-        m = re.search(r"[?&]jk=([0-9a-f]{16})", str(doc.get("url") or ""))
-        if m:
-            vistos.add(m.group(1))
-        g = id_gupy(doc.get("url")) if id_gupy else None
-        if g:
-            vistos.add(g)
+        vistos |= ids_da_vaga(doc, id_gupy)
     return vistos
+
+
+def chaves_vistas() -> set[str]:
+    """Cargo + empresa das vagas encontradas nos últimos REPETIDA_DIAS dias. Depois disso, a mesma vaga reaberta
+    pela empresa volta como nova."""
+    return {c for c in (chave_vaga(d.get("titulo"), d.get("empresa")) for d in listar_vagas() if _recente(d)) if c}
+
+
+def achar_repetida(doc: dict) -> dict | None:
+    """Vaga já registrada que é a mesma que `doc`: um id em comum (inclusive pelos links) ou o mesmo cargo +
+    empresa encontrado há pouco."""
+    id_gupy = _id_gupy()
+    meus = ids_da_vaga(doc, id_gupy)
+    chave = chave_vaga(doc.get("titulo"), doc.get("empresa"))
+    for atual in listar_vagas():
+        if meus & ids_da_vaga(atual, id_gupy):
+            return atual
+        if chave and _recente(atual) and chave_vaga(atual.get("titulo"), atual.get("empresa")) == chave:
+            return atual
+    return None
 
 
 # ---------------------------------------------------------------- validação
@@ -319,8 +375,9 @@ def criar_manual(campos: dict) -> dict:
 def criar_de_link(dados: dict) -> tuple[dict, bool]:
     """Vaga lida pelo link (fontes/link.py): vai para o Relatório de Vagas, como as da busca.
 
-    Devolve (vaga, nova). Se a vaga já está no banco (ex.: a busca já tinha trazido),
-    devolve a que existe, sem mudar nada.
+    Devolve (vaga, nova). Se a vaga já está no banco (a busca já tinha trazido, ou é a
+    mesma de outro portal: link de candidatura ou cargo + empresa iguais), devolve a que
+    existe, sem mudar nada.
     """
     vid = str(dados.get("id") or "")
     if not ID_VALIDO.match(vid):
@@ -338,6 +395,9 @@ def criar_de_link(dados: dict) -> tuple[dict, bool]:
     }
     if not doc["titulo"] or not doc["empresa"]:
         raise ValueError("cargo e empresa são obrigatórios")
+    repetida = achar_repetida({**doc, "id": vid})
+    if repetida is not None:
+        return repetida, False
     aplicar_criterios(doc)
     with escrita() as con:
         atual = _ler(con, vid)

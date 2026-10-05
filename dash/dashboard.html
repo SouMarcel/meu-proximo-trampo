@@ -1060,6 +1060,12 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       return auto ? "Vaga adicionada. O Claude está analisando a aderência (cerca de 1 minuto)."
                   : "Vaga adicionada. Para a nota, peça ao Claude: analisa as vagas que adicionei no dashboard.";
     }
+    function jaEstava(v) { // pode ter vindo de outro portal (outro link), então diz qual vaga e onde ela está
+      var e = ETAPAS.filter(function (x) { return x.k === v.etapa; })[0];
+      var onde = noQuadro(v) ? "no quadro (" + (e ? e.label : v.etapa) + ")"
+        : { fora: "em Fora dos critérios", visitada: "em Não seguidas", seguir: "em Seguidas" }[v.triagem] || "em Para decidir";
+      return "Essa vaga já estava no dashboard, " + onde + ": " + v.titulo + " (" + (v.plataforma || "Outra") + ").";
+    }
     function irPara(v) {
       if (noQuadro(v)) { S.aba = "quadro"; return; }
       S.aba = "relatorio";
@@ -1073,7 +1079,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       API.send("POST", "/api/vagas/link", { url: url }).then(function (j) {
         $("dlg-add").close();
         trocarLocal(j.vaga); irPara(j.vaga);
-        toast(j.nova ? avisoAdicionada(j.vaga, j.analise_automatica) : "Essa vaga já estava no dashboard.");
+        toast(j.nova ? avisoAdicionada(j.vaga, j.analise_automatica) : jaEstava(j.vaga));
         render();
       }).catch(function (e) {
         st.setAttribute("data-erro", "");
