@@ -188,33 +188,64 @@ def _recente(doc: dict) -> bool:
     return data >= (date.today() - timedelta(days=REPETIDA_DIAS)).isoformat()
 
 
+class IndiceVistas:
+    """Acha a vaga já registrada que é a mesma que uma vaga nova: por um id em comum (ids_da_vaga, inclusive pelos
+    links) ou pelo mesmo cargo + empresa encontrado nos últimos REPETIDA_DIAS dias (depois disso, a mesma vaga
+    reaberta pela empresa conta como nova)."""
+
+    def __init__(self):
+        self._id_gupy = _id_gupy()
+        self.por_id: dict[str, str] = {}
+        self.por_chave: dict[str, str] = {}
+        for doc in listar_vagas():
+            for i in ids_da_vaga(doc, self._id_gupy):
+                self.por_id.setdefault(i, doc["id"])
+            chave = chave_vaga(doc.get("titulo"), doc.get("empresa")) if _recente(doc) else None
+            if chave:
+                self.por_chave.setdefault(chave, doc["id"])
+
+    def achar(self, doc: dict) -> str | None:
+        """ID da vaga registrada que é a mesma que `doc`, ou None."""
+        for i in ids_da_vaga(doc, self._id_gupy):
+            if i in self.por_id:
+                return self.por_id[i]
+        return self.por_chave.get(chave_vaga(doc.get("titulo"), doc.get("empresa")) or "")
+
+
 def ids_vistos() -> set[str]:
-    """Todos os IDs de vaga já registrados (ids_da_vaga de cada uma), para a busca não trazer de volta o que já está aqui."""
-    id_gupy = _id_gupy()
-    vistos: set[str] = set()
-    for doc in listar_vagas():
-        vistos |= ids_da_vaga(doc, id_gupy)
-    return vistos
-
-
-def chaves_vistas() -> set[str]:
-    """Cargo + empresa das vagas encontradas nos últimos REPETIDA_DIAS dias. Depois disso, a mesma vaga reaberta
-    pela empresa volta como nova."""
-    return {c for c in (chave_vaga(d.get("titulo"), d.get("empresa")) for d in listar_vagas() if _recente(d)) if c}
+    """Todos os IDs de vaga já registrados (ids_da_vaga de cada uma)."""
+    return set(IndiceVistas().por_id)
 
 
 def achar_repetida(doc: dict) -> dict | None:
-    """Vaga já registrada que é a mesma que `doc`: um id em comum (inclusive pelos links) ou o mesmo cargo +
-    empresa encontrado há pouco."""
-    id_gupy = _id_gupy()
-    meus = ids_da_vaga(doc, id_gupy)
-    chave = chave_vaga(doc.get("titulo"), doc.get("empresa"))
-    for atual in listar_vagas():
-        if meus & ids_da_vaga(atual, id_gupy):
-            return atual
-        if chave and _recente(atual) and chave_vaga(atual.get("titulo"), atual.get("empresa")) == chave:
-            return atual
-    return None
+    """Vaga já registrada que é a mesma que `doc` (veja IndiceVistas)."""
+    vid = IndiceVistas().achar(doc)
+    return obter(vid) if vid else None
+
+
+def registrar_outros_portais(vid: str, plataformas: list[str], ids: list[str]) -> dict | None:
+    """A mesma vaga apareceu em outro portal: as plataformas de lá viram etiquetas a mais (outras_plataformas) e os
+    ids de lá passam a contar como dela (ids_relacionados). Não mexe em nada do usuário nem da análise."""
+    doc = obter(vid)
+    if doc is None:
+        return None
+    extras = list(doc.get("outras_plataformas") or [])
+    relacionados = list(doc.get("ids_relacionados") or [])
+    for p in plataformas:
+        if p in PLATAFORMAS and p != "Outra" and p != doc.get("plataforma") and p not in extras:
+            extras.append(p)
+    for i in map(str, ids):
+        if i and i != vid and i not in relacionados:
+            relacionados.append(i)
+    if extras == (doc.get("outras_plataformas") or []) and relacionados == (doc.get("ids_relacionados") or []):
+        return doc
+    with escrita() as con:
+        doc = _ler(con, vid)
+        if doc is None:
+            return None
+        doc.update(outras_plataformas=extras, ids_relacionados=relacionados, atualizada_em=agora())
+        _gravar(con, vid, doc)
+    return doc
 
 
 # ---------------------------------------------------------------- validação
@@ -396,8 +427,8 @@ def criar_de_link(dados: dict) -> tuple[dict, bool]:
     if not doc["titulo"] or not doc["empresa"]:
         raise ValueError("cargo e empresa são obrigatórios")
     repetida = achar_repetida({**doc, "id": vid})
-    if repetida is not None:
-        return repetida, False
+    if repetida is not None:  # a plataforma do link vira mais uma etiqueta da vaga que já existe
+        return registrar_outros_portais(repetida["id"], [doc["plataforma"]], [vid]) or repetida, False
     aplicar_criterios(doc)
     with escrita() as con:
         atual = _ler(con, vid)
@@ -531,7 +562,7 @@ def _cmd_quadro(args) -> int:
             if v.get("analise_status") == "pendente":
                 extra.append("aguardando análise")
             nota = (v.get("anotacao") or "").replace("\n", " ")
-            print(f"- {v.get('titulo')} | {v.get('empresa')} | {v.get('plataforma')} | desde {v.get('etapa_em') or '?'}"
+            print(f"- {v.get('titulo')} | {v.get('empresa')} | {_plataformas(v)} | desde {v.get('etapa_em') or '?'}"
                   + (f" | {', '.join(extra)}" if extra else "") + (f" | nota: {nota[:120]}" if nota else ""))
     return 0
 
@@ -541,6 +572,10 @@ def precisa_analise(v: dict) -> bool:
     if v.get("analise_status") == "pendente":
         return True
     return v.get("analise_status") == "sem_analise" and v.get("triagem") not in ("visitada", "fora")
+
+
+def _plataformas(v: dict) -> str:
+    return " + ".join([v.get("plataforma") or "Outra", *(v.get("outras_plataformas") or [])])
 
 
 def _cmd_pendentes(args) -> int:
@@ -574,7 +609,7 @@ def _cmd_vaga(args) -> int:
         return 1
     v = achadas[0]
     print(f"## {v.get('titulo')} — {v.get('empresa')} ({v['id']})")
-    linha = [v.get("plataforma") or "", v.get("local") or "local não informado", f"publicada {v.get('publicada_em') or '?'}"]
+    linha = [_plataformas(v), v.get("local") or "local não informado", f"publicada {v.get('publicada_em') or '?'}"]
     if v.get("salario"):
         linha.append(f"salário: {v['salario']}")
     print(" · ".join(linha))

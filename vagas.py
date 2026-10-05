@@ -109,8 +109,7 @@ def cmd_buscar(args) -> int:
 
     excluir = cfg.get("titulo_excluir", [])
     incluir = cfg.get("titulo_incluir", [])
-    vistos = banco.ids_vistos()
-    chaves_vistas = banco.chaves_vistas()  # a mesma vaga vinda de outro portal tem outro id, mas o mesmo cargo + empresa
+    vistas = banco.IndiceVistas()  # pelos ids e links, e por cargo + empresa (a mesma vaga em outro portal tem outro id)
     # o filtro de data dos portais às vezes deixa passar republicações antigas
     limite_data = (date.today() - timedelta(days=math.ceil(horas / 24) + 1)).isoformat()
     grupos: dict[tuple[str, str], dict] = {}
@@ -133,14 +132,22 @@ def cmd_buscar(args) -> int:
             g["ids_relacionados"].append(v["id"])
             g["termos"] += [t for t in v["termos"] if t not in g["termos"]]
             g["grupos"] += [x for x in v["grupos"] if x not in g["grupos"]]
+            if v["plataforma"] != g["plataforma"] and v["plataforma"] not in g["outras_plataformas"]:
+                g["outras_plataformas"].append(v["plataforma"])  # o mesmo anúncio em outro portal
             continue
         v["ids_relacionados"] = []
+        v["outras_plataformas"] = []
         grupos[chave] = v
 
     candidatas, fora, ja_vistas = [], [], 0
+    outros_portais: dict[str, dict] = {}  # vaga já no dashboard -> plataformas e ids com que ela apareceu agora
     for v in grupos.values():
-        if (banco.ids_da_vaga(v) & vistos) or banco.chave_vaga(v["titulo"], v["empresa"]) in chaves_vistas:
+        existente = vistas.achar(v)
+        if existente:
             ja_vistas += 1
+            reg = outros_portais.setdefault(existente, {"plataformas": [], "ids": []})
+            reg["plataformas"] += [p for p in [v["plataforma"], *v["outras_plataformas"]] if p not in reg["plataformas"]]
+            reg["ids"] += [i for i in [v["id"], *v["ids_relacionados"]] if i not in reg["ids"]]
             continue
         motivos = filtros.criterios(v, f)  # antes da IA: empresa excluída e senioridade do título
         if motivos:
@@ -160,6 +167,7 @@ def cmd_buscar(args) -> int:
         "fora_da_janela": antigas,
         "excluidas_titulo": len(excluidas),
         "ja_vistas": ja_vistas,
+        "outros_portais": outros_portais,
         "erros": erros,
         "candidatas": candidatas,
         "fora": fora,
@@ -289,6 +297,7 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None) -> int:
             "publicada_em": c["publicada_em"], "url": c["url"], "url_candidatura": c.get("url_candidatura"),
             "salario": c["salario"], "tipo": c["tipo"], "descricao": c["descricao"],
             "termos": c["termos"], "grupos": c.get("grupos", []), "ids_relacionados": c["ids_relacionados"],
+            "outras_plataformas": c.get("outras_plataformas", []),
             **analise,
             "triagem": "pendente", "triada_em": None,
             "etapa": None, "etapa_em": None, "resultado": None, "anotacao": "",
@@ -322,6 +331,8 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None) -> int:
         docs.append(documento(c, {"analise_status": "sem_analise"}, c["motivo_fora"]))
 
     novas, existentes = banco.inserir_vagas(docs)
+    for vid, reg in dados.get("outros_portais", {}).items():  # vagas já no dashboard que a busca achou em outro portal
+        banco.registrar_outros_portais(vid, reg["plataformas"], reg["ids"])
     fora_novas = [d for d in docs if d["triagem"] == "fora" and d["id"] in novas]
     ids_fora = {d["id"] for d in fora_novas}
     faltando = [jid for jid in cand if jid not in avaliadas]

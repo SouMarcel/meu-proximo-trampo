@@ -87,6 +87,7 @@ button { cursor: pointer; }
 .card-top time { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
 .plat { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; background: var(--col); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; color: var(--muted); }
 .plat i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.plats { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .plat[data-p="Indeed"] i { background: #5b8def; }
 .plat[data-p="LinkedIn"] i { background: #3d8fd9; }
 .plat[data-p="Gupy"] i { background: #8f7cf0; }
@@ -453,7 +454,28 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function rotuloBanda(b) { return { forte: "forte", boa: "boa", parcial: "parcial", baixa: "baixa" }[b] || ""; }
   function safeUrl(u) { return /^https?:\/\//i.test(u || "") ? u : ""; }
   function noQuadro(v) { return !!v.etapa && (v.origem === "manual" || v.triagem === "seguir"); }
-  function porPlataforma(v) { return !S.plataforma || (v.plataforma || "Outra") === S.plataforma; }
+  function plataformaDoLink(u) {
+    var h = "";
+    try { h = new URL(u).hostname.toLowerCase(); } catch (e) { return "Outra"; }
+    var pares = [["indeed.", "Indeed"], ["linkedin.", "LinkedIn"], ["gupy.io", "Gupy"], ["inhire", "InHire"], ["catho.", "Catho"]];
+    for (var i = 0; i < pares.length; i++) if (h.indexOf(pares[i][0]) >= 0) return pares[i][1];
+    return "Outra";
+  }
+  // Plataformas da vaga: a principal, os outros portais onde ela apareceu e o do link de candidatura
+  // (vaga do Indeed cuja candidatura é feita na Gupy também está na Gupy)
+  function plataformasDe(v) {
+    var ps = [v.plataforma || "Outra"];
+    (v.outras_plataformas || []).concat(v.url_candidatura ? [plataformaDoLink(v.url_candidatura)] : []).forEach(function (p) {
+      if (p && p !== "Outra" && ps.indexOf(p) < 0) ps.push(p);
+    });
+    return ps;
+  }
+  function platTags(v) {
+    return '<span class="plats">' + plataformasDe(v).map(function (p) {
+      return '<span class="plat" data-p="' + esc(p) + '"><i></i>' + esc(p) + "</span>";
+    }).join("") + "</span>";
+  }
+  function porPlataforma(v) { return !S.plataforma || plataformasDe(v).indexOf(S.plataforma) >= 0; }
 
   // Senioridade: a da análise da IA (declarada no anúncio ou sugerida); sem ela, a que o título declara
   // (Jr, Pl, Sr, Júnior, Pleno, Sênior, Snr, Mid-level, Intermediate, Semi Senior/SSr, II, III, Principal)
@@ -615,7 +637,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var url = safeUrl(v.url);
     return '<article class="card" draggable="' + (S.canWrite ? "true" : "false") + '" data-id="' + esc(v.id) + '">' +
       '<span class="grip">' + ICON.grip + "</span>" +
-      '<div class="card-top"><span class="plat" data-p="' + esc(v.plataforma || "Outra") + '"><i></i>' + esc(v.plataforma || "Outra") + "</span>" +
+      '<div class="card-top">' + platTags(v) +
       '<time datetime="' + esc(v.etapa_em || "") + '">' + esc(ddmm(v.etapa_em || v.encontrada_em)) + "</time>" +
       '<button class="more" data-menu="' + esc(v.id) + '" aria-label="Opções de ' + esc(v.titulo) + '" aria-haspopup="menu">' + ICON.dots + "</button></div>" +
       "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" +
@@ -652,7 +674,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       var e = ETAPAS.filter(function (x) { return x.k === v.etapa; })[0];
       var url = safeUrl(v.url);
       h += "<tr><td><button class=\"link-btn t\" data-det=\"" + esc(v.id) + "\">" + esc(v.titulo) + '</button><div class="sub">' + esc(v.empresa) + "</div></td>" +
-        '<td><span class="plat" data-p="' + esc(v.plataforma || "Outra") + '"><i></i>' + esc(v.plataforma || "Outra") + "</span></td>" +
+        "<td>" + platTags(v) + "</td>" +
         "<td>" + esc(e ? e.label : v.etapa) + (v.etapa === "encerrada" && v.resultado ? '<div class="sub">' + esc(RESULTADOS[v.resultado] || v.resultado) + "</div>" : "") + "</td>" +
         '<td class="num">' + (v.analise_status === "pendente" ? "—" : (typeof v.aderencia === "number" ? v.aderencia : "—")) + "</td>" +
         '<td><time>' + esc(ddmm(v.etapa_em)) + "</time></td>" +
@@ -675,7 +697,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var url = safeUrl(v.url);
     var d = dias(v.publicada_em);
     var analisada = (v.encaixe || []).length || (v.lacunas || []).length || (v.alertas || []).length;
-    var meta = ['<span class="plat" data-p="' + esc(v.plataforma || "Outra") + '"><i></i>' + esc(v.plataforma || "Outra") + "</span>", esc(v.empresa), esc(v.local || "")];
+    var meta = [platTags(v), esc(v.empresa), esc(v.local || "")];
     var nv = niveis(v);
     if (nv.length) {
       var rot = nv.map(function (x) { return NIVEIS[x]; }).join("/");
@@ -792,7 +814,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     else analise = '<p class="hint">Sem análise para esta vaga.</p>';
     var dis = S.canWrite ? "" : " disabled";
     box.innerHTML =
-      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(v.plataforma || "Outra") + "</p>" +
+      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(plataformasDe(v).join(", ")) + "</p>" +
       (v.termos && v.termos.length ? '<p class="termos">Encontrada pela busca: ' + esc(termosDe(v)) + "</p>" : "") + "</div>" +
       '<button class="more" data-fechar aria-label="Fechar">✕</button></div>' + analise +
       '<div class="det-grid">' +
@@ -1038,13 +1060,6 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       $("a-status").textContent = ""; $("a-status").removeAttribute("data-erro");
       $("dlg-add").showModal(); $("a-link").focus();
     }
-    function plataformaDoLink(u) {
-      var h = "";
-      try { h = new URL(u).hostname.toLowerCase(); } catch (e) { return "Outra"; }
-      var pares = [["indeed.", "Indeed"], ["linkedin.", "LinkedIn"], ["gupy.io", "Gupy"], ["inhire", "InHire"], ["catho.", "Catho"]];
-      for (var i = 0; i < pares.length; i++) if (h.indexOf(pares[i][0]) >= 0) return pares[i][1];
-      return "Outra";
-    }
     function mostrarFormulario(etapa, parcial) {
       parcial = parcial || {};
       $("a-form").hidden = false; $("add-save").hidden = false; $("a-manual-wrap").hidden = true;
@@ -1064,7 +1079,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       var e = ETAPAS.filter(function (x) { return x.k === v.etapa; })[0];
       var onde = noQuadro(v) ? "no quadro (" + (e ? e.label : v.etapa) + ")"
         : { fora: "em Fora dos critérios", visitada: "em Não seguidas", seguir: "em Seguidas" }[v.triagem] || "em Para decidir";
-      return "Essa vaga já estava no dashboard, " + onde + ": " + v.titulo + " (" + (v.plataforma || "Outra") + ").";
+      return "Essa vaga já estava no dashboard, " + onde + ": " + v.titulo + " (" + plataformasDe(v).join(", ") + ").";
     }
     function irPara(v) {
       if (noQuadro(v)) { S.aba = "quadro"; return; }

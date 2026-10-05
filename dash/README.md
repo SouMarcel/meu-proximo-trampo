@@ -61,10 +61,11 @@ outros sites e `m-…` nas preenchidas à mão.
 |---|---|
 | `origem` | `busca` (veio de `vagas.py`), `link` (Adicionar Vaga pelo link; fica no relatório como as da busca) ou `manual` (formulário, direto no quadro) |
 | `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Outra` |
+| `outras_plataformas` | outros portais onde a mesma vaga apareceu (na mesma busca, numa busca seguinte ou pelo Adicionar Vaga). O dashboard mostra uma etiqueta por plataforma, inclusive a do link de candidatura (vaga do Indeed com candidatura na Gupy também leva a etiqueta Gupy), e o filtro de plataforma acha a vaga por qualquer uma |
 | `titulo`, `empresa`, `local`, `url`, `descricao` | dados da vaga |
 | `publicada_em`, `encontrada_em` | `AAAA-MM-DD` |
 | `salario`, `tipo`, `remoto`, `url_candidatura` | quando o portal informa |
-| `termos`, `grupos`, `ids_relacionados`, `busca_id`, `jk` | controle da busca: termos que acharam a vaga, de qual grupo de consultas veio (`remoto`, `local` = cidade, `internacional:<país>`), anúncios repetidos, de qual busca veio |
+| `termos`, `grupos`, `ids_relacionados`, `busca_id`, `jk` | controle da busca: termos que acharam a vaga, de qual grupo de consultas veio (`remoto`, `local` = cidade, `internacional:<país>`), anúncios repetidos e ids da mesma vaga em outros portais, de qual busca veio |
 | `triagem` | `pendente` (no relatório), `seguir` (foi para o quadro), `visitada` (não seguir), `fora` (furou os filtros da busca) |
 | `motivo_fora[]` | por que a vaga ficou fora dos critérios |
 | `etapa` | `salva`, `aplicada`, `entrevista`, `proposta`, `encerrada` ou `null` (fora do quadro) |
