@@ -1,0 +1,20 @@
+{
+  // Sobe o servidor do dashboard (http://127.0.0.1:8765) ao abrir a pasta no VS Code.
+  // Na primeira vez o VS Code pergunta se permite tarefas automáticas nesta pasta.
+  // À mão: Ctrl+Shift+P > "Tasks: Run Task" > Dashboard. Para parar, feche o terminal da tarefa.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dashboard",
+      "detail": "Servidor do dashboard de candidaturas em http://127.0.0.1:8765",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": { "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe" },
+      "args": ["dash/servidor.py", "--sem-navegador"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "dedicated", "showReuseMessage": false },
+      "runOptions": { "runOn": "folderOpen" }
+    }
+  ]
+}

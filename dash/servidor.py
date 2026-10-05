@@ -6,6 +6,9 @@
   python dash/servidor.py --sem-navegador não abre o navegador
 
 Feche a janela (ou Ctrl+C) para parar. Os dados ficam em dash/dados/candidaturas.db.
+No VS Code, a tarefa "Dashboard" (.vscode/tasks.json) sobe este servidor ao abrir a pasta, e a
+página também pode ser aberta pelo Live Server (dash/dashboard.html): ela fala com este servidor
+na porta 8765, que aceita páginas abertas neste computador.
 """
 from __future__ import annotations
 
@@ -55,8 +58,24 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
+        self._cabecalhos_cors()
         self.end_headers()
         self.wfile.write(corpo)
+
+    def _origem_local(self) -> str | None:
+        """Origem de uma página aberta neste computador por outro servidor, como o Live Server do VS Code
+        (http://127.0.0.1:5500). Sites da internet têm outra origem e continuam recusados."""
+        origem = self.headers.get("Origin") or ""
+        partes = urlsplit(origem)
+        if partes.scheme == "http" and partes.hostname in ("127.0.0.1", "localhost") and origem == f"http://{partes.netloc}":
+            return origem
+        return None
+
+    def _cabecalhos_cors(self):
+        origem = self._origem_local()
+        if origem:
+            self.send_header("Access-Control-Allow-Origin", origem)
+            self.send_header("Vary", "Origin")
 
     def _json(self, status: int, obj):
         self._enviar(status, json.dumps(obj, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
@@ -70,11 +89,12 @@ class Handler(BaseHTTPRequestHandler):
         return host in self.hosts_permitidos
 
     def _escrita_ok(self) -> bool:
-        """Bloqueia pedidos de outros sites (CSRF): exige JSON e origem igual à própria página."""
+        """Bloqueia pedidos de outros sites (CSRF): exige JSON e origem igual à própria página ou uma página
+        aberta neste computador (_origem_local)."""
         if not (self.headers.get("Content-Type") or "").lower().startswith("application/json"):
             return False
         origem = self.headers.get("Origin")
-        return origem is None or origem == f"http://{self.headers.get('Host')}"
+        return origem is None or origem == f"http://{self.headers.get('Host')}" or self._origem_local() is not None
 
     def _corpo(self) -> dict:
         tamanho = int(self.headers.get("Content-Length") or 0)
@@ -148,6 +168,18 @@ class Handler(BaseHTTPRequestHandler):
         if caminho == "/favicon.ico":
             return self._enviar(204, b"", "image/x-icon")
         return self._erro(404, "rota não encontrada")
+
+    def do_OPTIONS(self):
+        """Pré-verificação de CORS da página aberta pelo Live Server (outra porta deste computador)."""
+        if not self._host_ok() or not self._origem_local():
+            return self._erro(403, "pedido recusado")
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "600")
+        self.send_header("Content-Length", "0")
+        self._cabecalhos_cors()
+        self.end_headers()
 
     def do_GET(self):
         self._tratar("GET")

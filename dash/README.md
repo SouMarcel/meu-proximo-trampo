@@ -8,6 +8,11 @@ python dash/servidor.py --rede     # também acessível de outros aparelhos da s
 ```
 
 No Windows dá para dar dois cliques em `abrir-dashboard.bat`; no macOS/Linux, `./dash/abrir-dashboard.sh`.
+No VS Code, a tarefa **Dashboard** sobe o servidor ao abrir a pasta, e a página também abre pela
+extensão Live Server (`dash/dashboard.html`): aberta assim, ela fala com o servidor em
+`127.0.0.1:8765`, que aceita páginas abertas neste computador (`127.0.0.1`/`localhost` em outra
+porta) e continua recusando outros sites. O servidor precisa estar no ar: sozinho, o Live Server
+só entrega o arquivo.
 
 - **Quadro:** kanban Salva → Aplicação Enviada → Entrevista → Proposta Recebida →
   Encerrada (arraste os cartões ou use o menu ⋯), com anotações, resultado (não

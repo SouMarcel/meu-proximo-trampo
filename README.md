@@ -119,6 +119,11 @@ a busca de vagas".
    No Windows, dá para dar dois cliques em `dash\abrir-dashboard.bat`. O navegador abre
    em http://127.0.0.1:8765. Para parar, feche a janela do servidor.
 
+   No VS Code, a tarefa **Dashboard** (`.vscode/tasks.json`) sobe o servidor sozinha
+   ao abrir a pasta; na primeira vez, o VS Code pergunta se permite tarefas
+   automáticas. Com o servidor no ar, dá para abrir http://127.0.0.1:8765 ou o
+   `dash/dashboard.html` pela extensão Live Server.
+
 3. Na aba **Relatório de Vagas**, decida vaga por vaga. As que você seguir aparecem
    no **Quadro**; arraste os cartões conforme o processo anda.
 

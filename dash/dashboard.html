@@ -431,7 +431,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   };
   var fila = {}; // uma escrita por vez por vaga
 
-  // Servidor local (dash/servidor.py)
+  // Servidor local (dash/servidor.py). Servida por ele (em "/"), a página usa o mesmo endereço; aberta pelo
+  // arquivo (Live Server do VS Code, em ".../dashboard.html"), fala com o servidor na porta padrão.
+  var BASE = /dashboard\.html$/.test(location.pathname) ? "http://127.0.0.1:8765" : "";
   function resposta(r) {
     return r.json().catch(function () { return {}; }).then(function (j) {
       if (!r.ok) { var e = new Error(j.erro || ("HTTP " + r.status)); e.status = r.status; e.dados = j; throw e; }
@@ -439,9 +441,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     });
   }
   var API = {
-    get: function (p) { return fetch(p, { cache: "no-store" }).then(resposta); },
+    get: function (p) { return fetch(BASE + p, { cache: "no-store" }).then(resposta); },
     send: function (metodo, p, corpo) {
-      return fetch(p, { method: metodo, headers: { "Content-Type": "application/json" }, body: corpo ? JSON.stringify(corpo) : undefined }).then(resposta);
+      return fetch(BASE + p, { method: metodo, headers: { "Content-Type": "application/json" }, body: corpo ? JSON.stringify(corpo) : undefined }).then(resposta);
     }
   };
 
@@ -605,7 +607,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   }
   function renderAgora() {
     var b = $("banner");
-    if (S.offline) { b.hidden = false; b.textContent = "O servidor do dashboard não está respondendo. Inicie com python dash/servidor.py (no Windows, dash\\abrir-dashboard.bat); a página tenta reconectar sozinha."; }
+    if (S.offline) { b.hidden = false; b.textContent = "O servidor do dashboard não está respondendo. Inicie com python dash/servidor.py (no Windows, dash\\abrir-dashboard.bat; no VS Code, a tarefa Dashboard); a página tenta reconectar sozinha."; }
     else b.hidden = true;
     $("btn-add").disabled = S.offline;
 
