@@ -7,6 +7,9 @@ dash/dados/
 anexos/*
 !anexos/README.md
 curriculos/
+# Skills de LinkedIn (Liftli): seu tom de voz e o material dos posts (banners, imagens)
+.liftli/
+linkedin/
 
 # Ambiente Python
 .venv/

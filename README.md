@@ -205,7 +205,8 @@ continua funcionando. Opções pontuais, sem mexer no arquivo:
 - Vagas e candidaturas: `dash/dados/candidaturas.db` (SQLite), com uma cópia de
   segurança por dia em `dash/dados/backup/`.
 - `config.json`, `perfil.md`, `anexos/`, `curriculos/`, `dash/dados/` e `.cache/` estão
-  no `.gitignore` e não vão para o GitHub. Se você fizer um fork, o seu histórico continua só com você.
+  no `.gitignore` e não vão para o GitHub. O mesmo vale para `.liftli/` (o tom de voz
+  das skills de LinkedIn) e `linkedin/` (banners e imagens dos seus posts). Se você fizer um fork, o seu histórico continua só com você.
 - Dica: mantenha a ferramenta na branch `master` e os seus ajustes pessoais numa
   branch local (por exemplo `minha`), trazendo as melhorias com `git merge master`.
 
