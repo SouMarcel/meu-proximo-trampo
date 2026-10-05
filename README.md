@@ -20,8 +20,9 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   quadro, ou **Não seguir**, e ela não aparece mais nas próximas buscas. O que fura os
   seus filtros (ex.: "remota" no portal, mas híbrida em outra cidade) vai para a aba
   **Fora dos critérios**, com o motivo, e ainda dá para seguir com ela. Dá para
-  filtrar por senioridade, modo de trabalho, aderência mínima e dias desde a
-  publicação, e cada vaga mostra o termo de busca que a encontrou.
+  ordenar por aderência, plataforma, modo de trabalho ou data de publicação, filtrar
+  por senioridade, modo de trabalho, aderência mínima e dias desde a publicação, e
+  cada vaga mostra o termo de busca que a encontrou.
 - **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
   Recebida → Encerrada, com anotações, resultado e filtro por plataforma.
 - **Adicionar Vaga pelo link:** cole o link de uma vaga que você achou em outro lugar

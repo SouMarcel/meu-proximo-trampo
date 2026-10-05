@@ -23,9 +23,11 @@ No Windows dá para dar dois cliques em `abrir-dashboard.bat`; no macOS/Linux, `
   Seguidas, Não seguidas e **Fora dos critérios** (vagas que furaram os filtros da
   busca, com o motivo). "Seguir com a vaga" manda para a coluna Salva, inclusive a
   partir de Fora dos critérios; "Não seguir" marca como visitada e a vaga não volta nas
-  próximas buscas. Vagas com nota abaixo de 50 ficam recolhidas. Filtros por
-  senioridade, modo de trabalho, aderência mínima e dias desde a publicação; a página
-  lembra os filtros escolhidos. Cada vaga mostra o termo de busca que a encontrou.
+  próximas buscas. Vagas com nota abaixo de 50 ficam recolhidas. Ordem por aderência
+  (padrão), plataforma, modo de trabalho ou data de publicação; no empate, maior nota
+  primeiro. Filtros por senioridade, modo de trabalho, aderência mínima e dias desde a
+  publicação; a página lembra a ordem e os filtros escolhidos. Cada vaga mostra o termo
+  de busca que a encontrou.
 - **Filtros da busca** (botão no relatório): cargos, localidade, modo de trabalho
   (remoto no país e no exterior, híbrido e presencial na cidade), data de publicação,
   tipo de emprego, senioridade, moedas aceitas para vagas de fora e empresas a excluir. Grava no `config.json` e vale a

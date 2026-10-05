@@ -313,6 +313,15 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     <div id="rel-topo"></div>
     <div class="filtros" role="group" aria-label="Filtros do relatório">
       <div class="filtro">
+        <span class="filtro-lbl" id="fl-ordem">Ordenar por</span>
+        <div class="seg" role="group" aria-labelledby="fl-ordem">
+          <button type="button" data-ordem="aderencia" aria-pressed="true" title="Maior nota primeiro">Aderência</button>
+          <button type="button" data-ordem="plataforma" aria-pressed="false" title="Portal em ordem alfabética; em cada um, maior nota primeiro">Plataforma</button>
+          <button type="button" data-ordem="modo" aria-pressed="false" title="Remoto, híbrido, presencial e não informado; em cada um, maior nota primeiro">Modo de trabalho</button>
+          <button type="button" data-ordem="publicacao" aria-pressed="false" title="Publicadas mais recentemente primeiro">Publicação</button>
+        </div>
+      </div>
+      <div class="filtro">
         <span class="filtro-lbl" id="fl-nivel">Senioridade</span>
         <div class="seg" role="group" aria-labelledby="fl-nivel">
           <button type="button" data-nivel="junior" aria-pressed="false" title="Júnior">Jr</button>
@@ -417,7 +426,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   var S = {
     vagas: [], busca: null, loaded: false, offline: false, versao: null, canWrite: true,
     aba: "quadro", vista: "quadro", plataforma: "", triagem: "pendente", detId: null, menuFor: null,
-    filtro: { niveis: [], modos: [], ader: null, dias: null }
+    filtro: { niveis: [], modos: [], ader: null, dias: null }, ordem: "aderencia"
   };
   var fila = {}; // uma escrita por vez por vaga
 
@@ -484,6 +493,19 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     return true;
   }
   function salvarFiltro() { try { localStorage.setItem("cand.filtro", JSON.stringify(S.filtro)); } catch (e) {} }
+  // Ordem do relatório: o critério escolhido; no empate, maior nota e depois a publicação mais recente
+  var ORDEM_MODOS = ["remoto", "hibrido", "presencial", "ni"];
+  function maisRecente(a, b) { return String(b.publicada_em || "").localeCompare(String(a.publicada_em || "")); }
+  var ORDENS = {
+    aderencia: function () { return 0; },
+    plataforma: function (a, b) {
+      var pa = a.plataforma || "Outra", pb = b.plataforma || "Outra";
+      return ((pa === "Outra") - (pb === "Outra")) || pa.localeCompare(pb, "pt-BR");
+    },
+    modo: function (a, b) { return ORDEM_MODOS.indexOf(modo(a)) - ORDEM_MODOS.indexOf(modo(b)); },
+    publicacao: maisRecente
+  };
+  function ordenarRelatorio(a, b) { return ORDENS[S.ordem](a, b) || (nota(b) - nota(a)) || maisRecente(a, b); }
   function limparFiltro() {
     S.filtro = filtroVazio();
     $("f-ader").value = ""; $("f-dias").value = "";
@@ -713,10 +735,12 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     document.querySelectorAll("[data-modo]").forEach(function (b) {
       b.setAttribute("aria-pressed", S.filtro.modos.indexOf(b.getAttribute("data-modo")) >= 0);
     });
+    document.querySelectorAll("[data-ordem]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-ordem") === S.ordem);
+    });
 
     var daTriagem = todas.filter(function (v) { return v.triagem === S.triagem; });
-    var lista = daTriagem.filter(passaFiltro)
-      .sort(function (a, b) { return (nota(b) - nota(a)) || String(b.publicada_em || "").localeCompare(String(a.publicada_em || "")); });
+    var lista = daTriagem.filter(passaFiltro).sort(ordenarRelatorio);
 
     h = "";
     if (filtrando() && daTriagem.length) {
@@ -994,6 +1018,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         dias: typeof pf.dias === "number" ? pf.dias : null
       };
     } catch (e) {}
+    try { var po = localStorage.getItem("cand.ordem"); if (ORDENS.hasOwnProperty(po)) S.ordem = po; } catch (e) {}
     $("f-ader").value = S.filtro.ader == null ? "" : S.filtro.ader;
     $("f-dias").value = S.filtro.dias == null ? "" : S.filtro.dias;
     function numero(el, min) { var n = parseInt(el.value, 10); return isNaN(n) || n < min ? null : n; }
@@ -1103,6 +1128,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         var nv = t.getAttribute("data-nivel") || t.getAttribute("data-modo"), i = marcados.indexOf(nv);
         if (i >= 0) marcados.splice(i, 1); else marcados.push(nv);
         salvarFiltro(); render(); return;
+      }
+      if (t.hasAttribute("data-ordem")) {
+        S.ordem = t.getAttribute("data-ordem");
+        try { localStorage.setItem("cand.ordem", S.ordem); } catch (e) {}
+        render(); return;
       }
       if (t.hasAttribute("data-abrir-filtros")) { abrirFiltros(); return; }
       if (t.hasAttribute("data-limpar-filtros")) { limparFiltro(); return; }
