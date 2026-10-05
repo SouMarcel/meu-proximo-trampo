@@ -24,6 +24,8 @@ volta nas próximas buscas.
   - `janela_horas`, `tipos_emprego` (`tempo_integral`, `pj`, `meio_periodo`, `estagio`,
     `temporario`), `senioridades` (`junior`, `pleno`, `senior`) e `empresas_excluir`.
     Lista vazia = sem restrição.
+  - `moedas_aceitas` (`USD`, `EUR`, `GBP`, `CAD`, `CHF`): em que moeda o usuário aceita
+    receber quando a vaga é de fora do país dele; a moeda do país dele sempre vale.
   - O formato antigo (`local`, `pais_indeed`, `somente_remoto`) ainda funciona.
 - `filtros.py`: lê e grava esses filtros, monta as consultas e diz por que uma vaga fura
   os critérios.
@@ -133,6 +135,10 @@ servidor; ele só serve para ver e mexer no quadro.
    dashboard filtra por esse campo.
    `tipo_emprego` (opcional): o que a descrição diz, entre `tempo_integral` (CLT),
    `pj`, `meio_periodo`, `estagio` e `temporario`; omita se ela não diz.
+   `moeda` (opcional): código de 3 letras da moeda em que a vaga paga (`BRL`, `USD`,
+   `EUR`, `GBP`…), só quando a descrição ou o salário dizem; omita se não dizem. Com
+   `moedas_aceitas` preenchido, vaga que paga em outra moeda (que não a do país do
+   usuário) vai para Fora dos critérios.
    `fora_dos_criterios` (opcional): uma frase curta quando a vaga fura o que o usuário
    pediu de um jeito que os campos acima não pegam, como exigir residência ou
    autorização de trabalho em outro país numa vaga do exterior, ou exigir morar numa

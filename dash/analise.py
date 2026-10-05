@@ -66,11 +66,7 @@ def montar_pedido(vagas: list[dict]) -> str:
     skill = SKILL.read_text(encoding="utf-8") if SKILL.exists() else ""
     campos = _secao(skill, "   `modelo_trabalho`:", "4. **Gravar.**")
     nota = _secao(skill, "## Como dar a nota", "## Se o portal bloquear")
-    crit = [f.resumo(efet)]
-    if efet["senioridades"]:
-        crit.append("senioridade " + "/".join(f.SENIORIDADES[s] for s in efet["senioridades"]))
-    if efet["tipos_emprego"]:
-        crit.append("tipo de emprego " + ", ".join(f.TIPOS_EMPREGO[t] for t in efet["tipos_emprego"]))
+    crit = [f.resumo(efet), *f.criterios_extra(efet)]
     blocos = []
     for v in vagas:
         blocos += [
@@ -79,6 +75,7 @@ def montar_pedido(vagas: list[dict]) -> str:
             f"Empresa: {v.get('empresa')}",
             f"Local: {v.get('local') or 'não informado'}",
             f"Plataforma: {v.get('plataforma')} · link: {v.get('url') or '-'}",
+            f"Salário: {v.get('salario') or 'não informado'}",
             "Descrição:",
             (v.get("descricao") or "(sem descrição)")[:LIMITE_DESCRICAO],
             "",
@@ -89,7 +86,7 @@ def montar_pedido(vagas: list[dict]) -> str:
         "Responda SOMENTE com um array JSON, um objeto por vaga, sem texto antes ou depois e sem bloco de código.",
         'Formato de cada objeto: {"id", "aderencia" (0 a 100), "resumo", "encaixe" [], "lacunas" [], "alertas" [], '
         '"modelo_trabalho", "senioridade" [], "senioridade_origem", "tipo_emprego" [] (opcional), '
-        '"fora_dos_criterios" (opcional)}.',
+        '"moeda" (opcional), "fora_dos_criterios" (opcional)}.',
         'Se a descrição não basta para avaliar: {"id": "...", "analise_status": "sem_dados", '
         '"resumo": "Sem descrição suficiente: cole o texto da vaga no dashboard."}.',
         "",

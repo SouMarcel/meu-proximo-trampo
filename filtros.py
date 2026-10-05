@@ -42,6 +42,25 @@ MODELOS = {"remoto": "Remoto", "hibrido": "Híbrido", "presencial": "Presencial"
 TIPOS_EMPREGO = {"tempo_integral": "Tempo integral (CLT)", "pj": "PJ / contrato", "meio_periodo": "Meio período",
                  "estagio": "Estágio", "temporario": "Temporário"}
 SENIORIDADES = {"junior": "Jr", "pleno": "Pl", "senior": "Sr"}
+# Moedas que o usuário pode aceitar para vagas fora do país dele (a moeda do país dele sempre vale)
+MOEDAS = {"USD": "Dólar (USD)", "EUR": "Euro (EUR)", "GBP": "Libra (GBP)", "CAD": "Dólar canadense (CAD)",
+          "CHF": "Franco suíço (CHF)"}
+# Moeda de cada país de PAISES, para reconhecer a moeda do país do usuário
+MOEDA_DO_PAIS = {
+    "África do Sul": "ZAR", "Alemanha": "EUR", "Arábia Saudita": "SAR", "Argentina": "ARS", "Austrália": "AUD",
+    "Áustria": "EUR", "Bahrein": "BHD", "Bangladesh": "BDT", "Bélgica": "EUR", "Brasil": "BRL", "Bulgária": "EUR",
+    "Canadá": "CAD", "Catar": "QAR", "Chile": "CLP", "China": "CNY", "Chipre": "EUR", "Colômbia": "COP",
+    "Coreia do Sul": "KRW", "Costa Rica": "CRC", "Croácia": "EUR", "Dinamarca": "DKK", "Egito": "EGP",
+    "Emirados Árabes Unidos": "AED", "Equador": "USD", "Eslováquia": "EUR", "Eslovênia": "EUR", "Espanha": "EUR",
+    "Estados Unidos": "USD", "Estônia": "EUR", "Filipinas": "PHP", "Finlândia": "EUR", "França": "EUR",
+    "Grécia": "EUR", "Holanda": "EUR", "Hong Kong": "HKD", "Hungria": "HUF", "Índia": "INR", "Indonésia": "IDR",
+    "Irlanda": "EUR", "Israel": "ILS", "Itália": "EUR", "Japão": "JPY", "Kuwait": "KWD", "Letônia": "EUR",
+    "Lituânia": "EUR", "Luxemburgo": "EUR", "Malásia": "MYR", "Malta": "EUR", "Marrocos": "MAD", "México": "MXN",
+    "Nigéria": "NGN", "Noruega": "NOK", "Nova Zelândia": "NZD", "Omã": "OMR", "Panamá": "USD", "Paquistão": "PKR",
+    "Peru": "PEN", "Polônia": "PLN", "Portugal": "EUR", "Reino Unido": "GBP", "República Tcheca": "CZK",
+    "Romênia": "RON", "Singapura": "SGD", "Suécia": "SEK", "Suíça": "CHF", "Tailândia": "THB", "Taiwan": "TWD",
+    "Turquia": "TRY", "Ucrânia": "UAH", "Uruguai": "UYU", "Venezuela": "VES", "Vietnã": "VND",
+}
 JANELAS = {24: "Últimas 24 horas", 72: "Últimos 3 dias", 168: "Última semana", 720: "Último mês"}
 RAIOS_KM = (10, 25, 50, 80)
 LEGADOS = ("local", "pais_indeed", "somente_remoto")  # formato antigo do config.json
@@ -92,6 +111,7 @@ def efetivos(cfg: dict) -> dict:
         "janela_horas": int(cfg.get("janela_horas") or 168),
         "tipos_emprego": [t for t in cfg.get("tipos_emprego") or [] if t in TIPOS_EMPREGO],
         "senioridades": [s for s in cfg.get("senioridades") or [] if s in SENIORIDADES],
+        "moedas_aceitas": [m for m in cfg.get("moedas_aceitas") or [] if m in MOEDAS],
         "empresas_excluir": [str(e).strip() for e in cfg.get("empresas_excluir") or [] if str(e).strip()],
     }
     if not loc and cfg.get("local"):
@@ -165,6 +185,9 @@ def validar(e: dict) -> dict:
         raise ValueError("tipo de emprego inválido")
     if not isinstance(sen, list) or any(s not in SENIORIDADES for s in sen):
         raise ValueError("senioridade inválida")
+    moedas = e.get("moedas_aceitas") or []
+    if not isinstance(moedas, list) or any(m not in MOEDAS for m in moedas):
+        raise ValueError("moeda inválida")
     return {
         "termos": termos,
         "localidade": {"pais": pais, "estado": estado, "cidade": cidade, "raio_km": raio},
@@ -173,6 +196,7 @@ def validar(e: dict) -> dict:
         "janela_horas": _inteiro(e.get("janela_horas") or 168, "período de publicação", 1, 720),
         "tipos_emprego": [t for t in TIPOS_EMPREGO if t in tipos],
         "senioridades": [s for s in SENIORIDADES if s in sen],
+        "moedas_aceitas": [m for m in MOEDAS if m in moedas],
         "empresas_excluir": _textos(e.get("empresas_excluir"), "empresas a excluir", 100),
     }
 
@@ -195,7 +219,21 @@ def salvar(entrada: dict) -> dict:
 def opcoes() -> dict:
     """Listas que o painel do dashboard mostra."""
     return {"paises": sorted(PAISES, key=sem_acento), "modelos": MODELOS, "tipos_emprego": TIPOS_EMPREGO,
-            "senioridades": SENIORIDADES, "janelas": JANELAS, "raios_km": RAIOS_KM}
+            "senioridades": SENIORIDADES, "moedas": MOEDAS, "moeda_do_pais": MOEDA_DO_PAIS,
+            "janelas": JANELAS, "raios_km": RAIOS_KM}
+
+
+def criterios_extra(f: dict) -> list[str]:
+    """Critérios além de local e modelo, em texto, para o digest da busca e para a análise automática."""
+    crit = []
+    if f["senioridades"]:
+        crit.append("senioridade " + "/".join(SENIORIDADES[s] for s in f["senioridades"]))
+    if f["tipos_emprego"]:
+        crit.append("tipo de emprego " + ", ".join(TIPOS_EMPREGO[t] for t in f["tipos_emprego"]))
+    if f["moedas_aceitas"]:
+        local = MOEDA_DO_PAIS.get(f["localidade"]["pais"])
+        crit.append(f"fora do país ({local or 'moeda local'} sempre vale), salário só em " + ", ".join(f["moedas_aceitas"]))
+    return crit
 
 
 # ---------------------------------------------------------------- consultas
@@ -294,6 +332,10 @@ def criterios(v: dict, f: dict) -> list[str]:
     if f["tipos_emprego"] and tipos and not set(tipos) & set(f["tipos_emprego"]):
         motivos.append(f"{', '.join(TIPOS_EMPREGO[t] for t in tipos)}; você busca "
                        + ", ".join(TIPOS_EMPREGO[t] for t in f["tipos_emprego"]))
+    moeda = str(v.get("moeda") or "").upper()
+    moeda_local = MOEDA_DO_PAIS.get(f["localidade"]["pais"])
+    if f["moedas_aceitas"] and moeda and moeda != moeda_local and moeda not in f["moedas_aceitas"]:
+        motivos.append(f"Paga em {moeda}; fora do seu país você aceita {', '.join(f['moedas_aceitas'])}")
     if v.get("fora_dos_criterios"):
         motivos.append(str(v["fora_dos_criterios"]))
     return motivos

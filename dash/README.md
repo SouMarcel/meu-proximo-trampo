@@ -27,7 +27,7 @@ No Windows dá para dar dois cliques em `abrir-dashboard.bat`; no macOS/Linux, `
   lembra os filtros escolhidos. Cada vaga mostra o termo de busca que a encontrou.
 - **Filtros da busca** (botão no relatório): cargos, localidade, modo de trabalho
   (remoto no país e no exterior, híbrido e presencial na cidade), data de publicação,
-  tipo de emprego, senioridade e empresas a excluir. Grava no `config.json` e vale a
+  tipo de emprego, senioridade, moedas aceitas para vagas de fora e empresas a excluir. Grava no `config.json` e vale a
   partir da próxima busca.
 
 A página confere o banco a cada poucos segundos, então uma busca gravada aparece
@@ -69,6 +69,7 @@ caracteres), `li-…` nas do LinkedIn, `web-…` nas de outros sites e `m-…` n
 | `resumo`, `encaixe[]`, `lacunas[]`, `alertas[]`, `modelo_trabalho` | análise da IA |
 | `senioridade[]`, `senioridade_origem` | análise da IA: `junior`, `pleno`, `senior` (pode ter mais de um; `[]` = não informada), `declarada` pelo anúncio ou `sugerida` pela IA quando o anúncio não diz. Sem esse campo, o dashboard deduz pelo título (Jr, Pl, Sr, Pleno, Sênior, Snr, Mid-level, Intermediate, Semi Senior/SSr como pleno, II, III, Principal). O relatório mostra os níveis abreviados: Jr, Pl, Sr |
 | `tipo_emprego[]` | análise da IA: `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario` |
+| `moeda` | análise da IA: código da moeda em que a vaga paga (`BRL`, `USD`, `EUR`…), quando a vaga diz |
 | `fora_dos_criterios` | análise da IA: motivo que os outros campos não pegam (ex.: exige residência em outro país) |
 | `anotacao` | suas anotações |
 | `criada_em`, `atualizada_em`, `analisada_em` | carimbos de data |

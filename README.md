@@ -14,8 +14,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 - **Busca** vagas no Indeed com os seus cargos e filtros, que você ajusta no painel
   **Filtros da busca** do dashboard: remoto no seu país (e, se quiser, em outros
   países), híbrido e presencial só na sua cidade, data de publicação, tipo de emprego,
-  senioridade e empresas a excluir. Tira o ruído pelo título, junta anúncios repetidos
-  e esconde vagas que você já viu.
+  senioridade, moedas aceitas para vagas de fora e empresas a excluir. Tira o ruído
+  pelo título, junta anúncios repetidos e esconde vagas que você já viu.
 - **Relatório de Vagas:** para cada vaga você decide **Seguir**, e ela vai para o
   quadro, ou **Não seguir**, e ela não aparece mais nas próximas buscas. O que fura os
   seus filtros (ex.: "remota" no portal, mas híbrida em outra cidade) vai para a aba
@@ -174,6 +174,7 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 | `tipos_emprego` | `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario`. Vazio = todos; com IA, conferido na descrição |
 | `senioridades` | `junior`, `pleno`, `senior`. Vazio = todas |
 | `empresas_excluir` | Empresas que você não quer ver |
+| `moedas_aceitas` | `USD`, `EUR`, `GBP`, `CAD`, `CHF`: em que moeda você aceita receber em vaga de fora do seu país (a moeda do seu país sempre vale). Vazio = qualquer uma; com IA, conferido na vaga |
 | `resultados_por_termo` | Máximo de vagas por termo |
 | `titulo_excluir` | Descarta vagas cujo título tenha alguma dessas palavras (ex.: `estagio`) |
 | `titulo_incluir` | Se preenchido, só fica vaga cujo título tenha alguma dessas palavras |

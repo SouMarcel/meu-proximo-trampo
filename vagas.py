@@ -205,11 +205,7 @@ def escrever_digest(resultado: dict, trecho: int) -> None:
     p = resultado["parametros"]
     f = p["filtros"]
     cand = resultado["candidatas"]
-    crit = [p["resumo"]]
-    if f["senioridades"]:
-        crit.append("senioridade " + "/".join(filtros.SENIORIDADES[s] for s in f["senioridades"]))
-    if f["tipos_emprego"]:
-        crit.append("tipo " + ", ".join(filtros.TIPOS_EMPREGO[t] for t in f["tipos_emprego"]))
+    crit = [p["resumo"], *filtros.criterios_extra(f)]
     linhas = [
         f"# Candidatas — {resultado['gerado_em'][:16].replace('T', ' ')}",
         f"Fontes: {', '.join(p['fontes'])} · termos: {', '.join(p['termos'])} · janela {p['janela_horas']}h",

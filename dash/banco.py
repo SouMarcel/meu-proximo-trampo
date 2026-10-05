@@ -240,6 +240,11 @@ def validar_analise(a: dict) -> dict:
         if any(t not in TIPOS_EMPREGO for t in tipos):
             raise ValueError(f"tipo_emprego deve ser uma lista com {TIPOS_EMPREGO}")
         limpos["tipo_emprego"] = [t for t in TIPOS_EMPREGO if t in tipos]
+    moeda = str(a.get("moeda") or "").strip().upper()
+    if moeda:
+        if len(moeda) != 3 or not moeda.isalpha():
+            raise ValueError("moeda deve ser um código de 3 letras (BRL, USD, EUR…)")
+        limpos["moeda"] = moeda
     if a.get("fora_dos_criterios"):
         limpos["fora_dos_criterios"] = _texto(a["fora_dos_criterios"], 200)
     return limpos

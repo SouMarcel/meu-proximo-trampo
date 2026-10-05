@@ -8,6 +8,7 @@
   "janela_horas": 168,
   "tipos_emprego": [],
   "senioridades": [],
+  "moedas_aceitas": [],
   "empresas_excluir": [],
   "resultados_por_termo": 40,
   "titulo_excluir": ["estagio", "estagiario", "estagiaria", "jovem aprendiz", "trainee"],
