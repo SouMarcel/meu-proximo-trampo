@@ -164,6 +164,8 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .rel-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .btn-filtros { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; }
 .rel-meta .analisando { color: var(--info); }
+.aviso-config { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--line-strong); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--col); color: var(--fg); font-size: 13.5px; }
+.aviso-config .btn-plain { margin-left: 4px; }
 #a-status:empty { display: none; }
 #a-status[data-erro] { color: var(--warn); }
 
@@ -428,7 +430,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   var S = {
     vagas: [], busca: null, loaded: false, offline: false, versao: null, canWrite: true,
     aba: "quadro", vista: "quadro", plataforma: "", triagem: "pendente", detId: null, menuFor: null,
-    filtro: { niveis: [], modos: [], ader: null, dias: null }, ordem: "aderencia"
+    filtro: { niveis: [], modos: [], ader: null, dias: null }, ordem: "aderencia", configExiste: null
   };
   var fila = {}; // uma escrita por vez por vaga
 
@@ -753,6 +755,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         return '<button data-tri="' + p[0] + '" aria-pressed="' + (S.triagem === p[0]) + '">' + p[1] + '<span class="n">' + n[p[0]] + "</span></button>";
       }).join("") + "</div>" +
       '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button></div></div>";
+    if (S.configExiste === false) {  // primeira vez: ainda não há config.json
+      h += '<p class="aviso-config">Antes da primeira busca, escolha os cargos e o local em' +
+        '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button>.</p>";
+    }
     $("rel-topo").innerHTML = h;
     document.querySelectorAll("[data-nivel]").forEach(function (b) {
       b.setAttribute("aria-pressed", S.filtro.niveis.indexOf(b.getAttribute("data-nivel")) >= 0);
@@ -1019,7 +1025,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (!FB.d) return;
       var btn = $("fb-salvar"); btn.disabled = true; $("fb-erro").hidden = true;
       API.send("PUT", "/api/config", FB.d).then(function () {
-        $("dlg-filtros").close(); toast("Filtros salvos. Valem a partir da próxima busca.");
+        S.configExiste = true; $("dlg-filtros").close(); toast("Filtros salvos. Valem a partir da próxima busca."); render();
       }).catch(function (e) {
         var er = $("fb-erro"); er.textContent = e && e.status === 400 ? e.message : erroMsg(e); er.hidden = false;
       }).then(function () { btn.disabled = !S.canWrite; });
@@ -1242,6 +1248,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   bind();
   renderAgora();
   carregar();
+  API.get("/api/config").then(function (j) { S.configExiste = !!j.existe; render(); }).catch(function () {});
 })();
 </script>
 </body>

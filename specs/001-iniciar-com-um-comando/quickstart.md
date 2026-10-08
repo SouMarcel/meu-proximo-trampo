@@ -25,3 +25,29 @@ opções do comando).
 
 Plataforma: Windows 10/11 (SC-004). macOS e Linux estão na lista de desejos e não são
 verificados nesta feature.
+
+## Resultados (Windows 11, Python 3.13 da Microsoft Store, 2026-10-08)
+
+Cópia limpa em `…/Área de Trabalho/teste trampo` (cenário 11 junto), porta 8799.
+
+| # | Resultado |
+|---|---|
+| 1 | ✅ instalou em ~69 s e a página respondeu; carimbo gravado; `config.json` e `perfil.md` não criados. O servidor cria `dash/dados/` (banco vazio e backup) na primeira subida, como já fazia — não é dado da pessoa |
+| 2 | ✅ recusa: código 3, sem `.venv`, nenhum arquivo alterado |
+| 3 | ✅ página em 4,6 s, sem pergunta e sem instalação |
+| 4 | ✅ "A ferramenta já está aberta em …", código 0, sem segunda cópia |
+| 5 | ✅ "A ferramenta precisa de: tomli-w>=1.0." → instalou só ele → no ar em 7,6 s. Ao tirar a linha, só regrava o carimbo |
+| 6 | ✅ `home` inexistente → "não funciona neste computador… precisa ser recriado"; recusa → código 3 |
+| 7 | ✅ fechar a janela (árvore de processos encerrada): porta livre, nenhum processo sobrando. ⏳ Ctrl+C real a conferir à mão (o servidor já trata Ctrl+C) |
+| 8 | ✅ porta ocupada: mensagem com `--porta`, código 1 |
+| 9 | ✅ `iniciar.bat` com erro: código 1 e parou no `pause`; `iniciar.bat --help` mostra a ajuda |
+| 10 | ✅ `--sim` instala sem perguntar (rodadas dos cenários 1 e 5) |
+| 11 | ✅ caminho com espaço e acento |
+| 12 | ✅ ambiente sem carimbo (feito à mão) reaproveitado sem reinstalar; carimbo regravado |
+
+Testes automáticos: 12 de 12 passando. Sintaxe do JavaScript do `dashboard.html` conferida
+(`node --check`). ⏳ Conferir à vista o aviso "Antes da primeira busca…" numa página sem
+`config.json`.
+
+Primeira tentativa do cenário 1 travou por erro do roteiro de teste (lia a saída do pip só no
+fim e o buffer encheu), não da ferramenta; corrigido gravando a saída em arquivo.

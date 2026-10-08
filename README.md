@@ -70,18 +70,38 @@ flowchart LR
 
 ## Instalação
 
-Você precisa de [Python](https://www.python.org/downloads/) 3.10 ou mais novo e do
-[Git](https://git-scm.com/downloads).
+Você precisa do [Python](https://www.python.org/downloads/) 3.10 ou mais novo e do
+[Git](https://git-scm.com/downloads). Por enquanto o foco é o **Windows**; em macOS e Linux,
+use a instalação manual mais abaixo.
 
 ```bash
 git clone https://github.com/SouMarcel/meu-proximo-trampo.git
 cd meu-proximo-trampo
-python -m venv .venv
+python iniciar.py
 ```
 
-Ative o ambiente e instale a dependência:
+Se o Windows não reconhecer `python`, use `py iniciar.py`, ou dê dois cliques em
+`iniciar.bat`.
+
+Na primeira vez, o comando explica o que vai instalar e pergunta antes. Tudo fica na pasta
+`.venv/`, dentro do projeto; nada é instalado fora dela. Depois ele abre a ferramenta no
+navegador. Nas próximas vezes, o mesmo comando abre em segundos, sem perguntar nada; se a
+ferramenta já estiver aberta, ele só mostra a página.
+
+A ferramenta roda na janela do terminal: para parar, feche a janela ou use Ctrl+C. Seus dados
+ficam salvos.
+
+Opções: `--sim` (instala sem perguntar), `--sem-navegador`, `--rede` (acesso pelo celular no
+mesmo Wi-Fi) e `--porta 8766`. Ajuda: `python iniciar.py --help`.
+
+Na primeira abertura, o **Relatório de Vagas** pede para você escolher os cargos e o local em
+**Filtros da busca**. Com IA, dá para fazer isso conversando: abra a pasta no Claude Code e
+peça "quero configurar a busca de vagas".
+
+### Instalação manual (alternativa)
 
 ```bash
+python -m venv .venv
 # Windows (PowerShell)
 .venv\Scripts\Activate.ps1
 # macOS / Linux
@@ -90,35 +110,23 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Crie a sua configuração a partir do exemplo e troque os termos pelos cargos que você
-procura:
-
-```bash
-# Windows
-copy config.exemplo.json config.json
-# macOS / Linux
-cp config.exemplo.json config.json
-```
-
-Com IA, dá para pular essa parte: abra a pasta no Claude Code e peça "quero configurar
-a busca de vagas".
+Depois, abra o dashboard com `python dash/servidor.py`. Também continuam funcionando: a
+tarefa **Dashboard** do VS Code (`.vscode/tasks.json`), que sobe o servidor ao abrir a pasta;
+a página aberta pela extensão Live Server (`dash/dashboard.html`); e o
+`dash\abrir-dashboard.bat`, que abre o servidor numa janela minimizada.
 
 ## Uso sem IA
 
-1. Busque e grave tudo no relatório:
+1. Busque e grave tudo no relatório, com o Python do ambiente que o `iniciar.py` preparou:
 
    ```bash
-   python vagas.py buscar --gravar
+   .venv\Scripts\python vagas.py buscar --gravar
    ```
 
-2. Abra o dashboard:
+   (Na instalação manual, com o ambiente ativado, basta `python vagas.py buscar --gravar`.)
 
-   ```bash
-   python dash/servidor.py
-   ```
-
-   No Windows, dá para dar dois cliques em `dash\abrir-dashboard.bat`. O navegador abre
-   em http://127.0.0.1:8765. Para parar, feche a janela do servidor.
+2. Abra o dashboard com `python iniciar.py` (ou dois cliques em `iniciar.bat`). O navegador
+   abre em http://127.0.0.1:8765. Para parar, feche a janela.
 
    No VS Code, a tarefa **Dashboard** (`.vscode/tasks.json`) sobe o servidor sozinha
    ao abrir a pasta; na primeira vez, o VS Code pergunta se permite tarefas
