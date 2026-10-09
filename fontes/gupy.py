@@ -25,6 +25,7 @@ from urllib.parse import urlsplit
 
 NOME = "gupy"
 PLATAFORMA = "Gupy"
+AREAS = ("nacional",)  # vagas no Brasil
 URL_MCP = "https://candidates.mcp.api.gupy.io/mcp"
 LIMITE_DESCRICAO = 12000
 POR_PAGINA = 100  # máximo do servidor

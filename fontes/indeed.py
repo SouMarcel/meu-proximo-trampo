@@ -8,6 +8,7 @@ from datetime import date, datetime
 
 NOME = "indeed"
 PLATAFORMA = "Indeed"
+AREAS = ("nacional", "internacional")  # o Indeed tem site em cada país
 LIMITE_DESCRICAO = 12000
 
 

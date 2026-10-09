@@ -300,7 +300,8 @@ funcionar, abra uma issue.
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
-| `internacional` | `ativo`, `paises` e `termos`: vagas remotas em outros países, com uma lista curta de cargos própria (cada país × cargo é uma consulta a mais) |
+| `internacional` | Busca no exterior, desligada por padrão (painel **Filtros da busca internacional**): `ativo`, `paises`, `termos` (cargos em inglês), `regioes`, `salario_min_anual_usd`, `fuso_horas`, `contratacao` e a sua situação (`aceita_mudar` + `paises_mudanca`, `passaporte`, `autorizacao_trabalho`, `precisa_sponsor`). Cada país × cargo é uma consulta a mais |
+| `idiomas_aceitos` | `pt`, `en`, `es`, `fr`, `de`, `it`: vaga em outro idioma vai para Fora dos critérios. Vazio = todos |
 | `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias) |
 | `tipos_emprego` | `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario`. Vazio = todos; com IA, conferido na descrição |
 | `senioridades` | `junior`, `pleno`, `senior`. Vazio = todas |
@@ -313,7 +314,17 @@ funcionar, abra uma issue.
 | `analise_automatica` | Formato antigo: `false` equivale a "Sem IA" quando não há `ia` |
 
 Quase tudo isso se ajusta no painel **Filtros da busca** (aba Relatório de Vagas do
-dashboard), que grava o `config.json` por você. Vaga que fura algum filtro vai para a
+dashboard), que grava o `config.json` por você.
+
+**Vagas internacionais.** Opcional e desligado: na aba **Internacional**, o painel **Filtros da
+busca internacional** liga a busca no exterior e reúne países, cargos em inglês, regiões,
+moedas, salário mínimo anual em dólar, fuso, formas de contratação e a sua situação (aceito
+morar fora, passaporte, visto ou autorização de trabalho, precisa de sponsor). As vagas de fora
+aparecem só na aba Internacional, com a etiqueta **Internacional · país** (e a moeda) em todo
+lugar; o Quadro é comum, com filtro por área. Com "aceito morar fora", a busca inclui vagas
+presenciais e híbridas nos países escolhidos. A sua situação vai para a análise da IA, que
+aponta o que pode impedir (autorização, sponsor, fuso). Cada portal só roda nas buscas que
+atende (a Gupy, por exemplo, só no Brasil). Vaga que fura algum filtro vai para a
 aba Fora dos critérios. O formato antigo (`local`, `pais_indeed`, `somente_remoto`)
 continua funcionando. Opções pontuais, sem mexer no arquivo:
 `python vagas.py buscar --help`.

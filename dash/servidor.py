@@ -295,7 +295,8 @@ class Handler(BaseHTTPRequestHandler):
                 try:
                     dados = link.ler(url)
                 except link.LinkErro as e:  # o dashboard abre o formulário com o que deu para ler
-                    return self._json(422, {"erro": str(e), "parcial": {**e.parcial, "url": url}})
+                    area, pais = filtros.area_da_vaga({"local": e.parcial.get("local")}, filtros.efetivos(filtros.ler_config()))
+                    return self._json(422, {"erro": str(e), "parcial": {**e.parcial, "url": url, "area": area, "pais_vaga": pais}})
                 vaga, nova = banco.criar_de_link(dados)
                 auto = nova and analise.precisa(vaga) and analise.FILA.pedir()
                 return self._json(201 if nova else 200, {"vaga": vaga, "nova": nova, "analise_automatica": auto})

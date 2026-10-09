@@ -147,6 +147,10 @@ class TestTrava(Base):
         self.assertEqual(fonte_falsa.CHAMADAS, [])
         proc.kill()
         proc.wait(10)
+        for _ in range(60):  # o Windows solta a trava do processo morto logo depois, não no mesmo instante
+            if vagas.ocupada() is None:
+                break
+            time.sleep(0.05)
         self.assertIsNone(vagas.ocupada())
         self.assertEqual(vagas.ultima()["situacao"], "interrompida")
         with vagas.TravaBusca("terminal") as t:

@@ -180,6 +180,8 @@ class TravaBusca:
 def rotulo_grupo(grupo: str, f: dict) -> str:
     if grupo.startswith("internacional:"):
         return grupo.split(":", 1)[1]
+    if grupo.startswith("mudanca:"):
+        return grupo.split(":", 1)[1] + " (presencial/híbrido)"
     return {"remoto": "remoto", "pais": "país todo", "local": filtros.cidade_rotulo(f)}.get(grupo, grupo)
 
 
@@ -199,7 +201,8 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
     termos = f["termos"]
     horas = f["janela_horas"]
     plano = filtros.consultas(f, incluir_presencial=incluir_presencial)
-    total = len(plano) * len(nomes_fontes)
+    atende = lambda fonte, c: c.get("area", "nacional") in getattr(fonte, "AREAS", ("nacional", "internacional"))
+    total = sum(atende(FONTES[n], c) for n in nomes_fontes for c in plano)  # cada portal só na sua área
     brutas: dict[str, dict] = {}
     por_busca: dict[str, int] = {}
     erros: list[str] = []
@@ -207,6 +210,8 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
     for nome in nomes_fontes:
         fonte = FONTES[nome]
         for c in plano:
+            if not atende(fonte, c):
+                continue
             conferir()
             if feitas:
                 time.sleep(pausa)
@@ -463,6 +468,7 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
     avaliadas: set[str] = set()
 
     def documento(c: dict, analise: dict, motivos: list[str]) -> dict:
+        area, pais_vaga = filtros.area_da_vaga(c, f)
         d = {
             "id": c["id"], "origem": "busca", "plataforma": c["plataforma"],
             "titulo": c["titulo"], "empresa": c["empresa"], "local": c["local"], "remoto": c["remoto"],
@@ -470,6 +476,7 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
             "salario": c["salario"], "tipo": c["tipo"], "descricao": c["descricao"],
             "termos": c["termos"], "grupos": c.get("grupos", []), "ids_relacionados": c["ids_relacionados"],
             "outras_plataformas": c.get("outras_plataformas", []),
+            "area": area, "pais_vaga": pais_vaga, "idioma": filtros.idioma_da_vaga(c),
             **analise,
             "triagem": "pendente", "triada_em": None,
             "etapa": None, "etapa_em": None, "resultado": None, "anotacao": "",

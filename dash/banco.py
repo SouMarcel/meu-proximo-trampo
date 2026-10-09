@@ -338,6 +338,11 @@ def validar_analise(a: dict) -> dict:
         if any(t not in TIPOS_EMPREGO for t in tipos):
             raise ValueError(f"tipo_emprego deve ser uma lista com {TIPOS_EMPREGO}")
         limpos["tipo_emprego"] = [t for t in TIPOS_EMPREGO if t in tipos]
+    idioma = str(a.get("idioma") or "").strip().lower()
+    if idioma:
+        if not re.fullmatch(r"[a-z]{2}", idioma):
+            raise ValueError("idioma deve ser um código de 2 letras (pt, en, es…)")
+        limpos["idioma"] = idioma
     moeda = str(a.get("moeda") or "").strip().upper()
     if moeda:
         if len(moeda) != 3 or not moeda.isalpha():
@@ -372,6 +377,25 @@ def aplicar_criterios(doc: dict) -> None:
         doc.update(triagem="fora", triada_em=hoje(), motivo_fora=motivos)
 
 
+def definir_area(doc: dict, campos: dict | None = None) -> None:
+    """Área (nacional ou internacional) e país da vaga: o que a pessoa escolheu, senão o palpite pelo local."""
+    campos = campos or {}
+    try:
+        raiz = str(DASH.parent)
+        if raiz not in sys.path:
+            sys.path.insert(0, raiz)
+        import filtros
+        f = filtros.efetivos(filtros.ler_config())
+    except Exception:
+        return
+    if campos.get("area") in filtros.AREAS:
+        doc["area"] = campos["area"]
+        pais = _texto(campos.get("pais_vaga"), 60)
+        doc["pais_vaga"] = (filtros.pais_pt(pais) or pais or filtros.pais_do_local(doc.get("local"))) if doc["area"] == "internacional" else None
+    else:
+        doc["area"], doc["pais_vaga"] = filtros.area_da_vaga({**doc, "area": None}, f)
+
+
 def criar_manual(campos: dict) -> dict:
     """Vaga trazida pelo usuário pelo botão Adicionar Vaga (preenchida à mão).
 
@@ -400,6 +424,7 @@ def criar_manual(campos: dict) -> dict:
         "analise_status": "pendente" if descricao or (url and not no_relatorio) else "sem_dados",
         "criada_em": agora(), "atualizada_em": agora(),
     }
+    definir_area(doc, campos)
     if no_relatorio:
         doc["termos"] = []
         aplicar_criterios(doc)
@@ -432,6 +457,7 @@ def criar_de_link(dados: dict) -> tuple[dict, bool]:
     }
     if not doc["titulo"] or not doc["empresa"]:
         raise ValueError("cargo e empresa são obrigatórios")
+    definir_area(doc, dados)
     repetida = achar_repetida({**doc, "id": vid})
     if repetida is not None:  # a plataforma do link vira mais uma etiqueta da vaga que já existe
         return registrar_outros_portais(repetida["id"], [doc["plataforma"]], [vid]) or repetida, False

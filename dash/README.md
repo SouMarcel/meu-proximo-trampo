@@ -75,6 +75,8 @@ outros sites e `m-…` nas preenchidas à mão.
 | `publicada_em`, `encontrada_em` | `AAAA-MM-DD` |
 | `salario`, `tipo`, `remoto`, `url_candidatura` | quando o portal informa |
 | `termos`, `grupos`, `ids_relacionados`, `busca_id`, `jk` | controle da busca: termos que acharam a vaga, de qual grupo de consultas veio (`remoto`, `local` = cidade, `internacional:<país>`), anúncios repetidos e ids da mesma vaga em outros portais, de qual busca veio |
+| `area`, `pais_vaga` | `nacional` ou `internacional` e o país (ou região) da vaga: pela consulta que achou a vaga ou pelo local; nas vagas antigas, deduzidos pelos grupos da busca |
+| `idioma` | idioma da vaga (`pt`, `en`, `es`…), detectado sem IA ou lido pela análise; base do filtro `idiomas_aceitos` |
 | `triagem` | `pendente` (no relatório), `seguir` (foi para o quadro), `visitada` (não seguir), `fora` (furou os filtros da busca) |
 | `motivo_fora[]` | por que a vaga ficou fora dos critérios |
 | `etapa` | `salva`, `aplicada`, `entrevista`, `proposta`, `encerrada` ou `null` (fora do quadro) |

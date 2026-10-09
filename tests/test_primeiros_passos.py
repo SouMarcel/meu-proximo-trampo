@@ -345,7 +345,8 @@ class TestFiltros(unittest.TestCase):
         self.assertEqual(f["termos"], ['"Analista de Dados"', "BI", '"Data Analyst"'])
         self.assertEqual(f["localidade"]["cidade"], "Curitiba")
         self.assertEqual(f["modelos"], {"remoto": True, "hibrido": True, "presencial": False})
-        self.assertEqual(f["internacional"], {"ativo": True, "paises": ["Portugal"], "termos": ['"Data Analyst"']})
+        self.assertEqual({k: f["internacional"][k] for k in ("ativo", "paises", "termos")},
+                         {"ativo": True, "paises": ["Portugal"], "termos": ['"Data Analyst"']})
         self.assertEqual(f["senioridades"], ["pleno"])
         self.assertIn("Cargos", [m["campo"] for m in r["mudancas"]])
 

@@ -4,6 +4,7 @@ Cada fonte é um módulo nesta pasta com:
 
     NOME = "indeed"              # nome usado em config.json -> "fontes"
     PLATAFORMA = "Indeed"        # como aparece no dashboard
+    AREAS = ("nacional", "internacional")   # opcional: buscas que o portal atende (ausente = as duas)
 
     def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list[str]]:
         '''consulta (montada por filtros.consultas): termo, pais (nome do jobspy, ex.

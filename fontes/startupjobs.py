@@ -29,6 +29,7 @@ import segredos  # segredos.py, na raiz: chaves do .env
 
 NOME = "startupjobs"
 PLATAFORMA = "Startup Jobs"
+AREAS = ("nacional", "internacional")
 URL_MCP = "https://api.startup.jobs/mcp"
 VAR_CHAVE = "MCP_STARTUP_JOBS"
 LIMITE_DESCRICAO = 12000

@@ -152,10 +152,19 @@ servidor; ele só serve para ver e mexer no quadro.
    `EUR`, `GBP`…), só quando a descrição ou o salário dizem; omita se não dizem. Com
    `moedas_aceitas` preenchido, vaga que paga em outra moeda (que não a do país do
    usuário) vai para Fora dos critérios.
+   `idioma` (opcional): código de 2 letras do idioma em que a vaga está escrita (`pt`,
+   `en`, `es`, `fr`, `de`, `it`…). Com `idiomas_aceitos` preenchido, vaga em outro idioma
+   vai para Fora dos critérios; o seu campo vale mais que a detecção automática.
    `fora_dos_criterios` (opcional): uma frase curta quando a vaga fura o que o usuário
    pediu de um jeito que os campos acima não pegam, como exigir residência ou
    autorização de trabalho em outro país numa vaga do exterior, ou exigir morar numa
    cidade que não é a dele. Não use para nota baixa: isso é a aderência.
+   **Vagas do exterior** (área internacional): compare a vaga com os critérios de
+   "vagas internacionais" do usuário (regiões, contratação, fuso, passaporte,
+   autorização de trabalho, patrocínio de visto, morar fora) e aponte em `alertas` o
+   que pode impedir ou pesar: vaga que exige autorização num país onde ele não tem e
+   não oferece sponsor, fuso sem a sobreposição que ele aceita, contratação que ele não
+   aceita, "remoto" que exige morar no país. Só o que a vaga diz; omita o resto.
    Critérios da nota em "Como dar a nota".
 
 4. **Gravar.** `PY vagas.py gravar` junta os dados da vaga (título, empresa, link,

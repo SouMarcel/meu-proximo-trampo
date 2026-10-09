@@ -169,6 +169,11 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .aviso-ia { border-left-color: var(--bad); }
 .btn-ia-mini { padding: 2px 10px; margin-left: 6px; font-size: 12px; }
 
+/* Área internacional (etiqueta e painel) */
+.int-tag { display: inline-flex; align-items: center; gap: 4px; border: 1px solid color-mix(in srgb, var(--info) 55%, transparent); color: var(--info); background: color-mix(in srgb, var(--info) 10%, transparent); border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.card .int-tag { margin-top: 2px; }
+.fbi-lista { width: 100%; background: var(--col); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; }
+
 /* Currículo pela página (seção no detalhe da vaga e currículo base em Meu perfil) */
 #dlg-cv { width: min(680px, calc(100vw - 32px)); }
 .cv-sec { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
@@ -384,6 +389,13 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
           <option value="">Todas as plataformas</option>
         </select>
       </div>
+      <div class="select-wrap" id="f-area-wrap">
+        <select id="f-area" aria-label="Filtrar o quadro por área">
+          <option value="">Todas as áreas</option>
+          <option value="nacional">Nacional</option>
+          <option value="internacional">Internacional</option>
+        </select>
+      </div>
       <button class="icon-btn" id="v-lista" aria-pressed="false" aria-label="Ver em lista" title="Lista">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
       </button>
@@ -402,6 +414,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   <nav class="tabs" role="tablist" aria-label="Seções">
     <button class="tab" role="tab" id="tab-quadro" aria-selected="true" aria-controls="pane-quadro">Quadro</button>
     <button class="tab" role="tab" id="tab-relatorio" aria-selected="false" aria-controls="pane-relatorio">Relatório de Vagas <span class="count" id="count-pend" data-zero>0</span></button>
+    <button class="tab" role="tab" id="tab-internacional" aria-selected="false" aria-controls="pane-relatorio">Internacional <span class="count" id="count-int" data-zero>0</span></button>
   </nav>
 
   <div class="banner" id="banner" hidden></div>
@@ -474,6 +487,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       <div class="field full"><label for="a-url">Link da vaga</label><input id="a-url" name="url" type="url" placeholder="https://"></div>
       <div class="field"><label for="a-local">Local / modelo</label><input id="a-local" name="local" maxlength="120" placeholder="Remoto, Híbrido SP…"></div>
       <div class="field"><label for="a-etapa">Etapa</label><select id="a-etapa" name="etapa"></select></div>
+      <div class="field"><label for="a-area">Área</label><select id="a-area" name="area"><option value="nacional">Nacional (seu país)</option><option value="internacional">Internacional</option></select></div>
+      <div class="field"><label for="a-pais">País da vaga (internacional)</label><input id="a-pais" name="pais_vaga" maxlength="60" placeholder="Ex.: Portugal, mundo todo"></div>
       <div class="field full"><label for="a-descricao">Descrição da vaga</label><textarea id="a-descricao" name="descricao" maxlength="20000" placeholder="Cole aqui o texto da vaga (requisitos, responsabilidades…)"></textarea>
         <p class="hint">Com a descrição, o Claude analisa a aderência ao seu perfil: sozinho, se o Claude Code estiver instalado; senão, peça "analisa as vagas que adicionei no dashboard".</p></div>
     </div>
@@ -493,7 +508,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     <div class="dlg-head">
       <div>
         <h2 id="fb-title">Filtros da busca</h2>
-        <p>O que procurar nos portais. Vale a partir da próxima busca; vaga que furar estes filtros vai para a aba Fora dos critérios, de onde você ainda pode seguir com ela.</p>
+        <p id="fb-desc">O que procurar nos portais. Vale a partir da próxima busca; vaga que furar estes filtros vai para a aba Fora dos critérios, de onde você ainda pode seguir com ela.</p>
       </div>
       <button type="button" class="more" data-fechar-filtros aria-label="Fechar">✕</button>
     </div>
@@ -640,6 +655,23 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     }).join("") + "</span>";
   }
   function porPlataforma(v) { return !S.plataforma || plataformasDe(v).indexOf(S.plataforma) >= 0; }
+  // Área da vaga: a gravada; nas antigas, internacional só se só consultas do exterior a acharam
+  function areaDe(v) {
+    if (v.area === "nacional" || v.area === "internacional") return v.area;
+    var g = v.grupos || [], fora = g.filter(function (x) { return /^(internacional|mudanca):/.test(x); });
+    return fora.length && fora.length === g.length ? "internacional" : "nacional";
+  }
+  function paisDe(v) {
+    if (v.pais_vaga) return v.pais_vaga;
+    var g = (v.grupos || []).filter(function (x) { return /^(internacional|mudanca):/.test(x); })[0];
+    return g ? g.split(":")[1] : "";
+  }
+  function intTag(v) {
+    if (areaDe(v) !== "internacional") return "";
+    return '<span class="int-tag" title="Vaga internacional">Internacional · ' + esc(paisDe(v) || "exterior") + (v.moeda ? " · " + esc(v.moeda) : "") + "</span>";
+  }
+  function porArea(v) { return !S.areaQ || areaDe(v) === S.areaQ; }
+  function abaDaVaga(v) { return areaDe(v) === "internacional" ? "internacional" : "relatorio"; }
 
   // Senioridade: a da análise da IA (declarada no anúncio ou sugerida); sem ela, a que o título declara
   // (Jr, Pl, Sr, Júnior, Pleno, Sênior, Snr, Mid-level, Intermediate, Semi Senior/SSr, II, III, Principal)
@@ -774,13 +806,19 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     else b.hidden = true;
     $("btn-add").disabled = S.offline;
 
-    var pend = S.vagas.filter(function (v) { return v.origem !== "manual" && v.triagem === "pendente"; }).length;
-    var c = $("count-pend"); c.textContent = pend; if (pend) c.removeAttribute("data-zero"); else c.setAttribute("data-zero", "");
+    var pendentes = S.vagas.filter(function (v) { return v.origem !== "manual" && v.triagem === "pendente"; });
+    [["count-pend", "nacional"], ["count-int", "internacional"]].forEach(function (x) {
+      var n = pendentes.filter(function (v) { return areaDe(v) === x[1]; }).length, c = $(x[0]);
+      c.textContent = n; if (n) c.removeAttribute("data-zero"); else c.setAttribute("data-zero", "");
+    });
 
     $("tab-quadro").setAttribute("aria-selected", S.aba === "quadro");
     $("tab-relatorio").setAttribute("aria-selected", S.aba === "relatorio");
+    $("tab-internacional").setAttribute("aria-selected", S.aba === "internacional");
     $("pane-quadro").hidden = S.aba !== "quadro";
-    $("pane-relatorio").hidden = S.aba !== "relatorio";
+    $("pane-relatorio").hidden = S.aba !== "relatorio" && S.aba !== "internacional";
+    $("f-area-wrap").hidden = S.aba !== "quadro";
+    $("tab-relatorio").firstChild.textContent = "Relatório de Vagas ";
     $("v-lista").setAttribute("aria-pressed", S.vista === "lista");
     $("v-quadro").setAttribute("aria-pressed", S.vista === "quadro");
 
@@ -805,7 +843,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<div class="card-top">' + platTags(v) +
       '<time datetime="' + esc(v.etapa_em || "") + '">' + esc(ddmm(v.etapa_em || v.encontrada_em)) + "</time>" +
       '<button class="more" data-menu="' + esc(v.id) + '" aria-label="Opções de ' + esc(v.titulo) + '" aria-haspopup="menu">' + ICON.dots + "</button></div>" +
-      "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" +
+      "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" + intTag(v) +
       (v.termos && v.termos.length ? '<p class="termos" title="Termos de busca que encontraram esta vaga">busca: ' + esc(termosDe(v)) + "</p>" : "") + chipsDe(v) +
       '<div class="card-actions">' +
       (url ? '<a class="btn-ghost" href="' + esc(url) + '" target="_blank" rel="noopener">' + ICON.ext + " Link da Vaga</a>"
@@ -817,7 +855,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function ordenarQuadro(a, b) { return String(b.etapa_em || "").localeCompare(String(a.etapa_em || "")); }
 
   function renderQuadro() {
-    var itens = S.vagas.filter(function (v) { return noQuadro(v) && porPlataforma(v); });
+    var itens = S.vagas.filter(function (v) { return noQuadro(v) && porPlataforma(v) && porArea(v); });
     var h = '<div class="board-scroll"><div class="board">';
     ETAPAS.forEach(function (e) {
       var col = itens.filter(function (v) { return v.etapa === e.k; }).sort(ordenarQuadro);
@@ -830,7 +868,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   }
 
   function renderLista() {
-    var itens = S.vagas.filter(function (v) { return noQuadro(v) && porPlataforma(v); });
+    var itens = S.vagas.filter(function (v) { return noQuadro(v) && porPlataforma(v) && porArea(v); });
     var ordem = {}; ETAPAS.forEach(function (e, i) { ordem[e.k] = i; });
     itens.sort(function (a, b) { return (ordem[a.etapa] - ordem[b.etapa]) || ordenarQuadro(a, b); });
     if (!itens.length) { $("pane-quadro").innerHTML = '<div class="empty">' + (S.loaded ? "Nenhuma vaga no quadro ainda. Use <strong>Adicionar Vaga</strong> ou siga vagas no Relatório de Vagas." : "Carregando…") + "</div>"; return; }
@@ -838,7 +876,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     itens.forEach(function (v) {
       var e = ETAPAS.filter(function (x) { return x.k === v.etapa; })[0];
       var url = safeUrl(v.url);
-      h += "<tr><td><button class=\"link-btn t\" data-det=\"" + esc(v.id) + "\">" + esc(v.titulo) + '</button><div class="sub">' + esc(v.empresa) + "</div></td>" +
+      h += "<tr><td><button class=\"link-btn t\" data-det=\"" + esc(v.id) + "\">" + esc(v.titulo) + '</button><div class="sub">' + esc(v.empresa) + "</div>" + intTag(v) + "</td>" +
         "<td>" + platTags(v) + "</td>" +
         "<td>" + esc(e ? e.label : v.etapa) + (v.etapa === "encerrada" && v.resultado ? '<div class="sub">' + esc(RESULTADOS[v.resultado] || v.resultado) + "</div>" : "") + "</td>" +
         '<td class="num">' + (v.analise_status === "pendente" ? "—" : (typeof v.aderencia === "number" ? v.aderencia : "—")) + "</td>" +
@@ -862,7 +900,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var url = safeUrl(v.url);
     var d = dias(v.publicada_em);
     var analisada = (v.encaixe || []).length || (v.lacunas || []).length || (v.alertas || []).length;
-    var meta = [platTags(v), esc(v.empresa), esc(v.local || "")];
+    var meta = [platTags(v) + intTag(v), esc(v.empresa), esc(v.local || "")];
     var nv = niveis(v);
     if (nv.length) {
       var rot = nv.map(function (x) { return NIVEIS[x]; }).join("/");
@@ -899,7 +937,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function renderRelatorio() {
     var abertos = {};
     document.querySelectorAll("#pane-relatorio details[data-key]").forEach(function (d) { abertos[d.getAttribute("data-key")] = d.open; });
-    var todas = S.vagas.filter(function (v) { return v.origem !== "manual"; });
+    var areaRel = S.aba === "internacional" ? "internacional" : "nacional";
+    var todas = S.vagas.filter(function (v) { return v.origem !== "manual" && areaDe(v) === areaRel; });
     var n = { pendente: 0, seguir: 0, visitada: 0, fora: 0 };
     todas.forEach(function (v) { if (n[v.triagem] != null) n[v.triagem]++; });
     var b = S.busca;
@@ -920,7 +959,13 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       [["pendente", "Para decidir"], ["seguir", "Seguidas"], ["visitada", "Não seguidas"], ["fora", "Fora dos critérios"]].map(function (p) {
         return '<button data-tri="' + p[0] + '" aria-pressed="' + (S.triagem === p[0]) + '">' + p[1] + '<span class="n">' + n[p[0]] + "</span></button>";
       }).join("") + "</div>" + buBotao() +
-      '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button></div></div>" + buPainel();
+      (areaRel === "internacional" ? '<button class="btn-plain btn-filtros" data-abrir-filtros-int>' + ICON.sliders + " Filtros da busca internacional</button>"
+        : '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button>") + "</div></div>" + buPainel();
+    if (areaRel === "internacional" && !(S.filtros && S.filtros.internacional && S.filtros.internacional.ativo)) {
+      h += '<p class="aviso-config">A busca internacional está desligada: hoje só aparecem aqui as vagas de fora que chegaram por outro caminho (link, startup.jobs). ' +
+        "Ligue e escolha os países e os cargos em inglês em" +
+        '<button class="btn-plain btn-filtros" data-abrir-filtros-int>' + ICON.sliders + " Filtros da busca internacional</button>.</p>";
+    }
     if (S.configExiste === false) {  // primeira vez: ainda não há config.json
       h += '<p class="aviso-config">Antes da primeira busca, escolha os cargos e o local em' +
         '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button>.</p>";
@@ -995,7 +1040,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (bnd && v.analise_provedor) analise += '<p class="hint">Nota por ' + esc(nomeIA(v.analise_provedor)) + (v.analise_modelo ? " · " + esc(v.analise_modelo) : "") + "</p>";
     var dis = S.canWrite ? "" : " disabled";
     box.innerHTML =
-      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(plataformasDe(v).join(", ")) + "</p>" +
+      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(plataformasDe(v).join(", ")) + " " + intTag(v) + "</p>" +
       (v.termos && v.termos.length ? '<p class="termos">Encontrada pela busca: ' + esc(termosDe(v)) + "</p>" : "") + "</div>" +
       '<button class="more" data-fechar aria-label="Fechar">✕</button></div>' + analise +
       '<div class="det-grid">' +
@@ -1044,11 +1089,15 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var m = d.modelos, t = d.termos.length, locais = m.hibrido || m.presencial, cidade = !!d.localidade.cidade;
     var n = (m.remoto || (locais && !cidade)) ? t : 0;
     if (locais && cidade) n += t;
-    if (m.remoto && d.internacional.ativo) n += d.internacional.paises.length * (d.internacional.termos.length || t);
+    var it = d.internacional, ti = it.termos.length || t;  // a busca de fora não depende do remoto no país
+    if (it.ativo) n += it.paises.length * ti + (it.aceita_mudar ? ((it.paises_mudanca || []).length || it.paises.length) * ti : 0);
     return n;
   }
-  function abrirFiltros(proposta, depois) { // proposta: filtros sugeridos pelos primeiros passos (em vez dos atuais)
-    FB.d = null; FB.depois = typeof depois === "function" ? depois : null;
+  function abrirFiltros(proposta, depois, modo) { // proposta: filtros sugeridos pelos primeiros passos; modo "int": painel internacional
+    FB.d = null; FB.depois = typeof depois === "function" ? depois : null; FB.modo = modo === "int" ? "int" : "nac";
+    $("fb-title").textContent = FB.modo === "int" ? "Filtros da busca internacional" : "Filtros da busca";
+    $("fb-desc").textContent = FB.modo === "int" ? "Vagas de empresas do exterior: opcional e desligado até você ligar. As vagas de fora aparecem na aba Internacional, com a etiqueta do país."
+      : "O que procurar nos portais. Vale a partir da próxima busca; vaga que furar estes filtros vai para a aba Fora dos critérios, de onde você ainda pode seguir com ela.";
     $("fb-erro").hidden = true; $("fb-conta").textContent = ""; $("fb-salvar").disabled = true;
     $("fb-corpo").innerHTML = '<p class="hint">Carregando…</p>';
     if (!$("dlg-filtros").open) $("dlg-filtros").showModal();
@@ -1071,7 +1120,37 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       (exata ? '<label class="check"><input type="checkbox" id="' + id + '-exata" checked> frase exata</label>' : "") +
       '<button type="button" class="btn-plain" data-add="' + id + '">Adicionar</button></div>';
   }
+  function chk(x) { return x ? " checked" : ""; }
+  function montarFiltrosInt() {
+    var d = FB.d, op = FB.op, it = d.internacional, fusos = [];
+    for (var i = 0; i <= 12; i++) fusos.push('<option value="' + i + '"' + (it.fuso_horas === i ? " selected" : "") + ">" + (i ? "Pelo menos " + i + " h" : "Não considerar") + "</option>");
+    $("fb-corpo").innerHTML =
+      '<section class="fb-sec"><label class="check"><input type="checkbox" id="fbi-ativo"' + chk(it.ativo) + "> Buscar também vagas no exterior</label>" +
+        '<p class="hint">Remoto em cada país de interesse, mesmo que você não busque remoto no seu país. Cada país × cargo é uma consulta a mais.</p></section>' +
+      '<section class="fb-sec"><h3>Países de interesse</h3><input type="text" id="fb-pais-busca" placeholder="Buscar país…" aria-label="Buscar país">' +
+        '<div class="paises-lista" id="fb-paises"></div><div class="tags" id="fb-l-paises"></div></section>' +
+      '<section class="fb-sec"><h3>Cargos em inglês</h3><p class="hint">Poucos e no idioma das vagas de lá (ex.: data analyst).</p>' +
+        '<div class="tags" id="fb-l-termos-int"></div>' + linhaAdicionar("fb-termo-int", "Ex.: data analyst", true, "Novo cargo em inglês") + "</section>" +
+      '<section class="fb-sec"><h3>Regiões aceitas</h3>' + pills("data-regiao", op.regioes, it.regioes) +
+        '<p class="hint">Para vagas "remoto em tal região". Nenhuma marcada = sem restrição.</p></section>' +
+      '<section class="fb-sec"><h3>Moedas aceitas</h3>' + pills("data-moeda", op.moedas, d.moedas_aceitas) +
+        '<p class="hint">Nenhuma marcada = qualquer moeda. Vaga que não diz a moeda não é cortada.</p></section>' +
+      '<section class="fb-sec"><h3>Salário e fuso</h3><div class="fb-grid">' +
+        '<div class="field"><label for="fbi-salario">Salário mínimo por ano (US$)</label><input id="fbi-salario" type="number" min="0" step="1000" value="' + (it.salario_min_anual_usd || "") + '" placeholder="sem mínimo"></div>' +
+        '<div class="field"><label for="fbi-fuso">Sobreposição de fuso com o Brasil</label><select id="fbi-fuso">' + fusos.join("") + "</select></div></div>" +
+        '<p class="hint">O salário só corta vagas que informam o valor em dólar; não há conversão de câmbio.</p></section>' +
+      '<section class="fb-sec"><h3>Contratação aceita</h3>' + pills("data-contr", op.contratacao, it.contratacao) + "</section>" +
+      '<section class="fb-sec"><h3>A sua situação</h3>' +
+        '<label class="check"><input type="checkbox" id="fbi-mudar"' + chk(it.aceita_mudar) + "> Aceito morar fora</label>" +
+        '<div class="fb-sub"><input type="text" class="fbi-lista" id="fbi-paises-mudanca" placeholder="Para quais países (separados por vírgula); vazio = os de interesse" value="' + esc((it.paises_mudanca || []).join(", ")) + '"></div>' +
+        '<label class="check"><input type="checkbox" id="fbi-passaporte"' + chk(it.passaporte) + "> Tenho passaporte válido</label>" +
+        '<div class="field"><label for="fbi-autorizacao">Tenho visto ou autorização de trabalho em (países, separados por vírgula)</label><input class="fbi-lista" id="fbi-autorizacao" value="' + esc((it.autorizacao_trabalho || []).join(", ")) + '" placeholder="nenhum"></div>' +
+        '<label class="check"><input type="checkbox" id="fbi-sponsor"' + chk(it.precisa_sponsor) + "> Preciso de patrocínio de visto (sponsor)</label>" +
+        '<p class="hint">Valem só para vagas internacionais: com "aceito morar fora", a busca inclui vagas presenciais e híbridas nesses países; o resto vai para a análise da IA, que aponta o que pode impedir.</p></section>';
+    atualizarFiltros();
+  }
   function montarFiltros() {
+    if (FB.modo === "int") return montarFiltrosInt();
     var d = FB.d, op = FB.op, loc = d.localidade;
     $("fb-corpo").innerHTML =
       '<section class="fb-sec"><h3>Cargos</h3><p class="hint">Cada cargo vira uma busca. Frase exata (entre aspas) traz só anúncios com aquela expressão, o que corta muito ruído.</p>' +
@@ -1085,17 +1164,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
           return '<option value="' + r + '"' + (r === loc.raio_km ? " selected" : "") + ">" + r + " km</option>"; }).join("") + "</select></div>" +
       '</div><p class="hint">Cidade e raio valem para vagas híbridas e presenciais. O Indeed não busca por estado inteiro; o estado só completa o nome da cidade. A Gupy busca só na cidade, sem raio.</p></section>' +
       '<section class="fb-sec"><h3>Modo de trabalho</h3>' +
-        '<label class="check"><input type="checkbox" id="fb-m-remoto"' + (d.modelos.remoto ? " checked" : "") + "> Remoto</label>" +
-        '<div class="fb-sub" id="fb-remoto-sub">' +
-          '<label class="check"><input type="radio" name="fb-alcance" value="pais"' + (d.internacional.ativo ? "" : " checked") + '> Apenas no meu país <small id="fb-pais-nome"></small></label>' +
-          '<label class="check"><input type="radio" name="fb-alcance" value="exterior"' + (d.internacional.ativo ? " checked" : "") + "> Também vagas remotas no exterior</label>" +
-          '<div class="fb-sub" id="fb-exterior">' +
-            '<input type="text" id="fb-pais-busca" placeholder="Buscar país…" aria-label="Buscar país">' +
-            '<div class="paises-lista" id="fb-paises"></div>' +
-            '<div class="tags" id="fb-l-paises"></div>' +
-            '<p class="hint">Cargos para o exterior: poucos e no idioma das vagas de lá. Cada país × cargo é uma consulta a mais.</p>' +
-            '<div class="tags" id="fb-l-termos-int"></div>' + linhaAdicionar("fb-termo-int", "Ex.: scrum master", true, "Novo cargo para o exterior") +
-          "</div></div>" +
+        '<label class="check"><input type="checkbox" id="fb-m-remoto"' + (d.modelos.remoto ? " checked" : "") + '> Remoto <small id="fb-pais-nome"></small></label>' +
+        '<p class="hint">Vagas de empresas do exterior ficam em <button type="button" class="link-btn" data-abrir-filtros-int>Filtros da busca internacional</button>.</p>' +
         '<label class="check"><input type="checkbox" id="fb-m-hibrido"' + (d.modelos.hibrido ? " checked" : "") + '> Híbrido <small class="fb-onde"></small></label>' +
         '<label class="check"><input type="checkbox" id="fb-m-presencial"' + (d.modelos.presencial ? " checked" : "") + '> Presencial <small class="fb-onde"></small></label>' +
       "</section>" +
@@ -1106,6 +1176,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         '<p class="hint">Nenhuma marcada = todas. Vale o nível do título ou o que a IA ler na descrição; vaga que não diz o nível não é cortada.</p></section>' +
       '<section class="fb-sec"><h3>Moedas aceitas (vagas fora do seu país)</h3>' + pills("data-moeda", op.moedas, d.moedas_aceitas) +
         '<p class="hint">Nenhuma marcada = qualquer moeda. A moeda do seu país (<span id="fb-moeda-local"></span>) sempre vale. A IA lê a moeda na vaga; vaga que não diz a moeda não é cortada.</p></section>' +
+      '<section class="fb-sec"><h3>Idiomas aceitos</h3>' + pills("data-idioma", op.idiomas, d.idiomas_aceitos) +
+        '<p class="hint">Nenhum marcado = todos. Vale para qualquer vaga: vaga em outro idioma vai para Fora dos critérios. Na dúvida (texto curto ou misturado), a vaga não é cortada.</p></section>' +
       '<section class="fb-sec"><h3>Empresas a excluir</h3><div class="tags" id="fb-l-empresas"></div>' +
         linhaAdicionar("fb-empresa", "Nome da empresa", false, "Empresa a excluir") + "</section>";
     atualizarFiltros();
@@ -1121,23 +1193,23 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
              "fb-termo": d.termos, "fb-termo-int": d.internacional.termos, "fb-empresa": d.empresas_excluir }[tipo];
   }
   function atualizarFiltros() {
-    var d = FB.d, loc = d.localidade;
-    $("fb-l-termos").innerHTML = tagsHTML(d.termos, "termos");
-    $("fb-l-termos-int").innerHTML = tagsHTML(d.internacional.termos, "termos-int");
-    $("fb-l-paises").innerHTML = tagsHTML(d.internacional.paises, "paises");
-    $("fb-l-empresas").innerHTML = tagsHTML(d.empresas_excluir, "empresas");
-    $("fb-pais-nome").textContent = "(" + loc.pais + ")";
-    $("fb-moeda-local").textContent = FB.op.moeda_do_pais[loc.pais] || "—";
+    var d = FB.d, loc = d.localidade, el;
+    if ((el = $("fb-l-termos"))) el.innerHTML = tagsHTML(d.termos, "termos");
+    if ((el = $("fb-l-termos-int"))) el.innerHTML = tagsHTML(d.internacional.termos, "termos-int");
+    if ((el = $("fb-l-paises"))) el.innerHTML = tagsHTML(d.internacional.paises, "paises");
+    if ((el = $("fb-l-empresas"))) el.innerHTML = tagsHTML(d.empresas_excluir, "empresas");
+    if ((el = $("fb-pais-nome"))) el.textContent = "(no " + loc.pais + ")";
+    if ((el = $("fb-moeda-local"))) el.textContent = FB.op.moeda_do_pais[loc.pais] || "—";
     var cidade = [loc.cidade, loc.estado].filter(Boolean).join(", ");
     document.querySelectorAll(".fb-onde").forEach(function (s) { s.textContent = cidade ? "em " + cidade + " (" + loc.raio_km + " km)" : "informe a cidade acima"; });
-    $("fb-remoto-sub").hidden = !d.modelos.remoto;
-    $("fb-exterior").hidden = !d.internacional.ativo;
-    var busca = semAcento($("fb-pais-busca").value.trim());
-    $("fb-paises").innerHTML = FB.op.paises.filter(function (p) { return p !== loc.pais && semAcento(p).indexOf(busca) >= 0; }).map(function (p) {
-      return '<label><input type="checkbox" data-pais="' + esc(p) + '"' + (d.internacional.paises.indexOf(p) >= 0 ? " checked" : "") + "> " + esc(p) + "</label>";
-    }).join("") || '<span class="hint">Nenhum país com esse nome.</span>';
+    if ((el = $("fb-paises"))) {
+      var busca = semAcento($("fb-pais-busca").value.trim());
+      el.innerHTML = FB.op.paises.filter(function (p) { return p !== loc.pais && semAcento(p).indexOf(busca) >= 0; }).map(function (p) {
+        return '<label><input type="checkbox" data-pais="' + esc(p) + '"' + (d.internacional.paises.indexOf(p) >= 0 ? " checked" : "") + "> " + esc(p) + "</label>";
+      }).join("") || '<span class="hint">Nenhum país com esse nome.</span>';
+    }
     var n = contarConsultas(d), c = $("fb-conta");
-    c.textContent = "Esta busca fará " + n + (n === 1 ? " consulta" : " consultas") + " ao Indeed" + (n > 20 ? ": muitas consultas aumentam o risco de bloqueio" : "");
+    c.textContent = "Esta busca fará " + n + (n === 1 ? " consulta" : " consultas") + " por portal" + (n > 20 ? ": muitas consultas aumentam o risco de bloqueio" : "");
     if (n > 20) c.setAttribute("data-muitas", ""); else c.removeAttribute("data-muitas");
   }
   function adicionar(id) {
@@ -1163,6 +1235,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (t.hasAttribute("data-tipo")) { alternar(d.tipos_emprego, t.getAttribute("data-tipo")); marcarPills("data-tipo", d.tipos_emprego); return; }
       if (t.hasAttribute("data-sen")) { alternar(d.senioridades, t.getAttribute("data-sen")); marcarPills("data-sen", d.senioridades); return; }
       if (t.hasAttribute("data-moeda")) { alternar(d.moedas_aceitas, t.getAttribute("data-moeda")); marcarPills("data-moeda", d.moedas_aceitas); return; }
+      if (t.hasAttribute("data-idioma")) { alternar(d.idiomas_aceitos, t.getAttribute("data-idioma")); marcarPills("data-idioma", d.idiomas_aceitos); return; }
+      if (t.hasAttribute("data-regiao")) { alternar(d.internacional.regioes, t.getAttribute("data-regiao")); marcarPills("data-regiao", d.internacional.regioes); return; }
+      if (t.hasAttribute("data-contr")) { alternar(d.internacional.contratacao, t.getAttribute("data-contr")); marcarPills("data-contr", d.internacional.contratacao); return; }
+      if (t.hasAttribute("data-abrir-filtros-int")) { $("dlg-filtros").close(); abrirFiltros(null, null, "int"); return; }
     });
     ff.addEventListener("keydown", function (ev) {
       if (ev.key !== "Enter" || ev.target.tagName !== "INPUT" || ev.target.type === "checkbox" || ev.target.type === "radio") return;
@@ -1177,7 +1253,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         d.internacional.paises = d.internacional.paises.filter(function (p) { return p !== t.value; });
       } else if (t.id === "fb-raio") d.localidade.raio_km = +t.value;
       else if (t.id === "fb-m-remoto" || t.id === "fb-m-hibrido" || t.id === "fb-m-presencial") d.modelos[t.id.slice(5)] = t.checked;
-      else if (t.name === "fb-alcance") d.internacional.ativo = t.value === "exterior";
+      else if (t.id === "fbi-ativo") d.internacional.ativo = t.checked;
+      else if (t.id === "fbi-mudar") d.internacional.aceita_mudar = t.checked;
+      else if (t.id === "fbi-passaporte") d.internacional.passaporte = t.checked;
+      else if (t.id === "fbi-sponsor") d.internacional.precisa_sponsor = t.checked;
+      else if (t.id === "fbi-fuso") d.internacional.fuso_horas = +t.value;
       else if (t.hasAttribute("data-pais")) {
         var p = t.getAttribute("data-pais");
         if (t.checked) { if (d.internacional.paises.indexOf(p) < 0) d.internacional.paises.push(p); }
@@ -1190,6 +1270,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (!d) return;
       if (t.id === "fb-estado") d.localidade.estado = t.value.trim();
       else if (t.id === "fb-cidade") d.localidade.cidade = t.value.trim();
+      else if (t.id === "fbi-salario") { d.internacional.salario_min_anual_usd = Math.max(0, +t.value || 0); return; }
+      else if (t.id === "fbi-paises-mudanca" || t.id === "fbi-autorizacao") {
+        var lista = t.value.split(",").map(function (x) { return x.trim(); }).filter(Boolean);
+        if (t.id === "fbi-paises-mudanca") d.internacional.paises_mudanca = lista; else d.internacional.autorizacao_trabalho = lista;
+      }
       else if (t.id !== "fb-pais-busca") return;
       atualizarFiltros();
     });
@@ -1198,7 +1283,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (!FB.d) return;
       var btn = $("fb-salvar"); btn.disabled = true; $("fb-erro").hidden = true;
       API.send("PUT", "/api/config", FB.d).then(function () {
-        S.configExiste = true; $("dlg-filtros").close(); toast("Filtros salvos. Valem a partir da próxima busca."); render();
+        S.configExiste = true; S.filtros = JSON.parse(JSON.stringify(FB.d)); $("dlg-filtros").close(); toast("Filtros salvos. Valem a partir da próxima busca."); render();
         if (FB.depois) { var depois = FB.depois; FB.depois = null; depois(); }
       }).catch(function (e) {
         var er = $("fb-erro"); er.textContent = e && e.status === 400 ? e.message : erroMsg(e); er.hidden = false;
@@ -1235,6 +1320,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     $("v-quadro").addEventListener("click", function () { S.vista = "quadro"; S.aba = "quadro"; try { localStorage.setItem("cand.vista", "quadro"); } catch (e) {} render(); });
     $("tab-quadro").addEventListener("click", function () { S.aba = "quadro"; render(); });
     $("tab-relatorio").addEventListener("click", function () { S.aba = "relatorio"; render(); });
+    $("tab-internacional").addEventListener("click", function () { S.aba = "internacional"; render(); });
+    try { var pa = localStorage.getItem("cand.area"); if (pa === "nacional" || pa === "internacional") S.areaQ = pa; } catch (e) {}
+    $("f-area").value = S.areaQ || "";
+    $("f-area").addEventListener("change", function (ev) { S.areaQ = ev.target.value; try { localStorage.setItem("cand.area", S.areaQ); } catch (e) {} render(); });
 
     // Adicionar vaga: primeiro pelo link; se não der para ler, o formulário pede o resto
     function abrirAdicionar() {
@@ -1249,6 +1338,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       $("a-url").value = parcial.url || $("a-link").value.trim();
       ["titulo", "empresa", "local", "descricao"].forEach(function (k) { if (parcial[k]) $("a-" + k).value = parcial[k]; });
       selA.value = PLATAFORMAS.indexOf(parcial.plataforma) >= 0 ? parcial.plataforma : ($("a-url").value ? plataformaDoLink($("a-url").value) : "LinkedIn");
+      $("a-area").value = parcial.area === "internacional" ? "internacional" : "nacional";
+      $("a-pais").value = parcial.pais_vaga || "";
       selE.value = etapa;
       $("a-titulo").focus();
     }
@@ -1262,11 +1353,12 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       var e = ETAPAS.filter(function (x) { return x.k === v.etapa; })[0];
       var onde = noQuadro(v) ? "no quadro (" + (e ? e.label : v.etapa) + ")"
         : { fora: "em Fora dos critérios", visitada: "em Não seguidas", seguir: "em Seguidas" }[v.triagem] || "em Para decidir";
-      return "Essa vaga já estava no dashboard, " + onde + ": " + v.titulo + " (" + plataformasDe(v).join(", ") + ").";
+      var area = areaDe(v) === "internacional" ? " · Internacional · " + (paisDe(v) || "exterior") : "";
+      return "Essa vaga já estava no dashboard, " + onde + ": " + v.titulo + " (" + plataformasDe(v).join(", ") + area + ").";
     }
     function irPara(v) {
       if (noQuadro(v)) { S.aba = "quadro"; return; }
-      S.aba = "relatorio";
+      S.aba = abaDaVaga(v);
       S.triagem = v.triagem === "fora" || v.triagem === "visitada" || v.triagem === "seguir" ? v.triagem : "pendente";
     }
     function buscarLink() {
@@ -1297,7 +1389,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if ($("a-form").hidden) { buscarLink(); return; }
       var f = new FormData(ev.target);
       var corpo = {};
-      ["titulo", "empresa", "plataforma", "url", "local", "etapa", "descricao"].forEach(function (k) { corpo[k] = String(f.get(k) || "").trim(); });
+      ["titulo", "empresa", "plataforma", "url", "local", "etapa", "descricao", "area", "pais_vaga"].forEach(function (k) { corpo[k] = String(f.get(k) || "").trim(); });
       if (!corpo.titulo || !corpo.empresa) { toast("Informe pelo menos o cargo e a empresa.", true); return; }
       var btn = $("add-save"); btn.disabled = true;
       API.send("POST", "/api/vagas", corpo).then(function (j) {
@@ -1339,6 +1431,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         render(); return;
       }
       if (t.hasAttribute("data-abrir-filtros")) { abrirFiltros(); return; }
+      if (t.hasAttribute("data-abrir-filtros-int") && !t.closest("#form-filtros")) { abrirFiltros(null, null, "int"); return; }
       if (t.hasAttribute("data-abrir-busca")) { abrirBusca(); return; }
       if (t.hasAttribute("data-cv")) { cvAcao(t.getAttribute("data-cv"), t); return; }
       if (t.hasAttribute("data-bu")) { buAcao(t.getAttribute("data-bu"), t); return; }
@@ -2263,16 +2356,20 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   }
   setInterval(conferir, 4000);
   document.addEventListener("visibilitychange", conferir);
-  window.addEventListener("hashchange", function () { if (location.hash === "#relatorio") { S.aba = "relatorio"; render(); } });
+  window.addEventListener("hashchange", function () {
+    if (location.hash === "#relatorio") { S.aba = "relatorio"; render(); }
+    else if (location.hash === "#internacional") { S.aba = "internacional"; render(); }
+  });
 
   if (location.hash === "#relatorio") S.aba = "relatorio";
+  if (location.hash === "#internacional") S.aba = "internacional";
   bind();
   bindIA();
   bindPerfil();
   renderAgora();
   carregar();
   carregarIA();
-  API.get("/api/config").then(function (j) { S.configExiste = !!j.existe; render(); }).catch(function () {});
+  API.get("/api/config").then(function (j) { S.configExiste = !!j.existe; S.filtros = j.filtros; render(); }).catch(function () {});
   buEstado();
   buPlano();
   cvEstado();

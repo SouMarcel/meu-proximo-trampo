@@ -71,6 +71,11 @@ def _secao(texto: str, inicio: str, fim: str) -> str:
     return texto[i:j if j > 0 else None].strip()
 
 
+def _area(f, v: dict, efet: dict) -> str:
+    area, pais = f.area_da_vaga(v, efet)
+    return f"internacional ({pais})" if area == "internacional" and pais else area
+
+
 def montar_pedido(vagas: list[dict]) -> str:
     f = _filtros()
     cfg = f.ler_config()
@@ -89,6 +94,7 @@ def montar_pedido(vagas: list[dict]) -> str:
             f"Cargo: {v.get('titulo')}",
             f"Empresa: {v.get('empresa')}",
             f"Local: {v.get('local') or 'não informado'}",
+            f"Área: {_area(f, v, efet)}",
             f"Plataforma: {v.get('plataforma')} · link: {v.get('url') or '-'}",
             f"Salário: {v.get('salario') or 'não informado'}",
             "Descrição:",
@@ -101,7 +107,7 @@ def montar_pedido(vagas: list[dict]) -> str:
         "Responda SOMENTE com um array JSON, um objeto por vaga, sem texto antes ou depois e sem bloco de código.",
         'Formato de cada objeto: {"id", "aderencia" (0 a 100), "resumo", "encaixe" [], "lacunas" [], "alertas" [], '
         '"modelo_trabalho", "senioridade" [], "senioridade_origem", "tipo_emprego" [] (opcional), '
-        '"moeda" (opcional), "fora_dos_criterios" (opcional)}.',
+        '"moeda" (opcional), "idioma" (opcional), "fora_dos_criterios" (opcional)}.',
         'Se a descrição não basta para avaliar: {"id": "...", "analise_status": "sem_dados", '
         '"resumo": "Sem descrição suficiente: cole o texto da vaga no dashboard."}.',
         "",
