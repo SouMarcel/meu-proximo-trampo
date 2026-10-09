@@ -166,6 +166,17 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .rel-meta .analisando { color: var(--info); }
 .aviso-config { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--line-strong); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--col); color: var(--fg); font-size: 13.5px; }
 .aviso-config .btn-plain { margin-left: 4px; }
+.aviso-ia { border-left-color: var(--bad); }
+.btn-ia-mini { padding: 2px 10px; margin-left: 6px; font-size: 12px; }
+
+/* Painel IA (provedor, modelo e chave; a chave nunca volta para a página) */
+#dlg-ia { width: min(620px, calc(100vw - 32px)); }
+.ia-avisos { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+.ia-status { margin: 0; font-size: 13.5px; }
+.ia-teste { margin: 0; font-size: 13.5px; font-weight: 600; }
+.ia-teste:empty { display: none; }
+.ia-teste[data-ok="1"] { color: var(--good); }
+.ia-teste[data-ok="0"] { color: var(--bad); }
 #a-status:empty { display: none; }
 #a-status[data-erro] { color: var(--warn); }
 
@@ -298,6 +309,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       <button class="icon-btn" id="v-quadro" aria-pressed="true" aria-label="Ver em quadro" title="Quadro">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       </button>
+      <button class="btn-plain" id="btn-ia" title="Escolher a IA que dá as notas às vagas">IA</button>
       <button class="btn-primary" id="btn-add">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
         Adicionar Vaga
@@ -409,6 +421,25 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       <span class="fb-conta" id="fb-conta" aria-live="polite"></span>
       <button type="button" class="btn-plain" data-fechar-filtros>Cancelar</button>
       <button type="submit" class="btn-primary" id="fb-salvar">Salvar filtros</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-ia" aria-labelledby="ia-title">
+  <form class="dlg" id="form-ia" novalidate>
+    <div class="dlg-head">
+      <div>
+        <h2 id="ia-title">IA</h2>
+        <p>Qual IA dá a nota de aderência às vagas. Sem IA, a ferramenta continua funcionando, só sem as notas.</p>
+      </div>
+      <button type="button" class="more" data-fechar-ia aria-label="Fechar">✕</button>
+    </div>
+    <div class="fb" id="ia-corpo"></div>
+    <p class="fb-erro" id="ia-erro" role="alert" hidden></p>
+    <div class="dlg-foot">
+      <button type="button" class="btn-plain" id="ia-testar">Testar conexão</button>
+      <button type="button" class="btn-plain" data-fechar-ia>Cancelar</button>
+      <button type="submit" class="btn-primary" id="ia-salvar">Salvar</button>
     </div>
   </form>
 </dialog>
@@ -748,7 +779,13 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         " · " + (b.brutas || 0) + " vagas encontradas, " + (b.avaliadas || 0) + (b.com_nota === false ? " novas (sem nota)" : " novas avaliadas") +
         (b.fora_criterios ? ", " + b.fora_criterios + " fora dos critérios" : "")
       : "Nenhuma busca registrada ainda.";
-    if (S.analisando) meta += ' · <strong class="analisando">Claude analisando vagas adicionadas…</strong>';
+    if (S.analisando) meta += ' · <strong class="analisando">IA analisando vagas adicionadas…</strong>';
+    if (IA.e) {
+      var pe = IA.e.efetiva;
+      meta += " · IA: " + (pe === "nenhum" ? "<strong>desligada</strong> (as vagas ficam sem nota)" :
+        "<strong>" + esc(nomeIA(pe)) + (IA.e.modelo_efetivo ? " · " + esc(IA.e.modelo_efetivo) : "") + "</strong>" +
+        (IA.e.disponivel ? "" : " (falta a chave)")) + '<button class="btn-plain btn-ia-mini" data-abrir-ia>IA</button>';
+    }
     var h = '<div class="rel-head"><p class="rel-meta">' + meta + "</p>" +
       '<div class="rel-acoes"><div class="seg" role="group" aria-label="Filtrar triagem">' +
       [["pendente", "Para decidir"], ["seguir", "Seguidas"], ["visitada", "Não seguidas"], ["fora", "Fora dos critérios"]].map(function (p) {
@@ -758,6 +795,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (S.configExiste === false) {  // primeira vez: ainda não há config.json
       h += '<p class="aviso-config">Antes da primeira busca, escolha os cargos e o local em' +
         '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button>.</p>";
+    }
+    if (S.iaErro) {
+      h += '<p class="aviso-config aviso-ia">A análise automática não rodou: ' + esc(S.iaErro.motivo) +
+        ' <button class="btn-plain" data-abrir-ia>Ajustar a IA</button></p>';
     }
     $("rel-topo").innerHTML = h;
     document.querySelectorAll("[data-nivel]").forEach(function (b) {
@@ -815,12 +856,14 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var url = safeUrl(v.url);
     var bnd = banda(v.aderencia);
     var analise;
-    if (v.analise_status === "pendente") analise = '<p class="banner">Aguardando análise. Com o Claude Code, peça "analisa as vagas que adicionei no dashboard".</p>';
+    if (v.analise_status === "pendente") analise = '<p class="banner">Aguardando análise. ' + (IA.e && IA.e.disponivel ? "A IA escolhida analisa em instantes." :
+      'Escolha uma IA no botão IA, ou no Claude Code peça "analisa as vagas que adicionei no dashboard".') + "</p>";
     else if (v.analise_status === "sem_analise") analise = '<p class="hint">Sem nota de aderência. Opcional: com o Claude Code, peça "analisa as vagas do relatório".</p>';
     else if (bnd) analise = '<div style="display:flex;gap:14px;align-items:center"><div class="score" data-b="' + bnd + '"><b>' + v.aderencia + "</b><small>" + rotuloBanda(bnd) + "</small></div>" +
       (v.resumo ? '<p class="resumo" style="margin:0">' + esc(v.resumo) + "</p>" : "") + "</div>" +
       '<div class="facets">' + facet("encaixe", "Encaixe", v.encaixe) + facet("lacunas", "Lacunas", v.lacunas) + facet("alertas", "Atenção", v.alertas) + "</div>";
     else analise = '<p class="hint">Sem análise para esta vaga.</p>';
+    if (bnd && v.analise_provedor) analise += '<p class="hint">Nota por ' + esc(nomeIA(v.analise_provedor)) + (v.analise_modelo ? " · " + esc(v.analise_modelo) : "") + "</p>";
     var dis = S.canWrite ? "" : " disabled";
     box.innerHTML =
       '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(plataformasDe(v).join(", ")) + "</p>" +
@@ -1165,6 +1208,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         render(); return;
       }
       if (t.hasAttribute("data-abrir-filtros")) { abrirFiltros(); return; }
+      if (t.hasAttribute("data-abrir-ia")) { abrirIA(); return; }
       if (t.hasAttribute("data-limpar-filtros")) { limparFiltro(); return; }
       if (t.id === "pular-baixas") {
         if (!t.getAttribute("data-confirm")) { t.setAttribute("data-confirm", "1"); t.textContent = "Confirmar: marcar todas"; return; }
@@ -1217,6 +1261,115 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     });
   }
 
+  /* ---------- IA (painel que escolhe o provedor; a chave nunca volta para a página) ---------- */
+  var IA = { e: null, f: null };
+  function provIA(id) { var ps = (IA.e && IA.e.provedores) || []; for (var i = 0; i < ps.length; i++) if (ps[i].id === id) return ps[i]; return null; }
+  function nomeIA(id) { var p = provIA(id); return p ? p.nome : id; }
+  function carregarIA() {
+    return API.get("/api/ia").then(function (j) { IA.e = j; render(); return j; }).catch(function () { return null; });
+  }
+  function abrirIA() {
+    carregarIA().then(function () {
+      if (!IA.e) { toast("Não deu para abrir o painel de IA.", true); return; }
+      var g = IA.e.escolha || {}, prov = g.provedor || IA.e.efetiva;
+      IA.f = { provedor: prov, modelo: g.provedor === prov ? (g.modelo || "") : "", url_base: g.provedor === prov ? (g.url_base || "") : "" };
+      montarIA();
+      $("ia-erro").hidden = true;
+      if (!$("dlg-ia").open) $("dlg-ia").showModal();
+    });
+  }
+  function avisosIA(p) {
+    if (!p || p.id === "nenhum") return ["Nada é enviado a provedores de IA. Busca, relatório e quadro funcionam normalmente; as vagas ficam sem nota."];
+    var l = [p.cobranca === "assinatura" ? "Usa a sua assinatura do Claude: não há cobrança por chamada além do plano." :
+      "Cobrado por uso, na sua conta do provedor: cada análise de vaga consome créditos.",
+      "Notas de modelos diferentes podem variar para a mesma vaga.",
+      "O seu perfil e o texto das vagas vão para " + p.nome + " a cada análise."];
+    if (p.cobranca === "uso") l.push("Em planos gratuitos, alguns provedores podem usar os dados enviados para melhorar os produtos deles. Confira os termos antes.");
+    if (p.dica) l.push(p.dica);
+    return l;
+  }
+  function montarIA() {
+    var e = IA.e, f = IA.f, p = provIA(f.provedor), dis = e.pode_alterar ? "" : " disabled";
+    var h = '<section class="fb-sec"><h3>Provedor</h3><div class="field"><label for="ia-prov">IA usada pela ferramenta</label><select id="ia-prov"' + dis + ">" +
+      e.provedores.map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === f.provedor ? " selected" : "") + ">" + esc(x.nome) + "</option>"; }).join("") + "</select></div>";
+    if (f.provedor === "claude_code") h += '<p class="hint">' + (e.claude_instalado ? "Claude Code encontrado neste computador." :
+      'Claude Code não encontrado neste computador. Instale em <a href="https://claude.com/claude-code" target="_blank" rel="noopener">claude.com/claude-code</a> ou escolha outro provedor.') + "</p>";
+    h += "</section>";
+    if (f.provedor !== "nenhum") {
+      h += '<section class="fb-sec"><h3>Modelo</h3><div class="field"><label for="ia-modelo">Nome do modelo</label><input id="ia-modelo" maxlength="120" autocomplete="off" spellcheck="false" value="' +
+        esc(f.modelo) + '" placeholder="' + esc(p && p.modelo_padrao ? p.modelo_padrao + " (padrão)" : "modelo padrão da sua conta") + '"' + dis + "></div>";
+      if (f.provedor === "compativel") h += '<div class="field"><label for="ia-url">Endereço do serviço</label><input id="ia-url" maxlength="300" autocomplete="off" spellcheck="false" value="' +
+        esc(f.url_base) + '" placeholder="https://…/v1"' + dis + "></div>";
+      h += "</section>";
+    }
+    if (p && p.aceita_chave) {
+      var c = (e.chaves || {})[p.id] || {};
+      var situacao = c.cadastrada ? "Chave cadastrada, terminada em <b>" + esc(c.final || "…") + "</b> " +
+        (c.origem === "ambiente" ? "(nas variáveis de ambiente do sistema)" : "(no arquivo .env deste computador)") +
+        (c.origem === "arquivo" ? ' <button type="button" class="btn-plain btn-ia-mini" data-rm-chave' + dis + ">Remover</button>" : "") :
+        (p.precisa_chave ? "Nenhuma chave cadastrada." : "Chave opcional para este serviço.");
+      h += '<section class="fb-sec"><h3>Chave de API</h3><p class="ia-status">' + situacao + "</p>" +
+        '<div class="field"><label for="ia-chave">' + (c.cadastrada ? "Trocar a chave (em branco, mantém a atual)" : "Cole a chave") +
+        '</label><input id="ia-chave" type="password" autocomplete="off" spellcheck="false" maxlength="400" placeholder="fica só no arquivo .env deste computador"' + dis + "></div>" +
+        (p.onde_obter_chave ? '<p class="hint">Onde conseguir: <a href="' + esc(p.onde_obter_chave) + '" target="_blank" rel="noopener">' + esc(p.onde_obter_chave) + "</a></p>" : "") + "</section>";
+    }
+    h += '<section class="fb-sec"><h3>Antes de salvar</h3><ul class="ia-avisos">' + avisosIA(p).map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("") + "</ul></section>" +
+      '<p class="ia-teste" id="ia-teste" aria-live="polite"></p>';
+    if (!e.pode_alterar) h += '<p class="fb-erro">Só dá para mudar a IA no computador onde a ferramenta roda.</p>';
+    $("ia-corpo").innerHTML = h;
+    $("ia-testar").disabled = !e.pode_alterar || f.provedor === "nenhum";
+    $("ia-salvar").disabled = !e.pode_alterar;
+  }
+  function lerFormIA() {
+    var f = IA.f;
+    if ($("ia-modelo")) f.modelo = $("ia-modelo").value.trim();
+    if ($("ia-url")) f.url_base = $("ia-url").value.trim();
+    var corpo = { provedor: f.provedor, modelo: f.modelo || "", url_base: f.url_base || "" };
+    if ($("ia-chave") && $("ia-chave").value.trim()) corpo.chave = $("ia-chave").value.trim();
+    return corpo;
+  }
+  function bindIA() {
+    var fi = $("form-ia");
+    $("btn-ia").addEventListener("click", abrirIA);
+    fi.addEventListener("change", function (ev) {
+      if (ev.target.id !== "ia-prov") return;
+      var g = IA.e.escolha || {}, prov = ev.target.value;
+      IA.f = { provedor: prov, modelo: g.provedor === prov ? (g.modelo || "") : "", url_base: g.provedor === prov ? (g.url_base || "") : "" };
+      montarIA();
+    });
+    fi.addEventListener("click", function (ev) {
+      var t = ev.target.closest("button");
+      if (!t) return;
+      if (t.hasAttribute("data-fechar-ia")) { $("dlg-ia").close(); return; }
+      if (t.id === "ia-testar") {
+        var out = $("ia-teste");
+        out.removeAttribute("data-ok"); out.textContent = "Testando a conexão…"; t.disabled = true;
+        API.send("POST", "/api/ia/testar", lerFormIA()).then(function (j) {
+          out.textContent = j.mensagem; out.setAttribute("data-ok", j.ok ? "1" : "0");
+        }).catch(function (e) {
+          out.textContent = e && e.status === 403 ? e.message : erroMsg(e); out.setAttribute("data-ok", "0");
+        }).then(function () { t.disabled = false; });
+        return;
+      }
+      if (t.hasAttribute("data-rm-chave")) {
+        t.disabled = true;
+        API.send("DELETE", "/api/ia/chave/" + encodeURIComponent(IA.f.provedor)).then(function (j) {
+          IA.e = j; montarIA(); render(); toast(j.aviso || "Chave removida do arquivo .env.", !!j.aviso);
+        }).catch(function (e) { toast(e && e.status === 403 ? e.message : erroMsg(e), true); t.disabled = false; });
+      }
+    });
+    fi.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var btn = $("ia-salvar");
+      btn.disabled = true; $("ia-erro").hidden = true;
+      API.send("PUT", "/api/ia", lerFormIA()).then(function (j) {
+        IA.e = j; $("dlg-ia").close(); toast("IA salva: " + nomeIA(j.efetiva) + "."); render();
+      }).catch(function (e) {
+        var er = $("ia-erro"); er.textContent = e && (e.status === 400 || e.status === 403) ? e.message : erroMsg(e); er.hidden = false;
+      }).then(function () { btn.disabled = !(IA.e && IA.e.pode_alterar); });
+    });
+  }
+
   /* ---------- dados ---------- */
   var carregando = null;
   function carregar() {
@@ -1236,6 +1389,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     API.get("/api/versao").then(function (j) {
       var mudou = !!j.analisando !== !!S.analisando;
       S.analisando = !!j.analisando;
+      var erroIA = j.ia_erro || null;
+      if (JSON.stringify(erroIA) !== JSON.stringify(S.iaErro || null)) { S.iaErro = erroIA; mudou = true; }
       if (S.offline || j.versao !== S.versao) carregar();
       else if (mudou) render();
     }).catch(function () { if (!S.offline) { S.offline = true; render(); } });
@@ -1246,8 +1401,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
 
   if (location.hash === "#relatorio") S.aba = "relatorio";
   bind();
+  bindIA();
   renderAgora();
   carregar();
+  carregarIA();
   API.get("/api/config").then(function (j) { S.configExiste = !!j.existe; render(); }).catch(function () {});
 })();
 </script>

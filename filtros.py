@@ -205,8 +205,8 @@ def salvar(entrada: dict) -> dict:
     """Grava os filtros no config.json, mantendo as outras chaves (perfil, fontes, titulo_excluir…)."""
     novos = validar(entrada)
     cfg = ler_config()
-    if not cfg and EXEMPLO.exists():
-        cfg = json.loads(EXEMPLO.read_text(encoding="utf-8"))
+    if not cfg.get("termos") and EXEMPLO.exists():  # ainda sem filtros (talvez só com "ia"): parte do exemplo
+        cfg = {**json.loads(EXEMPLO.read_text(encoding="utf-8")), **cfg}
     for k in LEGADOS:
         cfg.pop(k, None)
     cfg.update(novos)

@@ -45,15 +45,22 @@ vagas por você.
 | Buscar vagas | `python vagas.py buscar --gravar` | "busca vagas novas pra mim" |
 | Relatório e quadro | Sim | Sim |
 | Nota de aderência, encaixes, lacunas e alertas | Não | Sim |
-| Analisar vagas que você adicionou pelo link ou à mão | Não | Sim, sozinho em ~1 minuto se o Claude Code estiver instalado |
+| Analisar vagas que você adicionou pelo link ou à mão | Não | Sim, sozinho em ~1 minuto, com a IA escolhida no botão **IA** |
 | Perguntas pontuais na Gupy (vagas de uma empresa, vagas PCD, salário) | Não | Sim, pelo MCP público da Gupy |
 | Montar a configuração e o perfil | À mão | Guiado, a partir do seu currículo |
 | Gerar o currículo (.docx e PDF) | `python curriculo.py` com um JSON seu | Escrito e conferido com você, a partir do perfil |
 
-Para usar com IA você precisa do Claude Code, com uma assinatura Claude (Pro ou Max) ou
-uma chave de API da Anthropic. As skills que ensinam o Claude a fazer tudo isso já vêm
-neste repositório, em `.claude/skills/` (`buscar-vagas`, `consultar-gupy` e
-`gerar-curriculo`).
+A nota das vagas pode vir de várias IAs: escolha no botão **IA** do dashboard. Dá para usar
+o Claude Code (pela sua assinatura Claude Pro ou Max) ou uma chave de API da Anthropic,
+OpenAI, OpenRouter, Groq, DeepSeek, Gemini ou de outro serviço compatível com a API da
+OpenAI. No painel você escolhe o modelo, cola a chave, testa a conexão e vê os avisos: com
+chave, o uso é cobrado pelo provedor; modelos diferentes podem dar notas um pouco diferentes;
+e o seu perfil e o texto das vagas vão para o provedor escolhido. A chave fica só no arquivo
+`.env` deste computador e nunca volta para a página.
+
+As conversas (buscar vagas pelo chat, montar o currículo, consultar a Gupy) continuam no
+Claude Code: as skills que ensinam isso já vêm neste repositório, em `.claude/skills/`
+(`buscar-vagas`, `consultar-gupy` e `gerar-curriculo`).
 
 ## Como funciona
 
@@ -175,13 +182,16 @@ descrição gravada e anota no card que gerou o currículo. Os arquivos ficam em
 sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 
 > **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
-> Claude (Anthropic) para a análise. Sem IA, nada sai do seu computador além das
-> consultas aos portais e da leitura dos links que você adicionar.
+> provedor escolhido no botão **IA** (Anthropic, OpenAI, Google etc.) para a análise. Em
+> planos gratuitos, alguns provedores podem usar os dados enviados; confira os termos. Sem
+> IA, nada sai do seu computador além das consultas aos portais e da leitura dos links que
+> você adicionar.
 >
-> **Análise automática:** com o Claude Code instalado, o dashboard analisa sozinho as
-> vagas que você adiciona, usando a sua assinatura. O Claude roda sem nenhuma
-> ferramenta (não executa comandos nem abre sites): recebe o perfil e a vaga e só
-> devolve a nota. Para desligar, ponha `"analise_automatica": false` no `config.json`.
+> **Análise automática:** com uma IA escolhida (sem configurar nada, vale o Claude Code, se
+> estiver instalado), o dashboard analisa sozinho as vagas que você adiciona. A IA não
+> recebe ferramentas (não executa comandos nem abre sites): recebe o perfil e a vaga e só
+> devolve a nota, e o detalhe da vaga mostra qual IA deu a nota. Para desligar, escolha
+> **Sem IA** no painel.
 
 ## Configuração (`config.json`)
 
@@ -201,7 +211,8 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 | `resultados_por_termo` | Máximo de vagas por termo |
 | `titulo_excluir` | Descarta vagas cujo título tenha alguma dessas palavras (ex.: `estagio`) |
 | `titulo_incluir` | Se preenchido, só fica vaga cujo título tenha alguma dessas palavras |
-| `analise_automatica` | `false` desliga a análise automática das vagas adicionadas no dashboard (padrão: ligada se o Claude Code estiver instalado) |
+| `ia` | A IA escolhida no painel: `provedor` (`claude_code`, `anthropic`, `openai`, `openrouter`, `groq`, `deepseek`, `gemini`, `compativel` ou `nenhum`), `modelo` e, no `compativel`, `url_base`. Nunca guarda a chave, que fica no `.env` |
+| `analise_automatica` | Formato antigo: `false` equivale a "Sem IA" quando não há `ia` |
 
 Quase tudo isso se ajusta no painel **Filtros da busca** (aba Relatório de Vagas do
 dashboard), que grava o `config.json` por você. Vaga que fura algum filtro vai para a
@@ -216,7 +227,7 @@ continua funcionando. Opções pontuais, sem mexer no arquivo:
 - `config.json`, `perfil.md`, `anexos/`, `curriculos/`, `dash/dados/` e `.cache/` estão
   no `.gitignore` e não vão para o GitHub. O mesmo vale para `.liftli/` (o tom de voz
   das skills de LinkedIn), `linkedin/` (banners e imagens dos seus posts) e `.env`
-  (chaves de API, como a opcional do startup.jobs). Se você fizer um fork, o seu
+  (as chaves de API: as da IA, cadastradas pelo painel, e a opcional do startup.jobs). Se você fizer um fork, o seu
   histórico continua só com você.
 - Dica: mantenha a ferramenta na branch `master` e os seus ajustes pessoais numa
   branch local (por exemplo `minha`), trazendo as melhorias com `git merge master`.

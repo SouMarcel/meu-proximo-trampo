@@ -24,14 +24,17 @@ from urllib.parse import unquote, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
-import analise  # noqa: E402  (análise automática pelo Claude Code)
+import analise  # noqa: E402  (análise automática pela IA escolhida)
 import banco  # noqa: E402
 import filtros  # noqa: E402  (filtros.py, na raiz: lê e grava os filtros da busca no config.json)
+import ia  # noqa: E402  (ia.py, na raiz: provedores de IA)
+import segredos  # noqa: E402  (segredos.py, na raiz: chaves no .env)
 from fontes import link  # noqa: E402  (lê a vaga a partir do link)
 
 PAGINA = banco.DASH / "dashboard.html"
 PORTA_PADRAO = 8765
 LIMITE_CORPO = 1_000_000
+SO_LOCAL = "Só dá para mudar a IA no computador onde a ferramenta roda."
 
 
 def ip_da_rede() -> str | None:
@@ -105,6 +108,45 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("esperava um objeto JSON")
         return dados
 
+    def _local(self) -> bool:
+        """O pedido veio deste computador (não de outro aparelho da rede, com --rede)."""
+        return self.client_address[0] in ("127.0.0.1", "::1")
+
+    def _ia(self, metodo: str, caminho: str):
+        """Rotas de escrita do painel IA: só deste computador; mensagens sem chave."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL)
+        if metodo == "PUT" and caminho == "/api/ia":
+            corpo = self._corpo()
+            escolha = ia.validar_escolha(corpo)
+            chave = str(corpo.get("chave") or "").strip()
+            if chave:
+                variavel = ia.PROVEDORES[escolha["provedor"]]["variavel"]
+                if not variavel:
+                    raise ValueError("este provedor não usa chave")
+                segredos.gravar(variavel, chave)
+            ia.salvar_escolha(escolha)
+            if ia.disponivel():
+                analise.FILA.pedir()
+            return self._json(200, ia.estado_para_pagina(True, analise.FILA.erro()))
+        if metodo == "POST" and caminho == "/api/ia/testar":
+            corpo = self._corpo()
+            ok, mensagem = ia.testar(corpo, chave=str(corpo.get("chave") or "").strip() or None)
+            if ok and ia.disponivel():
+                analise.FILA.pedir()
+            return self._json(200, {"ok": ok, "mensagem": ia.mascarar(mensagem, str(corpo.get("chave") or ""))})
+        if metodo == "DELETE" and caminho.startswith("/api/ia/chave/"):
+            provedor = unquote(caminho[len("/api/ia/chave/"):])
+            variavel = ia.PROVEDORES.get(provedor, {}).get("variavel")
+            if not variavel:
+                return self._erro(404, "provedor sem chave")
+            segredos.remover(variavel)
+            estado = ia.estado_para_pagina(True, analise.FILA.erro())
+            if segredos.origem(variavel) == "ambiente":
+                estado["aviso"] = "Esta chave está definida nas variáveis de ambiente do sistema; remova-a por lá."
+            return self._json(200, estado)
+        return self._erro(404, "rota não encontrada")
+
     def _id_da_rota(self, caminho: str) -> str | None:
         prefixo = "/api/vagas/"
         if not caminho.startswith(prefixo):
@@ -134,6 +176,8 @@ class Handler(BaseHTTPRequestHandler):
                 vaga, nova = banco.criar_de_link(dados)
                 auto = nova and analise.precisa(vaga) and analise.FILA.pedir()
                 return self._json(201 if nova else 200, {"vaga": vaga, "nova": nova, "analise_automatica": auto})
+            if caminho == "/api/ia" or caminho.startswith("/api/ia/"):
+                return self._ia(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             vid = self._id_da_rota(caminho)
@@ -157,14 +201,17 @@ class Handler(BaseHTTPRequestHandler):
         if caminho in ("/", "/index.html"):
             return self._enviar(200, PAGINA.read_bytes(), "text/html; charset=utf-8")
         if caminho == "/api/versao":
-            return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando})
+            return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando,
+                                    "ia_erro": analise.FILA.erro()})
+        if caminho == "/api/ia":
+            return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
         if caminho == "/api/vagas":
             return self._json(200, {"versao": banco.versao(), "vagas": banco.listar_vagas()})
         if caminho == "/api/buscas/ultima":
             return self._json(200, {"busca": banco.ultima_busca()})
         if caminho == "/api/config":
             cfg = filtros.ler_config()
-            return self._json(200, {**self._config(filtros.efetivos(cfg)), "existe": bool(cfg)})
+            return self._json(200, {**self._config(filtros.efetivos(cfg)), "existe": bool(cfg.get("termos"))})
         if caminho == "/favicon.ico":
             return self._enviar(204, b"", "image/x-icon")
         return self._erro(404, "rota não encontrada")
@@ -255,8 +302,8 @@ def main() -> int:
     print(f"  Dados: {banco.ARQUIVO}")
     if copia:
         print(f"  Backup do dia: {copia.name}")
-    if analise.comando():
-        print("  Análise automática: ligada (Claude Code)")
+    if analise.ligada():
+        print(f"  Análise automática: ligada ({analise.descricao_ia()})")
         if any(analise.precisa(v) for v in banco.listar_vagas()):
             analise.FILA.pedir()  # vagas que ficaram esperando nota
     print("Feche esta janela (ou Ctrl+C) para parar.")

@@ -21,8 +21,8 @@ só entrega o arquivo.
 - **Adicionar Vaga:** cole o link. O servidor lê a vaga (Indeed e LinkedIn pelas APIs
   públicas; Gupy pelo MCP público de candidatos dela; startup.jobs pelo MCP público do
   site; outros sites pelos dados
-  estruturados JobPosting da página), grava no Relatório de Vagas e, se o Claude Code
-  estiver instalado, pede a análise em segundo plano (`analise.py`). Se a vaga já está
+  estruturados JobPosting da página), grava no Relatório de Vagas e, se houver uma IA ligada
+  (botão **IA**), pede a análise em segundo plano (`analise.py`). Se a vaga já está
   no dashboard, mesmo vinda de outro portal (link igual ao de candidatura de um cartão,
   ou mesmo cargo e empresa encontrados nos últimos 60 dias), avisa onde ela está e não
   duplica. Se não der para ler, o formulário abre com o que deu, para completar; dali
@@ -50,7 +50,7 @@ sozinha.
 |---|---|
 | `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/vagas/link` para adicionar pelo link, `/api/versao` com o aviso de análise em andamento, `/api/buscas/ultima`, `/api/config` para ler e gravar os filtros da busca). Só aceita pedidos da própria página. |
 | `banco.py` | Acesso ao SQLite e comandos `quadro`, `pendentes`, `analisar`, `vaga` (dados completos de uma vaga) e `anotar` (acrescenta uma linha às anotações). |
-| `analise.py` | Análise automática: roda `claude -p` sem ferramentas com o perfil, as regras de nota da skill e as vagas que esperam nota, e grava a resposta. Uma análise por vez. |
+| `analise.py` | Análise automática: manda à IA escolhida (`ia.py`, na raiz) o perfil, as regras de nota da skill e as vagas que esperam nota, em lotes de 10, e grava a resposta com o provedor e o modelo usados. Uma análise por vez; a última falha aparece na página. |
 | `dashboard.html` | A página. |
 | `abrir-dashboard.bat` / `.sh` | Atalhos para iniciar o servidor. |
 | `dados/` | `candidaturas.db` e `backup/` (uma cópia por dia, guarda as 10 últimas). Fora do Git. |

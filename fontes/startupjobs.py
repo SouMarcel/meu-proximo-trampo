@@ -17,21 +17,20 @@ vagas.py só pede para as vagas que vão para o relatório.
 from __future__ import annotations
 
 import json
-import os
 import re
 import time
 import unicodedata
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from urllib.parse import urlsplit
+
+import segredos  # segredos.py, na raiz: chaves do .env
 
 NOME = "startupjobs"
 PLATAFORMA = "Startup Jobs"
 URL_MCP = "https://api.startup.jobs/mcp"
 VAR_CHAVE = "MCP_STARTUP_JOBS"
-ENV = Path(__file__).resolve().parent.parent / ".env"
 LIMITE_DESCRICAO = 12000
 POR_PAGINA = 50  # máximo do servidor
 MAX_PAGINAS = 5  # a busca na cidade filtra aqui, página a página
@@ -76,13 +75,7 @@ def _sem_acento(s) -> str:
 
 def _chave() -> str:
     """Chave de API opcional: a variável de ambiente ou a linha dela no .env da raiz."""
-    chave = os.environ.get(VAR_CHAVE, "").strip()
-    if not chave and ENV.is_file():
-        for linha in ENV.read_text(encoding="utf-8", errors="replace").splitlines():
-            nome, sep, valor = linha.partition("=")
-            if sep and nome.strip().removeprefix("export ").strip() == VAR_CHAVE:
-                chave = valor.strip().strip("'\"")
-    return chave
+    return segredos.ler(VAR_CHAVE)
 
 
 def _avisos() -> list[str]:

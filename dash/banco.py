@@ -345,6 +345,12 @@ def validar_analise(a: dict) -> dict:
         limpos["moeda"] = moeda
     if a.get("fora_dos_criterios"):
         limpos["fora_dos_criterios"] = _texto(a["fora_dos_criterios"], 200)
+    provedor = str(a.get("analise_provedor") or "").strip()
+    if provedor:  # qual IA deu a nota (ia.PROVEDORES); vazio nas análises feitas pelo chat
+        if not re.match(r"^[a-z_]{1,32}$", provedor):
+            raise ValueError("analise_provedor inválido")
+        limpos["analise_provedor"] = provedor
+        limpos["analise_modelo"] = _texto(a.get("analise_modelo"), 120)
     return limpos
 
 

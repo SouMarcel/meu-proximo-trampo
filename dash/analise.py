@@ -1,20 +1,18 @@
-"""Análise automática das vagas que esperam nota, pelo Claude Code em segundo plano.
+"""Análise automática das vagas que esperam nota, pela IA escolhida (ia.py), em segundo plano.
 
-O servidor chama FILA.pedir() quando entra uma vaga pelo botão Adicionar Vaga (e ao
-iniciar, se houver vagas esperando). Se o comando `claude` estiver instalado e o
-config.json não tiver "analise_automatica": false, roda `claude -p` sem nenhuma
-ferramenta: o pedido já leva o perfil, os filtros, as regras de nota da skill
-buscar-vagas e o texto das vagas, e a resposta é só o JSON das análises, que este
-módulo grava com banco.aplicar_analises. Sem o Claude Code, as vagas ficam esperando
-até o usuário pedir a análise no chat.
+O servidor chama FILA.pedir() quando entra uma vaga pelo botão Adicionar Vaga, quando a IA é
+salva no painel e ao iniciar (se houver vagas esperando). Com IA disponível (ia.disponivel), o
+pedido leva o perfil, os filtros, as regras de nota da skill buscar-vagas e o texto das vagas, em
+lotes; a resposta é só o JSON das análises, que este módulo grava com banco.aplicar_analises junto
+com o provedor e o modelo que deram a nota. Sem IA, as vagas ficam esperando até o usuário pedir a
+análise no chat. A última falha (já sem chave) fica em FILA.erro() para a página mostrar.
 """
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 import sys
 import threading
+from datetime import datetime
 
 import banco
 
@@ -24,23 +22,40 @@ NL = chr(10)
 TEMPO_MAXIMO = 600
 LIMITE_PERFIL = 40000
 LIMITE_DESCRICAO = 12000
+LOTE = 10  # vagas por chamada (as APIs têm limite de tamanho)
+
+
+def _raiz():
+    if str(RAIZ) not in sys.path:
+        sys.path.insert(0, str(RAIZ))
 
 
 def _filtros():
-    if str(RAIZ) not in sys.path:
-        sys.path.insert(0, str(RAIZ))
+    _raiz()
     import filtros
     return filtros
 
 
-def comando() -> str | None:
-    """Caminho do `claude`, ou None se não houver ou se a análise automática estiver desligada."""
+def _ia():
+    _raiz()
+    import ia
+    return ia
+
+
+def ligada() -> bool:
+    """Há IA escolhida e pronta (com chave; no Claude Code, o comando instalado)."""
     try:
-        if _filtros().ler_config().get("analise_automatica") is False:
-            return None
+        return _ia().disponivel()
     except (OSError, ValueError):
-        pass
-    return shutil.which("claude")
+        return False
+
+
+def descricao_ia() -> str:
+    modulo = _ia()
+    escolha = modulo.escolha_efetiva()
+    nome = modulo.PROVEDORES[escolha["provedor"]]["nome"]
+    modelo = modulo.modelo_efetivo(escolha)
+    return f"{nome} · {modelo}" if modelo else nome
 
 
 def precisa(v: dict) -> bool:
@@ -107,30 +122,30 @@ def montar_pedido(vagas: list[dict]) -> str:
 
 
 def analisar(vagas: list[dict]) -> tuple[list[str], list[str]]:
-    """Roda o Claude Code para estas vagas e grava as análises. Devolve (ids gravados, problemas)."""
-    exe = comando()
-    if not exe or not vagas:
+    """Analisa estas vagas com a IA escolhida, em lotes, e grava. Devolve (ids gravados, problemas).
+    Falha da IA levanta ia.IAErro (mensagem legível e sem chave)."""
+    modulo = _ia()
+    if not vagas or not modulo.disponivel():
         return [], []
-    extra = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
-    r = subprocess.run(
-        [exe, "-p", "--output-format", "json", "--tools", "", "--strict-mcp-config",
-         "--disable-slash-commands", "--no-session-persistence"],
-        input=montar_pedido(vagas), capture_output=True, text=True, encoding="utf-8", errors="replace",
-        cwd=RAIZ, timeout=TEMPO_MAXIMO, **extra)
-    try:
-        saida = json.loads(r.stdout)
-    except ValueError:
-        raise RuntimeError(f"o claude não respondeu como esperado (código {r.returncode}): "
-                           f"{(r.stderr or r.stdout).strip()[-300:]}") from None
-    texto = str(saida.get("result") or "") if isinstance(saida, dict) else ""
-    if r.returncode != 0 or (isinstance(saida, dict) and saida.get("is_error")):
-        raise RuntimeError(f"o claude falhou: {texto[-300:] or r.stderr.strip()[-300:]}")
-    i, j = texto.find("["), texto.rfind("]")
-    if i < 0 or j < i:
-        raise RuntimeError("a resposta não trouxe o JSON das análises")
-    ids = {v["id"] for v in vagas}
-    analises = [a for a in json.loads(texto[i:j + 1]) if isinstance(a, dict) and str(a.get("id")) in ids]
-    return banco.aplicar_analises(analises)
+    escolha = modulo.escolha_efetiva()
+    marca = {"analise_provedor": escolha["provedor"], "analise_modelo": modulo.modelo_efetivo(escolha)}
+    gravadas, problemas = [], []
+    for i in range(0, len(vagas), LOTE):
+        lote = vagas[i:i + LOTE]
+        texto = modulo.responder(montar_pedido(lote), tempo=TEMPO_MAXIMO, escolha=escolha)
+        a, b = texto.find("["), texto.rfind("]")
+        if a < 0 or b < a:
+            raise modulo.IAErro("a resposta da IA não trouxe o JSON das análises")
+        try:
+            lista = json.loads(texto[a:b + 1])
+        except ValueError:
+            raise modulo.IAErro("a resposta da IA veio com um JSON inválido") from None
+        ids = {v["id"] for v in lote}
+        analises = [{**x, **marca} for x in lista if isinstance(x, dict) and str(x.get("id")) in ids]
+        ok, erros = banco.aplicar_analises(analises)
+        gravadas += ok
+        problemas += erros
+    return gravadas, problemas
 
 
 class Fila:
@@ -141,10 +156,15 @@ class Fila:
         self._pedido = False
         self._thread: threading.Thread | None = None
         self.rodando = False
+        self.ultimo_erro: dict | None = None
+
+    def erro(self) -> dict | None:
+        """Motivo e hora da última rodada que falhou (None depois de uma rodada boa)."""
+        return self.ultimo_erro
 
     def pedir(self) -> bool:
-        """Agenda a análise das vagas que esperam nota. Devolve False se não há Claude Code."""
-        if comando() is None:
+        """Agenda a análise das vagas que esperam nota. Devolve False se não há IA ligada."""
+        if not ligada():
             return False
         with self._trava:
             self._pedido = True
@@ -169,10 +189,13 @@ class Fila:
             self.rodando = True
             try:
                 ok, problemas = analisar(pendentes)
+                self.ultimo_erro = None
                 print(f"[análise automática] {len(ok)} vaga(s) analisada(s)"
                       + (f"; problemas: {'; '.join(problemas)}" if problemas else ""))
-            except Exception as e:  # nunca derruba o servidor; a vaga fica esperando a análise manual
-                print(f"[análise automática] não rodou: {e}", file=sys.stderr)
+            except Exception as e:  # nunca derruba o servidor; a vaga fica esperando a próxima tentativa
+                motivo = _ia().mascarar(str(e)) or "falha desconhecida"
+                self.ultimo_erro = {"motivo": motivo, "em": datetime.now().isoformat(timespec="minutes")}
+                print(f"[análise automática] não rodou: {motivo}", file=sys.stderr)
             finally:
                 self.rodando = False
 

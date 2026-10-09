@@ -183,8 +183,9 @@ servidor; ele só serve para ver e mexer no quadro.
 
 Entram aqui as vagas adicionadas pelo botão "Adicionar Vaga" (qualquer portal) e as
 gravadas por uma busca sem IA (`--gravar` ou `--sem-avaliacao`) que o usuário ainda
-não descartou. Com o Claude Code instalado, o próprio dashboard já analisa sozinho as
-vagas adicionadas que têm descrição (`dash/analise.py`); sobram para este fluxo as que
+não descartou. Com uma IA ligada no painel IA do dashboard (sem configurar nada, vale o
+Claude Code instalado), o próprio dashboard já analisa sozinho as vagas adicionadas que
+têm descrição (`dash/analise.py`); sobram para este fluxo as que
 só têm o link e as que a análise automática não conseguiu fazer. Vaga do relatório
 (`origem` `link` ou `busca`) que furar os filtros vai para Fora dos critérios ao gravar
 a análise, como na busca.
