@@ -47,7 +47,7 @@ vagas por você.
 | Nota de aderência, encaixes, lacunas e alertas | Não | Sim |
 | Analisar vagas que você adicionou pelo link ou à mão | Não | Sim, sozinho em ~1 minuto, com a IA escolhida no botão **IA** |
 | Perguntas pontuais na Gupy (vagas de uma empresa, vagas PCD, salário) | Não | Sim, pelo MCP público da Gupy |
-| Montar a configuração e o perfil | À mão | Guiado, a partir do seu currículo |
+| Montar o perfil e os filtros da busca | Pela página (**Meu perfil**), com o texto dos seus arquivos ao lado | Pela página ou pelo chat: a IA propõe o rascunho a partir do currículo e do LinkedIn |
 | Gerar o currículo (.docx e PDF) | `python curriculo.py` com um JSON seu | Escrito e conferido com você, a partir do perfil |
 
 A nota das vagas pode vir de várias IAs: escolha no botão **IA** do dashboard. Dá para usar
@@ -60,8 +60,8 @@ e o seu perfil e o texto das vagas vão para o provedor escolhido. A chave fica 
 
 As conversas (buscar vagas pelo chat, montar o currículo, consultar a Gupy) funcionam no
 Claude Code e em outros assistentes de código (Codex, Gemini CLI/Antigravity, OpenCode): as
-skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`buscar-vagas`,
-`consultar-gupy` e `gerar-curriculo`), e as instruções comuns no `AGENTS.md`. Veja
+skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`analisar-perfil`,
+`buscar-vagas`, `consultar-gupy` e `gerar-curriculo`), e as instruções comuns no `AGENTS.md`. Veja
 [Usar com outros assistentes](#usar-com-outros-assistentes).
 
 ## Como funciona
@@ -92,8 +92,10 @@ python iniciar.py
 Se o Windows não reconhecer `python`, use `py iniciar.py`, ou dê dois cliques em
 `iniciar.bat`.
 
-Na primeira vez, o comando explica o que vai instalar e pergunta antes. Tudo fica na pasta
-`.venv/`, dentro do projeto; nada é instalado fora dela. Depois ele abre a ferramenta no
+Na primeira vez, o comando explica o que vai instalar e pergunta antes: python-jobspy (busca),
+python-docx (currículo) e pypdf (leitura dos PDFs nos primeiros passos). Tudo fica na pasta
+`.venv/`, dentro do projeto; nada é instalado fora dela. Quem já usava a ferramenta roda o mesmo
+comando depois de atualizar: ele percebe o que falta e pergunta antes de instalar. Depois ele abre a ferramenta no
 navegador. Nas próximas vezes, o mesmo comando abre em segundos, sem perguntar nada; se a
 ferramenta já estiver aberta, ele só mostra a página.
 
@@ -103,9 +105,33 @@ ficam salvos.
 Opções: `--sim` (instala sem perguntar), `--sem-navegador`, `--rede` (acesso pelo celular no
 mesmo Wi-Fi) e `--porta 8766`. Ajuda: `python iniciar.py --help`.
 
-Na primeira abertura, o **Relatório de Vagas** pede para você escolher os cargos e o local em
-**Filtros da busca**. Com IA, dá para fazer isso conversando: abra a pasta no Claude Code e
-peça "quero configurar a busca de vagas".
+### Primeiros passos
+
+Na primeira abertura, a página abre os **primeiros passos** (depois, pelo botão **Meu perfil**).
+Você envia o que já tem e a ferramenta monta com você o seu perfil de carreira, a base da nota
+de aderência:
+
+1. **IA**: escolha a IA ou siga sem ela.
+2. **Materiais**: currículo em PDF ou Word (.docx), o PDF do seu perfil do LinkedIn (**Mais →
+   Salvar como PDF**) e/ou a exportação de dados do LinkedIn (o ZIP de **Configurações e
+   privacidade → Privacidade de dados → Obter uma cópia dos seus dados**), até 10 MB cada, ou
+   texto colado. O link do seu LinkedIn entra só como contato: a ferramenta não abre o LinkedIn.
+3. **Rascunho**: com IA, o perfil proposto, com a fonte de cada item; quando os arquivos
+   discordam (uma data, um cargo), você escolhe o valor certo. Sem IA, entra o que a exportação
+   do LinkedIn tiver, e o texto dos arquivos fica ao lado para você copiar.
+4. **Perguntas**, uma por vez: cargos (em português e inglês), senioridade, modelo de trabalho,
+   cidade, pretensão, o que não aceita, a maior conquista dos últimos cargos e como foi medida
+   (número só se você tiver certeza), ferramentas, idiomas e, se quiser, trabalho no exterior
+   (remoto, morar fora, passaporte, visto, patrocínio de visto, fuso e forma de contratação).
+5. **Diagnóstico** do que falta ou está fraco, com a pergunta que completa cada ponto.
+6. **Revisão**: você edita o texto e só então grava. Com perfil existente, a página mostra antes
+   o que muda, e a versão anterior fica em `anexos/perfis-anteriores/`.
+7. **Filtros da busca** propostos a partir das respostas, que você confere antes de gravar.
+
+Dá para parar e continuar depois. CPF, RG e data de nascimento são retirados do texto antes de
+qualquer envio à IA e nunca entram no perfil. Aberta de outro aparelho (`--rede`), a página só
+mostra: enviar arquivos e gravar ficam no computador onde a ferramenta roda. Pelo chat, a skill
+`analisar-perfil` faz o mesmo.
 
 ### Instalação manual (alternativa)
 
@@ -151,12 +177,12 @@ Algumas buscas por semana bastam.
 
 1. Instale o [Claude Code](https://claude.com/claude-code) e abra esta pasta nele (no
    terminal, `claude`; ou pela extensão do VS Code).
-2. Na primeira vez, deixe o seu currículo ou o PDF do seu LinkedIn na pasta `anexos/` e
-   peça **"quero configurar a busca de vagas"**. O Claude cria o `config.json` com você
-   e monta o `perfil.md` a partir desse material. Esse perfil é a base da nota de
-   aderência; veja o modelo em `perfil.exemplo.md`. A pasta `anexos/` serve para
-   qualquer arquivo que você queira passar ao Claude (o texto de uma vaga, um retorno
-   de recrutador…).
+2. Na primeira vez, monte o perfil pelos [primeiros passos](#primeiros-passos) da página
+   ou pelo chat: deixe o seu currículo ou o PDF do seu LinkedIn na pasta `anexos/` e peça
+   **"monta meu perfil"**. Esse perfil é a base da nota de aderência; veja o modelo em
+   `perfil.exemplo.md`. Para os filtros, use o painel **Filtros da busca** ou peça "quero
+   configurar a busca de vagas". A pasta `anexos/` serve para qualquer arquivo que você
+   queira passar ao Claude (o texto de uma vaga, um retorno de recrutador…).
 3. No dia a dia:
    - "busca vagas novas pra mim"
    - "busca vagas de product owner dos últimos 3 dias, pode ser híbrido"
@@ -234,7 +260,7 @@ funcionar, abra uma issue.
 
 | Campo | O que é |
 |---|---|
-| `perfil` | Arquivo do seu perfil de carreira (usado só pela IA). Padrão: `perfil.md` |
+| `perfil` | Arquivo do seu perfil de carreira (usado pela IA; montado nos primeiros passos). Padrão: `perfil.md` |
 | `fontes` | Portais onde buscar: `indeed`, `gupy` e `startupjobs` (padrão: `indeed` e `gupy`). O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos |
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
@@ -262,7 +288,9 @@ continua funcionando. Opções pontuais, sem mexer no arquivo:
 - Vagas e candidaturas: `dash/dados/candidaturas.db` (SQLite), com uma cópia de
   segurança por dia em `dash/dados/backup/`.
 - `config.json`, `perfil.md`, `anexos/`, `curriculos/`, `dash/dados/` e `.cache/` estão
-  no `.gitignore` e não vão para o GitHub. O mesmo vale para `.liftli/` (o tom de voz
+  no `.gitignore` e não vão para o GitHub. Os primeiros passos guardam os arquivos enviados
+  em `anexos/primeiros-passos/`, as versões anteriores do perfil em
+  `anexos/perfis-anteriores/` e o progresso em `.cache/primeiros-passos.json`. O mesmo vale para `.liftli/` (o tom de voz
   das skills de LinkedIn), `linkedin/` (banners e imagens dos seus posts) e `.env`
   (as chaves de API: as da IA, cadastradas pelo painel, e a opcional do startup.jobs). Se você fizer um fork, o seu
   histórico continua só com você.

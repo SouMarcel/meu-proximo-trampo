@@ -169,6 +169,47 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .aviso-ia { border-left-color: var(--bad); }
 .btn-ia-mini { padding: 2px 10px; margin-left: 6px; font-size: 12px; }
 
+/* Primeiros passos (perfil a partir do currículo e do LinkedIn; nada é gravado sem confirmação) */
+#dlg-perfil { width: min(980px, calc(100vw - 32px)); }
+.pf-passos { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-passo { border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; padding: 4px 12px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.pf-passo:hover { color: var(--fg); }
+.pf-passo[aria-current="step"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.pf-drop { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; padding: 22px 16px; border: 1px dashed var(--line-strong); border-radius: 12px; cursor: pointer; }
+.pf-drop:hover, .pf-drop[data-sobre] { border-color: var(--accent); background: var(--col); }
+.pf-drop span { color: var(--muted); font-size: 13px; }
+.pf-mats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pf-mats li { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.pf-mats li > div { min-width: 0; overflow-wrap: anywhere; }
+.pf-tipo, .pf-fonte { display: inline-block; border: 1px solid var(--line-strong); border-radius: 999px; padding: 0 8px; font-size: 11.5px; color: var(--muted); }
+.pf-fonte { font-family: var(--font-mono); font-size: 10.5px; color: var(--faint); }
+.pf-aviso { margin: 4px 0 0; color: var(--warn); font-size: 13px; }
+.pf-texto { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 12px; color: var(--muted); max-height: 260px; overflow-y: auto; margin: 6px 0 0; }
+.pf-sec ul, .pf-lista { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.pf-sec p { margin: 6px 0 2px; }
+.pf-conf { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.pf-conf legend { font-weight: 700; padding: 0 4px; }
+.pf-n { margin: 0; color: var(--muted); font-size: 12.5px; }
+.field .pf-perg { font-size: 15px; color: var(--fg); }
+.pf-opcoes { display: flex; flex-direction: column; gap: 8px; }
+.pf-diag { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pf-diag li { padding: 8px 10px; border-left: 3px solid var(--info); background: var(--col); border-radius: 0 8px 8px 0; }
+.pf-diag li[data-tipo="falta"] { border-left-color: var(--bad); }
+.pf-diag li[data-tipo="fraco"] { border-left-color: var(--warn); }
+.pf-contato { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pf-rev { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
+.pf-rev .field textarea { min-height: 420px; font-family: var(--font-mono); font-size: 12.5px; }
+.pf-apoio { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pf-apoio h3 { margin: 0; font-size: 11.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.pf-apoio summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.pf-dif { margin: 0; font-family: var(--font-mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow-y: auto; }
+.pf-dif .mais { color: var(--good); }
+.pf-dif .menos { color: var(--bad); }
+@media (max-width: 720px) {
+  .pf-rev, .pf-contato { grid-template-columns: 1fr; }
+  .pf-rev .field textarea { min-height: 300px; }
+}
+
 /* Painel IA (provedor, modelo e chave; a chave nunca volta para a página) */
 #dlg-ia { width: min(620px, calc(100vw - 32px)); }
 .ia-avisos { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
@@ -309,6 +350,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       <button class="icon-btn" id="v-quadro" aria-pressed="true" aria-label="Ver em quadro" title="Quadro">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       </button>
+      <button class="btn-plain" id="btn-perfil" title="Montar ou atualizar o seu perfil a partir do currículo e do LinkedIn">Meu perfil</button>
       <button class="btn-plain" id="btn-ia" title="Escolher a IA que dá as notas às vagas">IA</button>
       <button class="btn-primary" id="btn-add">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
@@ -442,6 +484,22 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       <button type="submit" class="btn-primary" id="ia-salvar">Salvar</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="dlg-perfil" aria-labelledby="pf-titulo">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div>
+        <h2 id="pf-titulo">Primeiros passos</h2>
+        <p>O seu perfil de carreira a partir do que você já tem. Nada é gravado sem você conferir e confirmar.</p>
+      </div>
+      <button type="button" class="more" data-pf="fechar" aria-label="Fechar">✕</button>
+    </div>
+    <nav class="pf-passos" id="pf-passos" aria-label="Etapas"></nav>
+    <div class="fb" id="pf-corpo"></div>
+    <p class="fb-erro" id="pf-erro" role="alert" hidden></p>
+    <div class="dlg-foot" id="pf-pe"></div>
+  </div>
 </dialog>
 
 <script>
@@ -906,7 +964,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function fecharMenu() { $("menu").hidden = true; S.menuFor = null; }
 
   /* ---------- filtros da busca (config.json, pelo servidor) ---------- */
-  var FB = { d: null, op: null }; // rascunho dos filtros e opções do servidor
+  var FB = { d: null, op: null, depois: null }; // rascunho dos filtros, opções do servidor e o que fazer depois de salvar
   function semAcento(s) {
     return String(s || "").normalize("NFD").split("").filter(function (c) { var k = c.charCodeAt(0); return k < 768 || k > 879; }).join("").toLowerCase();
   }
@@ -917,13 +975,13 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (m.remoto && d.internacional.ativo) n += d.internacional.paises.length * (d.internacional.termos.length || t);
     return n;
   }
-  function abrirFiltros() {
-    FB.d = null;
+  function abrirFiltros(proposta, depois) { // proposta: filtros sugeridos pelos primeiros passos (em vez dos atuais)
+    FB.d = null; FB.depois = typeof depois === "function" ? depois : null;
     $("fb-erro").hidden = true; $("fb-conta").textContent = ""; $("fb-salvar").disabled = true;
     $("fb-corpo").innerHTML = '<p class="hint">Carregando…</p>';
     if (!$("dlg-filtros").open) $("dlg-filtros").showModal();
     API.get("/api/config").then(function (j) {
-      FB.op = j.opcoes; FB.d = JSON.parse(JSON.stringify(j.filtros));
+      FB.op = j.opcoes; FB.d = JSON.parse(JSON.stringify(proposta || j.filtros));
       montarFiltros(); $("fb-salvar").disabled = !S.canWrite;
     }).catch(function (e) { $("fb-corpo").innerHTML = '<p class="banner">Não foi possível ler os filtros: ' + esc(erroMsg(e)) + "</p>"; });
   }
@@ -1069,6 +1127,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       var btn = $("fb-salvar"); btn.disabled = true; $("fb-erro").hidden = true;
       API.send("PUT", "/api/config", FB.d).then(function () {
         S.configExiste = true; $("dlg-filtros").close(); toast("Filtros salvos. Valem a partir da próxima busca."); render();
+        if (FB.depois) { var depois = FB.depois; FB.depois = null; depois(); }
       }).catch(function (e) {
         var er = $("fb-erro"); er.textContent = e && e.status === 400 ? e.message : erroMsg(e); er.hidden = false;
       }).then(function () { btn.disabled = !S.canWrite; });
@@ -1370,6 +1429,430 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     });
   }
 
+  /* ---------- primeiros passos (perfil a partir do currículo e do LinkedIn; nada é gravado sem confirmação) ---------- */
+  var PASSOS = [
+    { k: "ia", label: "IA" }, { k: "materiais", label: "Materiais" }, { k: "rascunho", label: "Rascunho" },
+    { k: "conflitos", label: "Conflitos" }, { k: "anamnese", label: "Perguntas" }, { k: "diagnostico", label: "Diagnóstico" },
+    { k: "revisao", label: "Revisão" }, { k: "filtros", label: "Filtros" }
+  ];
+  var TIPOS_MATERIAL = { curriculo_pdf: "Currículo (PDF)", curriculo_docx: "Currículo (Word)", linkedin_pdf: "LinkedIn (PDF do perfil)",
+    linkedin_zip: "LinkedIn (exportação de dados)", texto: "Texto colado" };
+  var SECOES_PERFIL = [["objetivo", "Objetivo"], ["resumo", "Resumo"], ["formacao", "Formação"], ["certificacoes", "Certificações"],
+    ["habilidades", "Habilidades"], ["idiomas", "Idiomas"]];
+  var CONTATOS = [["email", "E-mail", "emails"], ["telefone", "Telefone", "telefones"], ["linkedin", "LinkedIn", "linkedin"]];
+  // e: estado do servidor; q: pergunta atual; prev: prévia (diagnóstico, textos, diferenças); md: o texto em revisão
+  var PF = { e: null, etapa: "ia", q: 0, prev: null, md: null, editado: false, sujo: false, dica: "", confirmar: false, filtros: null, ocupado: false };
+
+  function pfSo() { return !!PF.e && !PF.e.pode_alterar; }  // aberta de outro aparelho (--rede): só leitura
+  function pfErro(msg) { var er = $("pf-erro"); er.textContent = msg || ""; er.hidden = !msg; }
+  function pfFalha(e) { pfErro(e && (e.status === 400 || e.status === 403) ? e.message : erroMsg(e)); }
+  function pfTok(s) { return String(s == null ? "" : s).replace(/\{\{conflito:(\d+)\}\}/g, function (m, n) { return "⚠ conflito " + (+n + 1); }); }
+  function pfFonte(f) { return f ? ' <span class="pf-fonte" title="De onde veio">' + esc(f) + "</span>" : ""; }
+  function pfItens(l) { return l && l.length ? "<ul>" + l.map(function (i) { return "<li>" + esc(pfTok(i.texto)) + pfFonte(i.fonte) + "</li>"; }).join("") + "</ul>" : ""; }
+  function pfPeriodo(x) { return x.inicio || x.fim ? "(" + pfTok(x.inicio || "?") + "–" + pfTok(x.fim || "atual") + ")" : ""; }
+  function pfGuardarTexto() { try { if (PF.editado) localStorage.setItem("pf.md", PF.md); else localStorage.removeItem("pf.md"); } catch (e) {} }
+  function pfCarregar() { return API.get("/api/perfil/estado").then(function (j) { PF.e = j; return j; }); }
+  function pfSalvar(corpo) {  // grava no progresso (respostas, escolhas, contato); a revisão precisa remontar
+    return API.send("PUT", "/api/perfil/progresso", corpo).then(function (j) { PF.e = j; PF.sujo = true; PF.prev = null; return j; });
+  }
+  function abrirPerfil() {
+    pfErro("");
+    pfCarregar().then(function (j) {
+      PF.etapa = j.etapa; PF.q = 0; PF.prev = null; PF.confirmar = false; PF.filtros = null; PF.dica = ""; PF.sujo = false;
+      PF.md = null; PF.editado = false;
+      try { var g = localStorage.getItem("pf.md"); if (g) { PF.md = g; PF.editado = true; } } catch (e) {}
+      montarPerfil();
+      if (!$("dlg-perfil").open) $("dlg-perfil").showModal();
+    }).catch(function (e) { toast(erroMsg(e), true); });
+  }
+  function pfIr(etapa) {
+    PF.etapa = etapa; PF.confirmar = false; pfErro("");
+    if (etapa === "diagnostico") PF.prev = null;
+    if (etapa === "filtros") PF.filtros = null;
+    if (etapa !== "revisao") PF.dica = "";
+    if (!pfSo()) API.send("PUT", "/api/perfil/progresso", { etapa: etapa }).then(function (j) { PF.e = j; }).catch(function () {});
+    montarPerfil();
+    $("pf-corpo").scrollTop = 0;
+  }
+  function pfPrevia(md, substituir) {
+    return API.send("POST", "/api/perfil/previa", md == null ? {} : { markdown: md }).then(function (j) {
+      PF.prev = j;
+      if (substituir || PF.md == null) { PF.md = j.markdown; PF.editado = false; PF.sujo = false; pfGuardarTexto(); }
+      montarPerfil(); return j;
+    }).catch(function (e) { pfFalha(e); return null; });
+  }
+  function carregandoPf(msg) { return { corpo: '<p class="ia-status">' + esc(msg) + "</p>", pe: "" }; }
+  function botaoIr(etapa, rotulo, primario) { return '<button type="button" class="' + (primario ? "btn-primary" : "btn-plain") + '" data-pf-ir="' + etapa + '">' + esc(rotulo) + "</button>"; }
+
+  function montarPerfil() {
+    var e = PF.e, et = PF.etapa;
+    $("pf-titulo").textContent = e.existe_perfil ? "Meu perfil" : "Primeiros passos";
+    $("pf-passos").innerHTML = PASSOS.map(function (p) {
+      return '<button type="button" class="pf-passo" data-pf-ir="' + p.k + '"' + (p.k === et ? ' aria-current="step"' : "") + ">" + esc(p.label) + "</button>";
+    }).join("");
+    var f = { ia: pfIA, materiais: pfMateriais, rascunho: pfRascunho, conflitos: pfConflitos, anamnese: pfAnamnese,
+      diagnostico: pfDiagnostico, revisao: pfRevisao, filtros: pfFiltros, concluido: pfConcluido }[et] || pfIA;
+    var r = f();
+    $("pf-corpo").innerHTML = r.corpo + (pfSo() ? '<p class="fb-erro">Só dá para enviar arquivos e gravar no computador onde a ferramenta roda.</p>' : "");
+    $("pf-pe").innerHTML = (et !== "concluido" ? '<button type="button" class="btn-danger" data-pf="recomecar" data-escreve>Recomeçar</button>' : "") + r.pe;
+    if (pfSo()) document.querySelectorAll("#dlg-perfil [data-escreve]").forEach(function (b) { b.disabled = true; });
+  }
+
+  function pfIA() {
+    var nome = !IA.e ? "…" : IA.e.efetiva === "nenhum" ? "nenhuma (seguir sem IA)" :
+      nomeIA(IA.e.efetiva) + (IA.e.modelo_efetivo ? " · " + IA.e.modelo_efetivo : "") + (IA.e.disponivel ? "" : " (falta a chave)");
+    return {
+      corpo: "<p>Vamos montar o seu perfil de carreira a partir do que você já tem (currículos e LinkedIn) e de algumas perguntas. " +
+        "O perfil é a base da nota de aderência das vagas. Nada é gravado sem você conferir e confirmar; dá para parar e continuar depois.</p>" +
+        '<section class="fb-sec"><h3>IA</h3><p class="ia-status">IA escolhida: <b>' + esc(nome) + "</b>" +
+        '<button type="button" class="btn-plain btn-ia-mini" data-pf="ia">Trocar</button></p><ul class="ia-avisos">' +
+        "<li>Com IA, ela lê os seus materiais e propõe um rascunho do perfil, mostrando de onde veio cada item.</li>" +
+        "<li>Sem IA, você monta o perfil com o texto dos materiais ao lado; o que vier da exportação do LinkedIn já entra preenchido.</li>" +
+        "<li>CPF, RG e data de nascimento são retirados antes de qualquer envio e nunca entram no perfil.</li></ul></section>",
+      pe: botaoIr("materiais", "Continuar", true)
+    };
+  }
+
+  function pfMateriais() {
+    var ms = PF.e.materiais, ct = PF.e.contato || {};
+    var lista = ms.length ? '<ul class="pf-mats">' + ms.map(function (m) {
+      return "<li><div><b>" + esc(m.nome) + '</b> <span class="pf-tipo">' + esc(TIPOS_MATERIAL[m.tipo] || m.tipo) + "</span>" +
+        (m.avisos.length ? '<p class="pf-aviso">' + m.avisos.map(esc).join("<br>") + "</p>" : "") +
+        (m.trecho ? '<details><summary class="hint">Texto lido</summary><pre class="pf-texto">' + esc(m.trecho) + (m.trecho.length >= 600 ? "…" : "") + "</pre></details>" : "") +
+        '</div><button type="button" class="btn-plain btn-ia-mini" data-pf="remover" data-id="' + esc(m.id) + '" data-escreve>Remover</button></li>';
+    }).join("") + "</ul>" : '<p class="hint">Nenhum material ainda.</p>';
+    return {
+      corpo: '<section class="fb-sec"><h3>Arquivos</h3>' +
+        '<label class="pf-drop" id="pf-drop"><input type="file" id="pf-arquivo" accept=".pdf,.docx,.zip" multiple data-escreve hidden>' +
+        "<b>Escolher ou arrastar arquivos</b><span>Currículo em PDF ou Word (.docx), o PDF do seu perfil do LinkedIn ou o ZIP da exportação de dados do LinkedIn. Até 10 MB cada.</span></label>" +
+        '<details><summary class="hint">Como baixar do LinkedIn</summary><ul class="ia-avisos">' +
+        "<li><b>PDF do perfil</b>: abra o seu perfil, clique em <i>Mais</i> e depois em <i>Salvar como PDF</i>.</li>" +
+        "<li><b>Exportação de dados</b> (mais completa): <i>Eu → Configurações e privacidade → Privacidade de dados → Obter uma cópia dos seus dados</i>. O LinkedIn manda o ZIP por e-mail.</li>" +
+        "<li>A ferramenta não abre o LinkedIn: lê só os arquivos que você enviar. Eles ficam na pasta anexos, neste computador.</li></ul></details>" +
+        lista + "</section>" +
+        '<section class="fb-sec"><h3>Ou cole um texto</h3><div class="field"><label for="pf-colar">Texto do currículo ou do perfil</label>' +
+        '<textarea id="pf-colar" maxlength="60000" data-escreve></textarea></div>' +
+        '<div class="add-row"><button type="button" class="btn-plain" data-pf="colar" data-escreve>Adicionar texto</button></div></section>' +
+        '<section class="fb-sec"><h3>Link do seu LinkedIn (opcional)</h3><div class="field"><label for="pf-linkedin">Endereço do perfil</label>' +
+        '<input id="pf-linkedin" maxlength="200" autocomplete="off" spellcheck="false" placeholder="linkedin.com/in/seu-nome" value="' + esc(ct.linkedin || "") + '" data-escreve></div>' +
+        '<p class="hint">Entra só como contato no perfil. A ferramenta não abre a página.</p></section>',
+      pe: botaoIr("ia", "Voltar") + '<button type="button" class="btn-primary" data-pf="materiais-ok">' + (ms.length ? "Continuar" : "Continuar sem materiais") + "</button>"
+    };
+  }
+  function pfEnviarArquivos(files) {
+    var seq = Promise.resolve();
+    Array.prototype.slice.call(files || []).forEach(function (f) {
+      seq = seq.then(function () {
+        if (f.size > 10 * 1024 * 1024) { toast(f.name + ": arquivo grande demais (o limite é 10 MB).", true); return; }
+        return new Promise(function (ok, falha) {
+          var r = new FileReader();
+          r.onload = function () { ok(String(r.result).replace(/^data:[^,]*,/, "")); };
+          r.onerror = function () { falha(new Error("não deu para ler o arquivo")); };
+          r.readAsDataURL(f);
+        }).then(function (b64) {
+          toast("Lendo " + f.name + "…");
+          return API.send("POST", "/api/perfil/material", { nome: f.name, base64: b64 });
+        }).then(function (j) {
+          PF.e = j.estado; PF.etapa = "materiais"; montarPerfil();
+          toast(f.name + " lido" + (j.material.avisos.length ? ", com aviso." : "."), j.material.avisos.length > 0);
+        }).catch(function (e) { toast(f.name + ": " + (e && (e.status === 400 || e.status === 403) ? e.message : erroMsg(e)), true); });
+      });
+    });
+    return seq;
+  }
+
+  function pfRascunho() {
+    var r = PF.e.rascunho, comIA = PF.e.ia_disponivel, corpo;
+    var acoes = '<div class="add-row">' + (comIA ? '<button type="button" class="btn-primary" data-pf="rascunho" data-escreve>' +
+      (r ? "Gerar de novo com IA" : "Gerar rascunho com IA") + "</button>" : "") +
+      '<button type="button" class="btn-plain" data-pf="rascunho-sem-ia" data-escreve>' + (r && !comIA ? "Montar de novo" : "Montar sem IA") + "</button></div>";
+    if (PF.ocupado) corpo = '<p class="ia-status">Gerando o rascunho… pode levar até 2 minutos.</p>';
+    else if (!r) corpo = "<p>" + (comIA ? "A IA lê os seus materiais e propõe o perfil, mostrando de onde veio cada item. Ela não inventa: o que não estiver nos materiais fica para as perguntas." :
+      "Sem IA disponível: o rascunho traz o que a exportação do LinkedIn tiver; o resto você completa nas perguntas e na revisão, com o texto dos materiais ao lado.") + "</p>" + acoes;
+    else {
+      corpo = '<p class="hint">' + (r.origem === "sem_ia" ? "Montado sem IA: só o que veio da exportação do LinkedIn. O resto você completa nas perguntas e na revisão." :
+        "Cada item mostra de onde veio. O que estiver errado você corrige na revisão.") + "</p>";
+      SECOES_PERFIL.forEach(function (s) { if ((r[s[0]] || []).length) corpo += '<section class="fb-sec pf-sec"><h3>' + s[1] + "</h3>" + pfItens(r[s[0]]) + "</section>"; });
+      if (r.experiencias.length) corpo += '<section class="fb-sec pf-sec"><h3>Experiência</h3>' + r.experiencias.map(function (x) {
+        return "<p><b>" + esc(pfTok([x.cargo, x.empresa].filter(Boolean).join(" — "))) + "</b> " + esc(pfPeriodo(x)) + pfFonte(x.fonte) + "</p>" + pfItens(x.itens);
+      }).join("") + "</section>";
+      if (!SECOES_PERFIL.some(function (s) { return (r[s[0]] || []).length; }) && !r.experiencias.length) corpo += '<p class="hint">Nada encontrado nos materiais. Siga para as perguntas.</p>';
+      if (r.conflitos.length) corpo += '<p class="aviso-config">' + r.conflitos.length + (r.conflitos.length > 1 ? " pontos em que as fontes discordam" : " ponto em que as fontes discordam") + ": você escolhe no próximo passo.</p>";
+      corpo += acoes;
+    }
+    return { corpo: corpo, pe: botaoIr("materiais", "Voltar") + '<button type="button" class="btn-primary" data-pf-ir="' + (r && r.conflitos.length ? "conflitos" : "anamnese") + '"' +
+      (r && !PF.ocupado ? "" : " disabled") + ">Continuar</button>" };
+  }
+  function pfGerar(semIA) {
+    PF.ocupado = true; pfErro(""); montarPerfil();
+    API.send("POST", "/api/perfil/rascunho", { sem_ia: !!semIA }).then(function (j) { PF.e = j; PF.sujo = true; PF.prev = null; })
+      .catch(pfFalha).then(function () { PF.ocupado = false; PF.etapa = "rascunho"; montarPerfil(); });
+  }
+
+  function pfConflitos() {
+    var cf = (PF.e.rascunho && PF.e.rascunho.conflitos) || [];
+    var corpo = !cf.length ? '<p class="hint">As fontes não discordam em nada.</p>' :
+      '<p class="hint">As fontes discordam nestes pontos. Escolha o valor certo de cada um; se nenhum estiver certo, escolha um e corrija na revisão.</p>' +
+      cf.map(function (c, i) {
+        return '<fieldset class="pf-conf"><legend>' + esc((i + 1) + ". " + (c.campo || "Conflito")) + "</legend>" + c.opcoes.map(function (o, j) {
+          return '<label class="check"><input type="radio" name="pf-cf-' + i + '" data-pf-cf="' + i + '" value="' + j + '"' + (c.escolha === j ? " checked" : "") +
+            " data-escreve> " + esc(o.valor) + pfFonte(o.fonte) + "</label>";
+        }).join("") + (c.opcoes.length ? "" : '<p class="hint">Sem opções: corrija no texto, na revisão.</p>') + "</fieldset>";
+      }).join("");
+    return { corpo: corpo, pe: botaoIr("rascunho", "Voltar") + botaoIr("anamnese", "Continuar", true) };
+  }
+
+  function pfPerguntas() {
+    var resp = PF.e.respostas || {};
+    return PF.e.perguntas.filter(function (p) { return !p.condicao || resp[p.condicao] === true; });
+  }
+  function pfAnamnese() {
+    var ps = pfPerguntas();
+    PF.q = Math.max(0, Math.min(PF.q, ps.length - 1));
+    var p = ps[PF.q], v = (PF.e.respostas || {})[p.id], campo;
+    var marcado = function (cond) { return cond ? " checked" : ""; };
+    if (p.tipo === "texto") campo = /^(conquista|medida):/.test(p.id) ? '<textarea id="pf-resp" maxlength="2000" rows="4">' + esc(v || "") + "</textarea>" :
+      '<input id="pf-resp" maxlength="300" autocomplete="off" value="' + esc(v || "") + '">';
+    else if (p.tipo === "lista") campo = '<textarea id="pf-resp" maxlength="2000" rows="5">' + esc((v || []).join("\n")) + "</textarea>";
+    else {
+      var opcoes = p.tipo === "sim_nao" ? [{ valor: "sim", rotulo: "Sim" }, { valor: "nao", rotulo: "Não" }] : p.opcoes;
+      var tipo = p.tipo === "multi" ? "checkbox" : "radio";
+      campo = '<div class="pf-opcoes" role="group" aria-labelledby="pf-perg">' + opcoes.map(function (o) {
+        var sel = p.tipo === "multi" ? (v || []).indexOf(o.valor) >= 0 : p.tipo === "sim_nao" ? v === (o.valor === "sim") : v === o.valor;
+        return '<label class="check"><input type="' + tipo + '" name="pf-resp" value="' + esc(o.valor) + '"' + marcado(sel) + "> " + esc(o.rotulo) + "</label>";
+      }).join("") + "</div>";
+    }
+    var dica = p.id.indexOf("medida:") === 0 ? "Escreva o número só se tiver certeza. Sem número, a conquista entra sem medida." : "";
+    return {
+      corpo: '<p class="pf-n">Pergunta ' + (PF.q + 1) + " de " + ps.length + "</p>" +
+        '<div class="field"><label for="pf-resp" class="pf-perg" id="pf-perg">' + esc(p.texto) + "</label>" + campo + "</div>" +
+        (dica ? '<p class="hint">' + esc(dica) + "</p>" : ""),
+      pe: (PF.q > 0 ? '<button type="button" class="btn-plain" data-pf="q-voltar">Voltar</button>' :
+        botaoIr((PF.e.rascunho && PF.e.rascunho.conflitos.length) ? "conflitos" : "rascunho", "Voltar")) +
+        '<button type="button" class="btn-plain" data-pf="q-pular">Pular</button>' +
+        '<button type="button" class="btn-primary" data-pf="q-ok">' + (PF.q + 1 >= ps.length ? "Concluir" : "Próxima") + "</button>"
+    };
+  }
+  function pfLerResposta(p) {
+    if (p.tipo === "texto") return $("pf-resp").value.trim() || null;
+    if (p.tipo === "lista") {
+      var l = $("pf-resp").value.split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean);
+      return l.length ? l : null;
+    }
+    var marcados = Array.prototype.map.call(document.querySelectorAll('#pf-corpo input[name="pf-resp"]:checked'), function (x) { return x.value; });
+    if (p.tipo === "multi") return marcados.length ? marcados : null;
+    if (!marcados.length) return null;
+    return p.tipo === "sim_nao" ? marcados[0] === "sim" : marcados[0];
+  }
+  function pfResponder(pular) {
+    var p = pfPerguntas()[PF.q], corpo = {};
+    var seguir = function () { if (PF.q + 1 >= pfPerguntas().length) pfIr("diagnostico"); else { PF.q++; montarPerfil(); } };
+    if (pfSo()) return seguir();
+    corpo[p.id] = pular ? null : pfLerResposta(p);
+    pfSalvar({ respostas: corpo }).then(seguir).catch(pfFalha);
+  }
+
+  function pfDiagnostico() {
+    if (!PF.prev) { pfPrevia(PF.md); return carregandoPf("Conferindo o perfil…"); }
+    var d = PF.prev.diagnostico, ac = PF.e.contatos_achados || {}, ct = PF.e.contato || {};
+    var rot = { falta: "Falta", fraco: "Fraco", info: "Atenção" };
+    var corpo = d.length ? '<p class="hint">O que ainda falta ou está fraco. Responda o que quiser; o resto pode ficar como está.</p><ul class="pf-diag">' + d.map(function (a, i) {
+      return '<li data-tipo="' + esc(a.tipo) + '"><b>' + esc(rot[a.tipo] || a.tipo) + "</b> " + esc(a.mensagem) + '<br><span class="hint">' + esc(a.pergunta) + "</span>" +
+        '<button type="button" class="btn-plain btn-ia-mini" data-pf="responder" data-i="' + i + '">Responder</button></li>';
+    }).join("") + "</ul>" : "<p>Nada faltando. Siga para a revisão.</p>";
+    var linhas = CONTATOS.map(function (c) {
+      var achados = c[0] === "linkedin" ? (ac.linkedin ? [ac.linkedin] : []) : (ac[c[2]] || []).slice();
+      if (ct[c[0]] && achados.indexOf(ct[c[0]]) < 0) achados.unshift(ct[c[0]]);
+      if (!achados.length) return "";
+      return '<div class="field"><label for="pf-ct-' + c[0] + '">' + c[1] + '</label><select id="pf-ct-' + c[0] + '" data-pf-ct="' + c[0] + '" data-escreve>' +
+        '<option value="">Não incluir</option>' + achados.map(function (x) { return "<option" + (ct[c[0]] === x ? " selected" : "") + ">" + esc(x) + "</option>"; }).join("") + "</select></div>";
+    }).join("");
+    if (linhas) corpo += '<section class="fb-sec"><h3>Contato no perfil</h3><p class="hint">Achado nos seus materiais. Escolha o que entra no perfil; ' +
+      "o perfil vai para a IA escolhida quando ela analisa as vagas.</p>" + '<div class="fb-grid pf-contato">' + linhas + "</div></section>";
+    return { corpo: corpo, pe: botaoIr("anamnese", "Voltar") + botaoIr("revisao", "Revisar o perfil", true) };
+  }
+  function pfResponderAchado(a) {
+    if (a.ir.indexOf("pergunta:") === 0) {
+      var id = a.ir.slice(9), ps = pfPerguntas();
+      for (var i = 0; i < ps.length; i++) if (ps[i].id === id) { PF.q = i; return pfIr("anamnese"); }
+    }
+    if (a.ir === "conflitos") return pfIr("conflitos");
+    pfIr("revisao"); PF.dica = a.mensagem + " " + a.pergunta + " Escreva no texto abaixo."; montarPerfil();
+  }
+
+  function pfDif(linhas) {
+    if (!linhas.length) return '<p class="hint">Nada muda em relação ao perfil atual.</p>';
+    return '<pre class="pf-dif">' + linhas.map(function (l) {
+      return '<span class="' + (l.tipo === "+" ? "mais" : "menos") + '">' + esc(l.tipo + " " + l.texto) + "</span>";
+    }).join("\n") + "</pre>";
+  }
+  function pfRevisao() {
+    if (PF.md == null || (PF.sujo && !PF.editado)) { pfPrevia(null, true); return carregandoPf("Montando o perfil…"); }
+    if (!PF.prev) { pfPrevia(PF.md); return carregandoPf("Montando o perfil…"); }
+    var p = PF.prev, pend = (PF.md.match(/\{\{conflito:\d+\}\}/g) || []).length;
+    var corpo = (PF.dica ? '<p class="aviso-config">' + esc(PF.dica) + "</p>" : "") +
+      (PF.sujo && PF.editado ? '<p class="aviso-config">Você respondeu mais coisas depois de editar este texto. <button type="button" class="btn-plain btn-ia-mini" data-pf="remontar">Remontar</button> ' +
+        "(as suas edições no texto se perdem)</p>" : "") +
+      '<div class="pf-rev"><div class="field"><label for="pf-md">Seu perfil (edite à vontade; é o texto que será gravado)</label><textarea id="pf-md" spellcheck="true">' + esc(PF.md) + "</textarea></div>" +
+      (p.textos.length ? '<aside class="pf-apoio"><h3>Texto dos materiais</h3>' + p.textos.map(function (t) {
+        return "<details><summary>" + esc(t.nome) + '</summary><pre class="pf-texto">' + esc(t.texto) + "</pre></details>";
+      }).join("") + "</aside>" : "") + "</div>" +
+      (pend ? '<p class="fb-erro">Ainda há ' + pend + " conflito(s) sem escolha ({{conflito:N}} no texto): escolha no passo Conflitos ou troque no texto.</p>" : "") +
+      (PF.confirmar && p.diferencas ? '<section class="fb-sec"><h3>O que muda no perfil atual</h3>' + pfDif(p.diferencas) +
+        '<p class="hint">A versão atual fica guardada em anexos/perfis-anteriores.</p></section>' : "");
+    return {
+      corpo: corpo,
+      pe: botaoIr("diagnostico", "Voltar") + (PF.editado ? '<button type="button" class="btn-plain" data-pf="remontar">Desfazer edições</button>' : "") +
+        '<button type="button" class="btn-primary" data-pf="gravar" data-escreve>' + (PF.confirmar ? "Confirmar e gravar" : PF.e.existe_perfil ? "Ver o que muda" : "Gravar perfil") + "</button>"
+    };
+  }
+  function pfGravar() {
+    PF.md = $("pf-md").value;
+    if (PF.e.existe_perfil && !PF.confirmar) {
+      pfPrevia(PF.md).then(function (j) { if (j) { PF.confirmar = true; montarPerfil(); } });
+      return;
+    }
+    API.send("PUT", "/api/perfil", { markdown: PF.md }).then(function (j) {
+      toast("Perfil gravado em " + j.gravado + (j.anterior ? "; a versão anterior ficou em " + j.anterior : "") + ".");
+      PF.md = null; PF.editado = false; PF.confirmar = false; pfGuardarTexto();
+      return pfCarregar().then(function () { pfIr("filtros"); });
+    }).catch(pfFalha);
+  }
+
+  function pfValor(v) {
+    if (Array.isArray(v)) return v.length ? v.map(function (x) { return String(x).replace(/"/g, ""); }).join(", ") : "nenhum";
+    if (v && typeof v === "object") {
+      if ("ativo" in v) return v.ativo ? "ligada: " + pfValor(v.paises) + " · " + pfValor(v.termos) : "desligada";
+      if ("cidade" in v) return [v.cidade, v.estado, v.pais].filter(Boolean).join(", ") || "não informado";
+      return Object.keys(v).filter(function (k) { return v[k] === true; }).map(function (k) { return MODOS[k] || k; }).join(", ") || "nenhum";
+    }
+    return String(v == null ? "" : v);
+  }
+  function pfPropor(sugerir) {
+    var pedido = sugerir ? API.send("POST", "/api/perfil/filtros-propostos", { sugerir_en: true }) : API.get("/api/perfil/filtros-propostos");
+    pedido.then(function (j) { PF.filtros = j; }).catch(function (e) {
+      PF.filtros = PF.filtros && !PF.filtros.erro ? PF.filtros : { erro: e && e.status === 400 ? e.message : erroMsg(e) };
+      if (sugerir) pfFalha(e);
+    }).then(montarPerfil);
+  }
+  function pfFiltros() {
+    if (!PF.e.existe_perfil) return { corpo: '<p class="hint">Grave o perfil antes: os filtros saem dele.</p>', pe: botaoIr("revisao", "Voltar") };
+    if (!PF.filtros) { pfPropor(false); return carregandoPf("Montando a proposta…"); }
+    var fp = PF.filtros;
+    if (fp.erro) return { corpo: '<p class="fb-erro">' + esc(fp.erro) + '</p><p class="hint">Responda os cargos que você busca para ver a proposta.</p>',
+      pe: botaoIr("revisao", "Voltar") + '<button type="button" class="btn-plain" data-pf="filtros-pular">Pular</button>' +
+        '<button type="button" class="btn-primary" data-pf="ir-cargos">Responder os cargos</button>' };
+    var f = fp.filtros, resp = PF.e.respostas || {};
+    var temEN = (resp.cargos_alvo_en || []).length > 0 || fp.sugestao_en;
+    var itens = [["Cargos", pfValor(f.termos)], ["Local", pfValor(f.localidade)], ["Modo de trabalho", pfValor(f.modelos)],
+      ["Senioridade", f.senioridades.length ? pfValor(f.senioridades) : "todas"], ["Busca no exterior", pfValor(f.internacional)]];
+    var corpo = "<p>A partir das suas respostas, estes seriam os filtros da busca de vagas. Nada muda até você gravar.</p>" +
+      (fp.avisos.length ? '<ul class="ia-avisos">' + fp.avisos.map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("") + "</ul>" : "") +
+      '<section class="fb-sec"><h3>Proposta</h3><ul class="pf-lista">' + itens.map(function (x) { return "<li><b>" + esc(x[0]) + ":</b> " + esc(x[1]) + "</li>"; }).join("") + "</ul>" +
+      (!temEN && PF.e.ia_disponivel ? '<div class="add-row"><button type="button" class="btn-plain" data-pf="sugerir-en" data-escreve>Sugerir os cargos em inglês com a IA</button></div>' : "") + "</section>" +
+      (fp.mudancas.length ? '<section class="fb-sec"><h3>O que muda nos filtros atuais</h3><ul class="pf-lista">' + fp.mudancas.map(function (m) {
+        return "<li><b>" + esc(m.campo) + ":</b> " + esc(pfValor(m.atual)) + " → " + esc(pfValor(m.proposto)) + "</li>";
+      }).join("") + "</ul></section>" : '<p class="hint">Iguais aos filtros atuais.</p>');
+    return {
+      corpo: corpo,
+      pe: botaoIr("revisao", "Voltar") + '<button type="button" class="btn-plain" data-pf="filtros-pular">Pular (manter os atuais)</button>' +
+        '<button type="button" class="btn-plain" data-pf="filtros-ajustar" data-escreve>Ajustar antes</button>' +
+        '<button type="button" class="btn-primary" data-pf="filtros-gravar" data-escreve>Gravar filtros</button>'
+    };
+  }
+  function pfConcluido() {
+    return {
+      corpo: "<p><b>Perfil pronto.</b> Ele é a base da nota de aderência das vagas.</p><ul class=\"ia-avisos\">" +
+        "<li>Para buscar vagas, rode <code>python vagas.py</code> ou peça no chat do seu assistente (\"busca vagas\").</li>" +
+        "<li>Para mudar o perfil depois, abra Meu perfil e escolha Atualizar o perfil: a versão atual fica guardada.</li></ul>",
+      pe: '<button type="button" class="btn-plain" data-pf="atualizar" data-escreve>Atualizar o perfil</button><button type="button" class="btn-primary" data-pf="fechar">Fechar</button>'
+    };
+  }
+  function pfRecomecar(pergunta) {
+    if (pergunta && !confirm("Recomeçar apaga o progresso (respostas e rascunho). Os arquivos enviados continuam na pasta anexos. Continuar?")) return;
+    API.send("DELETE", "/api/perfil/progresso").then(function (j) {
+      PF.e = j; PF.etapa = j.etapa; PF.q = 0; PF.prev = null; PF.md = null; PF.editado = false; PF.filtros = null; pfGuardarTexto(); pfErro(""); montarPerfil();
+    }).catch(pfFalha);
+  }
+
+  function bindPerfil() {
+    var dlg = $("dlg-perfil");
+    $("btn-perfil").addEventListener("click", abrirPerfil);
+    $("dlg-ia").addEventListener("close", function () { if (dlg.open) pfCarregar().then(montarPerfil).catch(function () {}); });
+    dlg.addEventListener("click", function (ev) {
+      var t = ev.target.closest("button");
+      if (!t || t.disabled) return;
+      var ir = t.getAttribute("data-pf-ir"), acao = t.getAttribute("data-pf");
+      if (ir) return pfIr(ir);
+      if (acao === "fechar") return dlg.close();
+      if (acao === "ia") return abrirIA();
+      if (acao === "recomecar") return pfRecomecar(true);
+      if (acao === "atualizar") return pfRecomecar(false);
+      if (acao === "remover") {
+        t.disabled = true;
+        return API.send("DELETE", "/api/perfil/material/" + encodeURIComponent(t.getAttribute("data-id"))).then(function (j) { PF.e = j; montarPerfil(); }).catch(pfFalha);
+      }
+      if (acao === "colar") {
+        var txt = $("pf-colar").value.trim();
+        if (!txt) return;
+        t.disabled = true;
+        return API.send("POST", "/api/perfil/material", { texto: txt, nome: "texto colado" }).then(function (j) { PF.e = j.estado; PF.etapa = "materiais"; montarPerfil(); toast("Texto adicionado."); })
+          .catch(function (e) { pfFalha(e); t.disabled = false; });
+      }
+      if (acao === "materiais-ok") {
+        var li = $("pf-linkedin").value.trim(), ct = PF.e.contato || {};
+        if (pfSo() || li === (ct.linkedin || "")) return pfIr("rascunho");
+        var novo = {}; for (var k in ct) novo[k] = ct[k]; novo.linkedin = li;
+        return pfSalvar({ contato: novo }).then(function () { pfIr("rascunho"); }).catch(pfFalha);
+      }
+      if (acao === "rascunho") return pfGerar(false);
+      if (acao === "rascunho-sem-ia") return pfGerar(true);
+      if (acao === "q-voltar") { PF.q--; return montarPerfil(); }
+      if (acao === "q-pular") return pfResponder(true);
+      if (acao === "q-ok") return pfResponder(false);
+      if (acao === "responder") return pfResponderAchado(PF.prev.diagnostico[+t.getAttribute("data-i")]);
+      if (acao === "remontar") { PF.dica = ""; return pfPrevia(null, true); }
+      if (acao === "gravar") return pfGravar();
+      if (acao === "sugerir-en") { t.disabled = true; t.textContent = "Pedindo à IA…"; return pfPropor(true); }
+      if (acao === "ir-cargos") { PF.q = 0; return pfIr("anamnese"); }
+      if (acao === "filtros-pular") return pfIr("concluido");
+      if (acao === "filtros-ajustar") return abrirFiltros(PF.filtros.filtros, function () { pfIr("concluido"); });
+      if (acao === "filtros-gravar") {
+        t.disabled = true;
+        return API.send("PUT", "/api/config", PF.filtros.filtros).then(function () {
+          S.configExiste = true; toast("Filtros gravados. Valem a partir da próxima busca."); render(); pfIr("concluido");
+        }).catch(function (e) { pfFalha(e); t.disabled = false; });
+      }
+    });
+    dlg.addEventListener("change", function (ev) {
+      var t = ev.target;
+      if (t.id === "pf-arquivo") { pfEnviarArquivos(t.files); t.value = ""; return; }
+      if (t.hasAttribute("data-pf-cf")) {
+        var escolha = {}; escolha[t.getAttribute("data-pf-cf")] = +t.value;
+        return pfSalvar({ escolhas: escolha }).catch(pfFalha);
+      }
+      if (t.hasAttribute("data-pf-ct")) {
+        var ct = {}; CONTATOS.forEach(function (c) { var s = $("pf-ct-" + c[0]); var v = s ? s.value : (PF.e.contato || {})[c[0]]; if (v) ct[c[0]] = v; });
+        return pfSalvar({ contato: ct }).catch(pfFalha);
+      }
+    });
+    dlg.addEventListener("input", function (ev) {
+      if (ev.target.id !== "pf-md") return;
+      PF.md = ev.target.value; PF.editado = true; pfGuardarTexto();
+      if (PF.confirmar) { PF.confirmar = false; var b = dlg.querySelector('[data-pf="gravar"]'); if (b) b.textContent = "Ver o que muda"; }
+    });
+    ["dragover", "dragleave", "drop"].forEach(function (tipo) {
+      dlg.addEventListener(tipo, function (ev) {
+        var zona = ev.target.closest && ev.target.closest("#pf-drop");
+        if (!zona || pfSo()) return;
+        ev.preventDefault();
+        if (tipo === "dragover") zona.setAttribute("data-sobre", "");
+        else zona.removeAttribute("data-sobre");
+        if (tipo === "drop") pfEnviarArquivos(ev.dataTransfer.files);
+      });
+    });
+  }
+
   /* ---------- dados ---------- */
   var carregando = null;
   function carregar() {
@@ -1402,10 +1885,16 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   if (location.hash === "#relatorio") S.aba = "relatorio";
   bind();
   bindIA();
+  bindPerfil();
   renderAgora();
   carregar();
   carregarIA();
   API.get("/api/config").then(function (j) { S.configExiste = !!j.existe; render(); }).catch(function () {});
+  pfCarregar().then(function (j) {  // sem perfil, os primeiros passos abrem sozinhos (uma vez por sessão do navegador)
+    var visto = false;
+    try { visto = sessionStorage.getItem("pf.visto") === "1"; sessionStorage.setItem("pf.visto", "1"); } catch (e) {}
+    if (!j.existe_perfil && !visto) abrirPerfil();
+  }).catch(function () {});
 })();
 </script>
 </body>

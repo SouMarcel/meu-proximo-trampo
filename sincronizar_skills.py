@@ -20,7 +20,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent
 FONTE = RAIZ / ".agents" / "skills"
 DESTINO = RAIZ / ".claude" / "skills"
-SKILLS = ("buscar-vagas", "consultar-gupy", "gerar-curriculo")
+SKILLS = ("analisar-perfil", "buscar-vagas", "consultar-gupy", "gerar-curriculo")
 
 
 def aviso(nome: str) -> str:

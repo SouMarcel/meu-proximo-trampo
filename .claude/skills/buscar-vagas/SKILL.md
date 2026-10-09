@@ -59,12 +59,11 @@ Confira na ordem e resolva só o que faltar:
    cidade mora, se aceita híbrido ou presencial (só na cidade dele) e se quer vagas
    remotas de outros países. Monte os `termos` entre aspas, um por cargo e por variação
    comum, e um `titulo_excluir` com áreas que ele não quer.
-3. **Perfil.** Se o arquivo de `perfil` não existe: ofereça montar a partir de
-   `perfil.exemplo.md`, com o currículo ou o PDF do LinkedIn que o usuário mandar
-   (procure primeiro em `anexos/`; se não houver, peça para ele deixar lá).
-   Escreva só o que estiver no material ou o que ele confirmar, e pergunte o que
-   faltar (cidade, modelo de trabalho, o que não aceita). Sem perfil, ainda dá para
-   buscar e gravar sem nota (`gravar --sem-avaliacao`); diga isso a ele.
+3. **Perfil.** Se o arquivo de `perfil` não existe: ofereça montar. Pela página, são
+   os **primeiros passos** do dashboard (botão **Meu perfil**), que leem o currículo e o
+   LinkedIn e fazem as perguntas; pelo chat, siga a skill `analisar-perfil`
+   (`.agents/skills/analisar-perfil/SKILL.md`). Sem perfil, ainda dá para buscar e
+   gravar sem nota (`gravar --sem-avaliacao`); diga isso a ele.
 
 ## Abrir o dashboard
 

@@ -13,9 +13,12 @@ na porta 8765, que aceita páginas abertas neste computador.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import json
 import socket
 import sys
+import threading
 import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -28,13 +31,17 @@ import analise  # noqa: E402  (análise automática pela IA escolhida)
 import banco  # noqa: E402
 import filtros  # noqa: E402  (filtros.py, na raiz: lê e grava os filtros da busca no config.json)
 import ia  # noqa: E402  (ia.py, na raiz: provedores de IA)
+import primeiros_passos as pp  # noqa: E402  (primeiros_passos.py, na raiz: perfil a partir do currículo e do LinkedIn)
 import segredos  # noqa: E402  (segredos.py, na raiz: chaves no .env)
 from fontes import link  # noqa: E402  (lê a vaga a partir do link)
 
 PAGINA = banco.DASH / "dashboard.html"
 PORTA_PADRAO = 8765
 LIMITE_CORPO = 1_000_000
+LIMITE_MATERIAL = 15_000_000  # arquivo de até 10 MB em base64
 SO_LOCAL = "Só dá para mudar a IA no computador onde a ferramenta roda."
+SO_LOCAL_PERFIL = "Só dá para fazer isso no computador onde a ferramenta roda."
+TRAVA_PERFIL = threading.Lock()  # o progresso dos primeiros passos é um arquivo só
 
 
 def ip_da_rede() -> str | None:
@@ -99,9 +106,9 @@ class Handler(BaseHTTPRequestHandler):
         origem = self.headers.get("Origin")
         return origem is None or origem == f"http://{self.headers.get('Host')}" or self._origem_local() is not None
 
-    def _corpo(self) -> dict:
+    def _corpo(self, limite: int = LIMITE_CORPO) -> dict:
         tamanho = int(self.headers.get("Content-Length") or 0)
-        if tamanho > LIMITE_CORPO:
+        if tamanho > limite:
             raise ValueError("pedido grande demais")
         dados = json.loads(self.rfile.read(tamanho) or b"{}")
         if not isinstance(dados, dict):
@@ -147,6 +154,64 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, estado)
         return self._erro(404, "rota não encontrada")
 
+    def _perfil(self, metodo: str, caminho: str):
+        """Primeiros passos: tudo que grava é só deste computador; o pedido à IA roda fora da trava."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        if metodo == "POST" and caminho == "/api/perfil/rascunho":
+            sem_ia = bool(self._corpo().get("sem_ia")) or not ia.disponivel()
+            with TRAVA_PERFIL:
+                estado = pp.carregar()
+            perfil = pp.caminho_perfil()
+            atual = perfil.read_text(encoding="utf-8", errors="replace") if perfil.exists() else None
+            rascunho = pp.rascunho_sem_ia(estado) if sem_ia else pp.rascunho_com_ia(estado, atual)
+            with TRAVA_PERFIL:
+                estado = pp.carregar()
+                estado.update(rascunho=rascunho, etapa="rascunho")
+                pp.salvar(estado)
+            return self._json(200, pp.estado_para_pagina(True))
+        if metodo == "POST" and caminho == "/api/perfil/filtros-propostos":
+            sugerir = bool(self._corpo().get("sugerir_en")) and ia.disponivel()
+            return self._json(200, pp.propor_filtros(pp.carregar()["respostas"], sugerir_en=sugerir))
+        with TRAVA_PERFIL:
+            estado = pp.carregar()
+            if metodo == "POST" and caminho == "/api/perfil/material":
+                corpo = self._corpo(LIMITE_MATERIAL)
+                if "texto" in corpo:
+                    material = pp.adicionar_material(estado, str(corpo.get("nome") or ""), texto=str(corpo["texto"]))
+                else:
+                    try:
+                        dados = base64.b64decode(str(corpo.get("base64") or ""), validate=True)
+                    except (binascii.Error, ValueError):
+                        raise ValueError("arquivo inválido") from None
+                    material = pp.adicionar_material(estado, str(corpo.get("nome") or ""), dados)
+                if estado["etapa"] == "ia":
+                    estado["etapa"] = "materiais"
+                pp.salvar(estado)
+                pagina = pp.estado_para_pagina(True)
+                publico = next(m for m in pagina["materiais"] if m["id"] == material["id"])
+                return self._json(201, {"material": publico, "estado": pagina})
+            if metodo == "DELETE" and caminho.startswith("/api/perfil/material/"):
+                pp.remover_material(estado, unquote(caminho[len("/api/perfil/material/"):]))
+                pp.salvar(estado)
+                return self._json(200, pp.estado_para_pagina(True))
+            if metodo == "PUT" and caminho == "/api/perfil/progresso":
+                pp.salvar(pp.atualizar_progresso(estado, self._corpo()))
+                return self._json(200, pp.estado_para_pagina(True))
+            if metodo == "DELETE" and caminho == "/api/perfil/progresso":
+                pp.recomecar()
+                return self._json(200, pp.estado_para_pagina(True))
+            if metodo == "POST" and caminho == "/api/perfil/previa":
+                markdown = self._corpo().get("markdown")
+                return self._json(200, pp.previa(estado, None if markdown is None else str(markdown)))
+            if metodo == "PUT" and caminho == "/api/perfil":
+                destino, anterior = pp.gravar_perfil(str(self._corpo().get("markdown") or ""))
+                estado["etapa"] = "filtros"
+                pp.salvar(estado)
+                rel = lambda c: c.relative_to(pp.RAIZ).as_posix() if c and c.is_relative_to(pp.RAIZ) else (str(c) if c else None)
+                return self._json(200, {"gravado": rel(destino), "anterior": rel(anterior)})
+        return self._erro(404, "rota não encontrada")
+
     def _id_da_rota(self, caminho: str) -> str | None:
         prefixo = "/api/vagas/"
         if not caminho.startswith(prefixo):
@@ -178,6 +243,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(201 if nova else 200, {"vaga": vaga, "nova": nova, "analise_automatica": auto})
             if caminho == "/api/ia" or caminho.startswith("/api/ia/"):
                 return self._ia(metodo, caminho)
+            if caminho == "/api/perfil" or caminho.startswith("/api/perfil/"):
+                return self._perfil(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             vid = self._id_da_rota(caminho)
@@ -205,6 +272,10 @@ class Handler(BaseHTTPRequestHandler):
                                     "ia_erro": analise.FILA.erro()})
         if caminho == "/api/ia":
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
+        if caminho == "/api/perfil/estado":
+            return self._json(200, pp.estado_para_pagina(self._local()))
+        if caminho == "/api/perfil/filtros-propostos":
+            return self._json(200, pp.propor_filtros(pp.carregar()["respostas"]))
         if caminho == "/api/vagas":
             return self._json(200, {"versao": banco.versao(), "vagas": banco.listar_vagas()})
         if caminho == "/api/buscas/ultima":

@@ -26,7 +26,9 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
 - Principais comandos: `PY vagas.py buscar` (busca), `PY dash/banco.py pendentes` (vagas que esperam
   nota), `PY curriculo.py <arquivo.json>` (gera o currículo), `PY consultar_gupy.py <ferramenta>
   chave=valor …` (perguntas pontuais à Gupy sem a integração MCP) e `python iniciar.py` (abre o
-  dashboard em http://127.0.0.1:8765).
+  dashboard em http://127.0.0.1:8765). Perfil: `PY primeiros_passos.py extrair <arquivo>` (texto de
+  currículo ou LinkedIn sem documentos de identificação), `diagnostico [perfil.md]` e
+  `gravar <rascunho.md>` (só com o OK da pessoa).
 
 ## Skills da ferramenta
 
@@ -35,7 +37,8 @@ o arquivo inteiro antes de começar a tarefa e siga-o.
 
 | Skill | Quando usar | Arquivo |
 |---|---|---|
-| buscar-vagas | buscar ou atualizar vagas, "tem vaga nova?", abrir o dashboard, analisar vagas adicionadas, perguntar sobre as candidaturas, montar perfil e configuração no primeiro uso | `.agents/skills/buscar-vagas/SKILL.md` |
+| analisar-perfil | montar ou atualizar o perfil de carreira (`perfil.md`) a partir do currículo e do LinkedIn, "o que falta no meu perfil?", primeiro uso sem perfil | `.agents/skills/analisar-perfil/SKILL.md` |
+| buscar-vagas | buscar ou atualizar vagas, "tem vaga nova?", abrir o dashboard, analisar vagas adicionadas, perguntar sobre as candidaturas, configuração da busca no primeiro uso | `.agents/skills/buscar-vagas/SKILL.md` |
 | consultar-gupy | perguntas pontuais sobre a Gupy (vagas de uma empresa, PCD, salário, detalhes de uma vaga) | `.agents/skills/consultar-gupy/SKILL.md` |
 | gerar-curriculo | criar, atualizar, adaptar ou traduzir o currículo; textos de candidatura, carta, LinkedIn; retornos de ATS ou recrutador | `.agents/skills/gerar-curriculo/SKILL.md` |
 

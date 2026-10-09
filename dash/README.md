@@ -48,7 +48,7 @@ sozinha.
 
 | Arquivo | Para quê |
 |---|---|
-| `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/vagas/link` para adicionar pelo link, `/api/versao` com o aviso de análise em andamento, `/api/buscas/ultima`, `/api/config` para ler e gravar os filtros da busca). Só aceita pedidos da própria página. |
+| `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/vagas/link` para adicionar pelo link, `/api/versao` com o aviso de análise em andamento, `/api/buscas/ultima`, `/api/config` para ler e gravar os filtros da busca, `/api/ia` para a IA escolhida e `/api/perfil/…` para os primeiros passos: estado, envio e remoção de materiais, rascunho, progresso, prévia, gravação do perfil e filtros propostos). Só aceita pedidos da própria página; enviar arquivos, gerar o rascunho e gravar, só do próprio computador. |
 | `banco.py` | Acesso ao SQLite e comandos `quadro`, `pendentes`, `analisar`, `vaga` (dados completos de uma vaga) e `anotar` (acrescenta uma linha às anotações). |
 | `analise.py` | Análise automática: manda à IA escolhida (`ia.py`, na raiz) o perfil, as regras de nota da skill e as vagas que esperam nota, em lotes de 10, e grava a resposta com o provedor e o modelo usados. Uma análise por vez; a última falha aparece na página. |
 | `dashboard.html` | A página. |
