@@ -30,7 +30,7 @@ URL_DASHBOARD = "http://127.0.0.1:8765/"
 sys.path.insert(0, str(RAIZ / "dash"))
 import banco  # noqa: E402  (dash/banco.py)
 import filtros  # noqa: E402
-from fontes import FONTES  # noqa: E402
+from fontes import FONTES, _comum  # noqa: E402
 
 
 def carregar_config() -> dict:
@@ -178,11 +178,35 @@ class TravaBusca:
 # ---------------------------------------------------------------- buscar
 
 def rotulo_grupo(grupo: str, f: dict) -> str:
+    if grupo == filtros.GLOBAL:
+        return "exterior"
     if grupo.startswith("internacional:"):
         return grupo.split(":", 1)[1]
     if grupo.startswith("mudanca:"):
         return grupo.split(":", 1)[1] + " (presencial/híbrido)"
     return {"remoto": "remoto", "pais": "país todo", "local": filtros.cidade_rotulo(f)}.get(grupo, grupo)
+
+
+def fontes_da_busca(cfg: dict, f: dict) -> list[str]:
+    """As fontes do config.json e, com a busca internacional ligada, as do exterior escolhidas no painel e a das
+    empresas acompanhadas."""
+    nomes = list(cfg.get("fontes", ["indeed", "gupy"]))
+    inter = f["internacional"]
+    if inter["ativo"]:
+        nomes += [n for n in inter.get("fontes") or [] if n not in nomes]
+        if inter.get("empresas") and "ats" not in nomes:
+            nomes.append("ats")
+    return nomes
+
+
+def atende(fonte, c: dict) -> bool:
+    """Cada portal só na sua área; as fontes sem filtro de país (POR_PAIS = False) só nas consultas globais."""
+    return (c.get("area", "nacional") in getattr(fonte, "AREAS", ("nacional", "internacional"))
+            and bool(c.get("global")) == (not getattr(fonte, "POR_PAIS", True)))
+
+
+def contar_consultas(plano: list[dict], nomes_fontes: list[str]) -> int:
+    return sum(atende(FONTES[n], c) for n in nomes_fontes if n in FONTES for c in plano)
 
 
 def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa: float = 2.0,
@@ -201,8 +225,8 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
     termos = f["termos"]
     horas = f["janela_horas"]
     plano = filtros.consultas(f, incluir_presencial=incluir_presencial)
-    atende = lambda fonte, c: c.get("area", "nacional") in getattr(fonte, "AREAS", ("nacional", "internacional"))
-    total = sum(atende(FONTES[n], c) for n in nomes_fontes for c in plano)  # cada portal só na sua área
+    total = contar_consultas(plano, nomes_fontes)
+    _comum.esquecer()  # as listas das fontes do exterior são baixadas de novo a cada busca
     brutas: dict[str, dict] = {}
     por_busca: dict[str, int] = {}
     erros: list[str] = []
@@ -335,7 +359,7 @@ def cmd_buscar(args) -> int:
         print("Nenhum cargo para buscar: informe os termos no painel Filtros da busca ou no config.json.", file=sys.stderr)
         return 2
     por_termo = args.resultados or cfg.get("resultados_por_termo", 40)
-    nomes_fontes = args.fontes or cfg.get("fontes", ["indeed", "gupy"])
+    nomes_fontes = args.fontes or fontes_da_busca(cfg, f)
     desconhecidas = [n for n in nomes_fontes if n not in FONTES]
     if desconhecidas:
         print(f"Fonte(s) desconhecida(s): {', '.join(desconhecidas)}. Disponíveis: {', '.join(FONTES)}", file=sys.stderr)
@@ -477,6 +501,8 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
             "termos": c["termos"], "grupos": c.get("grupos", []), "ids_relacionados": c["ids_relacionados"],
             "outras_plataformas": c.get("outras_plataformas", []),
             "area": area, "pais_vaga": pais_vaga, "idioma": filtros.idioma_da_vaga(c),
+            **{k: c[k] for k in ("restricao_local", "ats", "moeda", "modelo_trabalho") if c.get(k)},  # o que a fonte informa
+            **({"sinais": s} if (s := filtros.sinais(c, f)) else {}),  # patrocínio de visto, relocation…
             **analise,
             "triagem": "pendente", "triada_em": None,
             "etapa": None, "etapa_em": None, "resultado": None, "anotacao": "",

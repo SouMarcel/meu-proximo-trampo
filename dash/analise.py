@@ -97,6 +97,8 @@ def montar_pedido(vagas: list[dict]) -> str:
             f"Área: {_area(f, v, efet)}",
             f"Plataforma: {v.get('plataforma')} · link: {v.get('url') or '-'}",
             f"Salário: {v.get('salario') or 'não informado'}",
+            *([f"Restrição de local do portal: {v['restricao_local']}"] if v.get("restricao_local") else []),
+            *([f"Sinais lidos no anúncio: {', '.join(v['sinais'])}"] if v.get("sinais") else []),
             "Descrição:",
             (v.get("descricao") or "(sem descrição)")[:LIMITE_DESCRICAO],
             "",

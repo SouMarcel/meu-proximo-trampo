@@ -73,6 +73,11 @@ CONTRATACOES = {"contractor": "Contractor (você emite nota)", "eor": "Empregado
                 "pj": "PJ no Brasil", "clt": "CLT de empresa com operação no Brasil"}
 AREAS = ("nacional", "internacional")
 GRUPOS_FORA = ("internacional:", "mudanca:")
+# Fontes só do exterior, sem filtro de país (fontes/<nome>.py): rodam numa consulta global por cargo
+FONTES_INT = {"remotive": "Remotive", "himalayas": "Himalayas", "remoteok": "RemoteOK", "jobicy": "Jobicy",
+              "weworkremotely": "We Work Remotely", "getonboard": "Get on Board"}
+GLOBAL = "internacional:global"
+MAX_EMPRESAS, MAX_FRASES, TAMANHO_FRASE = 50, 30, 120
 # palavras comuns que distinguem cada idioma (sem acento); o que aparece em mais de um idioma ficou de fora
 PALAVRAS_IDIOMA = {
     "pt": set("nao voce sua seu dos das uma ao mais com na no em vaga empresa conhecimento atividades requisitos "
@@ -100,7 +105,8 @@ LUGARES = {  # cidades, siglas e regiões que aparecem no local das vagas (sem a
     "worldwide": "mundo todo", "anywhere": "mundo todo", "global": "mundo todo", "mundo": "mundo todo",
     "europe": "Europa", "europa": "Europa", "emea": "Europa", "latam": "América Latina",
     "latin america": "América Latina", "america latina": "América Latina", "south america": "América Latina",
-    "americas": "Américas", "brazil": "Brasil", "brasil": "Brasil",
+    "americas": "Américas", "brazil": "Brasil", "brasil": "Brasil", "north america": "América do Norte",
+    "eu": "Europa", "european union": "Europa", "anywhere in the world": "mundo todo",
 }
 
 
@@ -129,7 +135,12 @@ def area_da_vaga(v: dict, f: dict) -> tuple[str, str | None]:
     grupos = v.get("grupos") or []
     fora = [g.split(":", 1)[1] for g in grupos if g.startswith(GRUPOS_FORA)]
     if fora and len(fora) == len(grupos):
-        return "internacional", fora[0]
+        paises = [x for x in fora if x != "global"]
+        if paises:
+            return "internacional", paises[0]
+        # fonte sem filtro de país: o país ou a região que a vaga exige, quando diz
+        return "internacional", (pais_do_local(v.get("restricao_local")) or pais_do_local(v.get("local"))
+                                 or "mundo todo")
     if fora:
         return "nacional", None
     pais = pais_do_local(v.get("local"))
@@ -160,7 +171,7 @@ def idioma_da_vaga(v: dict) -> str | None:
 
 def salario_anual_usd(v: dict) -> float | None:
     """O maior valor anual em dólar que o texto de salário da vaga informa; None quando não dá para saber."""
-    texto = sem_acento(v.get("salario"))
+    texto = sem_acento(re.sub(r"[–—]", " - ", str(v.get("salario") or "")))  # o travessão sumiria e colaria os números
     moeda = str(v.get("moeda") or "").upper()
     if not texto or "r$" in texto or (moeda and moeda != "USD") or not (moeda == "USD" or "usd" in texto or "$" in texto):
         return None
@@ -238,6 +249,10 @@ def efetivos(cfg: dict) -> dict:
             "passaporte": bool(inter.get("passaporte")),
             "autorizacao_trabalho": [p for p in map(pais_pt, inter.get("autorizacao_trabalho") or []) if p],
             "precisa_sponsor": bool(inter.get("precisa_sponsor")),
+            "fontes": [n for n in FONTES_INT if n in (inter.get("fontes") or [])],
+            "empresas": [e for e in inter.get("empresas") or [] if isinstance(e, dict) and e.get("sistema") and e.get("id")],
+            "frases_restricao": [str(x).strip() for x in inter.get("frases_restricao") or [] if str(x).strip()],
+            "frases_positivas": [str(x).strip() for x in inter.get("frases_positivas") or [] if str(x).strip()],
         },
         "idiomas_aceitos": [i for i in cfg.get("idiomas_aceitos") or [] if i in IDIOMAS],
         "janela_horas": int(cfg.get("janela_horas") or 168),
@@ -293,6 +308,33 @@ def _textos(v, nome: str, maximo: int, tamanho: int = 80) -> list[str]:
     return saida
 
 
+def _empresas(v) -> list[dict]:
+    """Empresas acompanhadas: o link da página de vagas de cada uma (ou a empresa já reconhecida)."""
+    if v is None:
+        return []
+    if not isinstance(v, list):
+        raise ValueError("empresas: esperava uma lista")
+    from fontes import ats  # aqui para o filtros.py não depender das fontes ao ser importado
+
+    saida, vistas = [], set()
+    for x in v:
+        url = str((x.get("url") if isinstance(x, dict) else x) or "").strip()
+        if not url:
+            continue
+        try:
+            e = ats.reconhecer(url)
+        except ValueError as erro:
+            raise ValueError(f"empresa {url[:80]}: {erro}") from None
+        if isinstance(x, dict) and str(x.get("nome") or "").strip():
+            e["nome"] = str(x["nome"]).strip()[:80]
+        if (e["sistema"], e["id"]) not in vistas:
+            vistas.add((e["sistema"], e["id"]))
+            saida.append(e)
+    if len(saida) > MAX_EMPRESAS:
+        raise ValueError(f"empresas: no máximo {MAX_EMPRESAS}")
+    return saida
+
+
 def _inteiro(v, nome: str, minimo: int, maximo: int) -> int:
     try:
         n = int(v)
@@ -327,8 +369,10 @@ def validar(e: dict) -> dict:
     paises_int = _paises(inter.get("paises"), "países de interesse", pais)
     termos_int = _textos(inter.get("termos"), "cargos para o exterior", 10)
     ativo = bool(inter.get("ativo"))  # não depende mais do remoto no país
-    if ativo and not paises_int:
-        raise ValueError("escolha pelo menos um país para a busca internacional")
+    fontes_int = _codigos(inter.get("fontes"), "fonte internacional", FONTES_INT)
+    empresas = _empresas(inter.get("empresas"))
+    if ativo and not (paises_int or fontes_int or empresas):
+        raise ValueError("escolha pelo menos um país, uma fonte do exterior ou uma empresa para a busca internacional")
     if ativo and not termos_int:
         raise ValueError("informe pelo menos um cargo em inglês para a busca internacional")
     salario = inter.get("salario_min_anual_usd") or 0
@@ -347,6 +391,9 @@ def validar(e: dict) -> dict:
         "passaporte": bool(inter.get("passaporte")),
         "autorizacao_trabalho": _paises(inter.get("autorizacao_trabalho"), "autorização de trabalho"),
         "precisa_sponsor": bool(inter.get("precisa_sponsor")),
+        "fontes": fontes_int, "empresas": empresas,
+        "frases_restricao": _textos(inter.get("frases_restricao"), "frases de restrição", MAX_FRASES, TAMANHO_FRASE),
+        "frases_positivas": _textos(inter.get("frases_positivas"), "frases positivas", MAX_FRASES, TAMANHO_FRASE),
     }
     tipos = e.get("tipos_emprego") or []
     sen = e.get("senioridades") or []
@@ -391,7 +438,15 @@ def opcoes() -> dict:
     return {"paises": sorted(PAISES, key=sem_acento), "modelos": MODELOS, "tipos_emprego": TIPOS_EMPREGO,
             "senioridades": SENIORIDADES, "moedas": MOEDAS, "moeda_do_pais": MOEDA_DO_PAIS,
             "janelas": JANELAS, "raios_km": RAIOS_KM, "idiomas": IDIOMAS, "regioes": REGIOES,
-            "contratacao": CONTRATACOES}
+            "contratacao": CONTRATACOES, "fontes_int": fontes_int()}
+
+
+def fontes_int() -> list[dict]:
+    """As fontes do exterior para o painel: nome, rótulo e o resumo dos termos de uso de cada uma."""
+    from fontes import FONTES
+
+    return [{"nome": n, "rotulo": r, "termos": getattr(FONTES.get(n), "TERMOS", "")} for n, r in FONTES_INT.items()
+            if n in FONTES]
 
 
 def criterios_extra(f: dict) -> list[str]:
@@ -465,6 +520,11 @@ def consultas(f: dict, incluir_presencial: bool = False) -> list[dict]:
                 for t in inter["termos"] or f["termos"]:
                     lista.append({"grupo": f"mudanca:{p}", "termo": t, "pais": PAISES[p], "pais_nome": p,
                                   "local": None, "raio_km": None, "remoto": False, "area": "internacional"})
+        if inter.get("fontes") or inter.get("empresas"):  # fontes sem filtro de país: uma consulta por cargo
+            for t in inter["termos"] or f["termos"]:
+                lista.append({"grupo": GLOBAL, "termo": t, "pais": None, "pais_nome": None, "local": None,
+                              "raio_km": None, "remoto": not inter.get("aceita_mudar"), "area": "internacional",
+                              "global": True, "empresas": inter.get("empresas") or []})
     return lista
 
 
@@ -479,10 +539,159 @@ def resumo(f: dict) -> str:
         partes.append(f"{' e '.join(locais)} {onde}")
     inter = f["internacional"]
     if inter["ativo"]:
-        partes.append(f"remoto no exterior: {', '.join(inter['paises'])}")
-        if inter.get("aceita_mudar"):
+        if inter["paises"]:
+            partes.append(f"remoto no exterior: {', '.join(inter['paises'])}")
+        if inter.get("aceita_mudar") and (inter.get("paises_mudanca") or inter["paises"]):
             partes.append(f"presencial ou híbrido em: {', '.join(inter.get('paises_mudanca') or inter['paises'])}")
+        if inter.get("fontes"):
+            partes.append("fontes do exterior: " + ", ".join(FONTES_INT[n] for n in inter["fontes"]))
+        if inter.get("empresas"):
+            n = len(inter["empresas"])
+            partes.append(f"{n} empresa{'s' if n > 1 else ''} acompanhada{'s' if n > 1 else ''}")
     return "; ".join(partes)
+
+
+# ---------------------------------------------------------------- elegibilidade (vagas do exterior)
+
+# Países de cada região que o anúncio pode exigir ("mundo todo" vale para qualquer país)
+_LATAM = {"Argentina", "Brasil", "Chile", "Colômbia", "Costa Rica", "Equador", "México", "Panamá", "Peru",
+          "Uruguai", "Venezuela"}
+_EUROPA = {"Alemanha", "Áustria", "Bélgica", "Bulgária", "Chipre", "Croácia", "Dinamarca", "Eslováquia",
+           "Eslovênia", "Espanha", "Estônia", "Finlândia", "França", "Grécia", "Holanda", "Hungria", "Irlanda",
+           "Itália", "Letônia", "Lituânia", "Luxemburgo", "Malta", "Noruega", "Polônia", "Portugal", "Reino Unido",
+           "República Tcheca", "Romênia", "Suécia", "Suíça", "Ucrânia"}
+PAISES_DA_REGIAO = {"América Latina": _LATAM, "Américas": _LATAM | {"Estados Unidos", "Canadá"},
+                    "América do Norte": {"Estados Unidos", "Canadá", "México"}, "Europa": _EUROPA}
+# Frases padrão do anúncio (sem acento, minúsculas); a pessoa amplia com frases_restricao e frases_positivas
+NAO_PATROCINA = (
+    r"(do|does|will|can|are|is) not (currently )?(offer|provide|support)( any)?( work)?( visa)? sponsorship",
+    r"(do|does|will|can|are|is) not (currently |be able to )?sponsor",
+    r"(cannot|can't|won't|unable to|not able to) (offer |provide |support )?(visa |work visa )?sponsor",
+    r"no (visa |work visa |immigration )?sponsorship", r"without (the need for )?(visa |current or future )?sponsorship",
+    r"sponsorship (is )?not (available|offered|provided|possible)", r"not eligible for (visa )?sponsorship",
+    r"nao (oferecemos|patrocinamos) (o )?(patrocinio de )?visto",
+)
+PATROCINA = (
+    r"visa sponsorship (is )?(available|offered|provided|possible)",
+    r"(we|will|can|happy to) (also )?sponsor (your |work |a )?visa",
+    r"(offer|offers|provide|provides|including|includes) (full )?(visa )?sponsorship", r"sponsorship (is )?available",
+    r"will sponsor", r"patrocinio de visto",
+)
+RELOCATION = (
+    r"relocation (package|assistance|support|bonus|budget|allowance|is offered|is available|is provided|offered|available|provided)",
+    r"(offer|offers|provide|provides|including|includes) relocation", r"help (you )?relocate", r"ajuda (de|com a) mudanca",
+)
+_LUGAR = (r"(?P<lugar>[a-z][a-z .&']{1,40}?)(?=$|[,;:()!?/]|\. | (and|or|with|without|for|who|to|at|as|is|are|if|by"
+          r"|on|including)\b)")
+EXIGE_LUGAR = (  # o grupo "lugar" é o país ou a região que o anúncio exige
+    r"(authori[sz]ed|eligible|permitted|legally able|able) to work (legally |permanently )?(in|for) (the )?" + _LUGAR,
+    r"(right|authori[sz]ation|permit) to work (in|for) (the )?" + _LUGAR,
+    r"(must|need to|required to|should) (currently )?(reside|live|be based|be located|be living|be a (legal )?resident)"
+    r" (in|within) (the )?" + _LUGAR,
+    r"(only|exclusively) (open to|accepting|considering|hiring) (candidates|applicants|residents|people|talent)? ?"
+    r"(based |located |residing |living )?(in|from|within) (the )?" + _LUGAR,
+    r"(open|available) (only )?to (candidates|applicants|residents|people|talent) (based |located |residing |living )?"
+    r"(in|from|within) (the )?" + _LUGAR,
+    r"(?P<lugar>\b(?:[a-z.]+ ){0,2}[a-z.]+) (citizens?|residents?|based candidates|applicants) only\b",
+    r"(?P<lugar>\b(?:[a-z.]+ ){0,1}[a-z.]+) only\b",
+    r"\bonly (in|from|within) (the )?" + _LUGAR,
+    r"must be an? (?P<lugar>[a-z.]+(?: [a-z.]+)?) citizen",
+)
+SINAL_PATROCINIO, SINAL_RELOCATION = "Oferece patrocínio de visto", "Oferece relocation"
+
+
+def _inclui(lugar: str, pais: str) -> bool:
+    """O lugar exigido (país ou região) inclui o país."""
+    return lugar in (pais, "mundo todo") or pais in PAISES_DA_REGIAO.get(lugar, ())
+
+
+def _lugares(texto) -> list[str]:
+    """Países e regiões que um texto de restrição de local cita ("USA, Canada", "Remote, France", "Worldwide")."""
+    achados = []
+    for parte in re.split(r"[;,/|()]| or | and ", sem_acento(texto)):
+        lugar = pais_do_local(parte)
+        if lugar and lugar not in achados:
+            achados.append(lugar)
+    return achados
+
+
+def _acha(padroes, texto: str) -> bool:
+    return any(re.search(p, texto) for p in padroes)
+
+
+def _regiao(lugares: list[str], casa: str) -> str | None:
+    """Em que região das caixas da pessoa (brasil, latam, americas, mundo) a vaga está aberta."""
+    for lugar, codigo in (("mundo todo", "mundo"), ("Américas", "americas"), ("América Latina", "latam")):
+        if lugar in lugares:
+            return codigo
+    return "brasil" if casa == "Brasil" and casa in lugares else None
+
+
+def elegibilidade(v: dict, f: dict) -> dict:
+    """Cortes e sinais de uma vaga do exterior, sem IA, pelo campo de restrição do portal e pelas frases do
+    anúncio, contra as caixas da pessoa. Devolve {"motivos": [...], "sinais": [...]}; o ambíguo passa."""
+    inter, casa = f["internacional"], f["localidade"]["pais"]
+    corpo = sem_acento(f"{v.get('titulo') or ''}. {v.get('descricao') or ''}")
+    sinais = []
+    nao_patrocina = _acha(NAO_PATROCINA, corpo)
+    patrocina = not nao_patrocina and _acha(PATROCINA, corpo)
+    if patrocina:
+        sinais.append(SINAL_PATROCINIO)
+    if _acha(RELOCATION, corpo):
+        sinais.append(SINAL_RELOCATION)
+    for frase in inter.get("frases_positivas") or []:
+        if sem_acento(frase) and sem_acento(frase) in corpo and frase not in sinais:
+            sinais.append(frase)
+    motivos = []
+    if area_da_vaga(v, f)[0] != "internacional":
+        return {"motivos": motivos, "sinais": sinais}
+    pode = [casa, *inter.get("autorizacao_trabalho", [])]  # onde a pessoa pode trabalhar hoje
+    serve = lambda lugares: any(_inclui(lugar, p) for lugar in lugares for p in pode)
+    # 1 e 2: país ou região exigidos (campo do portal e frases), sem autorização e sem patrocínio
+    restricao = v.get("restricao_local")
+    do_campo = _lugares(restricao)
+    das_frases, trecho = [], ""
+    for padrao in EXIGE_LUGAR:
+        for m in re.finditer(padrao, corpo):
+            lugar = pais_do_local(m.group("lugar"))
+            if lugar and lugar not in das_frases:
+                das_frases.append(lugar)
+                trecho = trecho or m.group(0).strip()
+    for lugares, fonte in ((do_campo, restricao), (das_frases, trecho)):
+        if lugares and not serve(lugares) and not patrocina:
+            onde = lugares[0] if len(lugares) == 1 else ", ".join(lugares[:-1]) + " ou " + lugares[-1]
+            if nao_patrocina and inter.get("precisa_sponsor"):
+                motivos.append(f"Exige autorização de trabalho em: {onde}; não patrocina visto")
+            else:
+                motivos.append(f"Só aceita quem está em: {onde} (o anúncio diz “{str(fonte)[:80]}”)")
+            break
+    # 3: regiões aceitas pela pessoa
+    regiao = _regiao(do_campo or das_frases, casa)
+    if not motivos and inter.get("regioes") and regiao and regiao not in inter["regioes"]:
+        motivos.append(f"Vaga aberta a: {REGIOES[regiao]}; você aceita "
+                       + _lista_e([REGIOES[r] for r in inter["regioes"]]))
+    # 4: presencial ou híbrido no exterior
+    modelo = v.get("modelo_trabalho")
+    if modelo not in MODELOS and (GLOBAL in (v.get("grupos") or []) or v.get("ats")):
+        modelo = "presencial" if v.get("remoto") is False else None  # fonte que informa o modelo
+    if modelo in ("hibrido", "presencial"):
+        pais = area_da_vaga(v, f)[1]
+        onde = f" em {v['local']}" if v.get("local") else ""
+        if not inter.get("aceita_mudar"):
+            motivos.append(f"{MODELOS[modelo]}{onde}; você não marcou que aceita morar fora")
+        elif inter.get("paises_mudanca") and pais and pais not in inter["paises_mudanca"]:
+            motivos.append(f"{MODELOS[modelo]}{onde}; você aceita morar em " + _lista_e(inter["paises_mudanca"]))
+    # 5: frases da pessoa
+    for frase in inter.get("frases_restricao") or []:
+        if sem_acento(frase) and sem_acento(frase) in corpo:
+            motivos.append(f"O anúncio diz “{frase}” (frase da sua lista)")
+            break
+    return {"motivos": motivos, "sinais": sinais}
+
+
+def sinais(v: dict, f: dict) -> list[str]:
+    """Sinais positivos para gravar na vaga (patrocínio, relocation, frases da pessoa)."""
+    return elegibilidade(v, f)["sinais"]
 
 
 # ---------------------------------------------------------------- critérios
@@ -521,7 +730,8 @@ def criterios(v: dict, f: dict) -> list[str]:
             motivos.append(f"Empresa na sua lista de exclusão ({e})")
             break
     modelo, m = v.get("modelo_trabalho"), f["modelos"]
-    if modelo in MODELOS:
+    internacional = area_da_vaga(v, f)[0] == "internacional"
+    if modelo in MODELOS and not internacional:  # no exterior, vale "aceito morar fora" (elegibilidade)
         nome = MODELOS[modelo]
         onde = f" em {v['local']}" if v.get("local") and modelo != "remoto" else ""
         if not m[modelo]:
@@ -546,10 +756,12 @@ def criterios(v: dict, f: dict) -> list[str]:
             motivos.append(f"Vaga em {IDIOMAS.get(idioma, idioma)}; você aceita "
                            + _lista_e([IDIOMAS[i] for i in f["idiomas_aceitos"]]))
     minimo = f["internacional"]["salario_min_anual_usd"]
-    if minimo and area_da_vaga(v, f)[0] == "internacional":
+    if minimo and internacional:
         anual = salario_anual_usd(v)
         if anual and anual < minimo:
             motivos.append(f"Paga até US$ {anual:,.0f} por ano; seu mínimo é US$ {minimo:,.0f}")
+    if internacional:
+        motivos += elegibilidade(v, f)["motivos"]
     if v.get("fora_dos_criterios"):
         motivos.append(str(v["fora_dos_criterios"]))
     return motivos

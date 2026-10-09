@@ -35,7 +35,9 @@ MANTER_BACKUPS = 10
 ETAPAS = ("salva", "aplicada", "entrevista", "proposta", "encerrada")
 TRIAGENS = ("pendente", "seguir", "visitada", "fora")  # fora = furou os filtros da busca
 RESULTADOS = ("nao_aprovado", "desisti", "cancelada", "contratado")
-PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Outra")
+PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Remotive", "Himalayas", "RemoteOK",
+               "Jobicy", "We Work Remotely", "Get on Board", "Greenhouse", "Lever", "Ashby", "Outra")
+SISTEMAS_ATS = ("greenhouse", "lever", "ashby")
 MODELOS = ("remoto", "hibrido", "presencial", "nao_informado")
 SENIORIDADES = ("junior", "pleno", "senior")
 ORIGENS_SENIORIDADE = ("declarada", "sugerida")
@@ -362,15 +364,22 @@ def validar_analise(a: dict) -> dict:
 # ---------------------------------------------------------------- escrita
 
 def aplicar_criterios(doc: dict) -> None:
-    """Vaga do relatório que fura os filtros da busca vai para Fora dos critérios, como as da busca."""
-    if doc.get("origem") == "manual" or doc.get("triagem") != "pendente":
-        return
+    """Vaga do relatório que fura os filtros da busca vai para Fora dos critérios, como as da busca. Também
+    grava os sinais positivos (patrocínio de visto, relocation, frases da pessoa), em qualquer vaga."""
     try:
         raiz = str(DASH.parent)
         if raiz not in sys.path:
             sys.path.insert(0, raiz)
         import filtros  # filtros.py, na raiz do projeto
-        motivos = filtros.criterios(doc, filtros.efetivos(filtros.ler_config()))
+        f = filtros.efetivos(filtros.ler_config())
+        sinais = filtros.sinais(doc, f)
+        if sinais:
+            doc["sinais"] = sinais
+        else:
+            doc.pop("sinais", None)
+        if doc.get("origem") == "manual" or doc.get("triagem") != "pendente":
+            return
+        motivos = filtros.criterios(doc, f)
     except Exception:  # config ausente ou com erro não impede gravar a vaga
         return
     if motivos:
@@ -394,6 +403,27 @@ def definir_area(doc: dict, campos: dict | None = None) -> None:
         doc["pais_vaga"] = (filtros.pais_pt(pais) or pais or filtros.pais_do_local(doc.get("local"))) if doc["area"] == "internacional" else None
     else:
         doc["area"], doc["pais_vaga"] = filtros.area_da_vaga({**doc, "area": None}, f)
+
+
+def _da_fonte(doc: dict, dados: dict) -> None:
+    """O que a leitura do link trouxe além do básico: restrição de local, sistema de candidatura, link de
+    candidatura, salário, moeda e idioma."""
+    extras = {
+        "restricao_local": _texto(dados.get("restricao_local"), 200),
+        "ats": dados.get("ats") if dados.get("ats") in SISTEMAS_ATS else None,
+        "url_candidatura": _texto(dados.get("url_candidatura"), 1000),
+        "salario": _texto(dados.get("salario"), 80),
+        "moeda": _texto(dados.get("moeda"), 3).upper(),
+        "idioma": _texto(dados.get("idioma"), 2).lower(),
+        "modelo_trabalho": dados.get("modelo_trabalho") if dados.get("modelo_trabalho") in ("remoto", "hibrido", "presencial") else "",
+    }
+    if not re.match(r"^https?://", extras["url_candidatura"], re.I):
+        extras["url_candidatura"] = ""
+    if not re.fullmatch(r"[A-Z]{3}", extras["moeda"]):
+        extras["moeda"] = ""
+    if not re.fullmatch(r"[a-z]{2}", extras["idioma"]):
+        extras["idioma"] = ""
+    doc.update({k: v for k, v in extras.items() if v})
 
 
 def criar_manual(campos: dict) -> dict:
@@ -427,7 +457,7 @@ def criar_manual(campos: dict) -> dict:
     definir_area(doc, campos)
     if no_relatorio:
         doc["termos"] = []
-        aplicar_criterios(doc)
+    aplicar_criterios(doc)
     with escrita() as con:
         _gravar(con, vid, doc)
     doc["id"] = vid
@@ -457,6 +487,7 @@ def criar_de_link(dados: dict) -> tuple[dict, bool]:
     }
     if not doc["titulo"] or not doc["empresa"]:
         raise ValueError("cargo e empresa são obrigatórios")
+    _da_fonte(doc, dados)
     definir_area(doc, dados)
     repetida = achar_repetida({**doc, "id": vid})
     if repetida is not None:  # a plataforma do link vira mais uma etiqueta da vaga que já existe

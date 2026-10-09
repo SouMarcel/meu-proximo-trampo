@@ -7,8 +7,12 @@
   ele falhar, os dados estruturados da página, como nos outros sites.
 - startup.jobs: o MCP público do site (fontes/startupjobs.py), pelo número da vaga; se
   ele falhar, os dados estruturados da página.
-- Outros sites (InHire, Greenhouse, Lever, páginas de empresa): os dados
-  estruturados de vaga da página (schema.org JobPosting, o formato que o Google usa).
+- Greenhouse, Lever e Ashby: a API pública de vagas da empresa (fontes/ats.py), pelo
+  número da vaga, com o link de candidatura e a restrição de local; se ela falhar, os
+  dados estruturados da página.
+- Outros sites (InHire, Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on
+  Board, páginas de empresa): os dados estruturados de vaga da página (schema.org
+  JobPosting, o formato que o Google usa).
 
 Se não der para ler, levanta LinkErro com o que conseguiu (o dashboard abre o
 formulário para o usuário completar). Só abre endereços públicos da internet.
@@ -26,7 +30,7 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlsplit
 
-from . import gupy, startupjobs
+from . import _comum, ats, gupy, startupjobs
 
 NL = chr(10)
 LIMITE_BYTES = 3_000_000
@@ -47,7 +51,11 @@ class LinkErro(Exception):
 def plataforma(host: str) -> str:
     host = (host or "").lower()
     for chave, nome in (("indeed.", "Indeed"), ("linkedin.", "LinkedIn"), ("gupy.io", "Gupy"),
-                        ("inhire", "InHire"), ("catho.", "Catho"), ("startup.jobs", "Startup Jobs")):
+                        ("inhire", "InHire"), ("catho.", "Catho"), ("startup.jobs", "Startup Jobs"),
+                        ("remotive.", "Remotive"), ("himalayas.app", "Himalayas"), ("remoteok.", "RemoteOK"),
+                        ("jobicy.", "Jobicy"), ("weworkremotely.", "We Work Remotely"), ("getonbrd.", "Get on Board"),
+                        ("getonboard.", "Get on Board"), ("greenhouse.io", "Greenhouse"), ("lever.co", "Lever"),
+                        ("ashbyhq.com", "Ashby")):
         if chave in host:
             return nome
     return "Outra"
@@ -283,6 +291,16 @@ def _ler_startupjobs(url: str, vid: str) -> dict:
     return {**vaga, "id": vid, "url": url}
 
 
+def _ler_ats(url: str, plat: str) -> dict:
+    try:
+        vaga = ats.ler(url)
+    except _comum.FonteErro:
+        vaga = extrair_jobposting(_baixar(url), plat)
+        empresa, vid = ats.vaga_do_link(url)
+        vaga.update(id=_comum.ident(empresa["sistema"], f"{empresa['id']}-{vid}"), ats=empresa["sistema"])
+    return {**vaga, "url": url}
+
+
 def _achar_vaga(obj):
     if isinstance(obj, list):
         for x in obj:
@@ -356,6 +374,8 @@ def ler(url: str) -> dict:
         vaga = _ler_gupy(url, gupy.id_do_link(url))
     elif plat == "Startup Jobs" and startupjobs.id_do_link(url):
         vaga = _ler_startupjobs(url, startupjobs.id_do_link(url))
+    elif plat in ("Greenhouse", "Lever", "Ashby") and ats.vaga_do_link(url):
+        vaga = _ler_ats(url, plat)
     else:
         vaga = extrair_jobposting(_baixar(url), plat)
         vaga["id"] = "web-" + hashlib.sha1((partes.netloc + partes.path).lower().encode("utf-8")).hexdigest()[:16]

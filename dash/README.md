@@ -77,6 +77,9 @@ outros sites e `m-…` nas preenchidas à mão.
 | `termos`, `grupos`, `ids_relacionados`, `busca_id`, `jk` | controle da busca: termos que acharam a vaga, de qual grupo de consultas veio (`remoto`, `local` = cidade, `internacional:<país>`), anúncios repetidos e ids da mesma vaga em outros portais, de qual busca veio |
 | `area`, `pais_vaga` | `nacional` ou `internacional` e o país (ou região) da vaga: pela consulta que achou a vaga ou pelo local; nas vagas antigas, deduzidos pelos grupos da busca |
 | `idioma` | idioma da vaga (`pt`, `en`, `es`…), detectado sem IA ou lido pela análise; base do filtro `idiomas_aceitos` |
+| `restricao_local` | onde a vaga aceita candidatos, como o portal informa (ex.: `USA, Canada`, `Worldwide`); base da elegibilidade |
+| `ats` | sistema de candidatura (`greenhouse`, `lever`, `ashby`), quando conhecido; o detalhe mostra o botão "Candidatar no …" |
+| `sinais` | sinais positivos lidos no anúncio sem IA ("Oferece patrocínio de visto", "Oferece relocation" e as suas frases positivas); etiqueta verde na listagem, no card e no detalhe |
 | `triagem` | `pendente` (no relatório), `seguir` (foi para o quadro), `visitada` (não seguir), `fora` (furou os filtros da busca) |
 | `motivo_fora[]` | por que a vaga ficou fora dos critérios |
 | `etapa` | `salva`, `aplicada`, `entrevista`, `proposta`, `encerrada` ou `null` (fora do quadro) |

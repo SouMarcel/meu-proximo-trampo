@@ -1,0 +1,167 @@
+{
+ "comments": "21/08/2026: Cursor pagination is now available and is the preferred way to page through the feed. Pass the nextCursor value from each response back as ?cursor=. It is faster than offset and will never return the same job twice. The offset parameter is deprecated and will be removed in a future release. 13/03/2026: The API has been updated to include the companySlug field in the response.",
+ "updatedAt": 1791579860,
+ "offset": 0,
+ "limit": 20,
+ "totalCount": 118337,
+ "nextCursor": "MjAyNi0xMC0wOVQyMDo1NzoxMS43MTE1ODJafDIzODMwOTM",
+ "jobs": [
+  {
+   "title": "Chief Data Officer (CDO) — Insurance & Investments",
+   "excerpt": "Job SummaryThe Chief Data Officer (CDO) is responsible for the organization's enterprise-wide data strategy, governance, quality, analytics, AI, and data-driven transformation.",
+   "companyName": "TheHiveCareers",
+   "companySlug": "thehivecareers",
+   "companyLogo": "https://cdn-images.himalayas.app/cj85pdd0870xaq5xdxhby508bzul",
+   "employmentType": "Full Time",
+   "minSalary": null,
+   "maxSalary": null,
+   "salaryPeriod": "annual",
+   "seniority": [
+    "Executive"
+   ],
+   "currency": null,
+   "locationRestrictions": [
+    "Barbados"
+   ],
+   "timezoneRestrictions": [
+    -4
+   ],
+   "categories": [
+    "Chief-Data-Officer",
+    "Data-Officer",
+    "Chief-Analytics-Officer",
+    "Data-Strategy-Director",
+    "Data-Governance-Director",
+    "Chief-Data-Office-Lead"
+   ],
+   "parentCategories": [],
+   "description": "<h3>Job Summary</h3><p>The Chief Data Officer (CDO) is responsible for the organization's enterprise-wide data strategy, governance, quality, analytics, AI, and data-driven transformation.</p><p>Within an Insurance &amp; Investments organization, the CDO ensures that data is treated as a strategic asset across underwriting, claims, customer management, investment/asset management, risk, finance, compliance, and regulatory reporting.</p><h3>Key Responsibilities</h3><p>Develop and execute the enterprise data strategy and roadmap.</p><p>Establish enterprise-wide data governance, ownership, standards, policies, and controls.</p><p>Improve data quality, consistency, accuracy, availability, and accessibility.</p><p>Lead the organization's data management and data architecture strategy.</p><p>Establish data models, data platforms, data warehouses, data lakes, and data integration capabilities.</p><p>Lead Business Intelligence (BI), analytics, reporting, and advanced analytics.</p><p>Develop and oversee AI, machine learning, and predictive analytics initiatives.</p><p>Support data-driven decision-making across insurance, investments, finance, risk, and operations.</p><p>Establish data governance frameworks covering data privacy, security, lineage, classification, and access.</p><p>Partner with the CIO/CTO and technology teams on data platforms and architecture.</p><p>Support regulatory and management reporting through reliable and controlled data.</p><p>Develop data capabilities for ",
+   "pubDate": 1791579860,
+   "expiryDate": 1796763860,
+   "applicationLink": "https://himalayas.app/companies/thehivecareers/jobs/chief-data-officer-cdo-insurance-investments-4101346571",
+   "guid": "https://himalayas.app/companies/thehivecareers/jobs/chief-data-officer-cdo-insurance-investments-4101346571"
+  },
+  {
+   "title": "B2B Co-Founder / CPTO (100 % remote) (m/f/d)",
+   "excerpt": "We are looking to hire ambitious entrepreneurs to start and scale their own startups.",
+   "companyName": "EWOR GmbH",
+   "companySlug": "ewor-gmbh",
+   "companyLogo": "https://cdn-images.himalayas.app/mzfjnameg78wsqgnqdccysf7eg22",
+   "employmentType": "Full Time",
+   "minSalary": null,
+   "maxSalary": null,
+   "salaryPeriod": "annual",
+   "seniority": [
+    "Executive"
+   ],
+   "currency": null,
+   "locationRestrictions": [
+    "United Kingdom"
+   ],
+   "timezoneRestrictions": [
+    0
+   ],
+   "categories": [
+    "Chief-Technology-Officer",
+    "Chief-Product-Officer",
+    "Co-Founder",
+    "Startup-Founder",
+    "Product-Manager",
+    "Remote-Founder-and-Head-Of-Product",
+    "Co-Founder-and-CTO",
+    "Remote-Chief-Product-Officer",
+    "Co-Founder-and-CPO",
+    "Remote-Co-Founder"
+   ],
+   "parentCategories": [
+    "Product"
+   ],
+   "description": "<p>We are looking to hire ambitious entrepreneurs to start and scale their own startups.</p><p>We are serial entrepreneurs, for example Paul Müller (founder Adjust, €1.2B exit) and Petter Made (founder SumUp, €8B) who are eager to support outlier personalities and serial entrepreneurs to build €1B+ companies.</p><h3>Our offer:</h3><ul>\n<li>A salary while you build your startup as you will directly be employed by us. Alternatively, you can opt for up to <strong>€500k</strong> in funding.</li>\n<li>\n<strong>1:1 sparring with unicorn founders</strong> on a weekly basis</li>\n<li>\n<strong>Community</strong>: Access to the top 0.1% of founders, peers and investors</li>\n<li>\n<strong>Team building</strong>: Hiring top notch talent supported through our network (over 50,000 professionals)</li>\n<li>\n<strong>Distribution</strong>: Support in reaching product-market-fit and building up a sales force / marketing machine</li>\n<li>\n<strong>Funding support</strong> for securing a multi-million euro funding round within 12 months (on average, EWOR Fellows raise &gt; €2M after our Grand Pitch)</li>\n</ul><p>One of our fellows set a record for Europe’s largest pre-seed round by a first-time founder, securing a €12M pre-seed investment.</p><h3>Tasks</h3><ul>\n<li>You will own, build, and run your startup in fields such as B2B</li>\n<li>You will embark on an extensive personal development journey crafted by unicorn founders and follow a fully customised programme enhancing your goal, time, and energy",
+   "pubDate": 1791579846,
+   "expiryDate": 1796763845,
+   "applicationLink": "https://himalayas.app/companies/ewor-gmbh/jobs/b2b-co-founder-cpto-100-remote-m-f-d-3584573631",
+   "guid": "https://himalayas.app/companies/ewor-gmbh/jobs/b2b-co-founder-cpto-100-remote-m-f-d-3584573631"
+  },
+  {
+   "title": "Listing Grafiker (m/w/d)",
+   "excerpt": "ÜBER NEOLYMPNeolymp ist eine Fitnessmarke aus Berlin, die 2018 gegründet wurde und hochwertige Fitnessprodukte entwickelt – von Klimmzugstangen über Fitnessbänder bis hin zu Walking-Pads.",
+   "companyName": "Neolymp",
+   "companySlug": "neolymp",
+   "companyLogo": "",
+   "employmentType": "Full Time",
+   "minSalary": null,
+   "maxSalary": null,
+   "salaryPeriod": "annual",
+   "seniority": [
+    "Mid-level"
+   ],
+   "currency": null,
+   "locationRestrictions": [
+    "Germany"
+   ],
+   "timezoneRestrictions": [
+    1
+   ],
+   "categories": [
+    "Graphic-Designer",
+    "ECommerce-Graphic-Designer",
+    "Creative-Designer",
+    "Visual-Designer",
+    "Amazon-Listing-Specialist",
+    "Grafikdesign"
+   ],
+   "parentCategories": [
+    "Design"
+   ],
+   "description": "<h3>ÜBER NEOLYMP</h3><p><a href=\"https://himalayas.app/companies/neolymp\">Neolymp</a> ist eine Fitnessmarke aus Berlin, die 2018 gegründet wurde und hochwertige Fitnessprodukte entwickelt – von Klimmzugstangen über Fitnessbänder bis hin zu Walking-Pads. Unsere Produkte verkaufen wir erfolgreich über Amazon sowie unseren eigenen Onlineshop. Als schnell wachsende E-Commerce-Marke arbeiten wir kontinuierlich daran, unsere Prozesse weiterzuentwickeln und Kompetenzen intern aufzubauen. Ein besonderer Fokus liegt dabei auf dem Aufbau unseres Inhouse-Grafikbereichs sowie der Entwicklung moderner, KI-gestützter Creative-Prozesse.</p><p>Als <strong>Listing Grafiker</strong> (m/w/d) übernimmst du bei uns die komplette operative Grafikarbeit, bist Ansprechpartner für alle grafischen Themen und setzt Briefings aus Marketing und E-Commerce eigenständig um. Du arbeitest alleine als Single-Contributor, ohne Teamverantwortung oder Personalführung. Es geht nicht darum, ein Team zu leiten, sondern darum, Aufgaben selbstständig umzusetzen und sauber abzuarbeiten.</p><h3>Aufgaben</h3><h3>DEINE AUFGABEN</h3><ul>\n<li>\n<strong>Grafik- und Creative-Erstellung:</strong> Du entwickelst eigenständig verkaufsstarke Amazon-Listings – von Produktbildern über A+ Content bis hin zu Grafikmodulen – und setzt Briefings aus Marketing und E-Commerce professionell um.</li>\n<li>\n<strong>Content-Produktion mit KI:</strong> Du erstellst hochwertige Creatives mithilfe moderner KI-Tools wie Midjourney oder Firefly un",
+   "pubDate": 1791579802,
+   "expiryDate": 1796763802,
+   "applicationLink": "https://himalayas.app/companies/neolymp/jobs/listing-grafiker-m-w-d",
+   "guid": "https://himalayas.app/companies/neolymp/jobs/listing-grafiker-m-w-d"
+  },
+  {
+   "title": "CMMS System Administrator",
+   "excerpt": "Job TitleCMMS System AdministratorJob Description SummaryThe FAMIS 360 CMMS System Administrator plays a critical role in ensuring the successful implementation, configuration, and ongoing management of the FAMIS 360 system within the CW Account.",
+   "companyName": "Cushman & Wakefield",
+   "companySlug": "cushman-wakefield",
+   "companyLogo": "https://cdn-images.himalayas.app/l99ajoifddyoghtiroduuhrqpn1y",
+   "employmentType": "Full Time",
+   "minSalary": 55250,
+   "maxSalary": 65000,
+   "salaryPeriod": "annual",
+   "seniority": [
+    "Mid-level"
+   ],
+   "currency": "USD",
+   "locationRestrictions": [
+    "United States"
+   ],
+   "timezoneRestrictions": [
+    -10,
+    -9,
+    -8,
+    -7,
+    -6,
+    -5,
+    14
+   ],
+   "categories": [
+    "CMMS-Administrator",
+    "Systems-Administrator",
+    "FAMIS-Administrator",
+    "Facilities-Systems-Administration",
+    "IT-Systems-Administrator",
+    "CMMS-Systems-Operator",
+    "CMMS-Administration"
+   ],
+   "parentCategories": [
+    "Operations"
+   ],
+   "description": "<h3>Job Title</h3>CMMS System Administrator<h3>Job Description Summary</h3>The FAMIS 360 CMMS System Administrator plays a critical role in ensuring the successful implementation, configuration, and ongoing management of the FAMIS 360 system within the CW Account. This position involves collaborating with the account team, participating in training sessions, and overseeing system administration tasks. The administrator serves as the primary point of contact for FAMIS 360-related inquiries and support issues.<h3>Job Description</h3><p></p><p><b>Role Description</b></p><ul>\n<li><b>Participate in transition meetings related to FAMIS 360 and integrated systems (e.g., Yardi, JDE, MEM, Serraview, CoStar).</b></li>\n<li><b>Attend FAMIS 360 training sessions, including guest and full user trainings.</b></li>\n<li><b>Participate in 360 Systems Administrator training sessions.</b></li>\n<li><b>Collaborate with the C&amp;W TDS Delivery Manager and account team during configuration and setup.</b></li>\n<li><b>Configure property settings (accounting codes, language designation, business hours, contacts).</b></li>\n<li><b>Manage user security profiles.</b></li>\n<li><b>Assist with data loading and configuration adjustments.</b></li>\n<li><b>Own the FAMIS 360 system and ensure its proper use and configuration.</b></li>\n<li><b>Serve as the primary point of contact for account team members regarding FAMIS 360-related questions and support.</b></li>\n<li><b>Monitor and address system-generated support",
+   "pubDate": 1791579737,
+   "expiryDate": 1796763736,
+   "applicationLink": "https://himalayas.app/companies/cushman-wakefield/jobs/cmms-system-administrator",
+   "guid": "https://himalayas.app/companies/cushman-wakefield/jobs/cmms-system-administrator"
+  }
+ ]
+}

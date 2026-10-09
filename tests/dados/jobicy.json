@@ -1,0 +1,109 @@
+{
+ "apiVersion": "2.2.19",
+ "documentationUrl": "https://jobi.cy/apidocs",
+ "friendlyNotice": "Thanks for using Jobicy API! Please ensure Jobicy is clearly credited with a direct link to the source, and all application buttons redirect to the original job URL provided in this feed. That’s all! You might be building something amazing, we wish you the best of luck!",
+ "jobCount": 20,
+ "lastUpdate": "2026-10-09T18:42:49+00:00",
+ "nextCursor": "AgAAAABqyWRFAAAAAGrJK04AAAAAAAJdOAGKD85gP7l7-uBFYJiUIARBmkCT9asivnqsbGAZlOESceoQ_5J0O7nJbC5Nsq9fqktIZPf3_ZGk0nd8PuU5GAo",
+ "hasMore": true,
+ "appliedFilters": {
+  "count": 20,
+  "tag": "data"
+ },
+ "jobs": [
+  {
+   "id": 154956,
+   "url": "https://jobicy.com/jobs/154956-account-executive-private-equity",
+   "jobSlug": "154956-account-executive-private-equity",
+   "jobTitle": "Account Executive, Private Equity",
+   "companyName": "Juniper Square",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2022/01/90c359a8bed816e81ea39fa33a8314f3.png",
+   "jobIndustry": [
+    "Sales"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "USA",
+   "jobLevel": "Director",
+   "jobExcerpt": "About Juniper Square Private markets are one of the largest, most complex, and most underserved corners of global finance. Our mission at Juniper Square is to unlock their full potential. We’re the Operations Partner trusted by 2,300+ GPs, unifying technology, data, and fund administration services into a single platform that helps GPs move faster, make&hellip;",
+   "jobDescription": "<h3><strong>About <a href=\"https://jobicy.com/company/juniper-square\" target=\"_blank\" rel=\"noopener\">Juniper Square</a></strong></h3>\n<p>Private markets are one of the largest, most complex, and most underserved corners of global finance. Our mission at Juniper Square is to unlock their full potential. We’re the Operations Partner trusted by 2,300+ GPs, unifying technology, data, and fund administration services into a single platform that helps GPs move faster, make better decisions, and scale with precision. With $300B+ under administration and 700,000+ LPs on platform, we’ve built the scale to match our ambition. And with JunieAI, our purpose-built AI platform, we’re reimagining how private markets operate, embedding intelligence across every workflow. Founder-led since 2014, backed by $350M+ in funding, and now 1,000+ employees strong, we’re building a company designed to shape the future of private markets for decades to come.</p>\n<p>Our culture is built for people who want to do ambitious, meaningful work alongside exceptionally talented teammates. We think like owners, move with urgency, and take pride in solving hard problems that truly matter to our customers and the future of private markets. We believe the best ideas come from open debate, deep collaboration, and diverse perspectives, which is why we believe transparency is the default and feedback makes us stronger. If you’re energized by high standards, rapid growth, and the opportunity to help define a category ",
+   "pubDate": "2026-10-09T18:42:49+00:00",
+   "salaryMin": 120000,
+   "salaryMax": 145000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  },
+  {
+   "id": 154954,
+   "url": "https://jobicy.com/jobs/154954-senior-manager-implementation-and-onboarding",
+   "jobSlug": "154954-senior-manager-implementation-and-onboarding",
+   "jobTitle": "Senior Manager Implementation and Onboarding",
+   "companyName": "1Password",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2020/09/WRILS-200909195848-296323.png",
+   "jobIndustry": [
+    "Customer Support & Success"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "Canada,  USA",
+   "jobLevel": "Director",
+   "jobExcerpt": "1Password is growing. We’ve surpassed $400M in ARR and we’re continuing to accelerate, earning a spot on the Forbes Cloud 100 for four years in a row and teaming up with iconic partners like Oracle Red Bull Racing. About 1Password At 1Password, we’re building the foundation for a safe, productive digital future. Our mission is&hellip;",
+   "jobDescription": "<p><em><strong><a href=\"https://jobicy.com/company/1password\" target=\"_blank\" rel=\"noopener\">1Password</a> is growing.</strong> We’ve surpassed $400M in ARR and we’re continuing to accelerate, earning a spot on the Forbes Cloud 100 for four years in a row and teaming up with iconic partners like Oracle Red Bull Racing.</em></p>\n\n<p><strong>About 1Password</strong></p>\n<p><em>At 1Password, we’re building the foundation for a safe, productive digital future. Our mission is to unleash employee productivity without compromising security by ensuring every identity is authentic, every application sign-in is secure, and every device is trusted. We innovated the market-leading enterprise password manager and pioneered Unified Access Management, a new cybersecurity category built for the way people and AI agents work today. As one of the most loved brands in cybersecurity, we take a human-centric approach in everything from product strategy to user experience. Over 180,000 businesses, from Fortune 100 leaders to the world’s most innovative AI companies, trust 1Password to help their teams securely adopt the SaaS and AI tools they need to do their best work.</em></p>\n\n<p><em>If you're excited about the opportunity to contribute to the digital safety of millions, to work alongside a team of curious, driven individuals, and to solve hard problems in a fast-paced, dynamic environment, then we want to hear from you. Come join us and help shape a safer, simpler digital future.</em></p>\n\n<p>",
+   "pubDate": "2026-10-09T18:42:48+00:00",
+   "salaryMin": 139000,
+   "salaryMax": 202000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  },
+  {
+   "id": 154953,
+   "url": "https://jobicy.com/jobs/154953-group-product-manager-ai-native-data-warehouse",
+   "jobSlug": "154953-group-product-manager-ai-native-data-warehouse",
+   "jobTitle": "Group Product Manager, AI-Native Data Warehouse",
+   "companyName": "Juniper Square",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2022/01/90c359a8bed816e81ea39fa33a8314f3.png",
+   "jobIndustry": [
+    "Product & Operations"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "Canada,  USA",
+   "jobLevel": "Director",
+   "jobExcerpt": "About Juniper Square Private markets are one of the largest, most complex, and most underserved corners of global finance. Our mission at Juniper Square is to unlock their full potential. We’re the Operations Partner trusted by 2,300+ GPs, unifying technology, data, and fund administration services into a single platform that helps GPs move faster, make&hellip;",
+   "jobDescription": "<h3><strong>About <a href=\"https://jobicy.com/company/juniper-square\" target=\"_blank\" rel=\"noopener\">Juniper Square</a></strong></h3>\n<p>Private markets are one of the largest, most complex, and most underserved corners of global finance. Our mission at Juniper Square is to unlock their full potential. We’re the Operations Partner trusted by 2,300+ GPs, unifying technology, data, and fund administration services into a single platform that helps GPs move faster, make better decisions, and scale with precision. With $300B+ under administration and 700,000+ LPs on platform, we’ve built the scale to match our ambition. And with JunieAI, our purpose-built AI platform, we’re reimagining how private markets operate, embedding intelligence across every workflow. Founder-led since 2014, backed by $350M+ in funding, and now 1,000+ employees strong, we’re building a company designed to shape the future of private markets for decades to come.</p>\n<p>Our culture is built for people who want to do ambitious, meaningful work alongside exceptionally talented teammates. We think like owners, move with urgency, and take pride in solving hard problems that truly matter to our customers and the future of private markets. We believe the best ideas come from open debate, deep collaboration, and diverse perspectives, which is why we believe transparency is the default and feedback makes us stronger. If you’re energized by high standards, rapid growth, and the opportunity to help define a category ",
+   "pubDate": "2026-10-09T18:42:48+00:00",
+   "salaryMin": 230000,
+   "salaryMax": 300000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  },
+  {
+   "id": 154957,
+   "url": "https://jobicy.com/jobs/154957-principal-engineer-product-engineering",
+   "jobSlug": "154957-principal-engineer-product-engineering",
+   "jobTitle": "Principal Engineer, Product Engineering",
+   "companyName": "1Password",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2020/09/WRILS-200909195848-296323.png",
+   "jobIndustry": [
+    "Software Engineering"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "Canada,  USA",
+   "jobLevel": "Senior",
+   "jobExcerpt": "1Password is growing. We’ve surpassed $400M in ARR and we’re continuing to accelerate, earning a spot on the Forbes Cloud 100 for four years in a row and teaming up with iconic partners like Oracle Red Bull Racing. About 1Password At 1Password, we’re building the foundation for a safe, productive digital future. Our mission is&hellip;",
+   "jobDescription": "<p><em><strong><a href=\"https://jobicy.com/company/1password\" target=\"_blank\" rel=\"noopener\">1Password</a> is growing.</strong> We’ve surpassed $400M in ARR and we’re continuing to accelerate, earning a spot on the Forbes Cloud 100 for four years in a row and teaming up with iconic partners like Oracle Red Bull Racing.</em></p>\n\n<p><strong>About 1Password</strong></p>\n<p><em>At 1Password, we’re building the foundation for a safe, productive digital future. Our mission is to unleash employee productivity without compromising security by ensuring every identity is authentic, every application sign-in is secure, and every device is trusted. We innovated the market-leading enterprise password manager and pioneered Unified Access Management, a new cybersecurity category built for the way people and AI agents work today. As one of the most loved brands in cybersecurity, we take a human-centric approach in everything from product strategy to user experience. Over 180,000 businesses, from Fortune 100 leaders to the world’s most innovative AI companies, trust 1Password to help their teams securely adopt the SaaS and AI tools they need to do their best work.</em></p>\n\n<p><em>If you're excited about the opportunity to contribute to the digital safety of millions, to work alongside a team of curious, driven individuals, and to solve hard problems in a fast-paced, dynamic environment, then we want to hear from you. Come join us and help shape a safer, simpler digital future.</em></p>\n\n<p>",
+   "pubDate": "2026-10-09T18:42:47+00:00",
+   "salaryMin": 246000,
+   "salaryMax": 369000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  }
+ ],
+ "statusCode": 200,
+ "success": true
+}

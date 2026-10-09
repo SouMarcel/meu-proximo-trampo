@@ -146,8 +146,8 @@ class Busca:
         except (OSError, ValueError):
             cfg = {}
         f = fm.efetivos(cfg)
-        nomes = [n for n in cfg.get("fontes", ["indeed", "gupy"]) if n in v.FONTES]
-        consultas = len(fm.consultas(f)) * len(nomes) if f["termos"] else 0
+        nomes = [n for n in v.fontes_da_busca(cfg, f) if n in v.FONTES]
+        consultas = v.contar_consultas(fm.consultas(f), nomes) if f["termos"] else 0
         escolha = ia.escolha_efetiva(cfg)
         prov = ia.PROVEDORES[escolha["provedor"]]
         perfil = RAIZ / (cfg.get("perfil") or "perfil.md")
@@ -213,7 +213,7 @@ class Busca:
         try:
             cfg = fm.ler_config()
             f = fm.efetivos(cfg)
-            nomes = [n for n in cfg.get("fontes", ["indeed", "gupy"]) if n in v.FONTES]
+            nomes = [n for n in v.fontes_da_busca(cfg, f) if n in v.FONTES]
             with v.TravaBusca("pagina") as trava:
                 try:
                     resultado = v.executar(cfg, f, nomes, cfg.get("resultados_por_termo", 40), pausa=PAUSA,

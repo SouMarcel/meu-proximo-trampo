@@ -11,7 +11,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ## O que ela faz
 
-- **Busca** vagas no Indeed e na Gupy (e no startup.jobs, de startups, se você ligar) com
+- **Busca** vagas no Indeed e na Gupy (e no startup.jobs, de startups, e em portais de vagas
+  remotas do exterior, se você ligar) com
   os seus cargos e filtros, que você ajusta no painel **Filtros da busca** do dashboard:
   remoto no seu país (e, se quiser, em outros países), híbrido e presencial só na sua
   cidade, data de publicação, tipo de emprego, senioridade, moedas aceitas para vagas de
@@ -68,7 +69,7 @@ skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`anal
 
 ```mermaid
 flowchart LR
-  A[Indeed, Gupy<br/>e startup.jobs] --> B[vagas.py buscar]
+  A[Indeed, Gupy, startup.jobs<br/>e fontes do exterior] --> B[vagas.py buscar]
   B -->|sem IA| D[(banco local)]
   B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
   C --> D
@@ -300,7 +301,7 @@ funcionar, abra uma issue.
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
-| `internacional` | Busca no exterior, desligada por padrão (painel **Filtros da busca internacional**): `ativo`, `paises`, `termos` (cargos em inglês), `regioes`, `salario_min_anual_usd`, `fuso_horas`, `contratacao` e a sua situação (`aceita_mudar` + `paises_mudanca`, `passaporte`, `autorizacao_trabalho`, `precisa_sponsor`). Cada país × cargo é uma consulta a mais |
+| `internacional` | Busca no exterior, desligada por padrão (painel **Filtros da busca internacional**): `ativo`, `paises`, `termos` (cargos em inglês), `regioes`, `salario_min_anual_usd`, `fuso_horas`, `contratacao`, a sua situação (`aceita_mudar` + `paises_mudanca`, `passaporte`, `autorizacao_trabalho`, `precisa_sponsor`), `fontes` (fontes do exterior: `remotive`, `himalayas`, `remoteok`, `jobicy`, `weworkremotely`, `getonboard`), `empresas` (empresas acompanhadas no Greenhouse, Lever ou Ashby, informadas pelo link da página de vagas), `frases_restricao` e `frases_positivas`. Cada país × cargo é uma consulta a mais; as fontes do exterior fazem uma consulta por cargo (as listas, uma por busca) |
 | `idiomas_aceitos` | `pt`, `en`, `es`, `fr`, `de`, `it`: vaga em outro idioma vai para Fora dos critérios. Vazio = todos |
 | `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias) |
 | `tipos_emprego` | `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario`. Vazio = todos; com IA, conferido na descrição |
@@ -324,7 +325,24 @@ aparecem só na aba Internacional, com a etiqueta **Internacional · país** (e 
 lugar; o Quadro é comum, com filtro por área. Com "aceito morar fora", a busca inclui vagas
 presenciais e híbridas nos países escolhidos. A sua situação vai para a análise da IA, que
 aponta o que pode impedir (autorização, sponsor, fuso). Cada portal só roda nas buscas que
-atende (a Gupy, por exemplo, só no Brasil). Vaga que fura algum filtro vai para a
+atende (a Gupy, por exemplo, só no Brasil).
+
+**Fontes do exterior e empresas que você acompanha.** No mesmo painel, você liga as fontes de
+vagas remotas que quiser (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on
+Board; todas desligadas até você marcar) e cola o link da página de vagas das empresas que
+acompanha no Greenhouse, no Lever ou no Ashby (ex.: `jobs.lever.co/empresa`). A busca consulta
+cada fonte e cada empresa uma vez e filtra pelos cargos em inglês. Cada vaga traz, quando o
+portal informa, onde ela aceita candidatos, o salário, a moeda, o link de candidatura e o
+sistema de candidatura usado.
+
+**Elegibilidade.** Sem IA, a ferramenta lê a restrição de local do portal e frases comuns do
+anúncio ("US only", "must be authorized to work in", "we do not sponsor visas", "open to
+candidates in LATAM", "relocation package"…) e compara com a sua situação: vaga que exige
+autorização de trabalho num país onde você não tem (e não patrocina visto), restrita a uma
+região que não inclui o seu país ou fora das regiões que você aceita, ou presencial e híbrida
+sem você aceitar morar fora vai para Fora dos critérios, com o motivo. Oferta de patrocínio de
+visto ou de relocation vira uma etiqueta verde na vaga. Se o anúncio é ambíguo, a vaga passa.
+Você pode acrescentar as suas frases: as que cortam e as que viram sinal positivo. Vaga que fura algum filtro vai para a
 aba Fora dos critérios. O formato antigo (`local`, `pais_indeed`, `somente_remoto`)
 continua funcionando. Opções pontuais, sem mexer no arquivo:
 `python vagas.py buscar --help`.
@@ -385,6 +403,24 @@ Para instalar à mão, no Claude Code:
   chave de API é opcional (identifica o seu uso; o acesso total o site libera por
   e-mail): ponha `MCP_STARTUP_JOBS=sua_chave` no arquivo `.env` da raiz, que fica fora
   do Git. Se o site recusar a chave, a busca segue sem ela e avisa.
+- As fontes do exterior são APIs e feeds públicos, sem login, oferecidos pelos próprios
+  portais para divulgar as vagas. Em todas, a ferramenta mostra de onde veio a vaga e leva
+  para o anúncio original; a candidatura é sempre feita lá. Termos de cada uma:
+  - **Remotive** (`remotive.com/api/remote-jobs`): citar a Remotive e linkar a vaga original;
+    no máximo 4 consultas por dia (a ferramenta guarda a lista por 6 horas em `.cache/`); as
+    vagas chegam com 24 horas de atraso, e a lista pública é pequena (poucas dezenas de vagas).
+  - **Remote OK** (`remoteok.com/api`): citar o Remote OK e linkar a vaga original; sem usar o
+    logotipo.
+  - **Jobicy** (`jobicy.com/api/v2/remote-jobs`): creditar o Jobicy com link e mandar a
+    candidatura sempre para o link original da vaga.
+  - **Himalayas** (`himalayas.app/jobs/api`), **We Work Remotely** (RSS em
+    `weworkremotely.com/remote-jobs.rss`) e **Get on Board** (`getonbrd.com/api/v0`): a resposta
+    não traz termos próprios; a ferramenta cita a fonte, linka a vaga e consulta pouco (uma
+    lista por busca, ou uma consulta por cargo).
+  - **Greenhouse, Lever e Ashby**: as APIs públicas das páginas de vagas das empresas, uma
+    consulta por empresa por busca.
+- A elegibilidade lê só o que o anúncio diz e erra para o lado de deixar passar: confira a
+  vaga antes de se candidatar.
 - A nota da IA serve para triagem; ela não substitui ler a vaga.
 
 ## Próximos passos
@@ -392,6 +428,8 @@ Para instalar à mão, no Claude Code:
 - [x] Indeed (Brasil e outros países)
 - [x] Gupy
 - [x] startup.jobs (vagas de startups; opcional)
+- [x] Fontes do exterior (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board)
+  e empresas acompanhadas no Greenhouse, Lever e Ashby; opcionais
 - [ ] Outros portais: LinkedIn, InHire, Catho, Glassdoor
 - [ ] Simular entrevista para as vagas na coluna Entrevista
 
@@ -401,7 +439,9 @@ Cada portal é um módulo em `fontes/` com uma função `buscar()` que devolve a
 num formato comum. O contrato está em [`fontes/__init__.py`](fontes/__init__.py), e o
 [`fontes/indeed.py`](fontes/indeed.py) e o [`fontes/gupy.py`](fontes/gupy.py) servem de
 exemplo; o [`fontes/startupjobs.py`](fontes/startupjobs.py) mostra o `descrever()`, para
-portal cuja busca não traz a descrição. Contribuições são bem-vindas.
+portal cuja busca não traz a descrição. Portais do exterior sem filtro de país usam
+`POR_PAIS = False` e o apoio de [`fontes/_comum.py`](fontes/_comum.py) (o
+[`fontes/remotive.py`](fontes/remotive.py) é o exemplo mais curto). Contribuições são bem-vindas.
 
 ## Licença
 

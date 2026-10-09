@@ -1,0 +1,332 @@
+{
+ "data": [
+  {
+   "id": "semi-senior-java-developer-etl-23people-remote-ebb4",
+   "type": "job",
+   "attributes": {
+    "title": "Semi Senior Java Developer / ETL",
+    "description_headline": "Skills Excluyentes",
+    "description": "<ul><li>Experiencia excluyente trabajando con Java.</li><li>Experiencia comprobable en procesos de Extracción, Transformación y Carga de datos (ETL).</li><li>Sólidos conocimientos como usuario de bases de datos, abarcando SQL, procedimientos almacenados y triggers.</li><li>Experiencia en procesos de manejo de datos, incluyendo tanto procesamiento en lotes como procesamientos distribuidos.</li><li>Inglés técnico/básico: Capacidad para leer documentación, entender requerimientos y redactar mensajes sencillos.</li></ul>",
+    "projects": "<div>Equifax es mucho más que una empresa de informes; es una compañía global líder en datos, analítica y tecnología con presencia en 24 países. En Chile, operan desde 1979 entregando soluciones críticas de ciberseguridad, identidad y riesgo a más de 14.000 empresas.</div><div>El Hub Tecnológico (SDC) Lo que hace única a esta oportunidad es que Chile alberga el Santiago Development Center (SDC). Este centro lidera la transformación digital de Equifax a nivel mundial, concentrando cerca del 60% de sus desarrollos tecnológicos globales.</div><div>Cultura y Visión Equifax promueve un entorno de colaboración y excelencia técnica, donde el talento local tiene el desafío de crear soluciones de impacto mundial. Su visión es clara: usar la data y la tecnología para potenciar la toma de decisiones financieras en todo el mundo.</div>",
+    "functions_headline": "Funciones del cargo",
+    "functions": "<p><strong>El Semi Senior Developer se integrará al equipo para realizar la automatización, transformación y limpieza de datos provenientes de diversas fuentes, tales como Excel, XML y CSV. Su día a día incluirá la carga y revisión de estos archivos en la nube utilizando GCP. Además, trabajará activamente con pipelines de datos que alimentan entornos de Big Data a través de scripts.</strong></p>",
+    "benefits_headline": "Beneficios",
+    "benefits": "<ul><li><strong>Seguro complementario</strong>: Seguro de salud, vida y dental, para que estés protegido.</li><li><strong>Curso de inglés</strong>: En nuestro programa de formación en el idioma, ofrecemos dos modalidades para adaptarnos a tus necesidades y objetivos, con profesores nativos.</li><li><strong>Reembolso de certificaciones internacionales</strong>: Apoyamos el crecimiento profesional, por lo que te reembolsamos el costo de un examen de certificación internacional que quieras realizar.</li><li><strong>Bono de vacaciones</strong>: Recibe una compensación económica por cada semana de vacaciones que tomes. </li><li><strong>Aguinaldos en fiestas patrias y Navidad</strong>: Un bono en septiembre y en diciembre, para que la pases bien con tu familia. </li><li><strong>Día libre de cumpleaños</strong>: Puedes tomarlo el día previo, el mismo día, o el posterior a tu cumpleaños. </li><li><strong>Mejora tu espacio de trabajo:</strong> Te reembolsamos parte del costo de equipar tu home office para que trabajes cómodo y a gusto. </li><li><strong>Betterfly:</strong> App de bienestar que premia tus hábitos saludables con telemedicina, psicología y nutrición, sin costo. </li></ul>",
+    "desirable_headline": "Skills Deseables",
+    "desirable": "<ul><li>Conocimientos en Python.</li><li>Diseño, creación y manejo de ETL On Prem (Pentaho, Control-M, Nifi) o Cloud (Airflow, Cloud Composer, Glue, Lambda).</li><li>Conocimientos en tecnologías como Spark y DataProc / DataFlow.</li><li>Conocimientos sobre ambientes de datos, calidad, modelado de procesos y flujos de datos.</li><li>Nociones básicas de estadísticas, machine learning y deep learning.<br></li></ul><h3><strong>¿Qué ofrecemos?</strong></h3><ul><li><strong>Rango salarial: $2.000.000 - $2.200.000 CLP.</strong></li><li><strong>Modalidad: Remoto.</strong></li><li><strong>Horario: Lunes a Jueves de 8:30 a 18:30 hrs y Viernes de 8:30 a 17:30 hrs.</strong></li><li><strong>Contrato: Proyecto inicial de 6 meses con posible extensión.</strong></li></ul>",
+    "remote": true,
+    "remote_modality": "remote_local",
+    "remote_zone": null,
+    "countries": [
+     "Remote"
+    ],
+    "lang": "lang_not_specified",
+    "category_name": "Data Science / Analytics",
+    "perks": [
+     "wellness",
+     "accessible",
+     "flexible_hours",
+     "life_insurance",
+     "health_coverage",
+     "computer_repairs",
+     "dental_insurance",
+     "computer_provided",
+     "education_stipend",
+     "shopping_discounts",
+     "vacation_on_birthday"
+    ],
+    "min_salary": 2000,
+    "max_salary": 2200,
+    "published_at": 1791547528,
+    "response_time_in_days": {
+     "min": null,
+     "max": null
+    },
+    "applications_count": 48,
+    "location_regions": {
+     "data": []
+    },
+    "location_tenants": {
+     "data": [
+      {
+       "id": 1,
+       "type": "location_tenant"
+      }
+     ]
+    },
+    "location_cities": {
+     "data": []
+    },
+    "modality": {
+     "data": {
+      "id": 1,
+      "type": "modality"
+     }
+    },
+    "seniority": {
+     "data": {
+      "id": 3,
+      "type": "seniority"
+     }
+    },
+    "tags": {
+     "data": [
+      {
+       "id": 2,
+       "type": "tag"
+      },
+      {
+       "id": 64,
+       "type": "tag"
+      },
+      {
+       "id": 175,
+       "type": "tag"
+      },
+      {
+       "id": 355,
+       "type": "tag"
+      },
+      {
+       "id": 3386,
+       "type": "tag"
+      },
+      {
+       "id": 36940,
+       "type": "tag"
+      },
+      {
+       "id": 37032,
+       "type": "tag"
+      }
+     ]
+    },
+    "company": {
+     "data": {
+      "id": "23people-cl",
+      "type": "company",
+      "attributes": {
+       "name": "23people"
+      }
+     }
+    }
+   },
+   "links": {
+    "public_url": "https://www.getonbrd.com/jobs/semi-senior-java-developer-etl-23people-remote-ebb4"
+   }
+  },
+  {
+   "id": "actuario-senior-bnp-paribas-cardif-santiago-d762",
+   "type": "job",
+   "attributes": {
+    "title": "Actuario Senior",
+    "description_headline": "Requerimientos del cargo",
+    "description": "<p> ¿Tienes título profesional universitario en <strong>Ingeniería Civil Industrial, Actuariado, Estadística, Matemática o carreras afines</strong>?</p><p>Buscamos a alguien con experiencia previa en áreas de <strong>Actuariado,</strong> idealmente en <strong>tarificación, modelación estadística del riesgo, monitoreo del riesgo o similares.</strong></p><p>Años de Experiencia: <strong>3-4 años experiencia en Pricing o Actuariado </strong>(excluyente)</p>",
+    "projects": "<p>En BNP Paribas Cardif buscamos un(a) <strong>Actuario(a) Senior</strong>. Si eres profesional en Ingeniería Civil Industrial, Actuariado, Estadística, Matemática o carreras afines, cuentas con 3 a 4 años de experiencia excluyente en Pricing o Actuariado, ¡esta oportunidad es para ti!</p><p>Tu misión será desarrollar y mejorar modelos de evaluación para análisis técnico-financieros que impulsen la toma de decisiones de los equipos de Pricing y Negocios. Asimismo, gestionarás reportes de variables críticas para mitigar riesgos y evaluar nuevos productos, asegurando el cumplimiento de todas las políticas de desarrollo y validación de la compañía.</p><p>¿Te sumas a la revolución de la industria del seguro?</p><p><em>“Todas las contrataciones están sujetas a la ley 21015. En BNP Paribas Cardif creemos en lugares de trabajos inclusivos y diversos, donde todas las personas son bienvenidas. En caso de necesitar adaptaciones para ser parte de nuestro proceso de selección, favor comunicarlo en la sección de preguntas.”</em></p>",
+    "functions_headline": "Funciones del cargo",
+    "functions": "<div> ¿Cuáles son los principales desafíos del cargo?</div><div>· Analizar la rentabilidad de la cartera de productos, entregar a la Gerencia General y Comercial las herramientas y los informes para tomar decisiones.</div><div>· Garantizar el seguimiento del riesgo (estudios, desarrollo de KPIs, metodologías de proyección de resultados).</div><div>· Facilitar la gestión del equipo de pricing y negocios, apoyando la relación con el cliente, a través del seguimiento de su cartera.</div><div>· Gestionar y analizar los datos de la compañía con el fin de abordar distintas problemáticas actuariales que permitan apoyar el proceso de transformación.</div><div>· Desarrollar y mejorar los modelos de evaluación y herramientas de cálculo.</div><div>· Seguimiento, estudio y control de los riesgos que enfrenta cada cartera de socios.</div><div>· Participar activamente en proyectos transversales tanto a la gerencia técnica como a nivel compañía, aportando desde el punto de vista técnico y financiero.</div><div>· Buscar la mejora continua los procesos y procedimientos del área, buscando la agilidad y perfeccionamiento de las metodologías de cálculo.</div>",
+    "benefits_headline": "Beneficios del cargo",
+    "benefits": "<div>¿Cuáles son los beneficios y ventajas de trabajar con nosotros?</div><ul><li>Trabajamos eficientemente: 40 horas semanales en horarios flexibles</li><li>¡Tenemos más vacaciones y días libres! Una semana adicional de vacaciones + 1 día libre considerando tu cumpleaños y quehaceres personales.</li><li>Apoyamos tu formación profesional: Acceso ilimitado a nuestra plataforma Coursera y dos días libres al año por estudios</li><li>Contarás con telemedicina gratis, seguro de vida, de salud y dental.</li><li>Contamos con política de vestimenta flexible.</li></ul><div>Y muchos otros beneficios que podrás conocer al avanzar en nuestro proceso de selección…</div>",
+    "desirable_headline": "Conocimientos y habilidades ",
+    "desirable": "<p><strong>Conocimientos Técnicos Excluyentes</strong></p><ul><li> Manejo de MS Office nivel avanzado, con especialidad en Excel (excluyente)</li><li> Dominio de bases de datos y programación en SAS (excluyente)</li><li> Inglés nivel intermedio - avanzado (excluyente)</li></ul><p><strong>Competencias y Habilidades Deseables</strong></p><ul><li><strong>Análisis y Gestión:</strong> Alta capacidad de síntesis y análisis, planificación y seguimiento.</li><li><strong>Ejecución y Resultados:</strong> Orientación a resultados, proactividad, autonomía y autogestión.</li><li><strong>Comunicación e Impacto:</strong> Habilidades comunicacionales orales y escritas, con efectividad en presentaciones.</li><li><strong>Colaboración e Innovación:</strong> Capacidad de trabajo en equipo y aptitud para generar ideas y mejoras continuas.</li></ul>",
+    "remote": false,
+    "remote_modality": "hybrid",
+    "remote_zone": null,
+    "countries": [
+     "Chile"
+    ],
+    "lang": "lang_not_specified",
+    "category_name": "Data Science / Analytics",
+    "perks": [],
+    "min_salary": null,
+    "max_salary": null,
+    "published_at": 1791487303,
+    "response_time_in_days": {
+     "min": null,
+     "max": null
+    },
+    "applications_count": 39,
+    "location_regions": {
+     "data": []
+    },
+    "location_tenants": {
+     "data": []
+    },
+    "location_cities": {
+     "data": [
+      {
+       "id": 1,
+       "type": "location_city"
+      }
+     ]
+    },
+    "modality": {
+     "data": {
+      "id": 1,
+      "type": "modality"
+     }
+    },
+    "seniority": {
+     "data": {
+      "id": 4,
+      "type": "seniority"
+     }
+    },
+    "tags": {
+     "data": [
+      {
+       "id": 57,
+       "type": "tag"
+      },
+      {
+       "id": 903,
+       "type": "tag"
+      },
+      {
+       "id": 7314,
+       "type": "tag"
+      },
+      {
+       "id": 37009,
+       "type": "tag"
+      },
+      {
+       "id": 42612,
+       "type": "tag"
+      }
+     ]
+    },
+    "company": {
+     "data": {
+      "id": "bnp-paribas-cardif",
+      "type": "company",
+      "attributes": {
+       "name": "BNP Paribas Cardif"
+      }
+     }
+    }
+   },
+   "links": {
+    "public_url": "https://www.getonbrd.com/jobs/actuario-senior-bnp-paribas-cardif-santiago-d762"
+   }
+  },
+  {
+   "id": "senior-java-developer-odbc-jdbc-bi-connectors-improving-remote",
+   "type": "job",
+   "attributes": {
+    "title": "Senior Java Developer ODBC/JDBC & BI Connectors",
+    "description_headline": "Qualifications and requirements",
+    "description": "<ul><li>Experiencia porfunda en Java con experiencia demostrada en:</li></ul><p>Debugging de memory leaks en aplicaciones Java</p><p>Resolución de problemas multi-threaded</p><p>Análisis y optimización de performance con profilers</p><ul><li>Experiencia en desarrollo de drivers ODBC/JDBC</li></ul><p>Desarrollo de conectores Power BI</p><p>Desarrollo de conectores Tableau</p><p>Conocimiento práctico de Apache Arrow</p><ul><li>Inglés intermedio-avanzado o avanzado</li></ul>",
+    "projects": "<div>En Improving South America, brindamos servicios de TI para transformar la percepción del profesional de TI. Nos enfocamos en consultoría de TI, desarrollo de software y formación ágil. </div><div>La empresa promueve una cultura de trabajo excepcional basada en el trabajo en equipo, la excelencia y la diversión, con enfoque en crecimiento personal y recompensas compartidas. Al integrarse, el/la candidato/a formará parte de una comunidad que prioriza la comunicación abierta y relaciones laborales sólidas a largo plazo, respaldada por una estructura de desarrollo profesional y aprendizaje continuo.</div>",
+    "functions_headline": "Job functions",
+    "functions": "<p>Buscamos un Senior Developer altamente técnico para unirse a nuestro equipo de Developer Experiences. Serás responsable de desarrollar, mantener y mejorar los drivers de conectividad y conectores para herramientas empresariales que permiten que millones de usuarios se conecten de forma segura y eficiente.</p><p>Este es un rol especializado que requiere expertise profundo en drivers de base de datos, conectividad multi-plataforma e integración con herramientas BI líderes del mercado cumpliendo con:</p><ul><li>Desarrollo y mantenimiento de drivers de conectividad (ODBC/JDBC) con enfoque en performance y estabilidad</li><li>Construcción de conectores para herramientas BI empresariales (Power BI, Tableau y otras plataformas analíticas)</li><li>Creación y soporte de librerías cliente para múltiples lenguajes de programación</li><li>Implementación de integraciones de IA para mejorar la conectividad y experiencia de usuario</li><li>Mantenimiento y evolución de soluciones de conectividad a través de diversas plataformas y aplicaciones.</li></ul>",
+    "benefits_headline": "Conditions",
+    "benefits": "<ul><li>Contrato a largo plazo.</li><li>100% Remoto.</li><li>Vacaciones y PTOs</li><li>Posibilidad de recibir 2 bonos al año.</li><li>2 revisiones salariales al año.</li><li>Clases de inglés.</li><li>Equipamiento Apple.</li><li>Plataforma de cursos en linea</li><li>Budget para compra de libros.</li><li>Budget para compra de materiales de trabajo</li><li>mucho mas..</li></ul>",
+    "desirable_headline": "Desirable skills",
+    "desirable": "<ul><li>C++ para desarrollo de componentes low-level</li><li>Diseño e implementación de REST APIs</li><li>Experiencia previa con integraciones de otras herramientas BI (Looker, Mode, etc.)</li></ul>",
+    "remote": true,
+    "remote_modality": "remote_local",
+    "remote_zone": null,
+    "countries": [
+     "Remote"
+    ],
+    "lang": "lang_not_specified",
+    "category_name": "Data Science / Analytics",
+    "perks": [
+     "computer_provided"
+    ],
+    "min_salary": null,
+    "max_salary": null,
+    "published_at": 1791406316,
+    "response_time_in_days": {
+     "min": null,
+     "max": null
+    },
+    "applications_count": 25,
+    "location_regions": {
+     "data": []
+    },
+    "location_tenants": {
+     "data": [
+      {
+       "id": 3,
+       "type": "location_tenant"
+      },
+      {
+       "id": 6,
+       "type": "location_tenant"
+      },
+      {
+       "id": 2,
+       "type": "location_tenant"
+      },
+      {
+       "id": 1,
+       "type": "location_tenant"
+      }
+     ]
+    },
+    "location_cities": {
+     "data": []
+    },
+    "modality": {
+     "data": {
+      "id": 1,
+      "type": "modality"
+     }
+    },
+    "seniority": {
+     "data": {
+      "id": 4,
+      "type": "seniority"
+     }
+    },
+    "tags": {
+     "data": [
+      {
+       "id": 2,
+       "type": "tag"
+      },
+      {
+       "id": 176,
+       "type": "tag"
+      },
+      {
+       "id": 362,
+       "type": "tag"
+      },
+      {
+       "id": 3872,
+       "type": "tag"
+      },
+      {
+       "id": 7566,
+       "type": "tag"
+      },
+      {
+       "id": 9680,
+       "type": "tag"
+      }
+     ]
+    },
+    "company": {
+     "data": {
+      "id": "improving",
+      "type": "company",
+      "attributes": {
+       "name": "Improving"
+      }
+     }
+    }
+   },
+   "links": {
+    "public_url": "https://www.getonbrd.com/jobs/senior-java-developer-odbc-jdbc-bi-connectors-improving-remote"
+   }
+  }
+ ],
+ "meta": {
+  "page": 1,
+  "per_page": 10,
+  "total_pages": 41
+ }
+}

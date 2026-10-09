@@ -172,6 +172,17 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 /* Área internacional (etiqueta e painel) */
 .int-tag { display: inline-flex; align-items: center; gap: 4px; border: 1px solid color-mix(in srgb, var(--info) 55%, transparent); color: var(--info); background: color-mix(in srgb, var(--info) 10%, transparent); border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 .card .int-tag { margin-top: 2px; }
+.sinal-tag { display: inline-flex; align-items: center; border: 1px solid color-mix(in srgb, var(--good) 55%, transparent); color: var(--good); background: color-mix(in srgb, var(--good) 10%, transparent); border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; margin-left: 4px; }
+.card .sinal-tag { margin: 2px 4px 0 0; }
+.fbi-fonte { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; }
+.fbi-fonte input { margin-top: 3px; accent-color: var(--good); }
+.fbi-fonte small { display: block; color: var(--muted); font-weight: 400; }
+.fbi-empresas { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.fbi-empresas li { display: flex; align-items: center; gap: 8px; justify-content: space-between; background: var(--col); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.fbi-empresas small { color: var(--muted); }
+.fbi-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fbi-frases { width: 100%; min-height: 84px; background: var(--col); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; resize: vertical; }
+.det-fonte { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .fbi-lista { width: 100%; background: var(--col); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; }
 
 /* Currículo pela página (seção no detalhe da vaga e currículo base em Meu perfil) */
@@ -296,6 +307,7 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .fb-erro { margin: 0; color: var(--bad); font-weight: 600; }
 @media (max-width: 720px) {
   .fb-grid { grid-template-columns: 1fr 1fr; }
+  .fbi-grid2 { grid-template-columns: 1fr; }
   .fb-sub { margin-left: 0; }
   .fb { max-height: calc(100vh - 340px); }
   .fb-conta { flex: 1 1 100%; }
@@ -599,7 +611,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     { k: "encerrada", label: "Encerrada", vazio: "Processos finalizados ficam aqui." }
   ];
   var RESULTADOS = { nao_aprovado: "Não aprovado", desisti: "Desisti", cancelada: "Vaga cancelada", contratado: "Contratado" };
-  var PLATAFORMAS = ["Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Outra"];
+  var PLATAFORMAS = ["Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Remotive", "Himalayas", "RemoteOK",
+                     "Jobicy", "We Work Remotely", "Get on Board", "Greenhouse", "Lever", "Ashby", "Outra"];
+  var ATS = { greenhouse: "Greenhouse", lever: "Lever", ashby: "Ashby" };
 
   var S = {
     vagas: [], busca: null, loaded: false, offline: false, versao: null, canWrite: true,
@@ -636,7 +650,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function plataformaDoLink(u) {
     var h = "";
     try { h = new URL(u).hostname.toLowerCase(); } catch (e) { return "Outra"; }
-    var pares = [["indeed.", "Indeed"], ["linkedin.", "LinkedIn"], ["gupy.io", "Gupy"], ["inhire", "InHire"], ["catho.", "Catho"], ["startup.jobs", "Startup Jobs"]];
+    var pares = [["indeed.", "Indeed"], ["linkedin.", "LinkedIn"], ["gupy.io", "Gupy"], ["inhire", "InHire"], ["catho.", "Catho"], ["startup.jobs", "Startup Jobs"],
+                 ["remotive.", "Remotive"], ["himalayas.app", "Himalayas"], ["remoteok.", "RemoteOK"], ["jobicy.", "Jobicy"], ["weworkremotely.", "We Work Remotely"],
+                 ["getonbrd.", "Get on Board"], ["getonboard.", "Get on Board"], ["greenhouse.io", "Greenhouse"], ["lever.co", "Lever"], ["ashbyhq.com", "Ashby"]];
     for (var i = 0; i < pares.length; i++) if (h.indexOf(pares[i][0]) >= 0) return pares[i][1];
     return "Outra";
   }
@@ -664,11 +680,15 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function paisDe(v) {
     if (v.pais_vaga) return v.pais_vaga;
     var g = (v.grupos || []).filter(function (x) { return /^(internacional|mudanca):/.test(x); })[0];
-    return g ? g.split(":")[1] : "";
+    return g && g !== "internacional:global" ? g.split(":")[1] : "";
   }
   function intTag(v) {
     if (areaDe(v) !== "internacional") return "";
     return '<span class="int-tag" title="Vaga internacional">Internacional · ' + esc(paisDe(v) || "exterior") + (v.moeda ? " · " + esc(v.moeda) : "") + "</span>";
+  }
+  // Sinais positivos lidos no anúncio (patrocínio de visto, relocation, frases da pessoa)
+  function sinaisTags(v) {
+    return (v.sinais || []).map(function (x) { return '<span class="sinal-tag" title="Lido no anúncio">' + esc(x) + "</span>"; }).join("");
   }
   function porArea(v) { return !S.areaQ || areaDe(v) === S.areaQ; }
   function abaDaVaga(v) { return areaDe(v) === "internacional" ? "internacional" : "relatorio"; }
@@ -843,7 +863,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<div class="card-top">' + platTags(v) +
       '<time datetime="' + esc(v.etapa_em || "") + '">' + esc(ddmm(v.etapa_em || v.encontrada_em)) + "</time>" +
       '<button class="more" data-menu="' + esc(v.id) + '" aria-label="Opções de ' + esc(v.titulo) + '" aria-haspopup="menu">' + ICON.dots + "</button></div>" +
-      "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" + intTag(v) +
+      "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" + intTag(v) + sinaisTags(v) +
       (v.termos && v.termos.length ? '<p class="termos" title="Termos de busca que encontraram esta vaga">busca: ' + esc(termosDe(v)) + "</p>" : "") + chipsDe(v) +
       '<div class="card-actions">' +
       (url ? '<a class="btn-ghost" href="' + esc(url) + '" target="_blank" rel="noopener">' + ICON.ext + " Link da Vaga</a>"
@@ -876,7 +896,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     itens.forEach(function (v) {
       var e = ETAPAS.filter(function (x) { return x.k === v.etapa; })[0];
       var url = safeUrl(v.url);
-      h += "<tr><td><button class=\"link-btn t\" data-det=\"" + esc(v.id) + "\">" + esc(v.titulo) + '</button><div class="sub">' + esc(v.empresa) + "</div>" + intTag(v) + "</td>" +
+      h += "<tr><td><button class=\"link-btn t\" data-det=\"" + esc(v.id) + "\">" + esc(v.titulo) + '</button><div class="sub">' + esc(v.empresa) + "</div>" + intTag(v) + sinaisTags(v) + "</td>" +
         "<td>" + platTags(v) + "</td>" +
         "<td>" + esc(e ? e.label : v.etapa) + (v.etapa === "encerrada" && v.resultado ? '<div class="sub">' + esc(RESULTADOS[v.resultado] || v.resultado) + "</div>" : "") + "</td>" +
         '<td class="num">' + (v.analise_status === "pendente" ? "—" : (typeof v.aderencia === "number" ? v.aderencia : "—")) + "</td>" +
@@ -900,7 +920,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var url = safeUrl(v.url);
     var d = dias(v.publicada_em);
     var analisada = (v.encaixe || []).length || (v.lacunas || []).length || (v.alertas || []).length;
-    var meta = [platTags(v) + intTag(v), esc(v.empresa), esc(v.local || "")];
+    var meta = [platTags(v) + intTag(v) + sinaisTags(v), esc(v.empresa), esc(v.local || "")];
     var nv = niveis(v);
     if (nv.length) {
       var rot = nv.map(function (x) { return NIVEIS[x]; }).join("/");
@@ -1039,8 +1059,12 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     else analise = '<p class="hint">Sem análise para esta vaga.</p>';
     if (bnd && v.analise_provedor) analise += '<p class="hint">Nota por ' + esc(nomeIA(v.analise_provedor)) + (v.analise_modelo ? " · " + esc(v.analise_modelo) : "") + "</p>";
     var dis = S.canWrite ? "" : " disabled";
+    var candidatura = safeUrl(v.url_candidatura) || (v.ats ? url : "");
+    var fonte = [v.restricao_local ? "Onde a vaga aceita (informado pelo portal): " + v.restricao_local : "",
+                 v.ats ? "Candidatura pelo " + (ATS[v.ats] || v.ats) : ""].filter(Boolean).join(" · ");
     box.innerHTML =
-      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(plataformasDe(v).join(", ")) + " " + intTag(v) + "</p>" +
+      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(plataformasDe(v).join(", ")) + " " + intTag(v) + sinaisTags(v) + "</p>" +
+      (fonte ? '<p class="det-fonte">' + esc(fonte) + "</p>" : "") +
       (v.termos && v.termos.length ? '<p class="termos">Encontrada pela busca: ' + esc(termosDe(v)) + "</p>" : "") + "</div>" +
       '<button class="more" data-fechar aria-label="Fechar">✕</button></div>' + analise +
       '<div class="det-grid">' +
@@ -1054,6 +1078,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<div class="dlg-foot">' +
       '<button class="btn-danger" id="d-remover"' + dis + ">Remover do quadro</button>" +
       (url ? '<a class="btn-plain" href="' + esc(url) + '" target="_blank" rel="noopener" style="text-decoration:none">Abrir vaga</a>' : "") +
+      (candidatura && candidatura !== url || candidatura && v.ats ? '<a class="btn-plain" href="' + esc(candidatura) + '" target="_blank" rel="noopener" style="text-decoration:none">Candidatar' +
+        (v.ats ? " no " + esc(ATS[v.ats] || v.ats) : "") + "</a>" : "") +
       '<button class="btn-primary" id="d-salvar"' + dis + ">Salvar anotações</button></div>";
   }
 
@@ -1091,6 +1117,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (locais && cidade) n += t;
     var it = d.internacional, ti = it.termos.length || t;  // a busca de fora não depende do remoto no país
     if (it.ativo) n += it.paises.length * ti + (it.aceita_mudar ? ((it.paises_mudanca || []).length || it.paises.length) * ti : 0);
+    if (it.ativo && ((it.fontes || []).length || (it.empresas || []).length)) n += ti; // fontes do exterior: uma por cargo
     return n;
   }
   function abrirFiltros(proposta, depois, modo) { // proposta: filtros sugeridos pelos primeiros passos; modo "int": painel internacional
@@ -1126,7 +1153,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     for (var i = 0; i <= 12; i++) fusos.push('<option value="' + i + '"' + (it.fuso_horas === i ? " selected" : "") + ">" + (i ? "Pelo menos " + i + " h" : "Não considerar") + "</option>");
     $("fb-corpo").innerHTML =
       '<section class="fb-sec"><label class="check"><input type="checkbox" id="fbi-ativo"' + chk(it.ativo) + "> Buscar também vagas no exterior</label>" +
-        '<p class="hint">Remoto em cada país de interesse, mesmo que você não busque remoto no seu país. Cada país × cargo é uma consulta a mais.</p></section>' +
+        '<p class="hint">Remoto em cada país de interesse, mesmo que você não busque remoto no seu país. Cada país × cargo é uma consulta a mais. Com fontes do exterior ou empresas, os países de interesse são opcionais.</p></section>' +
       '<section class="fb-sec"><h3>Países de interesse</h3><input type="text" id="fb-pais-busca" placeholder="Buscar país…" aria-label="Buscar país">' +
         '<div class="paises-lista" id="fb-paises"></div><div class="tags" id="fb-l-paises"></div></section>' +
       '<section class="fb-sec"><h3>Cargos em inglês</h3><p class="hint">Poucos e no idioma das vagas de lá (ex.: data analyst).</p>' +
@@ -1146,7 +1173,19 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         '<label class="check"><input type="checkbox" id="fbi-passaporte"' + chk(it.passaporte) + "> Tenho passaporte válido</label>" +
         '<div class="field"><label for="fbi-autorizacao">Tenho visto ou autorização de trabalho em (países, separados por vírgula)</label><input class="fbi-lista" id="fbi-autorizacao" value="' + esc((it.autorizacao_trabalho || []).join(", ")) + '" placeholder="nenhum"></div>' +
         '<label class="check"><input type="checkbox" id="fbi-sponsor"' + chk(it.precisa_sponsor) + "> Preciso de patrocínio de visto (sponsor)</label>" +
-        '<p class="hint">Valem só para vagas internacionais: com "aceito morar fora", a busca inclui vagas presenciais e híbridas nesses países; o resto vai para a análise da IA, que aponta o que pode impedir.</p></section>';
+        '<p class="hint">Valem só para vagas internacionais: com "aceito morar fora", a busca inclui vagas presenciais e híbridas nesses países. Vaga que exige autorização de trabalho num país onde você não tem (e não patrocina visto), restrita a uma região fora das suas ou presencial sem você aceitar morar fora vai para Fora dos critérios, com o motivo. Na dúvida, a vaga passa.</p></section>' +
+      '<section class="fb-sec"><h3>Fontes do exterior</h3><p class="hint">Portais de vagas remotas, públicos e sem login. Desligados até você marcar; a busca consulta cada um uma vez e filtra pelos cargos em inglês. A vaga sempre mostra a fonte e o link original.</p>' +
+        (op.fontes_int || []).map(function (x) {
+          return '<label class="fbi-fonte"><input type="checkbox" data-fonte="' + esc(x.nome) + '"' + chk((it.fontes || []).indexOf(x.nome) >= 0) + "><span>" + esc(x.rotulo) + "<small>" + esc(x.termos) + "</small></span></label>";
+        }).join("") + "</section>" +
+      '<section class="fb-sec"><h3>Empresas que você acompanha</h3><p class="hint">Cole o link da página de vagas de empresas no Greenhouse, Lever ou Ashby (ex.: jobs.lever.co/empresa). A busca traz as vagas delas que batem com os cargos em inglês.</p>' +
+        '<div class="add-row"><input type="text" id="fbi-empresa" maxlength="300" placeholder="https://jobs.lever.co/empresa" aria-label="Link da página de vagas da empresa">' +
+        '<button type="button" class="btn-plain" data-add-empresa>Adicionar</button></div><p class="hint" id="fbi-empresa-erro" hidden></p>' +
+        '<ul class="fbi-empresas" id="fbi-empresas"></ul></section>' +
+      '<section class="fb-sec"><h3>Frases</h3><div class="fbi-grid2">' +
+        '<div class="field"><label for="fbi-frases-restricao">Frases que cortam a vaga (uma por linha)</label><textarea class="fbi-frases" id="fbi-frases-restricao" placeholder="Ex.: must be located in the US">' + esc((it.frases_restricao || []).join("\n")) + "</textarea></div>" +
+        '<div class="field"><label for="fbi-frases-positivas">Frases que viram sinal positivo (uma por linha)</label><textarea class="fbi-frases" id="fbi-frases-positivas" placeholder="Ex.: open to Brazil">' + esc((it.frases_positivas || []).join("\n")) + "</textarea></div></div>" +
+        '<p class="hint">Além das frases que a ferramenta já reconhece ("US only", "we do not sponsor visas", "relocation package"…). Sem diferença de maiúsculas e acentos.</p></section>';
     atualizarFiltros();
   }
   function montarFiltros() {
@@ -1198,6 +1237,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if ((el = $("fb-l-termos-int"))) el.innerHTML = tagsHTML(d.internacional.termos, "termos-int");
     if ((el = $("fb-l-paises"))) el.innerHTML = tagsHTML(d.internacional.paises, "paises");
     if ((el = $("fb-l-empresas"))) el.innerHTML = tagsHTML(d.empresas_excluir, "empresas");
+    if ((el = $("fbi-empresas"))) el.innerHTML = (d.internacional.empresas || []).map(function (e, i) {
+      return "<li><span>" + esc(e.nome || e.id || e.url) + " <small>" + esc(ATS[e.sistema] || "confere ao salvar") + " · " + esc(e.url || "") + "</small></span>" +
+        '<button type="button" class="btn-plain" data-rm-empresa="' + i + '" aria-label="Remover ' + esc(e.nome || e.url) + '">Remover</button></li>';
+    }).join("") || '<li><span class="hint">Nenhuma empresa.</span></li>';
     if ((el = $("fb-pais-nome"))) el.textContent = "(no " + loc.pais + ")";
     if ((el = $("fb-moeda-local"))) el.textContent = FB.op.moeda_do_pais[loc.pais] || "—";
     var cidade = [loc.cidade, loc.estado].filter(Boolean).join(", ");
@@ -1221,6 +1264,18 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (!lista.some(function (x) { return semAcento(x) === semAcento(txt); })) lista.push(txt);
     inp.value = ""; inp.focus(); atualizarFiltros();
   }
+  // Empresa acompanhada pelo link da página de vagas: o sistema é conferido aqui e, de novo, pelo servidor ao salvar
+  function adicionarEmpresa() {
+    var inp = $("fbi-empresa"), erro = $("fbi-empresa-erro"), url = inp.value.trim(), lista = FB.d.internacional.empresas = FB.d.internacional.empresas || [];
+    if (!url) return;
+    var m = /^(?:https?:\/\/)?(boards|job-boards)(?:\.eu)?\.greenhouse\.io\/(?:embed\/job_board\?for=)?([A-Za-z0-9._-]+)|^(?:https?:\/\/)?jobs(?:\.eu)?\.lever\.co\/([A-Za-z0-9._-]+)|^(?:https?:\/\/)?jobs\.ashbyhq\.com\/([A-Za-z0-9._-]+)/i.exec(url);
+    if (!m) { erro.textContent = "Esse link não é de uma página de vagas do Greenhouse, do Lever nem do Ashby."; erro.hidden = false; return; }
+    var sistema = m[2] ? "greenhouse" : m[3] ? "lever" : "ashby", id = m[2] || m[3] || m[4];
+    erro.hidden = true;
+    if (!lista.some(function (e) { return e.sistema === sistema && String(e.id).toLowerCase() === id.toLowerCase(); }))
+      lista.push({ sistema: sistema, id: id, nome: "", url: url }); // o nome sai do link ao salvar
+    inp.value = ""; inp.focus(); atualizarFiltros();
+  }
   function bindFiltros() {
     var ff = $("form-filtros");
     ff.addEventListener("click", function (ev) {
@@ -1239,11 +1294,14 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (t.hasAttribute("data-regiao")) { alternar(d.internacional.regioes, t.getAttribute("data-regiao")); marcarPills("data-regiao", d.internacional.regioes); return; }
       if (t.hasAttribute("data-contr")) { alternar(d.internacional.contratacao, t.getAttribute("data-contr")); marcarPills("data-contr", d.internacional.contratacao); return; }
       if (t.hasAttribute("data-abrir-filtros-int")) { $("dlg-filtros").close(); abrirFiltros(null, null, "int"); return; }
+      if (t.hasAttribute("data-add-empresa")) { adicionarEmpresa(); return; }
+      if (t.hasAttribute("data-rm-empresa")) { d.internacional.empresas.splice(+t.getAttribute("data-rm-empresa"), 1); atualizarFiltros(); return; }
     });
     ff.addEventListener("keydown", function (ev) {
       if (ev.key !== "Enter" || ev.target.tagName !== "INPUT" || ev.target.type === "checkbox" || ev.target.type === "radio") return;
       ev.preventDefault(); // Enter num campo não salva o painel
       if (ev.target.id === "fb-termo" || ev.target.id === "fb-termo-int" || ev.target.id === "fb-empresa") adicionar(ev.target.id);
+      if (ev.target.id === "fbi-empresa") adicionarEmpresa();
     });
     ff.addEventListener("change", function (ev) {
       var t = ev.target, d = FB.d;
@@ -1258,6 +1316,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       else if (t.id === "fbi-passaporte") d.internacional.passaporte = t.checked;
       else if (t.id === "fbi-sponsor") d.internacional.precisa_sponsor = t.checked;
       else if (t.id === "fbi-fuso") d.internacional.fuso_horas = +t.value;
+      else if (t.hasAttribute("data-fonte")) {
+        var nome = t.getAttribute("data-fonte"), fs = d.internacional.fontes = d.internacional.fontes || [];
+        if (t.checked) { if (fs.indexOf(nome) < 0) fs.push(nome); } else fs.splice(fs.indexOf(nome), 1);
+      }
       else if (t.hasAttribute("data-pais")) {
         var p = t.getAttribute("data-pais");
         if (t.checked) { if (d.internacional.paises.indexOf(p) < 0) d.internacional.paises.push(p); }
@@ -1275,6 +1337,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         var lista = t.value.split(",").map(function (x) { return x.trim(); }).filter(Boolean);
         if (t.id === "fbi-paises-mudanca") d.internacional.paises_mudanca = lista; else d.internacional.autorizacao_trabalho = lista;
       }
+      else if (t.id === "fbi-frases-restricao" || t.id === "fbi-frases-positivas") {
+        var frases = t.value.split("\n").map(function (x) { return x.trim(); }).filter(Boolean);
+        d.internacional[t.id === "fbi-frases-restricao" ? "frases_restricao" : "frases_positivas"] = frases; return;
+      }
       else if (t.id !== "fb-pais-busca") return;
       atualizarFiltros();
     });
@@ -1282,8 +1348,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       ev.preventDefault();
       if (!FB.d) return;
       var btn = $("fb-salvar"); btn.disabled = true; $("fb-erro").hidden = true;
-      API.send("PUT", "/api/config", FB.d).then(function () {
-        S.configExiste = true; S.filtros = JSON.parse(JSON.stringify(FB.d)); $("dlg-filtros").close(); toast("Filtros salvos. Valem a partir da próxima busca."); render();
+      API.send("PUT", "/api/config", FB.d).then(function (j) {
+        S.configExiste = true; S.filtros = j && j.filtros ? j.filtros : JSON.parse(JSON.stringify(FB.d)); $("dlg-filtros").close(); toast("Filtros salvos. Valem a partir da próxima busca."); render();
         if (FB.depois) { var depois = FB.depois; FB.depois = null; depois(); }
       }).catch(function (e) {
         var er = $("fb-erro"); er.textContent = e && e.status === 400 ? e.message : erroMsg(e); er.hidden = false;
