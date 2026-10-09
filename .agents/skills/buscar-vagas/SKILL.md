@@ -91,6 +91,9 @@ servidor; ele só serve para ver e mexer no quadro.
    fura os filtros sem precisar de leitura (empresa excluída, senioridade declarada no
    título): essas vão direto para a aba **Fora dos critérios**, sem avaliação. Mostra
    contagens, os títulos cortados pelo filtro e a lista de candidatas.
+   - Código de saída 4 = há uma busca rodando pela página do dashboard (botão **Buscar
+     vagas**). Diga isso ao usuário e espere ela terminar; não tente de novo em seguida.
+     Uma busca por vez no computador: página, terminal e chat.
    - Código de saída 3 = nenhum portal respondeu. Avise o usuário e pare; veja "Se o
      portal bloquear". Não repita a busca em seguida. Se só um portal falhar, o erro
      aparece em "Erros reportados pelos portais" e a busca segue com o outro; diga
@@ -264,4 +267,6 @@ só é buscada para as candidatas. A chave de API é opcional e fica em
 avisa nos erros.
 
 Algumas buscas por semana bastam. Não rode em loop: além de não trazer vagas novas,
-aumenta a chance de bloqueio.
+aumenta a chance de bloqueio. Quem prefere a página tem o botão **Buscar vagas** no
+Relatório de Vagas: ele roda a mesma busca, com os filtros gravados, e só deixa buscar de
+novo 30 minutos depois da última (de qualquer origem).

@@ -42,7 +42,7 @@ vagas por você.
 
 | | Sem IA | Com IA ([Claude Code](https://claude.com/claude-code)) |
 |---|---|---|
-| Buscar vagas | `python vagas.py buscar --gravar` | "busca vagas novas pra mim" |
+| Buscar vagas | Botão **Buscar vagas** no relatório (ou `python vagas.py buscar --gravar`) | O mesmo botão, com nota, ou "busca vagas novas pra mim" |
 | Relatório e quadro | Sim | Sim |
 | Nota de aderência, encaixes, lacunas e alertas | Não | Sim |
 | Analisar vagas que você adicionou pelo link ou à mão | Não | Sim, sozinho em ~1 minuto, com a IA escolhida no botão **IA** |
@@ -152,16 +152,23 @@ a página aberta pela extensão Live Server (`dash/dashboard.html`); e o
 
 ## Uso sem IA
 
-1. Busque e grave tudo no relatório, com o Python do ambiente que o `iniciar.py` preparou:
+1. Abra o dashboard com `python iniciar.py` (ou dois cliques em `iniciar.bat`). O navegador
+   abre em http://127.0.0.1:8765. Para parar, feche a janela.
+
+2. Na aba **Relatório de Vagas**, clique em **Buscar vagas**. A página mostra o que vai
+   consultar (cargos, portais, quanto tempo leva) e, depois de você confirmar, o andamento;
+   no fim, as vagas novas entram no relatório com um resumo. Dá para usar a página enquanto
+   isso e cancelar a qualquer momento (busca cancelada não grava nada). Uma busca por vez no
+   computador, e a próxima só 30 minutos depois da última, para os portais não bloquearem;
+   se a última foi há menos de 6 horas, a página pede confirmação.
+
+   Pelo terminal também dá, com o Python do ambiente que o `iniciar.py` preparou:
 
    ```bash
    .venv\Scripts\python vagas.py buscar --gravar
    ```
 
    (Na instalação manual, com o ambiente ativado, basta `python vagas.py buscar --gravar`.)
-
-2. Abra o dashboard com `python iniciar.py` (ou dois cliques em `iniciar.bat`). O navegador
-   abre em http://127.0.0.1:8765. Para parar, feche a janela.
 
    No VS Code, a tarefa **Dashboard** (`.vscode/tasks.json`) sobe o servidor sozinha
    ao abrir a pasta; na primeira vez, o VS Code pergunta se permite tarefas
@@ -194,6 +201,9 @@ Algumas buscas por semana bastam.
 
 O Claude roda a busca, lê cada vaga, dá a nota, grava no dashboard e responde com um
 resumo das melhores. A decisão de seguir continua sendo sua, no relatório.
+
+Com uma IA escolhida no botão **IA** e o perfil montado, o botão **Buscar vagas** da página
+também dá a nota: as vagas novas entram no relatório e a IA as analisa em seguida, em lotes.
 
 As perguntas pontuais sobre a Gupy usam o MCP público de candidatos da Gupy, declarado
 em `.mcp.json` com o nome `gupy-candidato`. Na primeira vez, o Claude Code pede para

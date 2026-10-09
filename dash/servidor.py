@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 import analise  # noqa: E402  (análise automática pela IA escolhida)
 import banco  # noqa: E402
+import buscador  # noqa: E402  (busca de vagas pela página, em segundo plano)
 import filtros  # noqa: E402  (filtros.py, na raiz: lê e grava os filtros da busca no config.json)
 import ia  # noqa: E402  (ia.py, na raiz: provedores de IA)
 import primeiros_passos as pp  # noqa: E402  (primeiros_passos.py, na raiz: perfil a partir do currículo e do LinkedIn)
@@ -212,6 +213,26 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"gravado": rel(destino), "anterior": rel(anterior)})
         return self._erro(404, "rota não encontrada")
 
+    def _busca(self, metodo: str, caminho: str):
+        """Buscar vagas pela página: iniciar, cancelar e pedir a nota de novo, só deste computador."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        if metodo == "POST" and caminho == "/api/busca":
+            corpo = self._corpo()
+            try:
+                estado = buscador.BUSCA.iniciar(sem_nota=bool(corpo.get("sem_nota")),
+                                                confirmar_recente=bool(corpo.get("confirmar_recente")))
+            except buscador.BuscaRecusada as e:
+                return self._json(409, {"erro": str(e), "precisa_confirmar": e.precisa_confirmar,
+                                        "estado": buscador.BUSCA.estado()})
+            return self._json(202, {**estado, "pode_alterar": True})
+        if metodo == "DELETE" and caminho == "/api/busca":
+            return self._json(200, {**buscador.BUSCA.cancelar(), "pode_alterar": True})
+        if metodo == "POST" and caminho == "/api/busca/analisar":
+            analise.FILA.pedir()
+            return self._json(200, {"analise": buscador.BUSCA.analise()})
+        return self._erro(404, "rota não encontrada")
+
     def _id_da_rota(self, caminho: str) -> str | None:
         prefixo = "/api/vagas/"
         if not caminho.startswith(prefixo):
@@ -245,6 +266,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._ia(metodo, caminho)
             if caminho == "/api/perfil" or caminho.startswith("/api/perfil/"):
                 return self._perfil(metodo, caminho)
+            if caminho == "/api/busca" or caminho.startswith("/api/busca/"):
+                return self._busca(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             vid = self._id_da_rota(caminho)
@@ -269,9 +292,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._enviar(200, PAGINA.read_bytes(), "text/html; charset=utf-8")
         if caminho == "/api/versao":
             return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando,
-                                    "ia_erro": analise.FILA.erro()})
+                                    "ia_erro": analise.FILA.erro(), "busca": buscador.BUSCA.resumo()})
         if caminho == "/api/ia":
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
+        if caminho == "/api/busca":
+            return self._json(200, {**buscador.BUSCA.estado(), "pode_alterar": self._local()})
+        if caminho == "/api/busca/plano":
+            return self._json(200, buscador.BUSCA.plano())
         if caminho == "/api/perfil/estado":
             return self._json(200, pp.estado_para_pagina(self._local()))
         if caminho == "/api/perfil/filtros-propostos":

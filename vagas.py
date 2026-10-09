@@ -8,12 +8,14 @@
   python vagas.py gravar --sem-avaliacao   grava as candidatas da última busca sem nota
 
 Configuração em config.json (copie de config.exemplo.json). Dashboard: python dash/servidor.py
+Uma busca por vez no computador: com uma busca rodando pela página do dashboard, buscar sai com código 4.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import math
+import os
 import re
 import sys
 import time
@@ -52,6 +54,127 @@ def bate_algum(titulo_norm: str, termos: list[str]) -> str | None:
     return None
 
 
+# ---------------------------------------------------------------- uma busca por vez
+
+class Cancelada(Exception):
+    """A pessoa cancelou a busca (pela página); nada dela é gravado."""
+
+
+class BuscaOcupada(RuntimeError):
+    """Outro processo (a página ou outro terminal) está consultando os portais."""
+
+    def __init__(self, quem: dict | None):
+        self.quem = quem or {}
+        super().__init__(mensagem_ocupada(self.quem))
+
+
+def mensagem_ocupada(quem: dict) -> str:
+    desde = str(quem.get("inicio") or "")[11:16]
+    if quem.get("origem") == "pagina":
+        return ("Há uma busca rodando pela página do dashboard" + (f" (desde {desde})" if desde else "")
+                + ". Espere ela terminar ou cancele por lá.")
+    return "Há outra busca rodando no terminal ou no chat" + (f" desde {desde}" if desde else "") + ". Espere ela terminar."
+
+
+def _arq_trava() -> Path:
+    return CACHE / "busca.trava"
+
+
+def _arq_registro() -> Path:
+    return CACHE / "busca.json"
+
+
+def _travar(arq) -> bool:
+    """Trava do sistema operacional: o sistema solta sozinho se o processo morrer."""
+    try:
+        if os.name == "nt":
+            import msvcrt
+            arq.seek(0)
+            msvcrt.locking(arq.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(arq.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except OSError:
+        return False
+
+
+def _destravar(arq) -> None:
+    try:
+        if os.name == "nt":
+            import msvcrt
+            arq.seek(0)
+            msvcrt.locking(arq.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(arq.fileno(), fcntl.LOCK_UN)
+    except OSError:
+        pass
+
+
+def _ler_registro() -> dict | None:
+    try:
+        dados = json.loads(_arq_registro().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return dados if isinstance(dados, dict) else None
+
+
+def _gravar_registro(dados: dict) -> None:
+    CACHE.mkdir(parents=True, exist_ok=True)
+    tmp = _arq_registro().with_name("busca.json.tmp")
+    tmp.write_text(json.dumps(dados, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, _arq_registro())
+
+
+def ocupada() -> dict | None:
+    """Quem está consultando os portais agora (o registro da busca), ou None."""
+    CACHE.mkdir(parents=True, exist_ok=True)
+    with open(_arq_trava(), "a+b") as arq:
+        if _travar(arq):
+            _destravar(arq)
+            return None
+    return _ler_registro() or {}
+
+
+def ultima() -> dict | None:
+    """A última busca {origem, inicio, situacao, fim}; "rodando" com a trava livre vira "interrompida"."""
+    reg = _ler_registro()
+    if reg and reg.get("situacao") == "rodando" and ocupada() is None:
+        reg = {**reg, "situacao": "interrompida"}
+    return reg
+
+
+class TravaBusca:
+    """Uma busca por vez no computador (página, terminal ou chat), com o registro em .cache/busca.json.
+    Ao sair, situacao: a que quem buscou definiu ("concluida" ou "falha"), "cancelada" ou "erro"."""
+
+    def __init__(self, origem: str):
+        self.origem, self.situacao, self.arq, self.inicio = origem, "concluida", None, None
+
+    def __enter__(self):
+        CACHE.mkdir(parents=True, exist_ok=True)
+        self.arq = open(_arq_trava(), "a+b")
+        if not _travar(self.arq):
+            self.arq.close()
+            raise BuscaOcupada(_ler_registro())
+        self.inicio = datetime.now().isoformat(timespec="seconds")
+        _gravar_registro({"origem": self.origem, "inicio": self.inicio, "situacao": "rodando", "pid": os.getpid()})
+        return self
+
+    def __exit__(self, tipo, erro, rastro):
+        situacao = self.situacao
+        if tipo is not None:
+            situacao = "cancelada" if issubclass(tipo, (Cancelada, KeyboardInterrupt)) else "erro"
+        try:
+            _gravar_registro({"origem": self.origem, "inicio": self.inicio, "situacao": situacao,
+                              "fim": datetime.now().isoformat(timespec="seconds"), "pid": os.getpid()})
+        finally:
+            _destravar(self.arq)
+            self.arq.close()
+        return False
+
+
 # ---------------------------------------------------------------- buscar
 
 def rotulo_grupo(grupo: str, f: dict) -> str:
@@ -60,43 +183,38 @@ def rotulo_grupo(grupo: str, f: dict) -> str:
     return {"remoto": "remoto", "pais": "país todo", "local": filtros.cidade_rotulo(f)}.get(grupo, grupo)
 
 
-def cmd_buscar(args) -> int:
-    cfg = carregar_config()
-    f = filtros.efetivos(cfg)
-    if args.termos:
-        f["termos"] = args.termos
-    if args.janela_horas:
-        f["janela_horas"] = args.janela_horas
-    if args.local:
-        f["local_legado"] = args.local
-    if not f["termos"]:
-        print("Nenhum cargo para buscar: informe os termos no painel Filtros da busca ou no config.json.", file=sys.stderr)
-        return 2
+def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa: float = 2.0,
+             incluir_presencial: bool = False, progresso=None, cancelado=None) -> dict:
+    """A busca, sem imprimir: consulta os portais, corta, agrupa repetidas e lê as descrições que faltam.
+
+    progresso(evento) recebe {"etapa": "consulta", portal, cargo, grupo, feitas, total, encontradas} antes e
+    depois de cada consulta e {"etapa": "descricoes", lidas, total} a cada descrição; cancelado() é olhado
+    antes de cada consulta e de cada descrição (verdadeiro: levanta Cancelada). ImportError sobe."""
+    avisar = progresso or (lambda evento: None)
+
+    def conferir():
+        if cancelado and cancelado():
+            raise Cancelada()
+
     termos = f["termos"]
     horas = f["janela_horas"]
-    por_termo = args.resultados or cfg.get("resultados_por_termo", 40)
-    plano = filtros.consultas(f, incluir_presencial=args.incluir_presencial)
-    nomes_fontes = args.fontes or cfg.get("fontes", ["indeed", "gupy"])
-    desconhecidas = [n for n in nomes_fontes if n not in FONTES]
-    if desconhecidas:
-        print(f"Fonte(s) desconhecida(s): {', '.join(desconhecidas)}. Disponíveis: {', '.join(FONTES)}", file=sys.stderr)
-        return 2
-
+    plano = filtros.consultas(f, incluir_presencial=incluir_presencial)
+    total = len(plano) * len(nomes_fontes)
     brutas: dict[str, dict] = {}
     por_busca: dict[str, int] = {}
     erros: list[str] = []
-    primeira = True
+    feitas = 0
     for nome in nomes_fontes:
         fonte = FONTES[nome]
         for c in plano:
-            if not primeira:
-                time.sleep(args.pausa)
-            primeira = False
-            try:
-                vagas, errs = fonte.buscar(c, horas, por_termo)
-            except ImportError as e:
-                print(f"ERRO: dependência ausente ({e}). Rode: pip install -r requirements.txt", file=sys.stderr)
-                return 2
+            conferir()
+            if feitas:
+                time.sleep(pausa)
+                conferir()
+            evento = {"etapa": "consulta", "portal": fonte.PLATAFORMA, "cargo": c["termo"].strip('"'),
+                      "grupo": rotulo_grupo(c["grupo"], f), "total": total}
+            avisar({**evento, "feitas": feitas, "encontradas": len(brutas)})
+            vagas, errs = fonte.buscar(c, horas, por_termo)
             rotulo = f"{nome}: {c['termo']}" + ("" if c["grupo"] == "remoto" else f" [{rotulo_grupo(c['grupo'], f)}]")
             erros += [f"{rotulo}: {m}" for m in errs]
             por_busca[rotulo] = len(vagas)
@@ -106,6 +224,8 @@ def cmd_buscar(args) -> int:
                     atual["termos"].append(c["termo"])
                 if c["grupo"] not in atual["grupos"]:
                     atual["grupos"].append(c["grupo"])
+            feitas += 1
+            avisar({**evento, "feitas": feitas, "encontradas": len(brutas)})
 
     excluir = cfg.get("titulo_excluir", [])
     incluir = cfg.get("titulo_incluir", [])
@@ -156,17 +276,19 @@ def cmd_buscar(args) -> int:
         else:
             candidatas.append(v)
     por_plataforma = {x.PLATAFORMA: x for x in FONTES.values()}
-    for v in candidatas + fora:  # portais cuja busca não traz a descrição: só para as vagas que vão para o relatório
-        fonte = por_plataforma.get(v["plataforma"])
-        if hasattr(fonte, "descrever"):
-            try:
-                v["descricao"] = fonte.descrever(v)
-            except Exception as e:  # cada portal tem o seu tipo de erro; a vaga segue com o que já tinha
-                erros.append(f"{fonte.NOME}: descrição de {v['id']}: {e}")
+    # portais cuja busca não traz a descrição: só para as vagas que vão para o relatório
+    descrever = [(v, por_plataforma.get(v["plataforma"])) for v in candidatas + fora]
+    descrever = [(v, fonte) for v, fonte in descrever if hasattr(fonte, "descrever")]
+    for i, (v, fonte) in enumerate(descrever, 1):
+        conferir()
+        try:
+            v["descricao"] = fonte.descrever(v)
+        except Exception as e:  # cada portal tem o seu tipo de erro; a vaga segue com o que já tinha
+            erros.append(f"{fonte.NOME}: descrição de {v['id']}: {e}")
+        avisar({"etapa": "descricoes", "lidas": i, "total": len(descrever)})
     candidatas.sort(key=lambda r: r.get("publicada_em") or "", reverse=True)
 
-    CACHE.mkdir(parents=True, exist_ok=True)
-    resultado = {
+    return {
         "gerado_em": datetime.now().isoformat(timespec="seconds"),
         "parametros": {"fontes": nomes_fontes, "termos": termos, "janela_horas": horas, "consultas": len(plano),
                        "resumo": filtros.resumo(f), "filtros": f, "resultados_por_termo": por_termo},
@@ -174,20 +296,70 @@ def cmd_buscar(args) -> int:
         "brutas": len(brutas),
         "fora_da_janela": antigas,
         "excluidas_titulo": len(excluidas),
+        "excluidas": excluidas,
         "ja_vistas": ja_vistas,
         "outros_portais": outros_portais,
         "erros": erros,
         "candidatas": candidatas,
         "fora": fora,
     }
-    (CACHE / "candidatas.json").write_text(json.dumps(resultado, ensure_ascii=False, indent=1), encoding="utf-8")
-    escrever_digest(resultado, args.trecho)
 
-    print(f"Consultas: {len(plano)} ({filtros.resumo(f)})")
-    print(f"Vagas encontradas: {len(brutas)}  ({', '.join(f'{k}: {n}' for k, n in por_busca.items())})")
-    print(f"Publicadas antes da janela (descartadas): {antigas}")
+
+def salvar_candidatas(resultado: dict, pasta: Path | None = None, trecho: int = 3500) -> None:
+    pasta = pasta or CACHE
+    pasta.mkdir(parents=True, exist_ok=True)
+    (pasta / "candidatas.json").write_text(json.dumps(resultado, ensure_ascii=False, indent=1), encoding="utf-8")
+    escrever_digest(resultado, trecho, pasta)
+
+
+def bloqueio_provavel(resultado: dict) -> bool:
+    """O portal não devolveu nada e houve erros."""
+    return not resultado["brutas"] and bool(resultado["erros"])
+
+
+def cmd_buscar(args) -> int:
+    cfg = carregar_config()
+    f = filtros.efetivos(cfg)
+    if args.termos:
+        f["termos"] = args.termos
+    if args.janela_horas:
+        f["janela_horas"] = args.janela_horas
+    if args.local:
+        f["local_legado"] = args.local
+    if not f["termos"]:
+        print("Nenhum cargo para buscar: informe os termos no painel Filtros da busca ou no config.json.", file=sys.stderr)
+        return 2
+    por_termo = args.resultados or cfg.get("resultados_por_termo", 40)
+    nomes_fontes = args.fontes or cfg.get("fontes", ["indeed", "gupy"])
+    desconhecidas = [n for n in nomes_fontes if n not in FONTES]
+    if desconhecidas:
+        print(f"Fonte(s) desconhecida(s): {', '.join(desconhecidas)}. Disponíveis: {', '.join(FONTES)}", file=sys.stderr)
+        return 2
+
+    try:
+        with TravaBusca("terminal") as trava:
+            try:
+                resultado = executar(cfg, f, nomes_fontes, por_termo, pausa=args.pausa,
+                                     incluir_presencial=args.incluir_presencial)
+            except ImportError as e:
+                print(f"ERRO: dependência ausente ({e}). Rode: pip install -r requirements.txt", file=sys.stderr)
+                trava.situacao = "erro"
+                return 2
+            if bloqueio_provavel(resultado):
+                trava.situacao = "falha"
+    except BuscaOcupada as e:
+        print(str(e), file=sys.stderr)
+        return 4
+    salvar_candidatas(resultado, CACHE, args.trecho)
+
+    candidatas, fora, erros, excluidas = (resultado["candidatas"], resultado["fora"], resultado["erros"],
+                                          resultado["excluidas"])
+    print(f"Consultas: {resultado['parametros']['consultas']} ({filtros.resumo(f)})")
+    print(f"Vagas encontradas: {resultado['brutas']}  "
+          f"({', '.join(f'{k}: {n}' for k, n in resultado['por_busca'].items())})")
+    print(f"Publicadas antes da janela (descartadas): {resultado['fora_da_janela']}")
     print(f"Cortadas pelo título: {len(excluidas)}")
-    print(f"Já vistas (já estão no dashboard): {ja_vistas}")
+    print(f"Já vistas (já estão no dashboard): {resultado['ja_vistas']}")
     print(f"Fora dos critérios (vão para a aba Fora dos critérios, sem avaliação): {len(fora)}")
     for v in fora:
         print(f"  - {v['titulo'][:55]} | {v['empresa'][:28]}: {'; '.join(v['motivo_fora'])}")
@@ -207,7 +379,7 @@ def cmd_buscar(args) -> int:
         for c in candidatas:
             print(f"  {c['id']}  {c['publicada_em'] or '?':10}  {c['titulo'][:60]} | {c['empresa'][:30]}")
 
-    if not brutas and erros:
+    if bloqueio_provavel(resultado):
         print("\nO portal não devolveu nada e houve erros: provável bloqueio temporário. Espere antes de tentar de novo.")
         return 3
     if args.gravar:
@@ -218,7 +390,7 @@ def cmd_buscar(args) -> int:
     return 0
 
 
-def escrever_digest(resultado: dict, trecho: int) -> None:
+def escrever_digest(resultado: dict, trecho: int, pasta: Path | None = None) -> None:
     p = resultado["parametros"]
     f = p["filtros"]
     cand = resultado["candidatas"]
@@ -246,7 +418,7 @@ def escrever_digest(resultado: dict, trecho: int) -> None:
             desc or "(sem descrição)",
             "",
         ]
-    (CACHE / "candidatas.md").write_text("\n".join(linhas), encoding="utf-8")
+    ((pasta or CACHE) / "candidatas.md").write_text("\n".join(linhas), encoding="utf-8")
 
 
 # ---------------------------------------------------------------- ver
@@ -272,24 +444,16 @@ def cmd_gravar(args) -> int:
     return gravar(sem_avaliacao=args.sem_avaliacao, arquivo=args.avaliacoes)
 
 
-def gravar(sem_avaliacao: bool = False, arquivo: str | None = None) -> int:
-    arq_cand = CACHE / "candidatas.json"
-    if not arq_cand.exists():
-        print("Nenhuma busca em .cache/candidatas.json. Rode `vagas.py buscar` antes.", file=sys.stderr)
-        return 2
-    dados = json.loads(arq_cand.read_text(encoding="utf-8"))
-    cand = {c["id"]: c for c in dados["candidatas"]}
+def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao: bool = False,
+                     status_sem_nota: str = "sem_analise", origem: str = "terminal") -> dict:
+    """Grava no dashboard o resultado de uma busca (o conteúdo de candidatas.json), sem imprimir.
 
+    sem_avaliacao: as candidatas entram com analise_status=status_sem_nota ("sem_analise" fica sem nota;
+    "pendente" deixa para a análise automática); senão, com as avaliações de avals. Devolve o que a linha
+    de comando e a página mostram."""
+    cand = {c["id"]: c for c in dados["candidatas"]}
     if sem_avaliacao:
         avals = [{"id": jid} for jid in cand]
-    else:
-        arq_aval = Path(arquivo) if arquivo else CACHE / "avaliacoes.json"
-        if not arq_aval.exists():
-            print(f"Falta {arq_aval}. Para gravar sem nota, use --sem-avaliacao.", file=sys.stderr)
-            return 2
-        bruto = json.loads(arq_aval.read_text(encoding="utf-8"))
-        avals = bruto.get("avaliacoes", []) if isinstance(bruto, dict) else bruto
-
     p = dados.get("parametros", {})
     f = p.get("filtros") or filtros.efetivos(filtros.ler_config())
     agora = datetime.now().isoformat(timespec="seconds")
@@ -315,7 +479,7 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None) -> int:
             d.update(triagem="fora", triada_em=hoje, motivo_fora=motivos)
         return d
 
-    for a in avals:
+    for a in avals or []:
         jid = str(a.get("id", "")).strip()
         if jid not in cand:
             problemas.append(f"id {jid!r} não está na última busca; ignorado")
@@ -324,7 +488,7 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None) -> int:
             problemas.append(f"id {jid} avaliado duas vezes; mantida a primeira")
             continue
         if sem_avaliacao:
-            analise = {"analise_status": "sem_analise"}
+            analise = {"analise_status": status_sem_nota}
         else:
             try:
                 analise = banco.validar_analise({**a, "analise_status": "feita"})
@@ -350,35 +514,59 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None) -> int:
         "janela_horas": p.get("janela_horas"), "resumo": p.get("resumo"), "consultas": p.get("consultas"),
         "brutas": dados.get("brutas", 0), "excluidas_titulo": dados.get("excluidas_titulo", 0),
         "ja_vistas": dados.get("ja_vistas", 0) + len(existentes), "candidatas": len(cand),
-        "avaliadas": len(novas) - len(fora_novas), "fora_criterios": len(fora_novas), "com_nota": not sem_avaliacao,
+        "avaliadas": len(novas) - len(fora_novas), "fora_criterios": len(fora_novas),
+        "com_nota": not sem_avaliacao or status_sem_nota == "pendente",
         "fortes": sum(n >= 80 for n in faixas), "boas": sum(65 <= n < 80 for n in faixas),
         "parciais": sum(50 <= n < 65 for n in faixas), "baixas": sum(n < 50 for n in faixas),
+        "origem": origem, "situacao": "concluida",
     })
+    return {"busca_id": busca_id, "novas": novas, "existentes": existentes, "fora_novas": fora_novas,
+            "ids_fora": ids_fora, "faltando": faltando, "problemas": problemas, "notas": notas, "docs": len(docs),
+            "para_decidir": len(novas) - len(fora_novas)}
 
-    if problemas:
+
+def gravar(sem_avaliacao: bool = False, arquivo: str | None = None, pasta: Path | None = None) -> int:
+    pasta = pasta or CACHE
+    arq_cand = pasta / "candidatas.json"
+    if not arq_cand.exists():
+        print("Nenhuma busca em .cache/candidatas.json. Rode `vagas.py buscar` antes.", file=sys.stderr)
+        return 2
+    dados = json.loads(arq_cand.read_text(encoding="utf-8"))
+    avals = None
+    if not sem_avaliacao:
+        arq_aval = Path(arquivo) if arquivo else pasta / "avaliacoes.json"
+        if not arq_aval.exists():
+            print(f"Falta {arq_aval}. Para gravar sem nota, use --sem-avaliacao.", file=sys.stderr)
+            return 2
+        bruto = json.loads(arq_aval.read_text(encoding="utf-8"))
+        avals = bruto.get("avaliacoes", []) if isinstance(bruto, dict) else bruto
+
+    r = gravar_resultado(dados, avals, sem_avaliacao=sem_avaliacao)
+    if r["problemas"]:
         print("Problemas nas avaliações:")
-        for x in problemas:
+        for x in r["problemas"]:
             print(f"  - {x}")
-    if faltando:
-        print(f"ATENÇÃO: {len(faltando)} candidata(s) sem avaliação não foram gravadas e voltarão na próxima busca: "
-              + ", ".join(faltando))
-    if existentes:
-        print(f"Já estavam no dashboard (não alteradas): {', '.join(existentes)}")
-    print(f"Gravadas no dashboard: {len(novas) - len(fora_novas)} vaga(s) nova(s) para decidir, busca {busca_id}.")
-    if fora_novas:
-        print(f"Fora dos critérios: {len(fora_novas)} (aba Fora dos critérios do relatório; dá para seguir com elas de lá)")
-        for d in fora_novas:
+    if r["faltando"]:
+        print(f"ATENÇÃO: {len(r['faltando'])} candidata(s) sem avaliação não foram gravadas e voltarão na próxima busca: "
+              + ", ".join(r["faltando"]))
+    if r["existentes"]:
+        print(f"Já estavam no dashboard (não alteradas): {', '.join(r['existentes'])}")
+    print(f"Gravadas no dashboard: {r['para_decidir']} vaga(s) nova(s) para decidir, busca {r['busca_id']}.")
+    if r["fora_novas"]:
+        print(f"Fora dos critérios: {len(r['fora_novas'])} (aba Fora dos critérios do relatório; dá para seguir com elas de lá)")
+        for d in r["fora_novas"]:
             print(f"  - {d['titulo'][:55]} | {d['empresa'][:28]}: {'; '.join(d['motivo_fora'])}")
     print(f"Dashboard: {URL_DASHBOARD}#relatorio  (se não abrir, rode: python dash/servidor.py)")
 
+    notas = r["notas"]
     if not sem_avaliacao and notas:
         notas.sort(key=lambda x: (-(x[0] or 0), x[1].get("publicada_em") or ""))
         print()
         print("Ranking desta busca:")
         for n, c in notas:
-            marca = "  [fora dos critérios]" if c["id"] in ids_fora else ""
+            marca = "  [fora dos critérios]" if c["id"] in r["ids_fora"] else ""
             print(f"  {n:3d}  {c['titulo'][:55]} | {c['empresa'][:28]} | {c['publicada_em'] or '?'} | {c['url']}{marca}")
-    return 0 if novas or not docs else 1
+    return 0 if r["novas"] or not r["docs"] else 1
 
 
 def main() -> int:

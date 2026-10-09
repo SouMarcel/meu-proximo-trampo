@@ -169,6 +169,21 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .aviso-ia { border-left-color: var(--bad); }
 .btn-ia-mini { padding: 2px 10px; margin-left: 6px; font-size: 12px; }
 
+/* Buscar vagas pela página (andamento e resumo no topo do relatório) */
+#dlg-busca { width: min(640px, calc(100vw - 32px)); }
+.bu-espera { color: var(--muted); font-size: 12.5px; align-self: center; }
+.busca-painel { margin: 10px 0 0; padding: 12px 14px; border: 1px solid var(--line-strong); border-left: 3px solid var(--info); border-radius: 8px; background: var(--col); display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+.busca-painel p { margin: 0; }
+.busca-painel.bp-fim { border-left-color: var(--good); }
+.busca-painel.bp-falha { border-left-color: var(--bad); }
+.bp-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.bp-topo span { color: var(--muted); }
+.bp-topo .btn-plain { margin-left: auto; }
+.bp-barra { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.bp-barra i { display: block; height: 100%; background: var(--info); transition: width .3s; }
+.bp-erros summary { cursor: pointer; color: var(--warn); font-weight: 600; width: max-content; }
+.bp-erros ul { margin: 6px 0; padding-left: 18px; color: var(--muted); font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
+
 /* Primeiros passos (perfil a partir do currículo e do LinkedIn; nada é gravado sem confirmação) */
 #dlg-perfil { width: min(980px, calc(100vw - 32px)); }
 .pf-passos { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -486,6 +501,21 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   </form>
 </dialog>
 
+<dialog id="dlg-busca" aria-labelledby="bu-titulo">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div>
+        <h2 id="bu-titulo">Buscar vagas</h2>
+        <p>Consulta os portais com os seus filtros e grava as vagas novas no relatório, como a busca pelo terminal.</p>
+      </div>
+      <button type="button" class="more" data-bu="fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="fb" id="bu-corpo"></div>
+    <p class="fb-erro" id="bu-erro" role="alert" hidden></p>
+    <div class="dlg-foot" id="bu-pe"></div>
+  </div>
+</dialog>
+
 <dialog id="dlg-perfil" aria-labelledby="pf-titulo">
   <div class="dlg">
     <div class="dlg-head">
@@ -632,6 +662,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     ext: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
     chart: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 20V12M12 20V5M18 20v-6"/></svg>',
     sliders: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
+    busca: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>',
     dots: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>',
     grip: '<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true"><circle cx="2.5" cy="3" r="1.3"/><circle cx="7.5" cy="3" r="1.3"/><circle cx="2.5" cy="8" r="1.3"/><circle cx="7.5" cy="8" r="1.3"/><circle cx="2.5" cy="13" r="1.3"/><circle cx="7.5" cy="13" r="1.3"/></svg>'
   };
@@ -848,8 +879,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<div class="rel-acoes"><div class="seg" role="group" aria-label="Filtrar triagem">' +
       [["pendente", "Para decidir"], ["seguir", "Seguidas"], ["visitada", "Não seguidas"], ["fora", "Fora dos critérios"]].map(function (p) {
         return '<button data-tri="' + p[0] + '" aria-pressed="' + (S.triagem === p[0]) + '">' + p[1] + '<span class="n">' + n[p[0]] + "</span></button>";
-      }).join("") + "</div>" +
-      '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button></div></div>";
+      }).join("") + "</div>" + buBotao() +
+      '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button></div></div>" + buPainel();
     if (S.configExiste === false) {  // primeira vez: ainda não há config.json
       h += '<p class="aviso-config">Antes da primeira busca, escolha os cargos e o local em' +
         '<button class="btn-plain btn-filtros" data-abrir-filtros>' + ICON.sliders + " Filtros da busca</button>.</p>";
@@ -882,7 +913,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       h += '<div class="empty">Nenhuma vaga passa nos filtros.</div>';
     } else if (!lista.length) {
       h += '<div class="empty">' + (S.triagem === "pendente"
-        ? "Nenhuma vaga esperando decisão. Rode <code>python vagas.py buscar --gravar</code> ou, com o Claude Code, peça <code>busca vagas novas</code>."
+        ? "Nenhuma vaga esperando decisão. Clique em <b>Buscar vagas</b>, acima, ou peça <code>busca vagas novas</code> no chat do seu assistente."
         : S.triagem === "fora"
         ? "Nenhuma vaga fora dos critérios. Quando uma busca trouxer vagas que furam os seus filtros (modelo de trabalho, cidade, senioridade, tipo de emprego, empresa), elas aparecem aqui com o motivo."
         : "Nada por aqui ainda.") + "</div>";
@@ -1267,6 +1298,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         render(); return;
       }
       if (t.hasAttribute("data-abrir-filtros")) { abrirFiltros(); return; }
+      if (t.hasAttribute("data-abrir-busca")) { abrirBusca(); return; }
+      if (t.hasAttribute("data-bu")) { buAcao(t.getAttribute("data-bu"), t); return; }
       if (t.hasAttribute("data-abrir-ia")) { abrirIA(); return; }
       if (t.hasAttribute("data-limpar-filtros")) { limparFiltro(); return; }
       if (t.id === "pular-baixas") {
@@ -1853,6 +1886,147 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     });
   }
 
+  /* ---------- buscar vagas pela página (uma busca por vez; a do terminal e a do chat contam) ---------- */
+  var BU = { e: null, plano: null, timer: null, pedindo: false, fechado: "", semNota: false, ate: 0 };  // ate: segue consultando por um tempo depois de uma ação
+  var BU_ATIVAS = ["consultando", "descricoes", "gravando", "cancelando", "externa"];
+  function buHora(iso) { return String(iso || "").slice(11, 16); }
+  function buSegundosDesde(iso) { var t = Date.parse(iso || ""); return isNaN(t) ? 1e9 : (Date.now() - t) / 1000; }
+  function buAtiva(e) {
+    if (!e) return false;
+    if (BU_ATIVAS.indexOf(e.situacao) >= 0 || (e.analise && e.analise.rodando) || Date.now() < BU.ate) return true;
+    return e.situacao === "concluida" && !!e.resumo && e.resumo.com_nota && buSegundosDesde(e.fim) < 20;
+  }
+  function buPodeAlterar() { return !BU.e || BU.e.pode_alterar !== false; }
+  function buEstado() {
+    if (BU.pedindo) return;
+    BU.pedindo = true;
+    var antes = BU.e;
+    API.get("/api/busca").then(function (j) {
+      BU.e = j;
+      if (antes && buAtiva(antes) && !buAtiva(j)) { carregar(); buPlano(); }  // terminou: relatório e intervalo
+      else if (antes && BU_ATIVAS.indexOf(antes.situacao) >= 0 && j.situacao === "concluida") carregar();
+      render();
+    }).catch(function () {}).then(function () {
+      BU.pedindo = false;
+      clearTimeout(BU.timer); BU.timer = null;
+      if (buAtiva(BU.e)) BU.timer = setTimeout(buEstado, 2000);
+    });
+  }
+  function buPlano() {
+    return API.get("/api/busca/plano").then(function (j) { BU.plano = j; render(); return j; }).catch(function () { return null; });
+  }
+  function buAguarde() {  // dentro do intervalo mínimo: "a partir das HH:MM"
+    var p = BU.plano;
+    return p && p.proxima_em && Date.parse(p.proxima_em) > Date.now() ? buHora(p.proxima_em) : "";
+  }
+  function buBotao() {
+    var e = BU.e, ativa = buAtiva(e) && BU_ATIVAS.indexOf(e.situacao) >= 0, espera = buAguarde();
+    var dis = ativa || !!espera || !buPodeAlterar() || S.offline;
+    var titulo = !buPodeAlterar() ? "Só dá para buscar no computador onde a ferramenta roda." :
+      ativa ? "Já há uma busca em andamento." : espera ? "Para os portais não bloquearem a busca, dá para buscar de novo a partir das " + espera + "." :
+      "Consultar os portais com os seus filtros e gravar as vagas novas no relatório";
+    return '<button class="btn-primary btn-filtros" data-abrir-busca title="' + esc(titulo) + '"' + (dis ? " disabled" : "") + ">" + ICON.busca +
+      " Buscar vagas</button>" + (espera && !ativa ? '<span class="bu-espera">de novo às ' + esc(espera) + "</span>" : "");
+  }
+  function buPainel() {
+    var e = BU.e;
+    if (!e || e.situacao === "ociosa" || BU.fechado === (e.inicio || "") + e.situacao) return "";
+    var s = e.situacao, fechar = '<button class="btn-plain btn-ia-mini" data-bu="fechar-painel">Fechar</button>';
+    if (s === "externa") return '<div class="busca-painel" role="status"><p><b>Busca em andamento ' + (e.origem === "pagina" ? "pela página" : "no terminal ou no chat") +
+      "</b>" + (e.inicio ? " desde " + esc(buHora(e.inicio)) : "") + ". O relatório se atualiza quando ela terminar.</p></div>";
+    if (["consultando", "descricoes", "gravando", "cancelando"].indexOf(s) >= 0) {
+      var n = Math.min((e.feitas || 0) + (s === "consultando" ? 1 : 0), e.total || 0), pct = e.total ? Math.round(100 * (e.feitas || 0) / e.total) : 0;
+      var c = e.consulta || {};
+      var linha = s === "cancelando" ? "Cancelando: termina a consulta atual e não grava nada." :
+        s === "gravando" ? "Gravando no relatório…" :
+        s === "descricoes" && e.descricoes ? "Lendo as descrições das vagas: " + e.descricoes.lidas + " de " + e.descricoes.total + "." :
+        c.portal ? "Consultando " + c.portal + ": " + c.cargo + (c.grupo && c.grupo !== "remoto" ? " (" + c.grupo + ")" : "") + "…" : "Começando…";
+      return '<div class="busca-painel" role="status"><div class="bp-topo"><b>Buscando vagas</b><span>consulta ' + n + " de " + (e.total || 0) + " · " +
+        (e.encontradas || 0) + " vaga(s) encontrada(s)</span>" +
+        (s === "consultando" || s === "descricoes" ? '<button class="btn-plain btn-ia-mini" data-bu="cancelar"' + (buPodeAlterar() ? "" : " disabled") + ">Cancelar</button>" : "") +
+        '</div><div class="bp-barra"><i style="width:' + pct + '%"></i></div><p>' + esc(linha) + "</p></div>";
+    }
+    var erros = (e.erros || []).length ? '<details class="bp-erros"><summary>Avisos dos portais (' + e.erros.length + ")</summary><ul>" +
+      e.erros.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" +
+      "<p>Se um portal falhou, espere antes de tentar de novo: insistir costuma prolongar o bloqueio.</p></details>" : "";
+    if (s === "concluida" && e.resumo) {
+      var r = e.resumo, a = e.analise || {}, nota;
+      if (!r.com_nota) nota = "Gravadas sem nota. Para ter a nota de aderência, escolha uma IA no botão <b>IA</b> (com o perfil montado em <b>Meu perfil</b>) ou peça a análise no chat.";
+      else if (a.rodando) nota = '<strong class="analisando">IA analisando: faltam ' + a.faltam + " vaga(s)…</strong>";
+      else if (a.erro && a.faltam) nota = "A nota não saiu: " + esc(a.erro.motivo) + ' <button class="btn-plain btn-ia-mini" data-bu="analisar"' + (buPodeAlterar() ? "" : " disabled") + ">Tentar a nota de novo</button>";
+      else if (a.faltam) nota = a.faltam + " vaga(s) ainda sem nota.";
+      else nota = "Notas prontas.";
+      return '<div class="busca-painel bp-fim" role="status"><div class="bp-topo"><b>Busca concluída às ' + esc(buHora(e.fim)) + "</b>" + fechar + "</div><p>" +
+        r.brutas + " vaga(s) encontrada(s) · <b>" + r.novas + " nova(s) para decidir</b> · " + r.fora_criterios + " fora dos critérios · " +
+        r.ja_vistas + " já vista(s) · " + r.excluidas_titulo + " cortada(s) pelo título · " + r.fora_da_janela + " fora da janela</p><p>" + nota + "</p>" + erros + "</div>";
+    }
+    var titulo = s === "cancelada" ? "Busca cancelada" : s === "interrompida" ? "Busca interrompida" : "A busca não terminou";
+    return '<div class="busca-painel bp-fim' + (s === "falha" ? " bp-falha" : "") + '" role="status"><div class="bp-topo"><b>' + titulo + "</b>" + fechar + "</div>" +
+      (e.mensagem ? "<p>" + esc(e.mensagem) + "</p>" : "") + erros + "</div>";
+  }
+  function abrirBusca() {
+    buPlano().then(function (p) {
+      if (!p) { toast("Não deu para preparar a busca: o servidor não respondeu.", true); return; }
+      if (!p.filtros_ok) { toast("Escolha os cargos antes de buscar."); abrirFiltros(); return; }
+      BU.semNota = false;
+      $("bu-erro").hidden = true;
+      montarBusca();
+      if (!$("dlg-busca").open) $("dlg-busca").showModal();
+    });
+  }
+  function montarBusca() {
+    var p = BU.plano, ia = p.ia || {}, espera = buAguarde(), aviso = "";
+    var dias = Math.round(p.janela_horas / 24);
+    var itens = [
+      "<b>" + p.consultas + " consulta(s)</b> em " + esc(p.portais.join(", ")) + " (" + esc(p.resumo) + ")",
+      "Cargos: " + esc(p.cargos.join(", ")),
+      "Vagas publicadas " + (dias <= 1 ? "nas últimas 24 horas" : "nos últimos " + dias + " dias"),
+      "Leva cerca de " + p.estimativa_min + " minuto(s); dá para usar a página enquanto isso e cancelar a qualquer momento."
+    ];
+    if (ia.ligada && p.perfil_ok) itens.push("As vagas novas recebem a nota de aderência pela IA: <b>" + esc(ia.nome) + (ia.modelo ? " · " + esc(ia.modelo) : "") + "</b>." +
+      (ia.cobranca === "uso" ? " Cobrado por uso na sua conta do provedor: cada vaga analisada consome créditos." : ""));
+    else if (!ia.ligada) itens.push("Sem IA: as vagas ficam sem nota (dá para escolher uma IA no botão IA).");
+    var h = '<ul class="ia-avisos">' + itens.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>";
+    if (ia.ligada && !p.perfil_ok) {
+      h += '<p class="aviso-config">Você ainda não tem perfil: sem ele, a nota de aderência não tem base. Monte o perfil antes ou busque assim mesmo, com as vagas sem nota.' +
+        ' <button type="button" class="btn-plain btn-ia-mini" data-bu="perfil">Montar meu perfil</button></p>';
+      BU.semNota = true;
+    }
+    if (espera) aviso = '<p class="fb-erro">Para os portais não bloquearem a busca, espere: dá para buscar de novo a partir das ' + esc(espera) + ".</p>";
+    else if (p.recente && p.ultima) aviso = '<p class="aviso-config">A última busca terminou às ' + esc(buHora(p.ultima.fim)) + ": os portais devem ter pouca vaga nova.</p>";
+    $("bu-corpo").innerHTML = h + aviso + (buPodeAlterar() ? "" : '<p class="fb-erro">Só dá para buscar no computador onde a ferramenta roda.</p>');
+    var rotulo = BU.semNota ? "Buscar sem nota" : p.recente ? "Buscar mesmo assim" : "Buscar agora";
+    $("bu-pe").innerHTML = '<button type="button" class="btn-plain" data-bu="fechar">Cancelar</button>' +
+      '<button type="button" class="btn-primary" data-bu="iniciar"' + (espera || !buPodeAlterar() ? " disabled" : "") + ">" + rotulo + "</button>";
+  }
+  function buIniciar(btn) {
+    btn.disabled = true; $("bu-erro").hidden = true;
+    API.send("POST", "/api/busca", { sem_nota: BU.semNota, confirmar_recente: !!(BU.plano && BU.plano.recente) }).then(function (j) {
+      BU.e = j; BU.fechado = ""; BU.ate = Date.now() + 20000; $("dlg-busca").close(); S.triagem = "pendente"; render(); buEstado();
+    }).catch(function (e) {
+      var er = $("bu-erro"); er.textContent = e && (e.status === 400 || e.status === 403 || e.status === 409) ? e.message : erroMsg(e); er.hidden = false;
+      btn.disabled = false; buPlano();
+    });
+  }
+  function buAcao(acao, t) {
+    if (acao === "fechar") return $("dlg-busca").close();
+    if (acao === "iniciar") return buIniciar(t);
+    if (acao === "perfil") { $("dlg-busca").close(); return abrirPerfil(); }
+    if (acao === "fechar-painel") { BU.fechado = (BU.e.inicio || "") + BU.e.situacao; return render(); }
+    if (acao === "cancelar") {
+      t.disabled = true;
+      return API.send("DELETE", "/api/busca").then(function (j) { BU.e = j; render(); buEstado(); })
+        .catch(function (e) { toast(e && e.status === 403 ? e.message : erroMsg(e), true); t.disabled = false; });
+    }
+    if (acao === "analisar") {
+      t.disabled = true;
+      return API.send("POST", "/api/busca/analisar", {}).then(function (j) {
+        if (BU.e) BU.e.analise = j.analise;
+        BU.ate = Date.now() + 20000; toast(j.analise.faltam ? "Pedindo a nota de novo." : "Nada esperando nota."); render(); buEstado();
+      }).catch(function (e) { toast(e && e.status === 403 ? e.message : erroMsg(e), true); t.disabled = false; });
+    }
+  }
+
   /* ---------- dados ---------- */
   var carregando = null;
   function carregar() {
@@ -1874,6 +2048,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       S.analisando = !!j.analisando;
       var erroIA = j.ia_erro || null;
       if (JSON.stringify(erroIA) !== JSON.stringify(S.iaErro || null)) { S.iaErro = erroIA; mudou = true; }
+      var bj = j.busca || {}, be = BU.e || {};
+      if (!BU.pedindo && !BU.timer && (bj.situacao !== be.situacao || BU_ATIVAS.indexOf(bj.situacao) >= 0)) buEstado();
       if (S.offline || j.versao !== S.versao) carregar();
       else if (mudou) render();
     }).catch(function () { if (!S.offline) { S.offline = true; render(); } });
@@ -1890,6 +2066,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   carregar();
   carregarIA();
   API.get("/api/config").then(function (j) { S.configExiste = !!j.existe; render(); }).catch(function () {});
+  buEstado();
+  buPlano();
   pfCarregar().then(function (j) {  // sem perfil, os primeiros passos abrem sozinhos (uma vez por sessão do navegador)
     var visto = false;
     try { visto = sessionStorage.getItem("pf.visto") === "1"; sessionStorage.setItem("pf.visto", "1"); } catch (e) {}
