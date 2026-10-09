@@ -169,6 +169,31 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .aviso-ia { border-left-color: var(--bad); }
 .btn-ia-mini { padding: 2px 10px; margin-left: 6px; font-size: 12px; }
 
+/* Currículo pela página (seção no detalhe da vaga e currículo base em Meu perfil) */
+#dlg-cv { width: min(680px, calc(100vw - 32px)); }
+.cv-sec { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.cv-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cv-topo h3 { margin: 0; font-size: 11.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.cv-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cv-item { padding: 10px 12px; border: 1px solid var(--line); border-left: 3px solid var(--good); border-radius: 8px; background: var(--col); display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.cv-item[data-v="conferir"] { border-left-color: var(--warn); }
+.cv-item[data-v="bloquear"] { border-left-color: var(--bad); }
+.cv-item p { margin: 0; }
+.cv-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cv-linha span { color: var(--muted); }
+.cv-tag { font-weight: 700; font-size: 12px; color: var(--good) !important; }
+.cv-item[data-v="conferir"] .cv-tag { color: var(--warn) !important; }
+.cv-item[data-v="bloquear"] .cv-tag { color: var(--bad) !important; }
+.cv-links { margin-left: auto; display: inline-flex; gap: 6px; }
+.cv-links a { text-decoration: none; }
+.cv-bloq { color: var(--bad); font-size: 13px; }
+.cv-conf summary { cursor: pointer; color: var(--muted); font-weight: 600; width: max-content; }
+.cv-conf ul { margin: 6px 0; padding-left: 18px; color: var(--muted); }
+.cv-conf li[data-n="bloquear"] b { color: var(--bad); }
+.cv-conf li[data-n="conferir"] b { color: var(--warn); }
+.cv-tec small { display: block; font-weight: 400; color: var(--muted); margin-left: 24px; }
+.cv-tec { flex-wrap: wrap; }
+
 /* Buscar vagas pela página (andamento e resumo no topo do relatório) */
 #dlg-busca { width: min(640px, calc(100vw - 32px)); }
 .bu-espera { color: var(--muted); font-size: 12.5px; align-self: center; }
@@ -499,6 +524,21 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       <button type="submit" class="btn-primary" id="ia-salvar">Salvar</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="dlg-cv" aria-labelledby="cv-titulo">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div>
+        <h2 id="cv-titulo">Gerar currículo</h2>
+        <p>Escolha as técnicas. A IA escreve só com os fatos do seu perfil e a ferramenta confere antes de você usar.</p>
+      </div>
+      <button type="button" class="more" data-cv="fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="fb" id="cv-corpo"></div>
+    <p class="fb-erro" id="cv-erro" role="alert" hidden></p>
+    <div class="dlg-foot" id="cv-pe"></div>
+  </div>
 </dialog>
 
 <dialog id="dlg-busca" aria-labelledby="bu-titulo">
@@ -965,6 +1005,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       "</div>" +
       '<div class="field"><label for="d-nota">Anotações</label><textarea id="d-nota" maxlength="5000" placeholder="Contato do recrutador, datas, próximos passos…"' + dis + ">" + esc(notaAtual) + "</textarea></div>" +
       (v.descricao ? '<details class="desc"><summary>Descrição da vaga</summary><div class="desc-body">' + md(v.descricao) + "</div></details>" : "") +
+      cvSecao(cvChave(v.id)) +
       '<div class="dlg-foot">' +
       '<button class="btn-danger" id="d-remover"' + dis + ">Remover do quadro</button>" +
       (url ? '<a class="btn-plain" href="' + esc(url) + '" target="_blank" rel="noopener" style="text-decoration:none">Abrir vaga</a>' : "") +
@@ -1299,6 +1340,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       }
       if (t.hasAttribute("data-abrir-filtros")) { abrirFiltros(); return; }
       if (t.hasAttribute("data-abrir-busca")) { abrirBusca(); return; }
+      if (t.hasAttribute("data-cv")) { cvAcao(t.getAttribute("data-cv"), t); return; }
       if (t.hasAttribute("data-bu")) { buAcao(t.getAttribute("data-bu"), t); return; }
       if (t.hasAttribute("data-abrir-ia")) { abrirIA(); return; }
       if (t.hasAttribute("data-limpar-filtros")) { limparFiltro(); return; }
@@ -1522,12 +1564,13 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     $("pf-titulo").textContent = e.existe_perfil ? "Meu perfil" : "Primeiros passos";
     $("pf-passos").innerHTML = PASSOS.map(function (p) {
       return '<button type="button" class="pf-passo" data-pf-ir="' + p.k + '"' + (p.k === et ? ' aria-current="step"' : "") + ">" + esc(p.label) + "</button>";
-    }).join("");
+    }).join("") + (e.existe_perfil ? '<button type="button" class="pf-passo" data-cv="base-ir"' + (et === "curriculos" ? ' aria-current="step"' : "") +
+      ">Currículo base</button>" : "");
     var f = { ia: pfIA, materiais: pfMateriais, rascunho: pfRascunho, conflitos: pfConflitos, anamnese: pfAnamnese,
-      diagnostico: pfDiagnostico, revisao: pfRevisao, filtros: pfFiltros, concluido: pfConcluido }[et] || pfIA;
+      diagnostico: pfDiagnostico, revisao: pfRevisao, filtros: pfFiltros, concluido: pfConcluido, curriculos: pfCurriculos }[et] || pfIA;
     var r = f();
     $("pf-corpo").innerHTML = r.corpo + (pfSo() ? '<p class="fb-erro">Só dá para enviar arquivos e gravar no computador onde a ferramenta roda.</p>' : "");
-    $("pf-pe").innerHTML = (et !== "concluido" ? '<button type="button" class="btn-danger" data-pf="recomecar" data-escreve>Recomeçar</button>' : "") + r.pe;
+    $("pf-pe").innerHTML = (et !== "concluido" && et !== "curriculos" ? '<button type="button" class="btn-danger" data-pf="recomecar" data-escreve>Recomeçar</button>' : "") + r.pe;
     if (pfSo()) document.querySelectorAll("#dlg-perfil [data-escreve]").forEach(function (b) { b.disabled = true; });
   }
 
@@ -1795,9 +1838,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   }
   function pfConcluido() {
     return {
-      corpo: "<p><b>Perfil pronto.</b> Ele é a base da nota de aderência das vagas.</p><ul class=\"ia-avisos\">" +
-        "<li>Para buscar vagas, rode <code>python vagas.py</code> ou peça no chat do seu assistente (\"busca vagas\").</li>" +
-        "<li>Para mudar o perfil depois, abra Meu perfil e escolha Atualizar o perfil: a versão atual fica guardada.</li></ul>",
+      corpo: "<p><b>Perfil pronto.</b> Ele é a base da nota de aderência das vagas e dos currículos.</p><ul class=\"ia-avisos\">" +
+        "<li>Para buscar vagas, use o botão <b>Buscar vagas</b> no Relatório de Vagas (ou peça no chat do seu assistente).</li>" +
+        "<li>Para mudar o perfil depois, abra Meu perfil e escolha Atualizar o perfil: a versão atual fica guardada.</li></ul>" + cvSecao("base"),
       pe: '<button type="button" class="btn-plain" data-pf="atualizar" data-escreve>Atualizar o perfil</button><button type="button" class="btn-primary" data-pf="fechar">Fechar</button>'
     };
   }
@@ -2027,6 +2070,170 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     }
   }
 
+  /* ---------- currículo pela página (só no clique; conferência sem IA em todo currículo) ---------- */
+  var CV = { e: null, listas: {}, carregando: {}, timer: null, cat: null, alvo: null };
+  var CV_ATIVAS = ["escrevendo", "gerando", "conferindo"];
+  var CV_FORMATOS = { br: "Brasil", us: "Estados Unidos", eu: "Europa" };
+  var CV_ESTILOS = { padrao: "padrão", compacto: "compacto", executivo: "executivo" };
+  var CV_VEREDITO = { ok: "Conferido: ok", conferir: "Conferir", bloquear: "Não pronto" };
+  function cvChave(vagaId) { return vagaId ? "v:" + vagaId : "base"; }
+  function cvAlvoDoEstado(e) { return e && e.alvo ? (e.alvo.vaga_id ? "v:" + e.alvo.vaga_id : "base") : ""; }
+  function cvLista(chave) {
+    if (CV.carregando[chave]) return;
+    CV.carregando[chave] = true;
+    var q = chave === "base" ? "base=1" : "vaga=" + encodeURIComponent(chave.slice(2));
+    API.get("/api/curriculo/lista?" + q).then(function (j) { CV.listas[chave] = j.curriculos || []; })
+      .catch(function () { CV.listas[chave] = CV.listas[chave] || []; })
+      .then(function () { CV.carregando[chave] = false; cvAtualizar(); });
+  }
+  function cvEstado() {
+    var antes = CV.e;
+    API.get("/api/curriculo/estado").then(function (j) {
+      CV.e = j;
+      if (antes && CV_ATIVAS.indexOf(antes.situacao) >= 0 && CV_ATIVAS.indexOf(j.situacao) < 0) {
+        var chave = cvAlvoDoEstado(j);
+        delete CV.listas[chave];
+        if (j.situacao === "pronto") toast(j.pronto ? "Currículo gerado e conferido." : "Currículo gerado, mas a conferência bloqueou: veja os pontos.", !j.pronto);
+        else if (j.situacao === "falha") toast("O currículo não saiu: " + (j.mensagem || "falha"), true);
+      }
+      cvAtualizar();
+    }).catch(function () {}).then(function () {
+      clearTimeout(CV.timer);
+      if (CV.e && CV_ATIVAS.indexOf(CV.e.situacao) >= 0) CV.timer = setTimeout(cvEstado, 2000);
+    });
+  }
+  function cvLink(arq, rotulo) {
+    return arq ? '<a class="btn-plain btn-ia-mini" href="' + esc(BASE + "/arquivos/curriculos/" + encodeURIComponent(arq)) + '" target="_blank" rel="noopener">' + rotulo + "</a>" : "";
+  }
+  function cvItem(m) {
+    var c = m.conferencia || {}, t = m.tecnicas || {}, d = m.disponivel || {};
+    var nomes = Object.keys(t).filter(function (k) { return t[k] === true; }).map(function (k) {
+      return { ats: "ATS", foco: "foco", xyz: "XYZ", resultado_primeiro: "resultado primeiro", competencias_primeiro: "competências primeiro" }[k] || k;
+    });
+    var bloqueios = (c.fatos || []).concat(c.ats || []).filter(function (p) { return p.nivel === "bloquear"; });
+    var pontos = (c.fatos || []).concat(c.ats || []);
+    var conf = "";
+    if (pontos.length || (c.requisitos || []).length) {
+      conf = '<details class="cv-conf"><summary>Ver conferência</summary>' +
+        (pontos.length ? "<ul>" + pontos.map(function (p) {
+          return '<li data-n="' + esc(p.nivel) + '"><b>' + esc(p.nivel) + "</b> " + esc(p.mensagem) + (p.valor ? ": " + esc(p.valor) : p.trecho ? ": " + esc(p.trecho) : "") + "</li>";
+        }).join("") + "</ul>" : "<p>Fatos e ATS sem pontos.</p>") +
+        ((c.requisitos || []).length ? "<p><b>Requisitos da vaga</b></p><ul>" + c.requisitos.map(function (r) {
+          return "<li>[" + esc(r.situacao) + "] " + esc(r.texto) + "</li>";
+        }).join("") + "</ul>" : "") +
+        (c.cobertura && c.cobertura.total ? "<p>Palavras-chave da vaga no currículo: " + c.cobertura.achadas + " de " + c.cobertura.total +
+          (c.cobertura.faltando.length ? " (faltando: " + esc(c.cobertura.faltando.join(", ")) + ")" : "") + "</p>" : "") + "</details>";
+    }
+    return '<li class="cv-item" data-v="' + esc(c.veredito || "ok") + '"><div class="cv-linha"><b>' + esc(ddmm(m.criado_em)) + " " + esc(String(m.criado_em || "").slice(11, 16)) + "</b>" +
+      '<span class="cv-tag">' + esc(CV_VEREDITO[c.veredito] || c.veredito || "") + "</span>" +
+      "<span>" + esc(CV_FORMATOS[t.formato] || t.formato) + " · " + esc(CV_ESTILOS[t.estilo] || t.estilo) + " · " +
+      (m.paginas ? m.paginas + " página(s)" + (m.acima_do_limite ? " (acima do limite de " + t.paginas + ")" : "") : "páginas não medidas") + "</span>" +
+      '<span class="cv-links">' + (d.pdf ? cvLink(m.arquivos.pdf, "PDF") : '<span class="hint">PDF indisponível</span>') +
+      (d.docx ? cvLink(m.arquivos.docx, ".docx") : '<span class="hint">.docx indisponível</span>') + "</span></div>" +
+      (nomes.length ? '<p class="hint">Técnicas: ' + esc(nomes.join(", ")) + "</p>" : "") +
+      (bloqueios.length ? '<p class="cv-bloq">Não envie este currículo ainda: ' + bloqueios.map(function (p) { return esc(p.mensagem + (p.valor ? " (" + p.valor + ")" : "")); }).join("; ") +
+        ". Confirme o fato no perfil (Meu perfil) ou gere de novo.</p>" : "") +
+      ((m.sugestoes_corte || []).length ? '<p class="hint">Para caber: ' + esc(m.sugestoes_corte.join("; ")) + ".</p>" : "") + conf + "</li>";
+  }
+  function cvConteudo(chave) {
+    var e = CV.e, meu = cvAlvoDoEstado(e) === chave, h = "";
+    var ativa = e && CV_ATIVAS.indexOf(e.situacao) >= 0;
+    h += '<div class="cv-topo"><h3>' + (chave === "base" ? "Currículo base" : "Currículos para esta vaga") + "</h3>" +
+      '<button type="button" class="btn-plain btn-ia-mini" data-cv="abrir" data-alvo="' + esc(chave) + '"' + (ativa || S.offline ? " disabled" : "") + ">" +
+      (chave === "base" ? "Gerar currículo base" : "Gerar currículo") + "</button></div>";
+    if (meu && ativa) h += '<p class="ia-status analisando">' + esc(e.etapa_texto || "Gerando…") + " Pode levar alguns minutos; dá para fechar e voltar.</p>";
+    else if (ativa) h += '<p class="hint">Há outro currículo sendo gerado; espere ele terminar.</p>';
+    if (meu && e.situacao === "falha") h += '<p class="cv-bloq">O currículo não saiu: ' + esc(e.mensagem) +
+      (e.pode_tentar ? ' <button type="button" class="btn-plain btn-ia-mini" data-cv="tentar">Tentar de novo</button>' : "") + "</p>";
+    var lista = CV.listas[chave];
+    if (!lista) { cvLista(chave); h += '<p class="hint">Carregando…</p>'; }
+    else if (!lista.length) h += '<p class="hint">Nenhum currículo gerado pela página ainda.</p>';
+    else h += '<ul class="cv-lista">' + lista.map(cvItem).join("") + "</ul>";
+    return h;
+  }
+  function cvSecao(chave) { return '<section class="cv-sec" data-cv-sec="' + esc(chave) + '">' + cvConteudo(chave) + "</section>"; }
+  function cvAtualizar() {
+    document.querySelectorAll("[data-cv-sec]").forEach(function (s) {
+      var abertos = Array.prototype.map.call(s.querySelectorAll("details"), function (d) { return d.open; });
+      s.innerHTML = cvConteudo(s.getAttribute("data-cv-sec"));
+      s.querySelectorAll("details").forEach(function (d, i) { if (abertos[i]) d.open = true; });
+    });
+  }
+  function abrirCV(chave) {
+    CV.alvo = chave;
+    var q = chave === "base" ? "" : "?vaga=" + encodeURIComponent(chave.slice(2));
+    $("cv-erro").hidden = true;
+    API.get("/api/curriculo/catalogo" + q).then(function (j) { CV.cat = j; montarCV(); if (!$("dlg-cv").open) $("dlg-cv").showModal(); })
+      .catch(function (e) { toast(erroMsg(e), true); });
+  }
+  function montarCV() {
+    var c = CV.cat, s = c.sugestao || {}, ia = c.ia || {}, h, pe;
+    $("cv-titulo").textContent = CV.alvo === "base" ? "Gerar o currículo base" : "Gerar currículo para esta vaga";
+    if (!ia.ligada) {
+      h = "<p>Escrever o currículo pela página precisa de uma IA. Escolha uma no painel <b>IA</b> (a assinatura do Claude Code serve), ou peça " +
+        "o currículo no chat do seu assistente (\"monta meu currículo\").</p>";
+      pe = '<button type="button" class="btn-plain" data-cv="fechar">Fechar</button><button type="button" class="btn-primary" data-cv="ia">Escolher a IA</button>';
+    } else if (!c.perfil_ok) {
+      h = "<p>O currículo sai só dos fatos do seu perfil, e ele ainda não existe. Monte o perfil primeiro.</p>";
+      pe = '<button type="button" class="btn-plain" data-cv="fechar">Fechar</button><button type="button" class="btn-primary" data-cv="perfil">Montar meu perfil</button>';
+    } else {
+      h = '<section class="fb-sec"><h3>Técnicas</h3>' + Object.keys(c.tecnicas).map(function (k) {
+        var t = c.tecnicas[k];
+        return '<label class="check cv-tec"><input type="checkbox" data-cv-tec="' + esc(k) + '"' + (s[k] ? " checked" : "") + "> " + esc(t.nome) +
+          ' <small>' + esc(t.explicacao) + "</small></label>";
+      }).join("") + "</section>" +
+        Object.keys(c.escolhas).map(function (k) {
+          var es = c.escolhas[k];
+          return '<section class="fb-sec"><h3>' + esc(es.nome) + '</h3><div class="pf-opcoes">' + Object.keys(es.opcoes).map(function (o) {
+            return '<label class="check"><input type="radio" name="cv-' + esc(k) + '" value="' + esc(o) + '"' + (String(s[k]) === o ? " checked" : "") + "> " + esc(es.opcoes[o]) + "</label>";
+          }).join("") + "</div></section>";
+        }).join("") +
+        (s.motivo ? '<p class="hint">Sugestão marcada: ' + esc(s.motivo) + ".</p>" : "") +
+        '<ul class="ia-avisos"><li>Quem escreve: ' + esc(ia.nome) + (ia.modelo ? " · " + esc(ia.modelo) : "") + ", só com os fatos do seu perfil; depois a ferramenta confere sem IA.</li>" +
+        (ia.cobranca === "uso" ? "<li>Cobrado por uso na sua conta do provedor (uma chamada por currículo).</li>" : "") +
+        "<li>Nada é enviado antes de você confirmar. Os arquivos ficam na pasta curriculos, sem apagar versões anteriores.</li></ul>";
+      pe = '<button type="button" class="btn-plain" data-cv="fechar">Cancelar</button><button type="button" class="btn-primary" data-cv="gerar"' +
+        (c.pode_alterar === false ? " disabled" : "") + ">Gerar</button>";
+      if (c.pode_alterar === false) h += '<p class="fb-erro">Só dá para gerar no computador onde a ferramenta roda.</p>';
+    }
+    $("cv-corpo").innerHTML = h;
+    $("cv-pe").innerHTML = pe;
+  }
+  function cvLerTecnicas() {
+    var tec = {};
+    document.querySelectorAll("#cv-corpo [data-cv-tec]").forEach(function (i) { tec[i.getAttribute("data-cv-tec")] = i.checked; });
+    Object.keys(CV.cat.escolhas).forEach(function (k) {
+      var r = document.querySelector('#cv-corpo input[name="cv-' + k + '"]:checked');
+      if (r) tec[k] = k === "paginas" ? +r.value : r.value;
+    });
+    return tec;
+  }
+  function cvAcao(acao, t) {
+    if (acao === "abrir") return abrirCV(t.getAttribute("data-alvo"));
+    if (acao === "fechar") return $("dlg-cv").close();
+    if (acao === "ia") { $("dlg-cv").close(); return abrirIA(); }
+    if (acao === "perfil") { $("dlg-cv").close(); return abrirPerfil(); }
+    if (acao === "gerar") {
+      t.disabled = true; $("cv-erro").hidden = true;
+      var vaga = CV.alvo === "base" ? null : CV.alvo.slice(2);
+      return API.send("POST", "/api/curriculo", { vaga_id: vaga, tecnicas: cvLerTecnicas() }).then(function (j) {
+        CV.e = j; $("dlg-cv").close(); cvAtualizar(); cvEstado();
+      }).catch(function (e) {
+        var er = $("cv-erro"); er.textContent = e && (e.status === 400 || e.status === 403 || e.status === 409) ? e.message : erroMsg(e); er.hidden = false; t.disabled = false;
+      });
+    }
+    if (acao === "tentar") {
+      t.disabled = true;
+      return API.send("POST", "/api/curriculo/tentar", {}).then(function (j) { CV.e = j; cvAtualizar(); cvEstado(); })
+        .catch(function (e) { toast(e && e.status ? e.message : erroMsg(e), true); t.disabled = false; });
+    }
+    if (acao === "base-ir") { PF.etapa = "curriculos"; return montarPerfil(); }
+  }
+  function pfCurriculos() {
+    return { corpo: '<p class="hint">O currículo base é o que você envia para a maioria das vagas, voltado para os cargos que procura.</p>' + cvSecao("base"),
+      pe: botaoIr(PF.e.etapa && PF.e.etapa !== "curriculos" ? PF.e.etapa : "ia", "Voltar ao perfil") };
+  }
+
   /* ---------- dados ---------- */
   var carregando = null;
   function carregar() {
@@ -2068,6 +2275,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   API.get("/api/config").then(function (j) { S.configExiste = !!j.existe; render(); }).catch(function () {});
   buEstado();
   buPlano();
+  cvEstado();
   pfCarregar().then(function (j) {  // sem perfil, os primeiros passos abrem sozinhos (uma vez por sessão do navegador)
     var visto = false;
     try { visto = sessionStorage.getItem("pf.visto") === "1"; sessionStorage.setItem("pf.visto", "1"); } catch (e) {}

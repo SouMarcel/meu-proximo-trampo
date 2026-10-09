@@ -23,13 +23,14 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 import analise  # noqa: E402  (análise automática pela IA escolhida)
 import banco  # noqa: E402
 import buscador  # noqa: E402  (busca de vagas pela página, em segundo plano)
+import gerador  # noqa: E402  (currículo pela página, em segundo plano)
 import filtros  # noqa: E402  (filtros.py, na raiz: lê e grava os filtros da busca no config.json)
 import ia  # noqa: E402  (ia.py, na raiz: provedores de IA)
 import primeiros_passos as pp  # noqa: E402  (primeiros_passos.py, na raiz: perfil a partir do currículo e do LinkedIn)
@@ -233,6 +234,42 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"analise": buscador.BUSCA.analise()})
         return self._erro(404, "rota não encontrada")
 
+    def _curriculo(self, metodo: str, caminho: str):
+        """Gerar o currículo pela página: só deste computador e só no clique."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        try:
+            if metodo == "POST" and caminho == "/api/curriculo":
+                corpo = self._corpo()
+                vaga_id = str(corpo.get("vaga_id") or "").strip() or None
+                return self._json(202, {**gerador.GERACAO.iniciar(vaga_id, corpo.get("tecnicas") or {}), "pode_alterar": True})
+            if metodo == "POST" and caminho == "/api/curriculo/tentar":
+                return self._json(202, {**gerador.GERACAO.tentar(), "pode_alterar": True})
+        except gerador.GeracaoOcupada as e:
+            return self._json(409, {"erro": str(e), "estado": gerador.GERACAO.estado()})
+        return self._erro(404, "rota não encontrada")
+
+    def _arquivo_curriculo(self, nome: str):
+        """Só .pdf e .docx de curriculos/, com o nome validado (nada de caminhos)."""
+        sys.path.insert(0, str(banco.DASH.parent))
+        import curriculo_ia
+        caminho = curriculo_ia.arquivo_servivel(unquote(nome))
+        if not caminho:
+            return self._erro(404, "arquivo não encontrado")
+        dados = caminho.read_bytes()
+        pdf = caminho.suffix == ".pdf"
+        self.send_response(200)
+        self.send_header("Content-Type", "application/pdf" if pdf else
+                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        self.send_header("Content-Length", str(len(dados)))
+        self.send_header("Content-Disposition", ("inline" if pdf else "attachment") + f"; filename*=UTF-8''{quote(caminho.name)}")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self._cabecalhos_cors()
+        self.end_headers()
+        self.wfile.write(dados)
+
     def _id_da_rota(self, caminho: str) -> str | None:
         prefixo = "/api/vagas/"
         if not caminho.startswith(prefixo):
@@ -268,6 +305,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._perfil(metodo, caminho)
             if caminho == "/api/busca" or caminho.startswith("/api/busca/"):
                 return self._busca(metodo, caminho)
+            if caminho == "/api/curriculo" or caminho.startswith("/api/curriculo/"):
+                return self._curriculo(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             vid = self._id_da_rota(caminho)
@@ -295,6 +334,20 @@ class Handler(BaseHTTPRequestHandler):
                                     "ia_erro": analise.FILA.erro(), "busca": buscador.BUSCA.resumo()})
         if caminho == "/api/ia":
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
+        if caminho.startswith("/arquivos/curriculos/"):
+            return self._arquivo_curriculo(caminho[len("/arquivos/curriculos/"):])
+        if caminho.startswith("/api/curriculo"):
+            consulta = parse_qs(urlsplit(self.path).query)
+            vaga_id = (consulta.get("vaga") or [""])[0].strip() or None
+            if caminho == "/api/curriculo/estado":
+                return self._json(200, {**gerador.GERACAO.estado(), "pode_alterar": self._local()})
+            if caminho == "/api/curriculo/catalogo":
+                return self._json(200, {**gerador.GERACAO.preparar(vaga_id), "pode_alterar": self._local()})
+            if caminho == "/api/curriculo/lista":
+                sys.path.insert(0, str(banco.DASH.parent))
+                import curriculo_ia
+                base = (consulta.get("base") or [""])[0] == "1"
+                return self._json(200, {"curriculos": curriculo_ia.listar(vaga_id, base=base)})
         if caminho == "/api/busca":
             return self._json(200, {**buscador.BUSCA.estado(), "pode_alterar": self._local()})
         if caminho == "/api/busca/plano":

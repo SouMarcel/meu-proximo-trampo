@@ -474,6 +474,20 @@ def anotar(vid: str, texto: str) -> dict:
     return doc
 
 
+def registrar_curriculo(vid: str, nome: str) -> dict:
+    """Liga à vaga um currículo gerado pela página (nome dos arquivos em curriculos/)."""
+    if not re.fullmatch(r"[a-z0-9-]{1,90}", str(nome or "")):
+        raise ValueError("nome de currículo inválido")
+    with escrita() as con:
+        doc = _ler(con, vid)
+        if doc is None:
+            raise KeyError(vid)
+        doc["curriculos"] = [*[c for c in doc.get("curriculos") or [] if c != nome], nome]
+        doc["atualizada_em"] = agora()
+        _gravar(con, vid, doc)
+    return doc
+
+
 def remover(vid: str) -> None:
     """Vaga manual é apagada; vaga do Indeed só sai do quadro (continua como visitada)."""
     with escrita() as con:

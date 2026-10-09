@@ -235,6 +235,15 @@ cargos e datas que não estão no seu perfil; cada requisito da vaga como tem, s
 cobertura das palavras-chave). Número fora do perfil bloqueia a entrega até você confirmar ou
 tirar. Passou do limite de páginas, o gerador avisa e sugere o que cortar, sem encolher a fonte.
 
+**Pela página**, com uma IA escolhida no botão **IA** e o perfil montado: no detalhe de uma vaga,
+**Gerar currículo** abre as mesmas técnicas (com a sugestão para a vaga já marcada); ao confirmar, a
+IA escreve só com os fatos do perfil, a ferramenta gera o `.docx` e o PDF em `curriculos/` (nome com
+data, empresa e cargo, sem apagar versões anteriores) e roda a conferência. A vaga lista os
+currículos gerados, com links para abrir o PDF e baixar o `.docx`; com "bloquear", o currículo
+aparece como **não pronto**, com o que resolver. O **currículo base** sai do mesmo jeito, no botão
+**Meu perfil**. Nada vai para a IA antes do clique; com IA por chave, cada currículo é uma chamada
+cobrada pelo provedor.
+
 > **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
 > provedor escolhido no botão **IA** (Anthropic, OpenAI, Google etc.) para a análise. Em
 > planos gratuitos, alguns provedores podem usar os dados enviados; confira os termos. Sem
