@@ -1,0 +1,10 @@
+{
+  "context": {
+    "fileName": "AGENTS.md"
+  },
+  "mcpServers": {
+    "gupy-candidato": {
+      "httpUrl": "https://candidates.mcp.api.gupy.io/mcp"
+    }
+  }
+}

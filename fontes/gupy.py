@@ -5,6 +5,9 @@ direto por HTTP, no protocolo do MCP (JSON-RPC), então a busca funciona também
 Claude Code. A skill consultar-gupy usa o mesmo servidor pelas ferramentas do MCP
 (registrado em .mcp.json), para perguntas na conversa.
 
+Sem a integração MCP no assistente (Codex, OpenCode…), as mesmas ferramentas saem pela linha de
+comando: python consultar_gupy.py search_jobs term=analista pwd=true limit=10 (veja main()).
+
 Diferenças para o Indeed: não há filtro de data (a busca ordena pela publicação e para
 quando as vagas saem da janela), aspas não fazem frase exata, a cidade não tem raio e
 só funciona junto com o estado por extenso, e a resposta não traz a cidade da vaga.
@@ -13,6 +16,8 @@ from __future__ import annotations
 
 import base64
 import json
+import re
+import sys
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -203,3 +208,63 @@ def id_do_link(url: str) -> str | None:
             if isinstance(dados, dict) and str(dados.get("jobId") or "").isdigit():
                 return f"gupy-{dados['jobId']}"
     return None
+
+
+# ---------------------------------------------------------------- linha de comando
+
+FERRAMENTAS = ("search_jobs", "get_job_by_id", "list_companies", "get_company_by_id")
+USO = ("uso: python consultar_gupy.py <ferramenta> [chave=valor …]  (ou um único JSON)\n"
+       "ferramentas: " + ", ".join(FERRAMENTAS) + "\n"
+       "ex.: python consultar_gupy.py search_jobs term=analista pwd=true limit=10\n"
+       "     python consultar_gupy.py get_job_by_id id=12345")
+
+
+def argumentos_da_linha(itens: list[str]) -> dict:
+    """Argumentos das ferramentas a partir da linha de comando: chave=valor (true/false → booleano,
+    inteiro → número, o resto texto) ou um único objeto JSON."""
+    if len(itens) == 1 and itens[0].lstrip().startswith("{"):
+        dados = json.loads(itens[0])
+        if not isinstance(dados, dict):
+            raise ValueError("o JSON precisa ser um objeto")
+        return dados
+    args = {}
+    for item in itens:
+        chave, sep, valor = item.partition("=")
+        chave = chave.strip()
+        if not sep or not chave:
+            raise ValueError(f"argumento inválido: {item!r} (use chave=valor)")
+        baixo = valor.strip().lower()
+        if baixo in ("true", "false"):
+            args[chave] = baixo == "true"
+        elif re.fullmatch(r"-?\d+", valor.strip()):
+            args[chave] = int(valor)
+        else:
+            args[chave] = valor
+    return args
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Consulta a Gupy sem a integração MCP do assistente e imprime o JSON da resposta."""
+    for fluxo in (sys.stdout, sys.stderr):
+        try:
+            fluxo.reconfigure(encoding="utf-8")
+        except AttributeError:
+            pass
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv or argv[0] in ("-h", "--help"):
+        print(USO)
+        return 0 if argv else 2
+    if argv[0] not in FERRAMENTAS:
+        print(f"ferramenta desconhecida: {argv[0]} (use: {', '.join(FERRAMENTAS)})", file=sys.stderr)
+        return 2
+    try:
+        dados = chamar(argv[0], argumentos_da_linha(argv[1:]))
+    except (ValueError, GupyErro) as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    print(json.dumps(dados, ensure_ascii=False, indent=1))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

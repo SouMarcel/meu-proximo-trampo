@@ -17,7 +17,7 @@ from datetime import datetime
 import banco
 
 RAIZ = banco.DASH.parent
-SKILL = RAIZ / ".claude" / "skills" / "buscar-vagas" / "SKILL.md"
+SKILL = RAIZ / ".agents" / "skills" / "buscar-vagas" / "SKILL.md"  # fonte das skills (a cópia em .claude/skills é gerada)
 NL = chr(10)
 TEMPO_MAXIMO = 600
 LIMITE_PERFIL = 40000

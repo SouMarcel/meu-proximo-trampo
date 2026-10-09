@@ -58,9 +58,11 @@ chave, o uso é cobrado pelo provedor; modelos diferentes podem dar notas um pou
 e o seu perfil e o texto das vagas vão para o provedor escolhido. A chave fica só no arquivo
 `.env` deste computador e nunca volta para a página.
 
-As conversas (buscar vagas pelo chat, montar o currículo, consultar a Gupy) continuam no
-Claude Code: as skills que ensinam isso já vêm neste repositório, em `.claude/skills/`
-(`buscar-vagas`, `consultar-gupy` e `gerar-curriculo`).
+As conversas (buscar vagas pelo chat, montar o currículo, consultar a Gupy) funcionam no
+Claude Code e em outros assistentes de código (Codex, Gemini CLI/Antigravity, OpenCode): as
+skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`buscar-vagas`,
+`consultar-gupy` e `gerar-curriculo`), e as instruções comuns no `AGENTS.md`. Veja
+[Usar com outros assistentes](#usar-com-outros-assistentes).
 
 ## Como funciona
 
@@ -192,6 +194,41 @@ sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 > recebe ferramentas (não executa comandos nem abre sites): recebe o perfil e a vaga e só
 > devolve a nota, e o detalhe da vaga mostra qual IA deu a nota. Para desligar, escolha
 > **Sem IA** no painel.
+
+## Usar com outros assistentes
+
+As mesmas conversas do Claude Code funcionam em outros assistentes de código que leem o
+`AGENTS.md` e skills no formato `SKILL.md`. Abra a pasta no assistente e peça como faria no
+Claude Code: "busca vagas novas pra mim", "monta meu currículo", "tem vaga de analista na
+empresa X na Gupy?".
+
+| Assistente | Como abrir | O que muda |
+|---|---|---|
+| Claude Code | `claude` na pasta (ou a extensão do VS Code) | Nada: é o caminho principal. As skills de LinkedIn recomendadas abaixo são só dele |
+| Codex (OpenAI) | `codex` na pasta | Não tem ferramenta de perguntas com opções nem de ler links: ele pergunta em texto e pede que você cole o texto da vaga. A Gupy vai pelo comando `consultar_gupy.py` |
+| Gemini CLI | `gemini` na pasta | Na primeira vez ele pergunta se confia na pasta: responda que sim, senão ignora as skills e a configuração do projeto. Lê o `AGENTS.md` e já vem com a integração da Gupy (`.gemini/settings.json`). Desde 18/06/2026 exige chave paga da API do Gemini; sem ela, use o **Antigravity CLI** (`agy`), que lê as mesmas skills |
+| OpenCode | `opencode` na pasta | Lê as skills de `.agents/skills/` e também a cópia de `.claude/skills/`, então avisa "duplicate skill name" (o conteúdo é igual). Para silenciar, defina `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` |
+
+Para ligar a integração MCP da Gupy no Codex ou no OpenCode (opcional; sem ela, a skill usa o
+`consultar_gupy.py`):
+
+```toml
+# .codex/config.toml (com o projeto marcado como confiável no Codex)
+[mcp_servers.gupy-candidato]
+url = "https://candidates.mcp.api.gupy.io/mcp"
+```
+
+```json
+{ "mcp": { "gupy-candidato": { "type": "remote", "url": "https://candidates.mcp.api.gupy.io/mcp" } } }
+```
+
+(o segundo vai no `opencode.json` da raiz).
+
+As skills ficam em `.agents/skills/` (a fonte). O Claude Code só lê `.claude/skills/`, onde fica
+uma cópia gerada: para mudar uma skill, edite em `.agents/skills/` e rode
+`python sincronizar_skills.py` (com `--conferir`, ele só aponta cópia diferente). Testamos no
+Claude Code; Codex, Gemini CLI e OpenCode seguem a documentação oficial de cada um — se algo não
+funcionar, abra uma issue.
 
 ## Configuração (`config.json`)
 

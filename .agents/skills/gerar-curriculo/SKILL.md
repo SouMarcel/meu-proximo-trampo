@@ -2,7 +2,6 @@
 name: gerar-curriculo
 description: Cria e mantém o currículo do usuário (.docx e PDF, prontos para ATS) a partir do perfil de carreira e dos arquivos em anexos/, e, quando ele pedir, adapta uma versão para uma vaga específica do dashboard ou de fora dele, usando só fatos confirmados. Também escreve respostas de formulário de candidatura com limite de caracteres, parágrafos de carta de apresentação e textos do LinkedIn coerentes com o currículo, e aplica retornos de ATS ou de recrutador. Use sempre que o usuário pedir para criar, atualizar, revisar, traduzir ou adaptar o currículo, CV ou resume, perguntar como ficaria o currículo para uma vaga, colar um retorno de ATS ou de recrutador, ou pedir um texto de candidatura ("por que você?", "como pode nos ajudar?", carta), mesmo sem citar a skill. Buscar vagas e dar nota de aderência é com a skill buscar-vagas.
 ---
-<!-- Cópia gerada de .agents/skills/gerar-curriculo/ por sincronizar_skills.py: edite lá. -->
 
 # Gerar currículo
 

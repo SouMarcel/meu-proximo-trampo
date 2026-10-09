@@ -2,7 +2,6 @@
 name: consultar-gupy
 description: Responde perguntas pontuais sobre vagas da Gupy na conversa, pelo MCP público de candidatos da Gupy (Gupy MCP - Candidato), e manda para o dashboard as vagas que o usuário escolher. Cobre vagas de uma empresa, vagas que aceitam PCD ou com selo Gupy friendly, faixa salarial, prazo de inscrição e detalhes de uma vaga da Gupy pelo link ou pelo número. Use quando o usuário perguntar algo específico da Gupy ("tem vaga de X na Gupy?", "o que a empresa Y tem aberto na Gupy?", "essa vaga da Gupy informa salário?", "vagas PCD de analista na Gupy"), mesmo sem citar o MCP. A busca de rotina com nota de aderência, que já inclui a Gupy junto com o Indeed, é com a skill buscar-vagas.
 ---
-<!-- Cópia gerada de .agents/skills/consultar-gupy/ por sincronizar_skills.py: edite lá. -->
 
 # Consultar a Gupy
 

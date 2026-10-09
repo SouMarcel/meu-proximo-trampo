@@ -1,0 +1,55 @@
+{
+  "idioma": "pt",
+  "nome": "Ana Exemplo da Silva",
+  "titulo": "Product Owner | Discovery, backlog e métricas de produto",
+  "contato": ["São Paulo, SP", "ana.exemplo@email.com", "(11) 90000-0000", "linkedin.com/in/ana-exemplo"],
+  "resumo": "Product Owner com 4 anos em produtos digitais de varejo, responsável pelo backlog de 2 squads e pela priorização com base em dados de uso. Conduziu o discovery que levou a nova jornada de checkout ao ar e acompanha conversão, NPS e lead time com o time.",
+  "competencias": [
+    {"grupo": "Produto", "itens": ["Discovery", "Gestão de backlog", "Priorização (RICE)", "Histórias de usuário", "OKRs"]},
+    {"grupo": "Agilidade", "itens": ["Scrum", "Kanban", "Métricas de fluxo"]},
+    {"grupo": "Ferramentas", "itens": ["Jira", "Confluence", "Miro", "Google Analytics (nível usuário)"]}
+  ],
+  "experiencia": [
+    {
+      "empresa": "Loja Fictícia S.A.",
+      "local": "São Paulo, SP",
+      "periodo": "mar/2021 – atual",
+      "cargos": [
+        {
+          "cargo": "Product Owner",
+          "periodo": "jan/2023 – atual",
+          "itens": [
+            "Responsável pelo backlog de 2 squads (14 pessoas) do checkout e da área logada.",
+            "Conduziu o discovery da nova jornada de checkout com 12 entrevistas e testes de protótipo; a versão final reduziu o abandono do carrinho.",
+            "Definiu com o time as métricas de acompanhamento (conversão, lead time, NPS) e o ritual mensal de revisão."
+          ]
+        },
+        {
+          "cargo": "Analista de Produto",
+          "periodo": "mar/2021 – dez/2022",
+          "itens": [
+            "Escreveu histórias de usuário e critérios de aceite para o time de catálogo.",
+            "Montou os primeiros painéis de uso do app junto com o time de dados."
+          ]
+        }
+      ]
+    },
+    {
+      "empresa": "Agência Modelo",
+      "cargo": "Analista de Projetos Digitais",
+      "periodo": "fev/2019 – fev/2021",
+      "itens": ["Acompanhou cronograma e entregas de sites para 6 clientes de varejo."]
+    }
+  ],
+  "projetos": [
+    {"nome": "Aplicativo de receitas (projeto pessoal)", "periodo": "2024", "descricao": "Fase de validação com 20 entrevistas; ainda sem código."}
+  ],
+  "formacao": [
+    {"curso": "MBA em Gestão de Produtos Digitais", "instituicao": "Escola Exemplo", "periodo": "2024 – 2025", "status": "em andamento"},
+    {"curso": "Bacharelado em Administração", "instituicao": "Universidade Exemplo", "periodo": "2014 – 2018"}
+  ],
+  "certificacoes": ["PSPO I – Scrum.org (2023)"],
+  "cursos": ["Product Discovery – Curso Exemplo (2022, certificado de conclusão)"],
+  "idiomas": ["Português – nativo", "Inglês – intermediário (leitura e reuniões)"],
+  "ordem": ["resumo", "competencias", "experiencia", "formacao", "certificacoes", "cursos", "idiomas", "projetos"]
+}

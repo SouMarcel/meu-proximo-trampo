@@ -2,7 +2,6 @@
 name: buscar-vagas
 description: Busca vagas de emprego (Indeed e Gupy; startup.jobs se estiver ligado), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir uma busca no Indeed, na Gupy ou no startup.jobs, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
-<!-- Cópia gerada de .agents/skills/buscar-vagas/ por sincronizar_skills.py: edite lá. -->
 
 # Buscar vagas
 
