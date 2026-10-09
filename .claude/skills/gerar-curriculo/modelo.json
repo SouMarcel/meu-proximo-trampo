@@ -1,9 +1,11 @@
 {
   "idioma": "pt",
+  "tecnicas": {"ats": true, "foco": true, "xyz": false, "resultado_primeiro": false, "competencias_primeiro": false, "paginas": 2, "formato": "br", "estilo": "padrao"},
   "nome": "Ana Exemplo da Silva",
   "titulo": "Product Owner | Discovery, backlog e métricas de produto",
   "contato": ["São Paulo, SP", "ana.exemplo@email.com", "(11) 90000-0000", "linkedin.com/in/ana-exemplo"],
   "resumo": "Product Owner com 4 anos em produtos digitais de varejo, responsável pelo backlog de 2 squads e pela priorização com base em dados de uso. Conduziu o discovery que levou a nova jornada de checkout ao ar e acompanha conversão, NPS e lead time com o time.",
+  "destaques": ["Conduziu o discovery da nova jornada de checkout, do problema ao lançamento.", "Responsável pelo backlog de 2 squads (14 pessoas) do checkout e da área logada."],
   "competencias": [
     {"grupo": "Produto", "itens": ["Discovery", "Gestão de backlog", "Priorização (RICE)", "Histórias de usuário", "OKRs"]},
     {"grupo": "Agilidade", "itens": ["Scrum", "Kanban", "Métricas de fluxo"]},

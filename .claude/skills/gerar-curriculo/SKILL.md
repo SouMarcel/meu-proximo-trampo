@@ -33,9 +33,13 @@ No Brasil, o comum é mandar o mesmo currículo para a maioria das vagas. Por is
 - `curriculos/`: os currículos gerados, fora do Git. Cada versão tem três arquivos com
   o mesmo nome: o `.json` (o conteúdo, a fonte da verdade), o `.docx` e o `.pdf`.
   Nomes: `base.json`, `base-en.json` e, para uma vaga, `AAAA-MM-DD-empresa-cargo.json`.
-- `curriculo.py`: gera o `.docx` e o `.pdf` a partir do JSON, com layout fixo (A4, uma
-  coluna, sem tabelas nem imagens).
+- `curriculo.py`: gera o `.docx` e o `.pdf` a partir do JSON (uma coluna, sem tabelas nem
+  imagens), no formato do país, no estilo e no limite de páginas das técnicas escolhidas.
+  `PY curriculo.py --tecnicas [--vaga-id ID]` mostra o catálogo das técnicas com a sugestão.
+- `conferir.py`: conferência sem IA (fatos contra o perfil, requisitos da vaga, ATS), com veredito
+  ok, conferir ou bloquear.
 - `modelo.json` (nesta pasta da skill): exemplo fictício com todos os campos do JSON.
+- `tecnicas.md` (nesta pasta da skill): como escrever cada técnica. Leia antes de redigir.
 - `dash/banco.py vaga "trecho"`: dados completos de uma vaga do dashboard (descrição,
   nota, encaixes, lacunas, alertas). `dash/banco.py anotar ID "texto"`: acrescenta uma
   linha às anotações dela.
@@ -98,7 +102,23 @@ No Brasil, o comum é mandar o mesmo currículo para a maioria das vagas. Por is
   nenhuma redação resolve. Não amacie.
 - Se o usuário já falou de uma lacuna com o recrutador, não volte nela; mapeie o resto.
 
-### 3. Perguntas curtas
+### 3. Técnicas
+
+Rode `PY curriculo.py --tecnicas` (com `--vaga-id ID` numa vaga do dashboard) e pergunte, numa
+rodada só:
+
+- **Técnicas** (múltipla escolha, cada uma com a explicação do catálogo): ATS, foco, XYZ,
+  resultado primeiro, competências primeiro;
+- **Páginas** (1 ou 2), **formato do país** (Brasil, Estados Unidos, Europa) e **estilo** (padrão,
+  compacto, executivo).
+
+Use a ferramenta de opções do assistente (AskUserQuestion no Claude Code, com múltipla escolha para
+as técnicas; ask_user no Gemini CLI; question no OpenCode); sem ela, escreva as opções numeradas.
+Deixe marcada a sugestão do catálogo e diga o motivo dela. Grave a escolha em `tecnicas` no JSON e
+siga o `tecnicas.md` ao redigir. Currículo base que já tem `tecnicas` no JSON: pergunte só se a
+pessoa quiser mudar.
+
+### 4. Perguntas curtas
 
 - 1 a 3 perguntas por rodada, só sobre o que muda o texto (nível de envolvimento, se a
   ferramenta foi mesmo usada, datas, se o resultado foi medido).
@@ -109,32 +129,39 @@ No Brasil, o comum é mandar o mesmo currículo para a maioria das vagas. Por is
 - Se o usuário mandar incluir uma palavra-chave ou habilidade que você tinha deixado
   de fora, inclua (a afirmação é dele) e lembre de preparar um exemplo concreto.
 
-### 4. Redigir
+### 5. Redigir
 
 Siga o guia por seção abaixo. Em texto que pesa (resumo, bullets principais), itere no
 chat quando o usuário estiver em dúvida; gere o arquivo quando o conteúdo estiver
 combinado ou ele mandar seguir.
 
-### 5. Gerar o arquivo
+### 6. Gerar e conferir
 
 1. Grave o conteúdo em `curriculos/<nome>.json` no formato do `modelo.json`. Na
    `experiencia`, cada empresa tem seus `cargos`; assim um cargo nunca vai parar
    debaixo da empresa errada. Formação em andamento leva `"status": "em andamento"`.
    `certificacoes` e `cursos` são listas separadas. `ordem` define a sequência das
    seções (a mais relevante para o alvo primeiro).
-2. Rode `PY curriculo.py curriculos/<nome>.json`. Ele gera o `.docx` e o `.pdf` e diz
-   quantas páginas deu.
-3. **Leia o PDF e olhe cada página.** Confira: no máximo 2 páginas, título de seção
+2. Rode `PY curriculo.py curriculos/<nome>.json` (com `--vaga-id ID` numa vaga do dashboard).
+   Ele gera o `.docx` e o `.pdf`, diz quantas páginas deu e roda a **conferência**. Código 3:
+   passou do limite de páginas (corte o que ele sugerir; não encolha a fonte) ou a conferência
+   deu "bloquear".
+3. **Conferência.** Com "bloquear" (número que não está no perfil, lacuna da vaga listada como
+   competência, dado pessoal no formato dos Estados Unidos), **não entregue**: confirme o fato
+   com a pessoa ou tire, e gere de novo. Com "conferir", mostre os pontos e decida com ela.
+   Para conferir de novo sem gerar: `PY conferir.py curriculos/<nome>.json [--vaga-id ID]`.
+4. **Leia o PDF e olhe cada página.** Confira: dentro do limite de páginas, título de seção
    sozinho no fim de página, última linha solta numa página nova, cargos debaixo da
-   empresa certa. Passou de 2 páginas: corte primeiro detalhe antigo ou pouco
-   relevante.
-4. Para mudar o conteúdo, edite o JSON e gere de novo; não mexa no `.docx` à mão.
-5. Sem Word nem LibreOffice o PDF não sai: entregue o `.docx` e diga isso.
-6. Entregue os caminhos do `.docx` e do `.pdf` e resuma em poucas linhas o que mudou.
-7. Versão para uma vaga do dashboard: anote no card com
+   empresa certa.
+5. Para mudar o conteúdo, edite o JSON e gere de novo; não mexa no `.docx` à mão.
+6. Sem Word nem LibreOffice o PDF não sai: entregue o `.docx` e diga isso (as páginas ficam sem
+   medir).
+7. Entregue os caminhos do `.docx` e do `.pdf`, o veredito da conferência e, em poucas linhas, o
+   que mudou e as técnicas usadas.
+8. Versão para uma vaga do dashboard: anote no card com
    `PY dash/banco.py anotar ID "Currículo gerado em DD/MM: curriculos/<nome>.pdf"`.
 
-### 6. Manter tudo coerente
+### 7. Manter tudo coerente
 
 Quando um fato mudar (uma data, um verbo, o nome de uma certificação), leve a mudança
 para todas as versões vivas em `curriculos/` e gere de novo; diga quais atualizou e
@@ -219,6 +246,8 @@ Isso protege o usuário: o recrutador confere, e data é a coisa mais fácil de 
 - [ ] Datas e números iguais em todos os documentos vivos
 - [ ] Palavras do cargo-alvo no título, no resumo, nas competências e na experiência
       mais recente
+- [ ] Técnicas escolhidas pela pessoa e gravadas em `tecnicas`
+- [ ] Conferência sem "bloquear"; os pontos de "conferir" mostrados à pessoa
 - [ ] Número de páginas e layout conferidos no PDF
 - [ ] Lacunas não escondidas pela redação, e o usuário sabe o que preparar para a
       entrevista

@@ -219,6 +219,22 @@ descrição gravada e anota no card que gerou o currículo. Os arquivos ficam em
 `curriculos/` (o `.json` é o conteúdo; editar e gerar de novo mantém tudo igual). O PDF
 sai pelo Microsoft Word (Windows) ou pelo LibreOffice.
 
+Antes de escrever, a skill pergunta as **técnicas** de cada currículo, com caixas de marcar:
+**ATS** (palavras-chave da vaga reformuladas a partir do que você tem, nunca inventadas),
+**foco** num cargo (experiências escolhidas e ordenadas, com até 3 destaques), **XYZ** (conquista
++ medida + como, só com número que você confirmou), **resultado primeiro** e **competências
+primeiro**; e as escolhas de **páginas** (1 ou 2), **formato do país** (Brasil: A4 e português;
+Estados Unidos: Letter, inglês, sem foto nem dados pessoais; Europa: A4 e inglês) e **estilo**
+(padrão, compacto ou executivo, com o corpo nunca abaixo de 10 pt). Ela sugere as escolhas pela
+vaga e você troca o que quiser (`python curriculo.py --tecnicas` mostra o catálogo).
+
+Antes de entregar, uma **conferência sem IA** (`python conferir.py curriculos/<nome>.json`,
+também rodada no fim de cada geração) dá o veredito ok, conferir ou bloquear: números, empresas,
+cargos e datas que não estão no seu perfil; cada requisito da vaga como tem, sustentado ou lacuna
+(lacuna nunca vira competência); e problemas de ATS (tabelas, imagens, contato no cabeçalho,
+cobertura das palavras-chave). Número fora do perfil bloqueia a entrega até você confirmar ou
+tirar. Passou do limite de páginas, o gerador avisa e sugere o que cortar, sem encolher a fonte.
+
 > **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
 > provedor escolhido no botão **IA** (Anthropic, OpenAI, Google etc.) para a análise. Em
 > planos gratuitos, alguns provedores podem usar os dados enviados; confira os termos. Sem
