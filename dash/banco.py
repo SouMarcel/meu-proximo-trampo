@@ -9,6 +9,8 @@ comandos para consultar e analisar vagas sem abrir o navegador:
   python dash/banco.py analisar ARQUIVO.json          grava análises dessas vagas
   python dash/banco.py vaga "acme product owner"      dados completos de uma vaga (ID ou trecho do cargo/empresa)
   python dash/banco.py anotar ID "texto"              acrescenta uma linha às anotações da vaga
+  python dash/banco.py kit ID                         o que a candidatura pede (checklist) e o lembrete da vaga
+  python dash/banco.py lembretes                      lembretes de follow-up pendentes no quadro
 
 O arquivo do banco é dash/dados/candidaturas.db (ou o caminho em TRAMPO_BANCO).
 """
@@ -27,6 +29,10 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 DASH = Path(__file__).resolve().parent
+if str(DASH) not in sys.path:
+    sys.path.insert(0, str(DASH))
+import kit  # noqa: E402  (dash/kit.py: checklist e lembretes)
+
 ARQUIVO = Path(os.environ.get("TRAMPO_BANCO") or DASH / "dados" / "candidaturas.db")
 DADOS = ARQUIVO.parent
 BACKUPS = DADOS / "backup"
@@ -295,6 +301,12 @@ def _validar_usuario(campos: dict) -> dict:
             v = _data_ou_nulo(v)
         elif k == "anotacao":
             v = _texto(v, 5000)
+        elif k == "kit":
+            v = kit.validar_kit(v)
+        elif k == "lembretes":
+            v = kit.validar_lembretes(v)
+        elif k == "entrevista_em":
+            v = _data_ou_nulo(v)
         else:
             raise ValueError(f"campo não editável: {k}")
         limpos[k] = v
@@ -350,6 +362,7 @@ def validar_analise(a: dict) -> dict:
         if len(moeda) != 3 or not moeda.isalpha():
             raise ValueError("moeda deve ser um código de 3 letras (BRL, USD, EUR…)")
         limpos["moeda"] = moeda
+    limpos.update(kit.validar_analise(a))  # o que a candidatura pede e o que pode impedir
     if a.get("fora_dos_criterios"):
         limpos["fora_dos_criterios"] = _texto(a["fora_dos_criterios"], 200)
     provedor = str(a.get("analise_provedor") or "").strip()
@@ -545,6 +558,26 @@ def registrar_curriculo(vid: str, nome: str) -> dict:
     return doc
 
 
+def registrar_documento(vid: str, tipo: str, nome: str) -> dict:
+    """Liga à vaga uma carta ou um conjunto de respostas gerado pela página (nome dos arquivos em curriculos/)."""
+    if tipo not in ("carta", "respostas") or not re.fullmatch(r"[a-z0-9-]{1,90}", str(nome or "")):
+        raise ValueError("documento inválido")
+    with escrita() as con:
+        doc = _ler(con, vid)
+        if doc is None:
+            raise KeyError(vid)
+        doc["documentos"] = [*[d for d in doc.get("documentos") or [] if d.get("nome") != nome],
+                             {"tipo": tipo, "nome": nome, "criado_em": agora()}]
+        doc["atualizada_em"] = agora()
+        _gravar(con, vid, doc)
+    return doc
+
+
+def com_kit(v: dict) -> dict:
+    """A vaga com o checklist e o lembrete calculados (o que a página e a skill mostram)."""
+    return {**v, "checklist": kit.checklist(v), "lembretes_pendentes": kit.lembretes(v)}
+
+
 def remover(vid: str) -> None:
     """Vaga manual é apagada; vaga do Indeed só sai do quadro (continua como visitada)."""
     with escrita() as con:
@@ -722,6 +755,39 @@ def _cmd_anotar(args) -> int:
     return 0
 
 
+def _cmd_kit(args) -> int:
+    achadas = procurar(args.texto)
+    if len(achadas) != 1:
+        return _cmd_vaga(args)  # nenhuma ou várias: a mesma mensagem do comando vaga
+    v = com_kit(achadas[0])
+    print(f"## {v.get('titulo')} — {v.get('empresa')} ({v['id']})")
+    for rotulo, campo, opcoes, chave in (("Autorização", "autorizacao", kit.AUTORIZACAO, "valor"),
+                                         ("Inglês", "ingles", kit.INGLES, "nivel")):
+        if v.get(campo):
+            print(f"{rotulo}: {opcoes[v[campo][chave]]} (“{v[campo]['frase']}”)")
+    for c in v.get("contratacao") or []:
+        print(f"Contratação: {kit.CONTRATACAO[c['valor']]} (“{c['frase']}”)")
+    if v.get("fuso"):
+        print(f"Fuso: {v['fuso']['texto']} (“{v['fuso']['frase']}”)")
+    for r in v.get("riscos") or []:
+        print(f"Atenção: {kit.RISCOS[r['tipo']]} (“{r['frase']}”)")
+    print("\nO que esta candidatura pede:")
+    for i in v["checklist"]:
+        print(f"- [{kit.ESTADOS[i['estado']]}] {i['rotulo']}" + (f" (“{i['frase']}”)" if i.get("frase") else ""))
+    for lem in v["lembretes_pendentes"]:
+        print(f"\nLembrete: {lem['rotulo']} (desde {lem['desde']})")
+    return 0
+
+
+def _cmd_lembretes(args) -> int:
+    pendentes = [(v, lem) for v in listar_vagas() for lem in kit.lembretes(v)]
+    if not pendentes:
+        print("Nenhum lembrete pendente no quadro.")
+    for v, lem in sorted(pendentes, key=lambda x: x[1]["desde"]):
+        print(f"- {lem['rotulo']} (desde {lem['desde']}): {v.get('titulo')} — {v.get('empresa')} ({v['id']})")
+    return 0
+
+
 def main() -> int:
     for fluxo in (sys.stdout, sys.stderr):
         try:
@@ -740,9 +806,12 @@ def main() -> int:
     n = sub.add_parser("anotar", help="acrescenta uma linha às anotações da vaga")
     n.add_argument("id")
     n.add_argument("texto")
+    k = sub.add_parser("kit", help="o que a candidatura pede (checklist) e o lembrete da vaga")
+    k.add_argument("texto")
+    sub.add_parser("lembretes", help="lembretes de follow-up pendentes no quadro")
     args = ap.parse_args()
     return {"quadro": _cmd_quadro, "pendentes": _cmd_pendentes, "analisar": _cmd_analisar,
-            "vaga": _cmd_vaga, "anotar": _cmd_anotar}[args.cmd](args)
+            "vaga": _cmd_vaga, "anotar": _cmd_anotar, "kit": _cmd_kit, "lembretes": _cmd_lembretes}[args.cmd](args)
 
 
 if __name__ == "__main__":

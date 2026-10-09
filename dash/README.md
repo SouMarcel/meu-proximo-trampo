@@ -79,6 +79,11 @@ outros sites e `m-…` nas preenchidas à mão.
 | `idioma` | idioma da vaga (`pt`, `en`, `es`…), detectado sem IA ou lido pela análise; base do filtro `idiomas_aceitos` |
 | `restricao_local` | onde a vaga aceita candidatos, como o portal informa (ex.: `USA, Canada`, `Worldwide`); base da elegibilidade |
 | `ats` | sistema de candidatura (`greenhouse`, `lever`, `ashby`), quando conhecido; o detalhe mostra o botão "Candidatar no …" |
+| `autorizacao`, `contratacao[]`, `ingles`, `fuso`, `sistema_candidatura`, `pede[]`, `riscos[]` | o que a análise leu sobre a candidatura, cada um com a `frase` do anúncio (opções em `dash/kit.py`) |
+| `kit` | o que a pessoa marcou no checklist: `estados` por item (`a_fazer`, `pronto`, `nao_se_aplica`), `extras` e `removidos` |
+| `lembretes`, `entrevista_em` | lembretes de follow-up marcados (`feito`, `dispensado`, `parar`, valem para a etapa e a data em `base`) e a data da entrevista |
+| `documentos[]` | cartas e respostas de formulário geradas pela página (`tipo`, `nome` dos arquivos em `curriculos/`) |
+| `checklist`, `lembretes_pendentes` | calculados pelo servidor a cada leitura (não gravados) |
 | `sinais` | sinais positivos lidos no anúncio sem IA ("Oferece patrocínio de visto", "Oferece relocation" e as suas frases positivas); etiqueta verde na listagem, no card e no detalhe |
 | `triagem` | `pendente` (no relatório), `seguir` (foi para o quadro), `visitada` (não seguir), `fora` (furou os filtros da busca) |
 | `motivo_fora[]` | por que a vaga ficou fora dos critérios |

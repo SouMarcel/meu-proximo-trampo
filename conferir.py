@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Conferência do currículo antes de entregar, sem IA: fatos, requisitos da vaga e ATS.
+"""Conferência do currículo e da carta antes de entregar, sem IA: fatos, requisitos da vaga e ATS.
 
   python conferir.py curriculos/base.json                      fatos contra o perfil e ATS do .docx
   python conferir.py curriculos/x.json --vaga-id ID            também os requisitos de uma vaga do dashboard
   python conferir.py curriculos/x.json --vaga vaga.txt         idem, com o texto da vaga num arquivo
   python conferir.py curriculos/x.json --perfil outro.md --json
+  python conferir.py --carta carta.txt --vaga-id ID [--respostas respostas.json]   carta de apresentação
 
 Veredito: ok, conferir ou bloquear (o mais grave dos pontos). Bloqueia número que não está no perfil,
 lacuna da vaga listada como competência e dado pessoal no formato dos Estados Unidos. Códigos de saída:
 0 ok, 1 conferir, 3 bloquear, 2 erro de uso. O .docx conferido é o que está ao lado do JSON.
+
+Na carta: número ou data que não estão no perfil nem nas respostas da pessoa bloqueiam; tamanho fora de
+350 a 420 palavras, empresa da vaga não citada, nenhum requisito do anúncio citado, expressões vazias e
+nome próprio que não aparece no perfil nem na vaga ficam para conferir.
 """
 from __future__ import annotations
 
@@ -178,7 +183,7 @@ def _bate(num: tuple, base: list[tuple]) -> bool:
 
 def datas(texto: str) -> list[tuple[int, int | None]]:
     """(ano, mês) de cada data do texto; mês None quando só há o ano."""
-    out, t = [], norm(texto)
+    out, t, aceitas = [], norm(texto), []
     for m in DATA.finditer(t):
         if m.group(1):
             mes, ano = int(m.group(1)), int(m.group(2))
@@ -186,11 +191,14 @@ def datas(texto: str) -> list[tuple[int, int | None]]:
             ano, mes = int(m.group(3)), int(m.group(4))
         else:
             if m.group(5)[:3] not in MESES:
-                continue
+                continue  # "since 2015": não é mês, o ano conta abaixo
             mes, ano = MESES[m.group(5)[:3]], int(m.group(6))
         if 1 <= mes <= 12:
             out.append((ano, mes))
-    sem = DATA.sub(" ", t)
+            aceitas.append(m.span())
+    sem = t
+    for a, b in reversed(aceitas):  # só as datas reconhecidas saem antes de procurar os anos soltos
+        sem = sem[:a] + " " + sem[b:]
     out += [(int(a), None) for a in re.findall(r"\b((?:19|20)\d{2})\b", sem)]
     return out
 
@@ -363,6 +371,118 @@ def conferir(cv: dict, perfil: str, vaga: str | None = None, docx: Path | None =
     return {"veredito": veredito, "fatos": fatos + lacunas, "requisitos": requisitos, "cobertura": cobertura, "ats": ats}
 
 
+# ---------------------------------------------------------------- carta e respostas
+
+PALAVRAS_CARTA = (350, 420)
+VAZIAS_EN = set("""about the this that with you your our we will but who how for and are is at least in of to be or
+from have has can all any not such as on by an it its their they them per also more than""".split())
+EXPRESSOES_VAZIAS = (
+    "sou apaixonado", "sou apaixonada", "apaixonado por", "apaixonada por", "proativo", "proativa", "fora da caixa",
+    "sinergia", "vestir a camisa", "perfil dinamico", "busco novos desafios", "team player", "self-starter",
+    "passionate about", "think outside the box", "fast-paced environment", "go-getter", "hard worker",
+    "results-driven", "dynamic environment", "i believe i would be a great fit", "perfect fit",
+)
+NOMES_COMUNS = {
+    "i", "i'm", "i've", "i'd", "i'll", "dear", "hiring", "manager", "team", "sincerely", "regards", "best", "thank",
+    "thanks", "hello", "hi", "prezado", "prezada", "prezados", "atenciosamente", "obrigado", "obrigada", "ola",
+    "english", "portuguese", "spanish", "ingles", "portugues", "espanhol", "brazil", "brasil", "linkedin",
+    "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november",
+    "december", "janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+    "novembro", "dezembro", "monday", "friday", "my", "as", "in", "at", "the", "this", "that", "with", "and",
+}
+
+
+def contar_palavras(texto: str) -> int:
+    return len(re.findall(r"[^\W_]+(?:[-'’][^\W_]+)*", str(texto or "")))
+
+
+def _nomes_proprios(texto: str) -> list[str]:
+    """Sequências com inicial maiúscula que não começam frase (empresas, cargos, lugares, pessoas)."""
+    achados = []
+    for frase in re.split(r"(?<=[.!?:;])\s+|\n+", str(texto or "")):
+        palavras = frase.split()
+        atual = []
+        for i, p in enumerate(palavras):
+            limpa = p.strip(",.;:!?()\"'“”‘’")
+            if i > 0 and re.match(r"^[A-ZÀ-Ý][\w&.-]*$", limpa) and norm(limpa) not in NOMES_COMUNS:
+                atual.append(limpa)
+            else:
+                if atual:
+                    achados.append(" ".join(atual))
+                atual = []
+        if atual:
+            achados.append(" ".join(atual))
+    return list(dict.fromkeys(achados))
+
+
+def _fatos_do_texto(texto: str, base: str, nivel_data: str) -> list[dict]:
+    """Números e datas do texto que não estão na base (perfil + o que a pessoa respondeu)."""
+    pontos, base_num, vistos = [], numeros(base), set()
+    for num in numeros(texto):
+        if (num[0], num[1]) in vistos or _bate(num, base_num):
+            continue
+        vistos.add((num[0], num[1]))
+        pontos.append({"tipo": "numero", "valor": num[2], "nivel": "bloquear",
+                       "mensagem": f"o número {num[2]} não está no perfil nem nas suas respostas"})
+    ano_atual = __import__("datetime").date.today().year
+    base_datas = datas(base)
+    anos, meses = {a for a, _ in base_datas}, {(a, m) for a, m in base_datas if m}
+    for ano, mes in datas(texto):
+        if (mes and (ano, mes) in meses) or (not mes and ano in anos) or ano in (ano_atual, ano_atual + 1):
+            continue
+        valor = f"{mes:02d}/{ano}" if mes else str(ano)
+        pontos.append({"tipo": "data", "valor": valor, "nivel": nivel_data, "mensagem": "data que não está no perfil"})
+    return pontos
+
+
+def conferir_carta(carta: str, perfil: str, vaga: str = "", empresa: str = "", respostas: dict | None = None) -> dict:
+    """Veredito da carta: ok, conferir ou bloquear, com os pontos e a contagem de palavras."""
+    respostas_txt = " ".join(str(v) for v in (respostas or {}).values())
+    base = f"{perfil or ''}\n{respostas_txt}"
+    pontos = _fatos_do_texto(carta, base, "bloquear")
+    carta_n = norm(carta)
+    n = contar_palavras(carta)
+    minimo, maximo = PALAVRAS_CARTA
+    if not minimo <= n <= maximo:
+        pontos.append({"tipo": "tamanho", "valor": str(n), "nivel": "conferir",
+                       "mensagem": f"a carta tem {n} palavras; o combinado é de {minimo} a {maximo}"})
+    if empresa and norm(empresa) not in carta_n:
+        pontos.append({"tipo": "empresa_da_vaga", "valor": empresa, "nivel": "conferir",
+                       "mensagem": "a carta não cita a empresa da vaga: pode soar genérica"})
+    reqs = [[t for t in termos(r) if len(t) > 2 and t not in VAZIAS_EN] for r in (requisitos_da_vaga(vaga) if vaga else [])]
+    reqs = [r for r in reqs if r]
+    if reqs and not any(sum(_contem(carta_n, t) for t in r) >= max(1, round(0.6 * len(r))) for r in reqs):
+        pontos.append({"tipo": "requisito", "valor": "", "nivel": "conferir",
+                       "mensagem": "a carta não cita nenhum requisito do anúncio: pode servir para qualquer vaga"})
+    for e in EXPRESSOES_VAZIAS:
+        if _contem(carta_n, norm(e)):
+            pontos.append({"tipo": "vazia", "valor": e, "nivel": "conferir",
+                           "mensagem": "expressão vazia; troque por um fato do perfil"})
+    referencia = norm(f"{perfil} {vaga} {empresa} {respostas_txt}")
+    for nome in _nomes_proprios(carta):
+        if not _contem(referencia, norm(nome)):
+            pontos.append({"tipo": "nome", "valor": nome, "nivel": "conferir",
+                           "mensagem": "nome que não aparece no perfil nem na vaga (empresa, cargo ou lugar?)"})
+    pior = max((NIVEIS[p["nivel"]] for p in pontos), default=0)
+    return {"veredito": {0: "ok", 1: "conferir", 2: "bloquear"}[pior], "pontos": pontos, "palavras": n}
+
+
+def conferir_respostas(itens: list[dict], perfil: str) -> list[dict]:
+    """As respostas rascunhadas pela IA, cada uma com os pontos a conferir (fato fora do perfil)."""
+    saida = []
+    for i in itens:
+        pontos = [] if i.get("da_pessoa") or not i.get("resposta") else _fatos_do_texto(i["resposta"], perfil or "", "conferir")
+        saida.append({**i, "conferir": [p["mensagem"] + (f": {p['valor']}" if p["valor"] else "") for p in pontos]})
+    return saida
+
+
+def texto_carta(r: dict) -> str:
+    rot = {"ok": "OK", "conferir": "CONFERIR", "bloquear": "BLOQUEAR"}
+    linhas = [f"Veredito: {rot[r['veredito']]} · {r['palavras']} palavras"]
+    linhas += [f"  [{p['nivel']}] {p['mensagem']}" + (f": {p['valor']}" if p["valor"] else "") for p in r["pontos"]]
+    return "\n".join(linhas)
+
+
 def texto(r: dict) -> str:
     rot = {"ok": "OK", "conferir": "CONFERIR", "bloquear": "BLOQUEAR"}
     linhas = [f"Veredito: {rot[r['veredito']]}"]
@@ -400,12 +520,17 @@ def perfil_padrao() -> Path:
     return RAIZ / (cfg.get("perfil") or "perfil.md")
 
 
-def vaga_do_dashboard(vid: str) -> str:
+def vaga_do_banco(vid: str) -> dict:
     sys.path.insert(0, str(RAIZ / "dash"))
     import banco
     v = banco.obter(vid)
     if not v:
         raise ValueError(f"vaga {vid} não encontrada no dashboard")
+    return v
+
+
+def vaga_do_dashboard(vid: str) -> str:
+    v = vaga_do_banco(vid)
     return "\n".join(str(x) for x in (v.get("titulo"), v.get("empresa"), v.get("local"), v.get("descricao")) if x)
 
 
@@ -416,12 +541,20 @@ def main(argv: list[str] | None = None) -> int:
         except AttributeError:
             pass
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("arquivo", help="JSON do currículo")
+    ap.add_argument("arquivo", nargs="?", help="JSON do currículo")
+    ap.add_argument("--carta", help="arquivo .txt de uma carta de apresentação (no lugar do currículo)")
+    ap.add_argument("--respostas", help="JSON com as respostas da pessoa às perguntas da carta")
+    ap.add_argument("--empresa", help="empresa da vaga (com --carta e --vaga)")
     ap.add_argument("--vaga", help="arquivo com o texto da vaga")
     ap.add_argument("--vaga-id", help="ID de uma vaga do dashboard")
     ap.add_argument("--perfil", help="perfil de carreira (padrão: o do config.json)")
     ap.add_argument("--json", action="store_true", help="resultado em JSON")
     args = ap.parse_args(argv)
+    if bool(args.arquivo) == bool(args.carta):
+        print("erro: informe o JSON do currículo ou --carta arquivo.txt", file=sys.stderr)
+        return 2
+    if args.carta:
+        return _main_carta(args)
     try:
         cv = json.loads(Path(args.arquivo).read_text(encoding="utf-8"))
         perfil = Path(args.perfil) if args.perfil else perfil_padrao()
@@ -434,6 +567,26 @@ def main(argv: list[str] | None = None) -> int:
         print(f"aviso: perfil não encontrado ({perfil}); todos os fatos ficam para conferir", file=sys.stderr)
     r = conferir(cv, perfil_txt, vaga, Path(args.arquivo).with_suffix(".docx"))
     print(json.dumps(r, ensure_ascii=False, indent=1) if args.json else texto(r))
+    return {"ok": 0, "conferir": 1, "bloquear": 3}[r["veredito"]]
+
+
+def _main_carta(args) -> int:
+    try:
+        carta = Path(args.carta).read_text(encoding="utf-8")
+        perfil = Path(args.perfil) if args.perfil else perfil_padrao()
+        perfil_txt = perfil.read_text(encoding="utf-8") if perfil.exists() else ""
+        respostas = json.loads(Path(args.respostas).read_text(encoding="utf-8")) if args.respostas else {}
+        if args.vaga_id:
+            v = vaga_do_banco(args.vaga_id)
+            vaga, empresa = vaga_do_dashboard(args.vaga_id), v.get("empresa") or ""
+        else:
+            vaga = Path(args.vaga).read_text(encoding="utf-8") if args.vaga else ""
+            empresa = args.empresa or ""
+    except (OSError, ValueError) as e:
+        print(f"erro: {e}", file=sys.stderr)
+        return 2
+    r = conferir_carta(carta, perfil_txt, vaga, empresa, respostas if isinstance(respostas, dict) else {})
+    print(json.dumps(r, ensure_ascii=False, indent=1) if args.json else texto_carta(r))
     return {"ok": 0, "conferir": 1, "bloquear": 3}[r["veredito"]]
 
 

@@ -187,6 +187,34 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 
 /* Currículo pela página (seção no detalhe da vaga e currículo base em Meu perfil) */
 #dlg-cv { width: min(680px, calc(100vw - 32px)); }
+.kit-sec { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+.kit-sec h3 { margin: 0; font-size: 11.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.kit-campos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
+.kit-campos dt { color: var(--muted); font-weight: 600; }
+.kit-campos dd { margin: 0; }
+.kit-frase { color: var(--muted); font-style: italic; }
+.kit-risco { color: var(--warn); font-weight: 700; }
+.kit-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.kit-item { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--col); font-size: 13px; }
+.kit-item[data-e="pronto"] { border-left: 3px solid var(--good); }
+.kit-item[data-e="nao_se_aplica"] b { color: var(--muted); text-decoration: line-through; }
+.kit-item p { margin: 4px 0 0; }
+.kit-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.kit-linha b { flex: 1 1 160px; }
+.kit-linha select { background: var(--card); border: 1px solid var(--line-strong); border-radius: 6px; padding: 3px 6px; }
+.kit-linha .more { width: 26px; height: 26px; }
+.lembrete { margin-top: 6px; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--warn) 10%, transparent); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 12.5px; }
+.lembrete b { color: var(--warn); }
+.lem-bts { display: flex; gap: 4px; flex-wrap: wrap; }
+.lem-bts .btn-plain { padding: 3px 9px; margin: 0; font-size: 12px; width: auto; min-height: 0; }
+.kit-resp textarea { background: var(--card); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; }
+.lem-topo { margin: 0 0 10px; color: var(--warn); font-weight: 600; }
+#dlg-kit { width: min(680px, calc(100vw - 32px)); }
+.kit-pergunta { display: flex; flex-direction: column; gap: 4px; }
+.kit-pergunta textarea { width: 100%; min-height: 70px; background: var(--col); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; resize: vertical; }
+.kit-resp { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--col); }
+.kit-resp[data-s] { border-left: 3px solid var(--warn); }
+.kit-resp p { margin: 2px 0; }
 .cv-sec { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
 .cv-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .cv-topo h3 { margin: 0; font-size: 11.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
@@ -568,6 +596,21 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   </div>
 </dialog>
 
+<dialog id="dlg-kit" aria-labelledby="kit-titulo">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div>
+        <h2 id="kit-titulo">Kit de candidatura</h2>
+        <p id="kit-desc"></p>
+      </div>
+      <button type="button" class="more" data-kit="fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="fb" id="kit-corpo"></div>
+    <p class="fb-erro" id="kit-erro" role="alert" hidden></p>
+    <div class="dlg-foot" id="kit-pe"></div>
+  </div>
+</dialog>
+
 <dialog id="dlg-busca" aria-labelledby="bu-titulo">
   <div class="dlg">
     <div class="dlg-head">
@@ -864,7 +907,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<time datetime="' + esc(v.etapa_em || "") + '">' + esc(ddmm(v.etapa_em || v.encontrada_em)) + "</time>" +
       '<button class="more" data-menu="' + esc(v.id) + '" aria-label="Opções de ' + esc(v.titulo) + '" aria-haspopup="menu">' + ICON.dots + "</button></div>" +
       "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" + intTag(v) + sinaisTags(v) +
-      (v.termos && v.termos.length ? '<p class="termos" title="Termos de busca que encontraram esta vaga">busca: ' + esc(termosDe(v)) + "</p>" : "") + chipsDe(v) +
+      (v.termos && v.termos.length ? '<p class="termos" title="Termos de busca que encontraram esta vaga">busca: ' + esc(termosDe(v)) + "</p>" : "") + chipsDe(v) + lembreteHTML(v) +
       '<div class="card-actions">' +
       (url ? '<a class="btn-ghost" href="' + esc(url) + '" target="_blank" rel="noopener">' + ICON.ext + " Link da Vaga</a>"
            : '<span class="btn-ghost" aria-disabled="true">' + ICON.ext + " Sem link</span>") +
@@ -876,7 +919,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
 
   function renderQuadro() {
     var itens = S.vagas.filter(function (v) { return noQuadro(v) && porPlataforma(v) && porArea(v); });
-    var h = '<div class="board-scroll"><div class="board">';
+    var lems = itens.filter(function (v) { return (v.lembretes_pendentes || []).length; }).length;
+    var h = (lems ? '<p class="lem-topo">' + lems + (lems === 1 ? " lembrete" : " lembretes") + " de follow-up no quadro. A ferramenta só lembra: a mensagem é você quem escreve e envia.</p>" : "") +
+      '<div class="board-scroll"><div class="board">';
     ETAPAS.forEach(function (e) {
       var col = itens.filter(function (v) { return v.etapa === e.k; }).sort(ordenarQuadro);
       h += '<div class="column"><h2>' + e.label + " <span>" + col.length + "</span></h2>" +
@@ -1066,12 +1111,14 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(plataformasDe(v).join(", ")) + " " + intTag(v) + sinaisTags(v) + "</p>" +
       (fonte ? '<p class="det-fonte">' + esc(fonte) + "</p>" : "") +
       (v.termos && v.termos.length ? '<p class="termos">Encontrada pela busca: ' + esc(termosDe(v)) + "</p>" : "") + "</div>" +
-      '<button class="more" data-fechar aria-label="Fechar">✕</button></div>' + analise +
+      '<button class="more" data-fechar aria-label="Fechar">✕</button></div>' + analise + kitSecao(v) +
       '<div class="det-grid">' +
       '<div class="field"><label for="d-etapa">Etapa</label><select id="d-etapa"' + dis + ">" + ETAPAS.map(function (e) { return '<option value="' + e.k + '"' + (v.etapa === e.k ? " selected" : "") + ">" + e.label + "</option>"; }).join("") + "</select></div>" +
       '<div class="field"><label for="d-resultado">Resultado</label><select id="d-resultado"' + (v.etapa === "encerrada" && S.canWrite ? "" : " disabled") + '><option value="">—</option>' +
       Object.keys(RESULTADOS).map(function (k) { return '<option value="' + k + '"' + (v.resultado === k ? " selected" : "") + ">" + RESULTADOS[k] + "</option>"; }).join("") + "</select></div>" +
-      "</div>" +
+      (v.etapa === "entrevista" ? '<div class="field"><label for="d-entrevista">Data da entrevista</label><input type="date" id="d-entrevista" value="' +
+        esc(v.entrevista_em || "") + '"' + dis + "></div>" : "") +
+      "</div>" + lembreteHTML(v) +
       '<div class="field"><label for="d-nota">Anotações</label><textarea id="d-nota" maxlength="5000" placeholder="Contato do recrutador, datas, próximos passos…"' + dis + ">" + esc(notaAtual) + "</textarea></div>" +
       (v.descricao ? '<details class="desc"><summary>Descrição da vaga</summary><div class="desc-body">' + md(v.descricao) + "</div></details>" : "") +
       cvSecao(cvChave(v.id)) +
@@ -1525,6 +1572,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !$("menu").hidden) fecharMenu(); });
     $("dlg-det").addEventListener("close", function () { S.detId = null; });
     bindFiltros();
+    bindKit();
     window.addEventListener("resize", fecharMenu);
     document.addEventListener("scroll", fecharMenu, true);
 
@@ -2252,8 +2300,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (antes && CV_ATIVAS.indexOf(antes.situacao) >= 0 && CV_ATIVAS.indexOf(j.situacao) < 0) {
         var chave = cvAlvoDoEstado(j);
         delete CV.listas[chave];
-        if (j.situacao === "pronto") toast(j.pronto ? "Currículo gerado e conferido." : "Currículo gerado, mas a conferência bloqueou: veja os pontos.", !j.pronto);
-        else if (j.situacao === "falha") toast("O currículo não saiu: " + (j.mensagem || "falha"), true);
+        if (j.tipo === "carta" || j.tipo === "respostas") delete KT.listas[(j.alvo || {}).vaga_id];
+        var nome = { carta: "A carta", respostas: "As respostas" }[j.tipo] || "O currículo";
+        if (j.situacao === "pronto") toast(j.pronto ? nome + (j.tipo === "respostas" ? " estão prontas: confira e responda as que são só suas." : " saiu e foi conferido.")
+          : nome + " saiu, mas a conferência bloqueou: veja os pontos.", !j.pronto);
+        else if (j.situacao === "falha") toast(nome + " não saiu: " + (j.mensagem || "falha"), true);
       }
       cvAtualizar();
     }).catch(function () {}).then(function () {
@@ -2295,13 +2346,13 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       ((m.sugestoes_corte || []).length ? '<p class="hint">Para caber: ' + esc(m.sugestoes_corte.join("; ")) + ".</p>" : "") + conf + "</li>";
   }
   function cvConteudo(chave) {
-    var e = CV.e, meu = cvAlvoDoEstado(e) === chave, h = "";
+    var e = CV.e, meu = cvAlvoDoEstado(e) === chave && (!e.tipo || e.tipo === "curriculo"), h = "";
     var ativa = e && CV_ATIVAS.indexOf(e.situacao) >= 0;
     h += '<div class="cv-topo"><h3>' + (chave === "base" ? "Currículo base" : "Currículos para esta vaga") + "</h3>" +
       '<button type="button" class="btn-plain btn-ia-mini" data-cv="abrir" data-alvo="' + esc(chave) + '"' + (ativa || S.offline ? " disabled" : "") + ">" +
       (chave === "base" ? "Gerar currículo base" : "Gerar currículo") + "</button></div>";
     if (meu && ativa) h += '<p class="ia-status analisando">' + esc(e.etapa_texto || "Gerando…") + " Pode levar alguns minutos; dá para fechar e voltar.</p>";
-    else if (ativa) h += '<p class="hint">Há outro currículo sendo gerado; espere ele terminar.</p>';
+    else if (ativa) h += '<p class="hint">Há outro documento sendo gerado; espere ele terminar.</p>';
     if (meu && e.situacao === "falha") h += '<p class="cv-bloq">O currículo não saiu: ' + esc(e.mensagem) +
       (e.pode_tentar ? ' <button type="button" class="btn-plain btn-ia-mini" data-cv="tentar">Tentar de novo</button>' : "") + "</p>";
     var lista = CV.listas[chave];
@@ -2312,6 +2363,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   }
   function cvSecao(chave) { return '<section class="cv-sec" data-cv-sec="' + esc(chave) + '">' + cvConteudo(chave) + "</section>"; }
   function cvAtualizar() {
+    ktAtualizar();
     document.querySelectorAll("[data-cv-sec]").forEach(function (s) {
       var abertos = Array.prototype.map.call(s.querySelectorAll("details"), function (d) { return d.open; });
       s.innerHTML = cvConteudo(s.getAttribute("data-cv-sec"));
@@ -2391,6 +2443,243 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function pfCurriculos() {
     return { corpo: '<p class="hint">O currículo base é o que você envia para a maioria das vagas, voltado para os cargos que procura.</p>' + cvSecao("base"),
       pe: botaoIr(PF.e.etapa && PF.e.etapa !== "curriculos" ? PF.e.etapa : "ia", "Voltar ao perfil") };
+  }
+
+  /* ---------- kit de candidatura: o que a vaga pede, checklist, carta, respostas e lembretes (só no clique) ---------- */
+  var KT = { listas: {}, carregando: {}, vaga: null, modo: null, doc: null };
+  var KT_AUT = { patrocina: "Patrocina visto", nao_precisa: "Você não precisa de patrocínio", omisso: "O anúncio não diz se patrocina", nao_patrocina: "Não patrocina visto" };
+  var KT_CONTR = { contractor: "Contractor (você emite nota)", eor: "Por EOR (Deel, Remote…)", empregado_brasil: "Empregado no Brasil", relocation: "Com relocation", clt: "CLT", pj: "PJ" };
+  var KT_ING = { nao_pede: "Não pede", basico: "Básico", intermediario: "Intermediário", fluente: "Fluente", nativo: "Nativo" };
+  var KT_RISCOS = { remuneracao: "Remuneração pouco confiável", remoto_hibrido: "“Remoto” que é híbrido" };
+  var KT_ESTADOS = { a_fazer: "A fazer", pronto: "Pronto", nao_se_aplica: "Não se aplica" };
+  var KT_TONS = { direto: "Direto e objetivo", caloroso: "Caloroso e próximo", formal: "Formal" };
+  var KT_ROTULOS = { curriculo: "Currículo", carta: "Carta de apresentação", formulario: "Respostas de formulário", portfolio: "Portfólio",
+    teste: "Teste técnico", video: "Vídeo de apresentação", candidatura: "Enviar a candidatura" };
+  var KT_ACOES = { curriculo: "Gerar currículo", carta: "Escrever carta", respostas: "Preparar respostas" };
+  var KT_PERGUNTAS = [["por_que", "Por que esta vaga?", "O que nesta vaga e nesta empresa chama a sua atenção."],
+    ["problema", "Que problema da empresa você resolveria?", "Pelo anúncio, o que eles precisam resolver e como você ajudaria."],
+    ["primeiro_movimento", "Qual seria o seu primeiro movimento no cargo?", "O que você faria nas primeiras semanas."]];
+  function ktFrase(f) { return f ? ' <small class="kit-frase">“' + esc(f) + "”</small>" : ""; }
+  function ktSistema(v) { return v.ats ? (ATS[v.ats] || v.ats) : (v.sistema_candidatura || (v.url_candidatura ? plataformaDoLink(v.url_candidatura) : v.plataforma) || "site da vaga"); }
+  function ktCampos(v) {
+    var feita = v.analise_status === "feita", fora = areaDe(v) === "internacional", linhas = [];
+    var nada = feita ? '<span class="hint">não informado</span>' : '<span class="hint">vem com a análise</span>';
+    function linha(rot, valor, mostrar) { if (mostrar) linhas.push("<dt>" + rot + "</dt><dd>" + valor + "</dd>"); }
+    linha("Autorização", v.autorizacao ? esc(KT_AUT[v.autorizacao.valor] || v.autorizacao.valor) + ktFrase(v.autorizacao.frase) : nada, fora || v.autorizacao);
+    linha("Contratação", (v.contratacao || []).length ? v.contratacao.map(function (c) { return esc(KT_CONTR[c.valor] || c.valor) + ktFrase(c.frase); }).join("<br>") : nada,
+      fora || (v.contratacao || []).length);
+    linha("Inglês", v.ingles ? esc(KT_ING[v.ingles.nivel] || v.ingles.nivel) + ktFrase(v.ingles.frase) : nada, fora || v.ingles);
+    linha("Fuso", v.fuso ? esc(v.fuso.texto) + ktFrase(v.fuso.frase) : nada, fora || v.fuso);
+    linha("Candidatura pelo", esc(ktSistema(v)), true);
+    linha("Atenção", (v.riscos || []).map(function (r) { return '<span class="kit-risco">' + esc(KT_RISCOS[r.tipo] || r.tipo) + "</span>" + ktFrase(r.frase); }).join("<br>"),
+      (v.riscos || []).length);
+    return '<dl class="kit-campos">' + linhas.join("") + "</dl>" +
+      (feita ? "" : '<p class="hint">Sem a análise da IA, aparecem o sistema de candidatura, a restrição de local e os sinais do anúncio; o resto vem com a análise.</p>');
+  }
+  function ktIdExtra(t) { return "x:" + semAcento(t).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40); }
+  function ktMarcado(v) {
+    var k = v.kit || {};
+    return { estados: Object.assign({}, k.estados || {}), extras: (k.extras || []).slice(), removidos: (k.removidos || []).slice() };
+  }
+  function ktSalvar(v, k, msg) { v.kit = k; return salvar(v.id, { kit: k }, msg); } // a próxima mudança já parte desta
+  function ktItem(v, i) {
+    var dis = S.canWrite ? "" : " disabled", acao = "";
+    if (i.acao === "candidatar") {
+      var u = safeUrl(v.url_candidatura) || safeUrl(v.url);
+      acao = u ? '<a class="btn-plain btn-ia-mini" href="' + esc(u) + '" target="_blank" rel="noopener" title="Só abre a página; nada é preenchido nem enviado">Candidatar no ' +
+        esc(ktSistema(v)) + "</a>" : '<span class="hint">sem link</span>';
+    } else if (i.acao) acao = '<button type="button" class="btn-plain btn-ia-mini" data-kit-acao="' + esc(i.acao) + '"' + (S.offline ? " disabled" : "") + ">" + KT_ACOES[i.acao] + "</button>";
+    var origem = { analise: "A análise leu: ", anuncio: "No anúncio: " }[i.origem];
+    return '<li class="kit-item" data-e="' + esc(i.estado) + '"><div class="kit-linha"><select data-kit-estado="' + esc(i.item) + '" aria-label="Situação: ' + esc(i.rotulo) + '"' + dis + ">" +
+      Object.keys(KT_ESTADOS).map(function (k) { return '<option value="' + k + '"' + (i.estado === k ? " selected" : "") + ">" + KT_ESTADOS[k] + "</option>"; }).join("") +
+      "</select><b>" + esc(i.rotulo) + "</b>" + acao + '<button type="button" class="more" data-kit-rm="' + esc(i.item) + '" aria-label="Tirar ' + esc(i.rotulo) +
+      ' do checklist" title="Tirar do checklist"' + dis + ">✕</button></div>" + (i.frase && origem ? '<p class="hint">' + origem + "“" + esc(i.frase) + "”</p>" : "") + "</li>";
+  }
+  function ktLista(vid) {
+    if (KT.carregando[vid]) return;
+    KT.carregando[vid] = true;
+    API.get("/api/kit/lista?vaga=" + encodeURIComponent(vid)).then(function (j) { KT.listas[vid] = j.documentos || []; })
+      .catch(function () { KT.listas[vid] = KT.listas[vid] || []; })
+      .then(function () { KT.carregando[vid] = false; ktAtualizar(); });
+  }
+  function ktDoc(m) {
+    var c = m.conferencia || {}, d = m.disponivel || {}, quando = "<b>" + esc(ddmm(m.criado_em)) + " " + esc(String(m.criado_em || "").slice(11, 16)) + "</b>";
+    if (m.tipo === "respostas") {
+      var minhas = (m.itens || []).filter(function (i) { return i.sensivel && !i.da_pessoa; }).length;
+      return '<li class="cv-item" data-v="' + (minhas ? "conferir" : "ok") + '"><div class="cv-linha">' + quando + '<span class="cv-tag">Respostas</span><span>' + (m.itens || []).length + " perguntas" +
+        (minhas ? " · " + minhas + " para você responder" : "") + '</span><span class="cv-links">' + (d.txt ? cvLink(m.arquivos.txt, ".txt") : "") +
+        '<button type="button" class="btn-plain btn-ia-mini" data-kit-ver="' + esc(m.nome) + '">Abrir</button></span></div></li>';
+    }
+    var pontos = c.pontos || [];
+    return '<li class="cv-item" data-v="' + esc(c.veredito || "ok") + '"><div class="cv-linha">' + quando + '<span class="cv-tag">Carta · ' + esc(CV_VEREDITO[c.veredito] || c.veredito || "") +
+      "</span><span>" + (m.palavras || 0) + " palavras · tom " + esc((KT_TONS[(m.respostas || {}).tom] || "").toLowerCase()) + '</span><span class="cv-links">' +
+      (d.docx ? cvLink(m.arquivos.docx, ".docx") : "") + (d.txt ? cvLink(m.arquivos.txt, ".txt") : "") +
+      '<button type="button" class="btn-plain btn-ia-mini" data-kit-copiar="' + esc(m.nome) + '">Copiar</button></span></div>' +
+      (c.veredito === "bloquear" ? '<p class="cv-bloq">Não envie esta carta ainda: ' + pontos.filter(function (p) { return p.nivel === "bloquear"; }).map(function (p) {
+        return esc(p.mensagem + (p.valor ? " (" + p.valor + ")" : "")); }).join("; ") + ". Confirme o fato no perfil ou peça de novo.</p>" : "") +
+      (pontos.length ? '<details class="cv-conf"><summary>Ver conferência</summary><ul>' + pontos.map(function (p) {
+        return '<li data-n="' + esc(p.nivel) + '"><b>' + esc(p.nivel) + "</b> " + esc(p.mensagem) + (p.valor ? ": " + esc(p.valor) : "") + "</li>"; }).join("") + "</ul></details>" : "") +
+      '<details class="cv-conf"><summary>Ler a carta</summary><div class="desc-body">' + md(m.texto || "") + "</div></details></li>";
+  }
+  function ktConteudo(v) {
+    var e = CV.e, ativa = e && CV_ATIVAS.indexOf(e.situacao) >= 0, meu = e && (e.tipo === "carta" || e.tipo === "respostas") && (e.alvo || {}).vaga_id === v.id;
+    var k = ktMarcado(v), dis = S.canWrite ? "" : " disabled", h = "<h3>Para se candidatar</h3>" + ktCampos(v);
+    h += '<h3>O que esta candidatura pede</h3><ul class="kit-lista">' + (v.checklist || []).map(function (i) { return ktItem(v, i); }).join("") + "</ul>";
+    if (k.removidos.length) h += '<p class="hint">Tirados do checklist: ' + k.removidos.map(function (r) {
+      return '<button type="button" class="link-btn" data-kit-volta="' + esc(r) + '"' + dis + ">" + esc(KT_ROTULOS[r] || r) + " (voltar)</button>"; }).join(", ") + "</p>";
+    h += '<div class="add-row"><input type="text" id="kit-novo" maxlength="80" placeholder="Outro item (ex.: carta de referência)" aria-label="Novo item do checklist"' + dis + ">" +
+      '<button type="button" class="btn-plain" data-kit-add' + dis + ">Acrescentar</button></div>";
+    if (meu && ativa) h += '<p class="ia-status analisando">' + esc(e.etapa_texto || "Escrevendo…") + " Pode levar alguns minutos; dá para fechar e voltar.</p>";
+    if (meu && e.situacao === "falha") h += '<p class="cv-bloq">' + ({ carta: "A carta", respostas: "As respostas" }[e.tipo]) + " não saiu: " + esc(e.mensagem) +
+      (e.pode_tentar ? ' <button type="button" class="btn-plain btn-ia-mini" data-cv="tentar">Tentar de novo</button>' : "") + "</p>";
+    var lista = KT.listas[v.id];
+    if (!lista) { ktLista(v.id); h += '<p class="hint">Carregando cartas e respostas…</p>'; }
+    else if (lista.length) h += '<h3>Cartas e respostas</h3><ul class="cv-lista">' + lista.map(ktDoc).join("") + "</ul>";
+    return h;
+  }
+  function kitSecao(v) { return '<section class="kit-sec" data-kit-sec="' + esc(v.id) + '">' + ktConteudo(v) + "</section>"; }
+  function ktAtualizar() {
+    document.querySelectorAll("[data-kit-sec]").forEach(function (s) {
+      var v = achar(s.getAttribute("data-kit-sec")); if (!v) return;
+      var novo = $("kit-novo") ? $("kit-novo").value : "";
+      var abertos = Array.prototype.map.call(s.querySelectorAll("details"), function (d) { return d.open; });
+      s.innerHTML = ktConteudo(v);
+      if (novo && $("kit-novo")) $("kit-novo").value = novo;
+      s.querySelectorAll("details").forEach(function (d, i) { if (abertos[i]) d.open = true; });
+    });
+  }
+  function lembreteHTML(v) {
+    var l = (v.lembretes_pendentes || [])[0];
+    if (!l) return "";
+    var dis = S.canWrite ? "" : " disabled", dados = ' data-id="' + esc(v.id) + '" data-tipo="' + esc(l.tipo) + '" data-base="' + esc(l.base) + '"' + dis;
+    return '<div class="lembrete" title="A ferramenta só lembra: a mensagem é você quem escreve e envia"><b>' + esc(l.rotulo) + '</b><span class="hint">desde ' + esc(ddmm(l.desde)) + "</span>" +
+      '<span class="lem-bts"><button type="button" class="btn-plain btn-ia-mini" data-lem="feito"' + dados + ">Feito</button>" +
+      '<button type="button" class="btn-plain btn-ia-mini" data-lem="dispensado"' + dados + ">Dispensar</button>" +
+      '<button type="button" class="btn-plain btn-ia-mini" data-lem="parar"' + dados + ">Parar lembretes</button></span></div>";
+  }
+  function copiarTexto(txt) {
+    var ok = function () { toast("Copiado. Cole onde precisar; nada foi enviado."); };
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt).then(ok).catch(function () { toast("Não deu para copiar.", true); });
+    var ta = document.createElement("textarea"); ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); ok(); } catch (e) { toast("Não deu para copiar.", true); }
+    document.body.removeChild(ta);
+  }
+  function ktSemIA() {
+    return IA.e && !IA.e.disponivel ? '<p class="banner">Escrever pela página precisa de uma IA: escolha uma no botão IA, ou peça no chat do seu assistente (skill gerar-curriculo).</p>' : "";
+  }
+  function abrirKit(modo, vid, doc) {
+    KT.modo = modo; KT.vaga = vid; KT.doc = doc || null; $("kit-erro").hidden = true;
+    var h = "", pe = '<button type="button" class="btn-plain" data-kit="fechar">' + (modo === "ver" ? "Fechar" : "Cancelar") + "</button>";
+    var semIA = IA.e && !IA.e.disponivel, ir = semIA ? '<button type="button" class="btn-primary" data-kit="ia">Escolher a IA</button>' : "";
+    if (modo === "carta") {
+      $("kit-titulo").textContent = "Escrever carta de apresentação";
+      $("kit-desc").textContent = "Responda as quatro perguntas. A IA escreve só com os fatos do seu perfil e das suas respostas, no idioma da vaga, e a ferramenta confere antes de você usar.";
+      h = ktSemIA() + KT_PERGUNTAS.map(function (q) {
+        return '<div class="kit-pergunta"><label for="kc-' + q[0] + '"><b>' + esc(q[1]) + '</b></label><textarea id="kc-' + q[0] + '" maxlength="800" placeholder="' + esc(q[2]) + '"></textarea></div>';
+      }).join("") + '<div class="kit-pergunta"><b>Tom da carta</b><div class="pills" role="radiogroup">' + Object.keys(KT_TONS).map(function (t, i) {
+        return '<label class="check"><input type="radio" name="kc-tom" value="' + t + '"' + (i === 0 ? " checked" : "") + "> " + esc(KT_TONS[t]) + "</label>"; }).join("") + "</div></div>";
+      pe += ir || '<button type="button" class="btn-primary" data-kit="carta">Escrever carta</button>';
+    } else if (modo === "respostas") {
+      $("kit-titulo").textContent = "Preparar respostas do formulário";
+      $("kit-desc").textContent = "Cole as perguntas do formulário de candidatura, uma por linha. As perguntas sobre autorização de trabalho, visto, salário, deficiência, relocação e diversidade ficam para você responder: elas não vão para a IA.";
+      h = ktSemIA() + '<div class="kit-pergunta"><label for="kr-perguntas"><b>Perguntas</b></label><textarea id="kr-perguntas" style="min-height:180px" placeholder="1. Why do you want to work here?&#10;2. Are you authorized to work in the US?"></textarea></div>';
+      pe += ir || '<button type="button" class="btn-primary" data-kit="respostas">Preparar respostas</button>';
+    } else {
+      $("kit-titulo").textContent = "Respostas do formulário";
+      $("kit-desc").textContent = "Rascunhos com os fatos do seu perfil. As marcadas em laranja são só suas: escreva você. Nada é enviado; copie e cole no formulário.";
+      h = (doc.itens || []).map(function (i, n) {
+        var sua = i.sensivel || i.da_pessoa;
+        return '<div class="kit-resp"' + (i.sensivel ? " data-s" : "") + "><p><b>" + (n + 1) + ". " + esc(i.pergunta) + "</b></p>" +
+          (sua ? (i.sensivel ? '<p class="hint">Só você responde (' + esc(i.sensivel) + ").</p>" : "") +
+            '<textarea data-kr-i="' + (n + 1) + '" aria-label="Sua resposta" style="width:100%;min-height:60px">' + esc(i.resposta || "") + "</textarea>"
+            : "<p>" + esc(i.resposta || "(sem resposta: o perfil não responde)") + "</p>" +
+            ((i.conferir || []).length ? '<p class="hint">Conferir: ' + esc(i.conferir.join("; ")) + "</p>" : "") +
+            '<button type="button" class="link-btn" data-kr-editar="' + (n + 1) + '">Escrever a minha</button>') + "</div>";
+      }).join("");
+      pe += '<button type="button" class="btn-plain" data-kit="copiar-respostas">Copiar tudo</button><button type="button" class="btn-primary" data-kit="salvar-respostas"' +
+        (S.canWrite ? "" : " disabled") + ">Salvar as suas respostas</button>";
+    }
+    $("kit-corpo").innerHTML = h; $("kit-pe").innerHTML = pe;
+    if (!$("dlg-kit").open) $("dlg-kit").showModal();
+  }
+  function kitErro(e) { var er = $("kit-erro"); er.textContent = e && (e.status === 400 || e.status === 403 || e.status === 409) ? e.message : erroMsg(e); er.hidden = false; }
+  function kitAcao(acao, t) {
+    if (acao === "fechar") return $("dlg-kit").close();
+    if (acao === "ia") { $("dlg-kit").close(); return abrirIA(); }
+    if (acao === "carta" || acao === "respostas") {
+      var corpo = { vaga_id: KT.vaga };
+      if (acao === "carta") {
+        corpo.respostas = { tom: (document.querySelector('input[name="kc-tom"]:checked') || {}).value };
+        KT_PERGUNTAS.forEach(function (q) { corpo.respostas[q[0]] = $("kc-" + q[0]).value.trim(); });
+        var falta = KT_PERGUNTAS.filter(function (q) { return !corpo.respostas[q[0]]; });
+        if (falta.length) return kitErro({ status: 400, message: "Antes de escrever a carta, responda: " + falta.map(function (q) { return q[1]; }).join(" ") });
+      } else corpo.perguntas = $("kr-perguntas").value;
+      t.disabled = true; $("kit-erro").hidden = true;
+      return API.send("POST", "/api/kit/" + acao, corpo).then(function (j) { CV.e = j; $("dlg-kit").close(); cvAtualizar(); cvEstado(); })
+        .catch(function (e) { kitErro(e); t.disabled = false; });
+    }
+    if (acao === "copiar-respostas") {
+      return copiarTexto((KT.doc.itens || []).map(function (i, n) {
+        var campo = document.querySelector('[data-kr-i="' + (n + 1) + '"]');
+        return (n + 1) + ". " + i.pergunta + "\n" + (campo ? campo.value : i.resposta || "");
+      }).join("\n\n"));
+    }
+    if (acao === "salvar-respostas") {
+      var pessoa = {};
+      document.querySelectorAll("#kit-corpo [data-kr-i]").forEach(function (c) { pessoa[c.getAttribute("data-kr-i")] = c.value; });
+      t.disabled = true;
+      return API.send("PUT", "/api/kit/respostas/" + encodeURIComponent(KT.doc.nome), { pessoa: pessoa }).then(function () {
+        delete KT.listas[KT.vaga]; $("dlg-kit").close(); ktAtualizar(); toast("Respostas salvas como você escreveu.");
+      }).catch(function (e) { kitErro(e); t.disabled = false; });
+    }
+  }
+  function bindKit() {
+    document.addEventListener("click", function (ev) {
+      var t = ev.target.closest("[data-kit],[data-kit-acao],[data-kit-rm],[data-kit-volta],[data-kit-add],[data-kit-copiar],[data-kit-ver],[data-kr-editar],[data-lem]");
+      if (!t || t.disabled) return;
+      if (t.hasAttribute("data-kit")) return kitAcao(t.getAttribute("data-kit"), t);
+      if (t.hasAttribute("data-lem")) {
+        var lv = achar(t.getAttribute("data-id")); if (!lv) return;
+        var base = t.getAttribute("data-base"), atual = lv.lembretes && lv.lembretes.base === base ? Object.assign({}, lv.lembretes) : { base: base };
+        if (t.getAttribute("data-lem") === "parar") atual.parar = true; else atual[t.getAttribute("data-tipo")] = t.getAttribute("data-lem");
+        return salvar(lv.id, { lembretes: atual }, t.getAttribute("data-lem") === "parar" ? "Lembretes desta vaga encerrados" : "Lembrete marcado");
+      }
+      if (t.hasAttribute("data-kr-editar")) {
+        var bloco = t.closest(".kit-resp"), n = t.getAttribute("data-kr-editar"), atualTxt = bloco.querySelector("p:nth-of-type(2)");
+        t.outerHTML = '<textarea data-kr-i="' + esc(n) + '" aria-label="Sua resposta" style="width:100%;min-height:60px">' + esc(atualTxt ? atualTxt.textContent : "") + "</textarea>";
+        return;
+      }
+      var v = achar(S.detId); if (!v) return;
+      var k = ktMarcado(v);
+      if (t.hasAttribute("data-kit-acao")) {
+        var a = t.getAttribute("data-kit-acao");
+        return a === "curriculo" ? abrirCV(cvChave(v.id)) : abrirKit(a, v.id);
+      }
+      if (t.hasAttribute("data-kit-rm")) {
+        var item = t.getAttribute("data-kit-rm");
+        if (item.indexOf("x:") === 0) k.extras = k.extras.filter(function (x) { return ktIdExtra(x) !== item; });
+        else if (k.removidos.indexOf(item) < 0) k.removidos.push(item);
+        return ktSalvar(v, k);
+      }
+      if (t.hasAttribute("data-kit-volta")) { k.removidos = k.removidos.filter(function (x) { return x !== t.getAttribute("data-kit-volta"); }); return ktSalvar(v, k); }
+      if (t.hasAttribute("data-kit-add")) {
+        var novo = ($("kit-novo").value || "").trim(); if (!novo) return;
+        k.extras.push(novo); $("kit-novo").value = ""; return ktSalvar(v, k, "Item acrescentado");
+      }
+      var docs = KT.listas[v.id] || [], nome = t.getAttribute("data-kit-copiar") || t.getAttribute("data-kit-ver");
+      var m = docs.filter(function (d) { return d.nome === nome; })[0]; if (!m) return;
+      if (t.hasAttribute("data-kit-copiar")) return copiarTexto(m.texto || "");
+      return abrirKit("ver", v.id, m);
+    });
+    document.addEventListener("change", function (ev) {
+      var t = ev.target, v = achar(S.detId);
+      if (!v) return;
+      if (t.hasAttribute("data-kit-estado")) { var k = ktMarcado(v); k.estados[t.getAttribute("data-kit-estado")] = t.value; ktSalvar(v, k); }
+      if (t.id === "d-entrevista") salvar(v.id, { entrevista_em: t.value || null }, "Data da entrevista salva");
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" && ev.target.id === "kit-novo") { ev.preventDefault(); var b = document.querySelector("[data-kit-add]"); if (b) b.click(); }
+    });
   }
 
   /* ---------- dados ---------- */

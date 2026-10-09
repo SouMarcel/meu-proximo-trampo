@@ -217,6 +217,35 @@ documento:
 
 Isso protege o usuário: o recrutador confere, e data é a coisa mais fácil de checar.
 
+## Carta de apresentação
+
+1. **Antes de escrever, as quatro perguntas** (obrigatórias; com opções quando der):
+   por que esta vaga, que problema da empresa a pessoa resolveria, qual seria o primeiro
+   movimento no cargo e o tom (direto, caloroso ou formal). Sem as quatro respostas, não
+   escreva.
+2. **Escreva** de 350 a 420 palavras, no idioma da vaga, citando a empresa e pelo menos um
+   requisito do anúncio ligado a um fato do perfil. Só conquistas escritas no perfil ou nas
+   respostas, com as palavras de lá. Nada de expressões vazias ("apaixonado", "proativo",
+   "team player", "fora da caixa"); nada sobre autorização de trabalho, visto, salário,
+   deficiência ou relocação.
+3. **Confira** antes de entregar: grave a carta em `.cache/carta.txt` e as respostas em
+   `.cache/carta-respostas.json` e rode `PY conferir.py --carta .cache/carta.txt --vaga-id ID
+   --respostas .cache/carta-respostas.json` (ou `--vaga vaga.txt --empresa "Nome"` para vaga
+   fora do dashboard). `BLOQUEAR` (número ou data fora do perfil): tire ou confirme com a
+   pessoa. `CONFERIR` (tamanho, empresa ou requisito não citado, expressão vazia, nome que não
+   está no perfil): ajuste ou explique.
+4. Pela página, o mesmo caminho está no item "Carta de apresentação" do checklist da vaga.
+
+## Respostas de formulário
+
+- **Perguntas sensíveis só a pessoa responde**: autorização de trabalho, visto ou
+  patrocínio, cidadania, salário ou pretensão, deficiência, relocação e diversidade (gênero,
+  raça, veterano). Para separar, grave as perguntas em `.cache/perguntas.txt` (uma por linha)
+  e rode `PY candidatura_ia.py sensiveis .cache/perguntas.txt`; as marcadas "só você
+  responde" você não rascunha: pergunte à pessoa e use a resposta dela como ela escreveu.
+- As outras, só com fatos do perfil; se o perfil não responde, diga isso em vez de inventar.
+- Pela página: item "Respostas de formulário" do checklist da vaga.
+
 ## Respostas curtas de formulário
 
 - Conte os caracteres com código, não no olho: grave o texto em

@@ -240,6 +240,8 @@ def listar(vaga_id: str | None = None, base: bool = False) -> list[dict]:
         except (OSError, ValueError):
             continue
         alvo = meta.get("alvo") or {}
+        if meta.get("tipo") in ("carta", "respostas"):  # documentos do kit de candidatura (candidatura_ia.py)
+            continue
         if (base and alvo.get("tipo") == "base") or (vaga_id and alvo.get("tipo") == "vaga" and alvo.get("id") == vaga_id):
             meta["disponivel"] = {k: bool(v) and (CURRICULOS / v).exists() for k, v in (meta.get("arquivos") or {}).items()}
             saida.append(meta)
@@ -247,8 +249,8 @@ def listar(vaga_id: str | None = None, base: bool = False) -> list[dict]:
 
 
 def arquivo_servivel(nome: str) -> Path | None:
-    """O caminho de um .pdf ou .docx de curriculos/ pedido pela página; None para qualquer outra coisa."""
-    m = re.fullmatch(r"([a-z0-9-]{1,90})\.(pdf|docx)", str(nome or ""))
+    """O caminho de um .pdf, .docx ou .txt de curriculos/ pedido pela página; None para qualquer outra coisa."""
+    m = re.fullmatch(r"([a-z0-9-]{1,90})\.(pdf|docx|txt)", str(nome or ""))
     if not m:
         return None
     caminho = (CURRICULOS / nome).resolve()

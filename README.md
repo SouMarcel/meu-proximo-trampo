@@ -50,6 +50,8 @@ vagas por você.
 | Perguntas pontuais na Gupy (vagas de uma empresa, vagas PCD, salário) | Não | Sim, pelo MCP público da Gupy |
 | Montar o perfil e os filtros da busca | Pela página (**Meu perfil**), com o texto dos seus arquivos ao lado | Pela página ou pelo chat: a IA propõe o rascunho a partir do currículo e do LinkedIn |
 | Gerar o currículo (.docx e PDF) | `python curriculo.py` com um JSON seu | Escrito e conferido com você, a partir do perfil |
+| O que a candidatura pede (checklist) e lembretes de follow-up | Sim, pelas palavras do anúncio | Também autorização, contratação, inglês, fuso e riscos lidos pela análise |
+| Carta de apresentação e respostas de formulário | Conferência sem IA (`python conferir.py --carta`) | Escritas pela página ou pelo chat, conferidas antes de você usar |
 
 A nota das vagas pode vir de várias IAs: escolha no botão **IA** do dashboard. Dá para usar
 o Claude Code (pela sua assinatura Claude Pro ou Max) ou uma chave de API da Anthropic,
@@ -244,6 +246,36 @@ currículos gerados, com links para abrir o PDF e baixar o `.docx`; com "bloquea
 aparece como **não pronto**, com o que resolver. O **currículo base** sai do mesmo jeito, no botão
 **Meu perfil**. Nada vai para a IA antes do clique; com IA por chave, cada currículo é uma chamada
 cobrada pelo provedor.
+
+### Kit de candidatura ("indica, não faz")
+
+No detalhe de cada vaga, o bloco **Para se candidatar** mostra o que a análise leu no anúncio,
+sempre com a frase de onde tirou: se a vaga patrocina visto (cruzando com o que você marcou sobre
+passaporte, autorização de trabalho e sponsor), a forma de contratação, o inglês pedido, o fuso, o
+sistema de candidatura e alertas de remuneração pouco confiável ou de "remoto" que é híbrido. Sem IA,
+aparecem o sistema de candidatura, a restrição de local e os sinais do anúncio.
+
+Logo abaixo, o checklist **O que esta candidatura pede**: currículo (em inglês, se a vaga é em
+inglês), carta, respostas de formulário, portfólio, teste técnico, vídeo e o envio, com a situação
+que você marca (a fazer, pronto, não se aplica); dá para tirar e acrescentar itens, e uma nova
+análise só acrescenta. Cada item tem o seu botão, e nada acontece sem o clique:
+
+- **Gerar currículo**: o mesmo da seção Currículo.
+- **Escrever carta**: antes, quatro perguntas obrigatórias (por que esta vaga, que problema você
+  resolveria, o primeiro movimento no cargo e o tom). A IA escreve de 350 a 420 palavras no idioma
+  da vaga, só com fatos do perfil e das suas respostas, e a conferência bloqueia número ou data fora
+  do perfil e aponta texto genérico. A carta fica em `curriculos/` (.docx e .txt) para baixar ou
+  copiar.
+- **Preparar respostas**: cole as perguntas do formulário. As de autorização de trabalho, visto,
+  cidadania, salário, deficiência, relocação e diversidade **nunca vão para a IA**: ficam para você
+  responder. As outras são rascunhadas com o perfil e conferidas.
+- **Candidatar no Greenhouse** (ou Lever, Ashby, a plataforma da vaga): só abre a página. A
+  ferramenta nunca preenche nem envia nada.
+
+No quadro, a vaga em **Aplicação Enviada** ganha um lembrete de follow-up aos 7 e aos 14 dias (não
+há terceiro), e a vaga em **Entrevista**, um lembrete de agradecimento no dia seguinte (com a data da
+entrevista, se você informar no detalhe). Você marca "feito", "dispensar" ou "parar lembretes". A
+ferramenta só lembra: a mensagem é você quem escreve e envia.
 
 > **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
 > provedor escolhido no botão **IA** (Anthropic, OpenAI, Google etc.) para a análise. Em

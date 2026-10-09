@@ -101,7 +101,7 @@ description: "Tarefas da feature 009: fontes internacionais e elegibilidade (Win
 - [X] T028 [P] `README.md` (fontes internacionais, como ligar, empresas, frases, elegibilidade e os termos de uso de cada fonte) e `dash/README.md` (campos novos da vaga); `config.exemplo.json` com os campos novos vazios
 - [X] T029 Rodar `python -m unittest discover -s tests` e o quickstart.md; registrar os resultados no `quickstart.md`
 - [X] T030 Com o OK do usuário, a busca internacional real pequena do cenário 10 (duas fontes, um cargo)
-- [ ] T031 Busca de dados pessoais no diff, mostrar ao usuário e, com o OK, commit na `master`, push, merge na branch pessoal, reiniciar o servidor e `graphify update .`
+- [X] T031 Busca de dados pessoais no diff, mostrar ao usuário e, com o OK, commit na `master`, push, merge na branch pessoal, reiniciar o servidor e `graphify update .`
 
 ---
 

@@ -109,7 +109,9 @@ def montar_pedido(vagas: list[dict]) -> str:
         "Responda SOMENTE com um array JSON, um objeto por vaga, sem texto antes ou depois e sem bloco de código.",
         'Formato de cada objeto: {"id", "aderencia" (0 a 100), "resumo", "encaixe" [], "lacunas" [], "alertas" [], '
         '"modelo_trabalho", "senioridade" [], "senioridade_origem", "tipo_emprego" [] (opcional), '
-        '"moeda" (opcional), "idioma" (opcional), "fora_dos_criterios" (opcional)}.',
+        '"moeda" (opcional), "idioma" (opcional), "fora_dos_criterios" (opcional), e os da candidatura, '
+        'opcionais: "autorizacao" {"valor", "frase"}, "contratacao" [{"valor", "frase"}], "ingles" {"nivel", "frase"}, '
+        '"fuso" {"texto", "frase"}, "sistema_candidatura", "pede" [{"item", "frase"}], "riscos" [{"tipo", "frase"}]}.',
         'Se a descrição não basta para avaliar: {"id": "...", "analise_status": "sem_dados", '
         '"resumo": "Sem descrição suficiente: cole o texto da vaga no dashboard."}.',
         "",

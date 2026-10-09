@@ -1,0 +1,15 @@
+{
+ "en": {
+  "id": "kit-en-1", "titulo": "Senior Data Analyst", "empresa": "Acme Analytics", "local": "Remote - Americas",
+  "plataforma": "Greenhouse", "ats": "greenhouse", "area": "internacional", "pais_vaga": "Américas", "idioma": "en",
+  "url": "https://job-boards.greenhouse.io/acme/jobs/123", "url_candidatura": null,
+  "descricao": "About the role\nWe are hiring a Senior Data Analyst to own our sales reporting.\nRequirements:\n- Advanced SQL\n- Power BI or Tableau\n- Fluent English\n- At least 4 hours of overlap with US Eastern Time\nAbout the contract\nThis is a B2B contractor engagement paid in USD. We sponsor visas for candidates who later relocate.\nRemote-first, but you will join the team in our Austin office 2 days a week during onboarding.\nHow to apply\nPlease send a cover letter and a link to your portfolio. Shortlisted candidates complete a take-home exercise.",
+  "remoto": true, "etapa": null, "triagem": "pendente"
+ },
+ "pt": {
+  "id": "kit-pt-1", "titulo": "Analista de Dados Pleno", "empresa": "Loja Delta", "local": "São Paulo, SP",
+  "plataforma": "Gupy", "area": "nacional", "idioma": "pt", "url": "https://lojadelta.gupy.io/jobs/456",
+  "descricao": "Sobre a vaga\nBuscamos analista de dados para a área comercial.\nRequisitos:\n- SQL avançado\n- Power BI\nEtapas do processo\n- Teste técnico online\n- Entrevista com a liderança\nRemuneração competitiva.",
+  "remoto": false, "etapa": null, "triagem": "pendente"
+ }
+}

@@ -245,12 +245,25 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(202, {**gerador.GERACAO.iniciar(vaga_id, corpo.get("tecnicas") or {}), "pode_alterar": True})
             if metodo == "POST" and caminho == "/api/curriculo/tentar":
                 return self._json(202, {**gerador.GERACAO.tentar(), "pode_alterar": True})
+            if metodo == "POST" and caminho in ("/api/kit/carta", "/api/kit/respostas"):
+                corpo = self._corpo()
+                tipo = caminho.rsplit("/", 1)[1]
+                dados = corpo.get("respostas") if tipo == "carta" else corpo.get("perguntas")
+                vaga_id = str(corpo.get("vaga_id") or "").strip()
+                return self._json(202, {**gerador.GERACAO.iniciar_kit(tipo, vaga_id, dados), "pode_alterar": True})
+            if metodo == "PUT" and caminho.startswith("/api/kit/respostas/"):
+                import candidatura_ia
+                try:
+                    meta = candidatura_ia.gravar_da_pessoa(unquote(caminho.rsplit("/", 1)[1]), self._corpo().get("pessoa") or {})
+                except candidatura_ia.GeracaoErro as e:
+                    return self._erro(400, str(e))
+                return self._json(200, {"documento": meta})
         except gerador.GeracaoOcupada as e:
             return self._json(409, {"erro": str(e), "estado": gerador.GERACAO.estado()})
         return self._erro(404, "rota não encontrada")
 
     def _arquivo_curriculo(self, nome: str):
-        """Só .pdf e .docx de curriculos/, com o nome validado (nada de caminhos)."""
+        """Só .pdf, .docx e .txt de curriculos/, com o nome validado (nada de caminhos)."""
         sys.path.insert(0, str(banco.DASH.parent))
         import curriculo_ia
         caminho = curriculo_ia.arquivo_servivel(unquote(nome))
@@ -259,7 +272,7 @@ class Handler(BaseHTTPRequestHandler):
         dados = caminho.read_bytes()
         pdf = caminho.suffix == ".pdf"
         self.send_response(200)
-        self.send_header("Content-Type", "application/pdf" if pdf else
+        self.send_header("Content-Type", "application/pdf" if pdf else "text/plain; charset=utf-8" if caminho.suffix == ".txt" else
                          "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         self.send_header("Content-Length", str(len(dados)))
         self.send_header("Content-Disposition", ("inline" if pdf else "attachment") + f"; filename*=UTF-8''{quote(caminho.name)}")
@@ -289,7 +302,7 @@ class Handler(BaseHTTPRequestHandler):
             if metodo == "POST" and caminho == "/api/vagas":
                 vaga = banco.criar_manual(self._corpo())
                 auto = analise.precisa(vaga) and analise.FILA.pedir()
-                return self._json(201, {"vaga": vaga, "analise_automatica": auto})
+                return self._json(201, {"vaga": banco.com_kit(vaga), "analise_automatica": auto})
             if metodo == "POST" and caminho == "/api/vagas/link":
                 url = str(self._corpo().get("url") or "").strip()[:1000]
                 try:
@@ -299,14 +312,14 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(422, {"erro": str(e), "parcial": {**e.parcial, "url": url, "area": area, "pais_vaga": pais}})
                 vaga, nova = banco.criar_de_link(dados)
                 auto = nova and analise.precisa(vaga) and analise.FILA.pedir()
-                return self._json(201 if nova else 200, {"vaga": vaga, "nova": nova, "analise_automatica": auto})
+                return self._json(201 if nova else 200, {"vaga": banco.com_kit(vaga), "nova": nova, "analise_automatica": auto})
             if caminho == "/api/ia" or caminho.startswith("/api/ia/"):
                 return self._ia(metodo, caminho)
             if caminho == "/api/perfil" or caminho.startswith("/api/perfil/"):
                 return self._perfil(metodo, caminho)
             if caminho == "/api/busca" or caminho.startswith("/api/busca/"):
                 return self._busca(metodo, caminho)
-            if caminho == "/api/curriculo" or caminho.startswith("/api/curriculo/"):
+            if caminho == "/api/curriculo" or caminho.startswith(("/api/curriculo/", "/api/kit/")):
                 return self._curriculo(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
@@ -314,7 +327,7 @@ class Handler(BaseHTTPRequestHandler):
             if vid is None:
                 return self._erro(404, "rota não encontrada")
             if metodo == "PATCH":
-                return self._json(200, {"vaga": banco.atualizar_usuario(vid, self._corpo())})
+                return self._json(200, {"vaga": banco.com_kit(banco.atualizar_usuario(vid, self._corpo()))})
             if metodo == "DELETE":
                 banco.remover(vid)
                 return self._json(200, {"ok": True})
@@ -337,6 +350,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
         if caminho.startswith("/arquivos/curriculos/"):
             return self._arquivo_curriculo(caminho[len("/arquivos/curriculos/"):])
+        if caminho == "/api/kit/lista":  # cartas e respostas de uma vaga
+            sys.path.insert(0, str(banco.DASH.parent))
+            import candidatura_ia
+            vaga_id = (parse_qs(urlsplit(self.path).query).get("vaga") or [""])[0].strip()
+            return self._json(200, {"documentos": candidatura_ia.listar(vaga_id) if vaga_id else []})
         if caminho.startswith("/api/curriculo"):
             consulta = parse_qs(urlsplit(self.path).query)
             vaga_id = (consulta.get("vaga") or [""])[0].strip() or None
@@ -358,7 +376,7 @@ class Handler(BaseHTTPRequestHandler):
         if caminho == "/api/perfil/filtros-propostos":
             return self._json(200, pp.propor_filtros(pp.carregar()["respostas"]))
         if caminho == "/api/vagas":
-            return self._json(200, {"versao": banco.versao(), "vagas": banco.listar_vagas()})
+            return self._json(200, {"versao": banco.versao(), "vagas": [banco.com_kit(v) for v in banco.listar_vagas()]})
         if caminho == "/api/buscas/ultima":
             return self._json(200, {"busca": banco.ultima_busca()})
         if caminho == "/api/config":

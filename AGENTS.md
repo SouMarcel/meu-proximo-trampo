@@ -25,7 +25,10 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
 - Rode sempre a partir da raiz do projeto.
 - Principais comandos: `PY vagas.py buscar` (busca), `PY dash/banco.py pendentes` (vagas que esperam
   nota), `PY curriculo.py <arquivo.json>` (gera o currículo; `--tecnicas` mostra as técnicas),
-  `PY conferir.py <arquivo.json> [--vaga-id ID]` (conferência do currículo sem IA),
+  `PY conferir.py <arquivo.json> [--vaga-id ID]` (conferência do currículo sem IA; `--carta
+  carta.txt` confere uma carta), `PY candidatura_ia.py sensiveis perguntas.txt` (perguntas de
+  formulário que só a pessoa responde), `PY dash/banco.py kit ID` e `lembretes` (o que a
+  candidatura pede e os follow-ups),
   `PY consultar_gupy.py <ferramenta> chave=valor …` (perguntas pontuais à Gupy sem a integração
   MCP) e `python iniciar.py` (abre o dashboard em http://127.0.0.1:8765). Perfil: `PY primeiros_passos.py extrair <arquivo>` (texto de
   currículo ou LinkedIn sem documentos de identificação), `diagnostico [perfil.md]` e
