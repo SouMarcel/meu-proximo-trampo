@@ -100,6 +100,27 @@ class TestCarta(ComPasta):
         with self.assertRaises(candidatura_ia.GeracaoErro):
             candidatura_ia.validar_respostas({**RESPOSTAS, "tom": "engraçado"})
 
+    def test_mensagem_curta(self):
+        r = candidatura_ia.validar_respostas({"formato": "mensagem", "por_que": "Quero relatórios de vendas.", "tom": "direto",
+                                              "idioma": "pt"})
+        self.assertEqual((r["formato"], r["limite"], r["idioma"]), ("mensagem", 400, "pt"))  # só por que e tom são obrigatórias
+        for ruim in ({"limite": 10}, {"limite": "x"}, {"idioma": "jp"}, {"por_que": ""}):
+            with self.assertRaises(candidatura_ia.GeracaoErro, msg=ruim):
+                candidatura_ia.validar_respostas({"formato": "mensagem", "por_que": "Quero.", "tom": "direto", **ruim})
+        curta = ("Acme Analytics: I write advanced SQL for the sales team and my Power BI dashboards are used by 1,500 "
+                 "people. Sales reporting is what I do every day at Empresa Alfa.")
+        with self.ia(json.dumps({"texto": curta})):
+            meta = candidatura_ia.gerar_carta(VAGA, {"formato": "mensagem", "por_que": "Relatórios de vendas.", "tom": "direto",
+                                                     "limite": 400, "idioma": "en"}, perfil=PERFIL)
+        self.assertEqual((meta["formato"], meta["conferencia"]["veredito"], meta["arquivos"]["docx"]), ("mensagem", "ok", None))
+        self.assertTrue(meta["nome"].endswith("-mensagem"))
+        self.assertIn("No máximo 400 caracteres", self.pedidos[-1])
+        self.assertNotIn("primeiro movimento no cargo:", self.pedidos[-1])
+        longa = conferir.conferir_carta(curta * 3, PERFIL, TEXTO_VAGA, "Acme Analytics", {}, limite=400)
+        self.assertEqual(longa["veredito"], "bloquear")  # passa do limite: o campo não aceita
+        self.assertIn("limite é 400", longa["pontos"][-1]["mensagem"] if longa["pontos"][-1]["tipo"] == "tamanho"
+                      else " ".join(p["mensagem"] for p in longa["pontos"]))
+
     def test_gera_e_grava(self):
         with self.ia(json.dumps({"texto": carta()})):
             meta = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)

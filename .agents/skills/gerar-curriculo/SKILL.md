@@ -234,6 +234,12 @@ Isso protege o usuário: o recrutador confere, e data é a coisa mais fácil de 
    pessoa. `CONFERIR` (tamanho, empresa ou requisito não citado, expressão vazia, nome que não
    está no perfil): ajuste ou explique.
 4. Pela página, o mesmo caminho está no item "Carta de apresentação" do checklist da vaga.
+5. **Mensagem curta** (ex.: vaga marcada como preferencial no LinkedIn, campo de até 400
+   caracteres): pergunte só por que esta vaga, o tom e o idioma; escreva por que a vaga é
+   preferencial e por que o perfil é compatível, citando a empresa e um requisito ligado a um
+   fato do perfil, mirando 90% a 98% do limite. Confira com `PY conferir.py --carta
+   .cache/mensagem.txt --vaga-id ID --limite 400`: passar do limite bloqueia. Pela página, é o
+   formato "Mensagem curta" do mesmo diálogo.
 
 ## Respostas de formulário
 

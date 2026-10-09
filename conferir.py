@@ -6,6 +6,7 @@
   python conferir.py curriculos/x.json --vaga vaga.txt         idem, com o texto da vaga num arquivo
   python conferir.py curriculos/x.json --perfil outro.md --json
   python conferir.py --carta carta.txt --vaga-id ID [--respostas respostas.json]   carta de apresentação
+  python conferir.py --carta msg.txt --vaga-id ID --limite 400                      mensagem curta
 
 Veredito: ok, conferir ou bloquear (o mais grave dos pontos). Bloqueia número que não está no perfil,
 lacuna da vaga listada como competência e dado pessoal no formato dos Estados Unidos. Códigos de saída:
@@ -435,15 +436,24 @@ def _fatos_do_texto(texto: str, base: str, nivel_data: str) -> list[dict]:
     return pontos
 
 
-def conferir_carta(carta: str, perfil: str, vaga: str = "", empresa: str = "", respostas: dict | None = None) -> dict:
-    """Veredito da carta: ok, conferir ou bloquear, com os pontos e a contagem de palavras."""
+def conferir_carta(carta: str, perfil: str, vaga: str = "", empresa: str = "", respostas: dict | None = None,
+                   limite: int | None = None) -> dict:
+    """Veredito da carta: ok, conferir ou bloquear, com os pontos e a contagem de palavras. Com `limite`, é uma
+    mensagem curta: o tamanho conta em caracteres, e passar do limite bloqueia (o campo não aceita)."""
     respostas_txt = " ".join(str(v) for v in (respostas or {}).values())
     base = f"{perfil or ''}\n{respostas_txt}"
     pontos = _fatos_do_texto(carta, base, "bloquear")
     carta_n = norm(carta)
     n = contar_palavras(carta)
     minimo, maximo = PALAVRAS_CARTA
-    if not minimo <= n <= maximo:
+    if limite:
+        c = len(carta.strip())
+        if c > limite:
+            pontos.append({"tipo": "tamanho", "valor": str(c), "nivel": "bloquear",
+                           "mensagem": f"a mensagem tem {c} caracteres e o limite é {limite}: corte antes de usar"})
+        elif c < 20:
+            pontos.append({"tipo": "tamanho", "valor": str(c), "nivel": "conferir", "mensagem": "a mensagem está curta demais"})
+    elif not minimo <= n <= maximo:
         pontos.append({"tipo": "tamanho", "valor": str(n), "nivel": "conferir",
                        "mensagem": f"a carta tem {n} palavras; o combinado é de {minimo} a {maximo}"})
     if empresa and norm(empresa) not in carta_n:
@@ -464,7 +474,8 @@ def conferir_carta(carta: str, perfil: str, vaga: str = "", empresa: str = "", r
             pontos.append({"tipo": "nome", "valor": nome, "nivel": "conferir",
                            "mensagem": "nome que não aparece no perfil nem na vaga (empresa, cargo ou lugar?)"})
     pior = max((NIVEIS[p["nivel"]] for p in pontos), default=0)
-    return {"veredito": {0: "ok", 1: "conferir", 2: "bloquear"}[pior], "pontos": pontos, "palavras": n}
+    return {"veredito": {0: "ok", 1: "conferir", 2: "bloquear"}[pior], "pontos": pontos, "palavras": n,
+            "caracteres": len(carta.strip())}
 
 
 def conferir_respostas(itens: list[dict], perfil: str) -> list[dict]:
@@ -478,7 +489,7 @@ def conferir_respostas(itens: list[dict], perfil: str) -> list[dict]:
 
 def texto_carta(r: dict) -> str:
     rot = {"ok": "OK", "conferir": "CONFERIR", "bloquear": "BLOQUEAR"}
-    linhas = [f"Veredito: {rot[r['veredito']]} · {r['palavras']} palavras"]
+    linhas = [f"Veredito: {rot[r['veredito']]} · {r['palavras']} palavras · {r['caracteres']} caracteres"]
     linhas += [f"  [{p['nivel']}] {p['mensagem']}" + (f": {p['valor']}" if p["valor"] else "") for p in r["pontos"]]
     return "\n".join(linhas)
 
@@ -545,6 +556,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--carta", help="arquivo .txt de uma carta de apresentação (no lugar do currículo)")
     ap.add_argument("--respostas", help="JSON com as respostas da pessoa às perguntas da carta")
     ap.add_argument("--empresa", help="empresa da vaga (com --carta e --vaga)")
+    ap.add_argument("--limite", type=int, help="com --carta: é uma mensagem curta com este limite de caracteres")
     ap.add_argument("--vaga", help="arquivo com o texto da vaga")
     ap.add_argument("--vaga-id", help="ID de uma vaga do dashboard")
     ap.add_argument("--perfil", help="perfil de carreira (padrão: o do config.json)")
@@ -585,7 +597,7 @@ def _main_carta(args) -> int:
     except (OSError, ValueError) as e:
         print(f"erro: {e}", file=sys.stderr)
         return 2
-    r = conferir_carta(carta, perfil_txt, vaga, empresa, respostas if isinstance(respostas, dict) else {})
+    r = conferir_carta(carta, perfil_txt, vaga, empresa, respostas if isinstance(respostas, dict) else {}, limite=args.limite)
     print(json.dumps(r, ensure_ascii=False, indent=1) if args.json else texto_carta(r))
     return {"ok": 0, "conferir": 1, "bloquear": 3}[r["veredito"]]
 
