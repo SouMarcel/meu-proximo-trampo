@@ -2492,7 +2492,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var origem = { analise: "A análise leu: ", anuncio: "No anúncio: " }[i.origem];
     return '<li class="kit-item" data-e="' + esc(i.estado) + '"><div class="kit-linha"><select data-kit-estado="' + esc(i.item) + '" aria-label="Situação: ' + esc(i.rotulo) + '"' + dis + ">" +
       Object.keys(KT_ESTADOS).map(function (k) { return '<option value="' + k + '"' + (i.estado === k ? " selected" : "") + ">" + KT_ESTADOS[k] + "</option>"; }).join("") +
-      "</select><b>" + esc(i.rotulo) + "</b>" + acao + '<button type="button" class="more" data-kit-rm="' + esc(i.item) + '" aria-label="Tirar ' + esc(i.rotulo) +
+      "</select><b>" + esc(i.rotulo) + "</b>" + acao + '<button type="button" class="more" data-kit-rm="' + esc(i.item) + '"' +
+      (i.extra ? ' data-kit-extra="' + esc(i.extra) + '"' : "") + ' aria-label="Tirar ' + esc(i.rotulo) +
       ' do checklist" title="Tirar do checklist"' + dis + ">✕</button></div>" + (i.frase && origem ? '<p class="hint">' + origem + "“" + esc(i.frase) + "”</p>" : "") + "</li>";
   }
   function ktLista(vid) {
@@ -2527,7 +2528,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     h += '<h3>O que esta candidatura pede</h3><ul class="kit-lista">' + (v.checklist || []).map(function (i) { return ktItem(v, i); }).join("") + "</ul>";
     if (k.removidos.length) h += '<p class="hint">Tirados do checklist: ' + k.removidos.map(function (r) {
       return '<button type="button" class="link-btn" data-kit-volta="' + esc(r) + '"' + dis + ">" + esc(KT_ROTULOS[r] || r) + " (voltar)</button>"; }).join(", ") + "</p>";
-    h += '<div class="add-row"><input type="text" id="kit-novo" maxlength="80" placeholder="Outro item (ex.: carta de referência)" aria-label="Novo item do checklist"' + dis + ">" +
+    var tem = (v.checklist || []).map(function (i) { return i.acao; }), mais = ["carta", "respostas"].filter(function (a) { return tem.indexOf(a) < 0; });
+    if (mais.length) h += '<p class="hint">Mesmo que o anúncio não peça (ex.: vaga preferencial no LinkedIn): ' + mais.map(function (a) {
+      return '<button type="button" class="btn-plain btn-ia-mini" data-kit-acao="' + a + '"' + (S.offline ? " disabled" : "") + ">" + KT_ACOES[a] + "</button>"; }).join("") + "</p>";
+    h += '<div class="add-row"><input type="text" id="kit-novo" maxlength="80" placeholder="Outro item (ex.: carta de apresentação, referências)" aria-label="Novo item do checklist"' + dis + ">" +
       '<button type="button" class="btn-plain" data-kit-add' + dis + ">Acrescentar</button></div>";
     if (meu && ativa) h += '<p class="ia-status analisando">' + esc(e.etapa_texto || "Escrevendo…") + " Pode levar alguns minutos; dá para fechar e voltar.</p>";
     if (meu && e.situacao === "falha") h += '<p class="cv-bloq">' + ({ carta: "A carta", respostas: "As respostas" }[e.tipo]) + " não saiu: " + esc(e.mensagem) +
@@ -2657,7 +2661,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       }
       if (t.hasAttribute("data-kit-rm")) {
         var item = t.getAttribute("data-kit-rm");
-        if (item.indexOf("x:") === 0) k.extras = k.extras.filter(function (x) { return ktIdExtra(x) !== item; });
+        var extra = t.getAttribute("data-kit-extra");
+        if (extra !== null) k.extras = k.extras.filter(function (x) { return x !== extra; });  // item que a pessoa acrescentou
+        else if (item.indexOf("x:") === 0) k.extras = k.extras.filter(function (x) { return ktIdExtra(x) !== item; });
         else if (k.removidos.indexOf(item) < 0) k.removidos.push(item);
         return ktSalvar(v, k);
       }

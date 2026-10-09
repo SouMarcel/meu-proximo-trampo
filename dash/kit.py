@@ -38,6 +38,16 @@ PALAVRAS = {
               "grave um video"),
 }
 
+# item que a pessoa acrescenta com o nome de um item conhecido vira esse item (com o botão de ajuda)
+NOMES_ITENS = {
+    "carta": ("carta", "carta de apresentacao", "cover letter", "carta de motivacao", "motivation letter"),
+    "formulario": ("formulario", "respostas de formulario", "perguntas do formulario", "respostas", "application form",
+                   "questionario"),
+    "portfolio": ("portfolio",),
+    "teste": ("teste", "teste tecnico", "desafio tecnico", "take-home", "take home"),
+    "video": ("video", "video de apresentacao"),
+}
+
 
 def _sem_acento(s) -> str:
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
@@ -165,7 +175,10 @@ def checklist(v: dict) -> list[dict]:
     for item, frase in _no_anuncio(v.get("descricao")):
         por(item, "anuncio", PEDE[item], frase)
     for texto in marcado.get("extras") or []:
-        por(_id_extra(texto), "pessoa", texto)
+        conhecido = next((k for k, nomes in NOMES_ITENS.items() if _sem_acento(texto).strip(" .") in nomes), None)
+        por(conhecido or _id_extra(texto), "pessoa", PEDE[conhecido] if conhecido else texto)
+        if itens[conhecido or _id_extra(texto)]["origem"] == "pessoa":
+            itens[conhecido or _id_extra(texto)].setdefault("extra", texto)  # para tirar, sai da lista da pessoa
     por("candidatura", "vaga", "Enviar a candidatura")
     saida = []
     for i in itens.values():

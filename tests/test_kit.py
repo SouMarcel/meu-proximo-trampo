@@ -80,6 +80,11 @@ class TestAnaliseComIA(unittest.TestCase):
             self.addCleanup(p.stop)
         banco.inserir_vagas([{**VAGAS["en"], "analise_status": "pendente", "origem": "link"}])
 
+    def test_idioma_no_adicionar_vaga(self):
+        doc = banco.criar_manual({"titulo": "Data Analyst", "empresa": "Beta", "etapa": "salva", "descricao": VAGAS["en"]["descricao"]})
+        self.assertEqual(doc["idioma"], "en")
+        self.assertEqual(banco.com_kit(doc)["checklist"][0]["rotulo"], "Currículo em inglês")
+
     def test_pedido_e_gravacao(self):
         pedidos = []
         falsa = SimpleNamespace(disponivel=lambda: True, escolha_efetiva=lambda: {"provedor": "openai_compat"},
@@ -106,6 +111,16 @@ class TestChecklist(unittest.TestCase):
         pt = [i["item"] for i in kit.checklist(VAGAS["pt"])]
         self.assertEqual(pt, ["curriculo", "teste", "candidatura"])
         self.assertEqual(kit.checklist({"descricao": ""})[0]["rotulo"], "Currículo")
+
+    def test_item_conhecido_pelo_nome(self):
+        v = {**VAGAS["pt"], "kit": {"estados": {}, "extras": ["Cover letter", "Referências"], "removidos": []}}
+        itens = {i["item"]: i for i in kit.checklist(v)}
+        self.assertEqual((itens["carta"]["acao"], itens["carta"]["origem"], itens["carta"]["extra"]), ("carta", "pessoa", "Cover letter"))
+        self.assertEqual(itens["carta"]["rotulo"], "Carta de apresentação")
+        self.assertNotIn("acao", {k: x for k, x in itens["x:referencias"].items() if x})  # item só da pessoa, sem botão
+        en = {i["item"]: i for i in kit.checklist({**VAGAS["en"], "kit": {"extras": ["carta"]}})}
+        self.assertEqual(en["carta"]["origem"], "anuncio")  # já pedido pelo anúncio: fica o do anúncio
+        self.assertNotIn("extra", en["carta"])
 
     def test_estado_preservado_com_analise_refeita(self):
         v = {**VAGAS["pt"], "kit": {"estados": {"teste": "pronto", "curriculo": "nao_se_aplica"},

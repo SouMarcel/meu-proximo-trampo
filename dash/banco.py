@@ -416,6 +416,10 @@ def definir_area(doc: dict, campos: dict | None = None) -> None:
         doc["pais_vaga"] = (filtros.pais_pt(pais) or pais or filtros.pais_do_local(doc.get("local"))) if doc["area"] == "internacional" else None
     else:
         doc["area"], doc["pais_vaga"] = filtros.area_da_vaga({**doc, "area": None}, f)
+    if not doc.get("idioma"):  # como nas vagas da busca: o checklist pede o currículo no idioma da vaga
+        idioma = filtros.idioma_da_vaga(doc)
+        if idioma:
+            doc["idioma"] = idioma
 
 
 def _da_fonte(doc: dict, dados: dict) -> None:
