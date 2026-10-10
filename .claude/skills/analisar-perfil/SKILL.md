@@ -52,6 +52,24 @@ caminho quando a pessoa disser que tem currículo e quer buscar logo:
 Só marcar o currículo, sem mexer no perfil: `PY curriculo_base.py marcar <arquivo> [--idioma en]`
 (um por idioma; ele aparece no item Currículo de cada vaga).
 
+## Análises do perfil
+
+Com o perfil pronto, ofereça (sem rodar sozinho) as três análises, que também estão na página (Meu
+perfil → Análises):
+
+- **Lacunas das vagas** ("o que as vagas pedem que eu não tenho?"): `PY analise_perfil.py lacunas`
+  (ou `--seguidas`, só as vagas que a pessoa seguiu). Sem IA. Precisa de pelo menos 5 vagas
+  analisadas; abaixo disso, diga quantas faltam. Plano de estudo, só se a pessoa pedir:
+  `PY analise_perfil.py plano` (precisa de IA; sem IA, monte o plano você mesmo com as lacunas
+  listadas, sem afirmar experiência que o perfil não mostra).
+- **Carreiras e cargos-alvo** ("que outros cargos eu posso buscar?"): `PY analise_perfil.py cargos`
+  (precisa de IA; pelo chat, você mesmo pode propor de 5 a 10 cargos, cada um lateral, degrau ou
+  vizinho, com um trecho do perfil como evidência e a lacuna). Levar cargos para os filtros só com
+  o OK da pessoa (página: "Levar os marcados para os filtros"; chat: mostre o que muda e edite o
+  `config.json` com ela, ou indique o painel Filtros da busca).
+- **Prontidão internacional** ("estou pronto para vagas de fora?"): `PY analise_perfil.py prontidao`
+  (inglês, fuso, contratação, passaporte e autorização, currículo e LinkedIn em inglês).
+
 ## 1. Materiais
 
 Procure em `anexos/` e `anexos/primeiros-passos/` (onde a página guarda o que recebe). Se não

@@ -284,6 +284,29 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(409, {"erro": str(e), "estado": gerador.GERACAO.estado()})
         return self._erro(404, "rota não encontrada")
 
+    def _analises(self, metodo: str, caminho: str):
+        """Análises do perfil: só deste computador e só no clique (as que usam IA rodam fora de qualquer trava)."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        import analise_perfil as ap
+        if metodo == "POST" and caminho == "/api/analises-perfil/lacunas":
+            visao = str(self._corpo().get("visao") or "todas")
+            r = ap.lacunas(ap.vagas_do_banco(), ap.perfil_texto(), visao)
+            return self._json(200, r if r.get("faltam") else ap.salvar("lacunas", r))
+        if metodo == "POST" and caminho == "/api/analises-perfil/plano":
+            ultima = (ap.carregar().get("lacunas") or {}).get("itens") or []
+            return self._json(200, ap.salvar("plano", ap.plano_estudo(ap.perfil_texto(), ultima)))
+        if metodo == "POST" and caminho == "/api/analises-perfil/cargos":
+            return self._json(200, ap.salvar("cargos", ap.cargos_alvo(ap.perfil_texto())))
+        if metodo == "POST" and caminho == "/api/analises-perfil/cargos/filtros":
+            corpo = self._corpo()
+            cargos = corpo.get("cargos") if isinstance(corpo.get("cargos"), list) else []
+            return self._json(200, ap.filtros_com_cargos(cargos, confirmar=bool(corpo.get("confirmar"))))
+        if metodo == "PUT" and caminho == "/api/analises-perfil/marcas":
+            corpo = self._corpo()
+            return self._json(200, {"marcas": ap.marcar("linkedin_en", bool(corpo.get("linkedin_en")))})
+        return self._erro(404, "rota não encontrada")
+
     def _arquivo_curriculo(self, nome: str):
         """Só .pdf, .docx e .txt de curriculos/, com o nome validado (nada de caminhos)."""
         sys.path.insert(0, str(banco.DASH.parent))
@@ -366,6 +389,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._busca(metodo, caminho)
             if caminho == "/api/curriculo" or caminho.startswith(("/api/curriculo/", "/api/kit/")):
                 return self._curriculo(metodo, caminho)
+            if caminho.startswith("/api/analises-perfil/"):
+                return self._analises(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             vid = self._id_da_rota(caminho)
@@ -397,6 +422,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._arquivo_curriculo_base(caminho.rsplit("/", 1)[1])
         if caminho.startswith("/arquivos/curriculos/"):
             return self._arquivo_curriculo(caminho[len("/arquivos/curriculos/"):])
+        if caminho == "/api/analises-perfil":  # as análises salvas e a prontidão calculada agora
+            import analise_perfil as ap
+            perfil = ap.perfil_texto()
+            return self._json(200, {"salvas": ap.carregar(), "prontidao": ap.prontidao(perfil), "ia": ia.disponivel(),
+                                    "existe_perfil": bool(perfil.strip()), "pode_alterar": self._local()})
         if caminho == "/api/kit/lista":  # cartas e respostas de uma vaga
             sys.path.insert(0, str(banco.DASH.parent))
             import candidatura_ia

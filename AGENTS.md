@@ -34,7 +34,8 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   currículo ou LinkedIn sem documentos de identificação), `diagnostico [perfil.md]` e
   `gravar <rascunho.md>` (só com o OK da pessoa). Já tem currículo: `PY curriculo_base.py lista`,
   `proposta <arquivo>` (não grava), `usar <arquivo> [--manter-perfil]` (só com o OK da pessoa) e
-  `marcar <arquivo> [--idioma en]`.
+  `marcar <arquivo> [--idioma en]`. Análises do perfil: `PY analise_perfil.py lacunas [--seguidas]`,
+  `prontidao`, `cargos` e `plano` (os dois últimos com IA).
 
 ## Skills da ferramenta
 

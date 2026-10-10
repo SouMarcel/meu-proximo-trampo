@@ -222,6 +222,25 @@ As perguntas pontuais sobre a Gupy usam o MCP público de candidatos da Gupy, de
 em `.mcp.json` com o nome `gupy-candidato`. Na primeira vez, o Claude Code pede para
 você aprovar esse servidor (ou rode `/mcp`). A busca de rotina não depende dele.
 
+### Análises do perfil
+
+Em **Meu perfil → Análises**, sempre a seu pedido:
+
+- **Lacunas das vagas**: o que as vagas que você já analisou pedem e o seu perfil não mostra (as
+  lacunas apontadas pela análise e os requisitos dos anúncios), agrupando a mesma lacuna escrita de
+  jeitos diferentes, com nível (crítica, alta, média), número de vagas e exemplos. Vagas com aderência
+  maior e as que você seguiu pesam mais; há as visões "todas" e "vagas que você seguiu", e o ranking
+  aparece a partir de 5 vagas analisadas. Funciona sem IA; com IA, um **plano de estudo** curto para
+  as lacunas do topo, se você pedir.
+- **Carreiras e cargos-alvo** (com IA): de 5 a 10 cargos que o seu perfil sustenta (lateral, degrau
+  ou vizinho), com a evidência do perfil, o que falta e os termos em português e inglês; cargo sem
+  evidência no perfil aparece marcado "conferir". Os que você marcar vão para os filtros da busca
+  depois da sua confirmação.
+- **Prontidão internacional**: o que já está pronto e o que falta para vagas de fora (inglês, fuso,
+  contratação, passaporte e autorização, currículo e LinkedIn em inglês), com o caminho para resolver.
+
+As análises ficam salvas com a data em `dash/dados/analises-perfil.json`, neste computador.
+
 ### Currículo
 
 A skill `gerar-curriculo` monta um **currículo base** a partir do seu perfil e do que

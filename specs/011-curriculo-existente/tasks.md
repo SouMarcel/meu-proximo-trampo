@@ -123,7 +123,7 @@ description: "Tarefas da feature 011: começar pelo currículo que a pessoa já 
 - [X] T022 [P] `README.md` (primeiros passos: começar pelo currículo; "Seu currículo" nas vagas), `AGENTS.md` (comandos
   do `curriculo_base.py`) e `config.exemplo.json` (sem `curriculo_base`, que é pessoal; só citado no README)
 - [X] T023 Rodar `python -m unittest discover -s tests` e o quickstart.md; registrar os resultados no `quickstart.md`
-- [ ] T024 Com o OK do usuário, marcar o currículo dele (de `anexos/`) como "Seu currículo" pela página, sem trocar o
+- [X] T024 Com o OK do usuário, marcar o currículo dele (de `anexos/`) como "Seu currículo" pela página, sem trocar o
   perfil
 - [X] T025 Busca de dados pessoais no diff, mostrar ao usuário e, com o OK, commit na `master`, push, merge na branch
   pessoal, reiniciar o servidor e `graphify update .`

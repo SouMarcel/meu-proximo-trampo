@@ -218,6 +218,16 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .seu-cv { display: grid; grid-template-columns: max-content 1fr; gap: 8px 12px; align-items: center; }
 .seu-cv select { background: var(--col); border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 8px; }
 @media (max-width: 720px) { .pf-dc-campos, .seu-cv { grid-template-columns: 1fr; } }
+.pa-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pa-lista li { padding: 8px 10px; border: 1px solid var(--line); border-left: 3px solid var(--line-strong); border-radius: 8px; background: var(--col); font-size: 13px; }
+.pa-lista li[data-n="critica"], .pa-lista li[data-s="falta"] { border-left-color: var(--bad); }
+.pa-lista li[data-n="alta"], .pa-lista li[data-s="nao_informado"] { border-left-color: var(--warn); }
+.pa-lista li[data-n="media"] { border-left-color: var(--info); }
+.pa-lista li[data-s="pronto"] { border-left-color: var(--good); }
+.pa-lista p { margin: 3px 0 0; }
+.pa-lista li li { border: none; padding: 1px 0; background: none; border-radius: 0; }
+.pa-nivel { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-right: 6px; color: var(--muted); }
+.pa-linha { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .lem-topo { margin: 0 0 10px; color: var(--warn); font-weight: 600; }
 #dlg-kit { width: min(680px, calc(100vw - 32px)); }
 .kit-pergunta { display: flex; flex-direction: column; gap: 4px; }
@@ -1782,13 +1792,14 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     $("pf-passos").innerHTML = PASSOS.map(function (p) {
       return '<button type="button" class="pf-passo" data-pf-ir="' + p.k + '"' + (p.k === et ? ' aria-current="step"' : "") + ">" + esc(p.label) + "</button>";
     }).join("") + (e.existe_perfil ? '<button type="button" class="pf-passo" data-cv="base-ir"' + (et === "curriculos" ? ' aria-current="step"' : "") +
-      ">Currículo base</button>" : "");
+      ">Currículo base</button>" + '<button type="button" class="pf-passo" data-pf="analises"' + (et === "analises" ? ' aria-current="step"' : "") +
+      ">Análises</button>" : "");
     var f = { ia: pfIA, materiais: pfMateriais, rascunho: pfRascunho, conflitos: pfConflitos, anamnese: pfAnamnese,
       diagnostico: pfDiagnostico, revisao: pfRevisao, filtros: pfFiltros, concluido: pfConcluido, curriculos: pfCurriculos,
-      "do-curriculo": pfDoCurriculo }[et] || pfIA;
+      "do-curriculo": pfDoCurriculo, analises: pfAnalises }[et] || pfIA;
     var r = f();
     $("pf-corpo").innerHTML = r.corpo + (pfSo() ? '<p class="fb-erro">Só dá para enviar arquivos e gravar no computador onde a ferramenta roda.</p>' : "");
-    $("pf-pe").innerHTML = (et !== "concluido" && et !== "curriculos" && et !== "do-curriculo" ? '<button type="button" class="btn-danger" data-pf="recomecar" data-escreve>Recomeçar</button>' : "") + r.pe;
+    $("pf-pe").innerHTML = (et !== "concluido" && et !== "curriculos" && et !== "do-curriculo" && et !== "analises" ? '<button type="button" class="btn-danger" data-pf="recomecar" data-escreve>Recomeçar</button>' : "") + r.pe;
     if (pfSo()) document.querySelectorAll("#dlg-perfil [data-escreve]").forEach(function (b) { b.disabled = true; });
   }
 
@@ -2142,6 +2153,103 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       (cvs.length ? '<div class="seu-cv">' + sel("pt", "Em português") + sel("en", "Em inglês") + "</div>" :
         '<p class="hint">Nenhum PDF ou Word na pasta anexos. Envie o arquivo em Arquivos (primeiros passos).</p>') + "</section>";
   }
+  /* ---------- análises do perfil (só no clique) ---------- */
+  var PA = { d: null, visao: "todas", lac: null, cargos: null, marcados: {}, proposta: null, ocupado: "" };
+  var PA_NIVEL = { critica: "Crítica", alta: "Alta", media: "Média" };
+  var PA_SIT = { pronto: "Pronto", falta: "Falta", nao_informado: "Não informado" };
+  var PA_TIPO = { lateral: "Lateral", degrau: "Degrau", vizinho: "Vizinho" };
+  function paCarregar() {
+    return API.get("/api/analises-perfil").then(function (j) {
+      PA.d = j; var s = j.salvas || {};
+      if (!PA.lac && s.lacunas) PA.lac = s.lacunas;
+      if (!PA.cargos && s.cargos) PA.cargos = s.cargos;
+      if ($("dlg-perfil").open && PF.etapa === "analises") montarPerfil();
+    }).catch(function (e) { pfFalha(e); });
+  }
+  function paData(x) { return x && x.data ? '<p class="hint">Análise de ' + esc(ddmm(x.data)) + " às " + esc(String(x.data).slice(11, 16)) + "</p>" : ""; }
+  function pfAnalises() {
+    if (!PA.d) { paCarregar(); return carregandoPf("Carregando as análises…"); }
+    var d = PA.d, ia = d.ia, dis = pfSo() ? " disabled" : "", ocup = function (k) { return PA.ocupado === k ? " disabled" : ""; };
+    var lac = PA.lac, h = "<p>Análises do seu perfil, sempre a seu pedido. Ficam salvas com a data neste computador.</p>";
+    // lacunas
+    h += '<section class="fb-sec"><h3>Lacunas das vagas</h3><p class="hint">O que as vagas que você analisou pedem e o seu perfil não mostra. ' +
+      "Vagas com aderência maior e as que você seguiu pesam mais.</p><div class=\"pa-linha\"><div class=\"pills\">" +
+      [["todas", "Todas as vagas"], ["seguidas", "Vagas que você seguiu"]].map(function (x) {
+        return '<button type="button" class="pill" data-pa-visao="' + x[0] + '" aria-pressed="' + (PA.visao === x[0]) + '">' + x[1] + "</button>"; }).join("") +
+      '</div><button type="button" class="btn-plain btn-ia-mini" data-pa="lacunas"' + dis + ocup("lacunas") + ">" + (PA.ocupado === "lacunas" ? "Analisando…" : "Analisar as vagas") + "</button></div>";
+    if (lac && lac.faltam) h += '<p class="aviso-config">' + lac.vagas + " vaga(s) analisada(s) nesta visão; faltam " + lac.faltam + " para o ranking ficar útil.</p>";
+    else if (lac && lac.itens) {
+      h += paData(lac) + '<p class="hint">Em ' + lac.vagas + " vagas (" + (lac.visao === "seguidas" ? "que você seguiu" : "todas") + ").</p>" +
+        (lac.itens.length ? '<ul class="pa-lista">' + lac.itens.map(function (i) {
+          return '<li data-n="' + esc(i.nivel) + '"><div class="pa-linha"><span class="pa-nivel">' + esc(PA_NIVEL[i.nivel]) + "</span><b>" + esc(i.rotulo) + "</b>" +
+            '<span class="hint">' + i.vagas + " vaga(s) · " + Math.round(i.parte * 100) + "% do peso</span></div>" +
+            (i.variacoes.length > 1 ? '<p class="hint">Também escrito como: ' + esc(i.variacoes.slice(1).join("; ")) + "</p>" : "") +
+            '<p class="hint">Ex.: ' + i.exemplos.map(function (x) { return '<button type="button" class="link-btn" data-det="' + esc(x.id) + '">' + esc(x.titulo + " — " + x.empresa) + "</button>"; }).join(", ") + "</p></li>";
+        }).join("") + "</ul>" : '<p class="hint">Nenhuma lacuna aparece em 10% ou mais do peso das vagas.</p>') +
+        '<div class="pa-linha"><button type="button" class="btn-plain btn-ia-mini" data-pa="plano"' + (ia && lac.itens.length ? "" : " disabled") + dis + ocup("plano") + ">" +
+        (PA.ocupado === "plano" ? "Escrevendo…" : "Plano de estudo") + "</button>" + (ia ? "" : '<span class="hint">O plano precisa de uma IA (botão IA) ou do chat.</span>') + "</div>";
+    }
+    var plano = (d.salvas || {}).plano;
+    if (plano && plano.itens) h += paData(plano) + '<ul class="pa-lista">' + plano.itens.map(function (p) {
+      return "<li><b>" + esc(p.lacuna) + '</b> <span class="hint">~' + p.semanas + " semana(s)</span><ul>" + p.passos.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></li>"; }).join("") + "</ul>";
+    h += "</section>";
+    // cargos-alvo
+    var cg = PA.cargos;
+    h += '<section class="fb-sec"><h3>Carreiras e cargos-alvo</h3><p class="hint">De 5 a 10 cargos que o seu perfil sustenta, com a evidência e o que falta. ' +
+      'Marque os que quiser buscar e leve para os filtros (só grava quando você confirmar).</p><div class="pa-linha"><button type="button" class="btn-plain btn-ia-mini" data-pa="cargos"' +
+      (ia ? "" : " disabled") + dis + ocup("cargos") + ">" + (PA.ocupado === "cargos" ? "Pensando…" : "Sugerir cargos") + "</button>" + (ia ? "" : '<span class="hint">Precisa de uma IA (botão IA) ou do chat.</span>') + "</div>";
+    if (cg && cg.itens) {
+      h += paData(cg) + ((cg.avisos || []).length ? '<p class="hint">' + esc(cg.avisos.join(" ")) + "</p>" : "") + '<ul class="pa-lista">' + cg.itens.map(function (c, n) {
+        return '<li><label class="check"><input type="checkbox" data-pa-cargo="' + n + '"' + (PA.marcados[n] ? " checked" : "") + dis + "> <b>" + esc(c.titulo) + "</b>" +
+          (c.titulo_en ? ' <span class="hint">/ ' + esc(c.titulo_en) + "</span>" : "") + '</label> <span class="pa-nivel">' + esc(PA_TIPO[c.tipo] || c.tipo) + "</span>" +
+          (c.conferir ? '<span class="kit-risco">conferir: a evidência não foi achada no perfil</span>' : "") +
+          '<p class="hint">Evidência: “' + esc(c.evidencia) + "”" + (c.lacuna ? " · Falta: " + esc(c.lacuna) : "") + "</p></li>"; }).join("") + "</ul>" +
+        '<div class="pa-linha"><button type="button" class="btn-plain btn-ia-mini" data-pa="cargos-propor"' + dis + ">Levar os marcados para os filtros</button></div>";
+      if (PA.proposta) h += '<div class="aviso-config">' + PA.proposta.mudancas.map(function (m) {
+          return "<p><b>" + esc(m.campo) + ":</b> " + esc((m.proposto || []).join(", ")) + "</p>"; }).join("") +
+        '<button type="button" class="btn-primary" data-pa="cargos-confirmar"' + dis + ">Confirmar e gravar nos filtros</button></div>";
+    }
+    h += "</section>";
+    // prontidão internacional
+    h += '<section class="fb-sec"><h3>Prontidão internacional</h3><p class="hint">O que já está pronto e o que falta para se candidatar a vagas de fora.</p><ul class="pa-lista">' +
+      (d.prontidao || []).map(function (i) {
+        var acao = { filtros_int: '<button type="button" class="btn-plain btn-ia-mini" data-pa="ir-int">Abrir o painel internacional</button>',
+          curriculo: '<button type="button" class="btn-plain btn-ia-mini" data-pa="ir-cv">Ver currículos</button>',
+          perfil: '<button type="button" class="btn-plain btn-ia-mini" data-pf-ir="anamnese">Completar o perfil</button>',
+          marcar: '<label class="check"><input type="checkbox" data-pa-marcar="linkedin_en"' + (i.situacao === "pronto" ? " checked" : "") + dis + "> Meu LinkedIn tem a versão em inglês</label>" }[i.acao] || "";
+        return '<li data-s="' + esc(i.situacao) + '"><div class="pa-linha"><span class="pa-nivel">' + esc(PA_SIT[i.situacao]) + "</span><b>" + esc(i.rotulo) + "</b>" +
+          (i.situacao !== "pronto" || i.acao === "marcar" ? acao : "") + '</div><p class="hint">' + esc(i.detalhe) + " · " + esc(i.origem) + "</p></li>"; }).join("") + "</ul></section>";
+    return { corpo: h, pe: '<button type="button" class="btn-primary" data-pf="fechar">Fechar</button>' };
+  }
+  function paAcao(acao, t) {
+    pfErro("");
+    var feito = function () { PA.ocupado = ""; montarPerfil(); };
+    if (acao === "lacunas") {
+      PA.ocupado = "lacunas"; montarPerfil();
+      return API.send("POST", "/api/analises-perfil/lacunas", { visao: PA.visao }).then(function (j) { PA.lac = j; return paCarregar(); }).catch(pfFalha).then(feito);
+    }
+    if (acao === "plano") {
+      PA.ocupado = "plano"; montarPerfil();
+      return API.send("POST", "/api/analises-perfil/plano", {}).then(paCarregar).catch(pfFalha).then(feito);
+    }
+    if (acao === "cargos") {
+      PA.ocupado = "cargos"; montarPerfil();
+      return API.send("POST", "/api/analises-perfil/cargos", {}).then(function (j) { PA.cargos = j; PA.marcados = {}; PA.proposta = null; }).catch(pfFalha).then(feito);
+    }
+    var escolhidos = function () { return (PA.cargos.itens || []).filter(function (c, n) { return PA.marcados[n]; }); };
+    if (acao === "cargos-propor") {
+      if (!escolhidos().length) return pfErro("Marque pelo menos um cargo.");
+      return API.send("POST", "/api/analises-perfil/cargos/filtros", { cargos: escolhidos() }).then(function (j) { PA.proposta = j; montarPerfil(); }).catch(pfFalha);
+    }
+    if (acao === "cargos-confirmar") {
+      t.disabled = true;
+      return API.send("POST", "/api/analises-perfil/cargos/filtros", { cargos: escolhidos(), confirmar: true }).then(function () {
+        PA.proposta = null; PA.marcados = {}; toast("Cargos gravados nos filtros da busca."); montarPerfil(); }).catch(function (e) { pfFalha(e); t.disabled = false; });
+    }
+    if (acao === "ir-int") { $("dlg-perfil").close(); return abrirFiltros(null, null, "int"); }
+    if (acao === "ir-cv") { PF.etapa = "curriculos"; return montarPerfil(); }
+  }
+
   function pfRecomecar(pergunta) {
     if (pergunta && !confirm("Recomeçar apaga o progresso (respostas e rascunho). Os arquivos enviados continuam na pasta anexos. Continuar?")) return;
     API.send("DELETE", "/api/perfil/progresso").then(function (j) {
@@ -2154,6 +2262,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     $("btn-perfil").addEventListener("click", abrirPerfil);
     $("dlg-ia").addEventListener("close", function () { if (dlg.open) pfCarregar().then(montarPerfil).catch(function () {}); });
     dlg.addEventListener("change", function (ev) {
+      if (ev.target.hasAttribute("data-pa-cargo")) { PA.marcados[ev.target.getAttribute("data-pa-cargo")] = ev.target.checked; PA.proposta = null; return; }
+      if (ev.target.hasAttribute("data-pa-marcar")) {
+        return API.send("PUT", "/api/analises-perfil/marcas", { linkedin_en: ev.target.checked }).then(paCarregar).catch(pfFalha);
+      }
       var idioma = ev.target.getAttribute("data-seu-cv");
       if (!idioma) return;
       API.send("PUT", "/api/curriculo-base", { idioma: idioma, arquivo: ev.target.value || null }).then(function (j) {
@@ -2167,6 +2279,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (ir) return pfIr(ir);
       if (acao === "fechar") return dlg.close();
       if (acao === "dc-usar") return pfUsarCurriculo(t.getAttribute("data-arquivo"));
+      if (acao === "analises") { PF.etapa = "analises"; PA.d = null; pfErro(""); return montarPerfil(); }
+      if (t.hasAttribute("data-pa")) return paAcao(t.getAttribute("data-pa"), t);
+      if (t.hasAttribute("data-pa-visao")) { PA.visao = t.getAttribute("data-pa-visao"); PA.lac = null; return montarPerfil(); }
       if (acao === "dc-confirmar") return pfConfirmarCurriculo(t);
       if (acao === "ia") return abrirIA();
       if (acao === "recomecar") return pfRecomecar(true);

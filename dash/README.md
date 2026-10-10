@@ -84,6 +84,9 @@ outros sites e `m-…` nas preenchidas à mão.
 | `lembretes`, `entrevista_em` | lembretes de follow-up marcados (`feito`, `dispensado`, `parar`, valem para a etapa e a data em `base`) e a data da entrevista |
 | `documentos[]` | cartas e respostas de formulário geradas pela página (`tipo`, `nome` dos arquivos em `curriculos/`) |
 | `checklist`, `lembretes_pendentes` | calculados pelo servidor a cada leitura (não gravados) |
+
+As análises do perfil (lacunas das vagas, cargos-alvo, plano de estudo e as marcações da prontidão
+internacional) ficam em `dash/dados/analises-perfil.json`, ao lado do banco, a última de cada tipo com a data.
 | `sinais` | sinais positivos lidos no anúncio sem IA ("Oferece patrocínio de visto", "Oferece relocation" e as suas frases positivas); etiqueta verde na listagem, no card e no detalhe |
 | `triagem` | `pendente` (no relatório), `seguir` (foi para o quadro), `visitada` (não seguir), `fora` (furou os filtros da busca) |
 | `motivo_fora[]` | por que a vaga ficou fora dos critérios |
