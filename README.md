@@ -111,8 +111,18 @@ mesmo Wi-Fi) e `--porta 8766`. Ajuda: `python iniciar.py --help`.
 ### Primeiros passos
 
 Na primeira abertura, a página abre os **primeiros passos** (depois, pelo botão **Meu perfil**).
-Você envia o que já tem e a ferramenta monta com você o seu perfil de carreira, a base da nota
-de aderência:
+
+**Já tem um currículo pronto?** Envie o arquivo (ou escolha um da pasta `anexos/`) e use **Usar
+este currículo e ir para as vagas**: a ferramenta lê o texto (sem CPF, RG e data de nascimento),
+usa esse texto como o seu perfil e propõe os filtros da busca a partir dele (cargos, cidade,
+modelo de trabalho; com IA, também os cargos em inglês). Você confere uma tela só e confirma; o
+painel de busca abre em seguida. Os idiomas, a busca no exterior e o resto dos filtros ficam como
+estão. Se você já tem um perfil, pode mantê-lo e só marcar o arquivo como **seu currículo**. O seu
+currículo (um em português e um em inglês) aparece no item Currículo de cada vaga, com link para
+abrir; gerar outro é só se você quiser uma versão adaptada. Para completar o perfil depois, Meu
+perfil oferece **Completar com a anamnese**.
+
+O caminho completo monta com você o seu perfil de carreira, a base da nota de aderência:
 
 1. **IA**: escolha a IA ou siga sem ela.
 2. **Materiais**: currículo em PDF ou Word (.docx), o PDF do seu perfil do LinkedIn (**Mais →

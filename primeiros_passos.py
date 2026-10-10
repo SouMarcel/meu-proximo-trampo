@@ -44,6 +44,8 @@ LIMITE_ITEM = 600
 ETAPAS = ("ia", "materiais", "rascunho", "conflitos", "anamnese", "diagnostico", "revisao", "filtros", "concluido")
 SECOES_LISTA = ("objetivo", "resumo", "formacao", "certificacoes", "habilidades", "idiomas")
 CONFLITO = re.compile(r"\{\{conflito:(\d+)\}\}")
+# perfil feito direto do currículo (curriculo_base.py): Meu perfil reconhece e oferece a anamnese para completar
+ORIGEM_CURRICULO = re.compile(r"<!--\s*origem:\s*curriculo\s+arquivo=(?P<arquivo>\S+)\s+data=(?P<data>\d{4}-\d{2}-\d{2})\s*-->")
 
 
 class PerfilErro(ValueError):
@@ -319,6 +321,29 @@ def adicionar_material(estado: dict, nome: str, dados: bytes | None = None, text
     estado["materiais"].append(material)
     estado["proximo"] = estado.get("proximo", 1) + 1
     return material
+
+
+def adicionar_existente(estado: dict, caminho: Path) -> dict:
+    """Um currículo que já está em anexos/ (PDF ou DOCX) entra como material sem ser copiado, com a mesma leitura e
+    a mesma máscara de documentos. Se ele já está nos materiais, devolve o que existe."""
+    caminho = Path(caminho).resolve()
+    anexos = (RAIZ / "anexos").resolve()
+    if not caminho.is_relative_to(anexos) or caminho.suffix.lower() not in (".pdf", ".docx") or not caminho.is_file():
+        raise PerfilErro("escolha um currículo em PDF ou Word (.docx) da pasta anexos")
+    rel = caminho.relative_to(RAIZ.resolve()).as_posix()
+    existente = next((m for m in estado["materiais"] if m.get("arquivo") == rel), None)
+    if existente:
+        return existente
+    material = {"id": f"m{estado.get('proximo', 1)}", "nome": caminho.name[:120], "arquivo": rel, **extrair(caminho)}
+    estado["materiais"].append(material)
+    estado["proximo"] = estado.get("proximo", 1) + 1
+    return material
+
+
+def origem_do_perfil(texto: str) -> dict | None:
+    """{arquivo, data} quando o perfil foi feito direto do currículo; senão None."""
+    m = ORIGEM_CURRICULO.search(str(texto or ""))
+    return {"arquivo": m.group("arquivo"), "data": m.group("data")} if m else None
 
 
 def remover_material(estado: dict, mid: str) -> None:
@@ -856,10 +881,13 @@ def estado_para_pagina(pode_alterar: bool) -> dict:
         ia_ok = ia.disponivel()
     except (OSError, ValueError):
         ia_ok = False
+    perfil = caminho_perfil()
+    origem = origem_do_perfil(perfil.read_text(encoding="utf-8", errors="replace")) if perfil.exists() else None
     return {
-        "existe_perfil": caminho_perfil().exists(), "etapa": estado["etapa"],
+        "existe_perfil": perfil.exists(), "perfil_do_curriculo": origem, "etapa": estado["etapa"],
         "materiais": [{"id": m["id"], "tipo": m["tipo"], "nome": m["nome"], "avisos": m.get("avisos") or [],
-                       "trecho": (m.get("texto") or "")[:600], "tem_texto": bool(m.get("texto"))}
+                       "trecho": (m.get("texto") or "")[:600], "tem_texto": bool(m.get("texto")),
+                       "arquivo": m.get("arquivo") or ""}
                       for m in estado["materiais"]],
         "rascunho": estado["rascunho"], "respostas": estado["respostas"], "contato": estado["contato"],
         "contatos_achados": contatos, "perguntas": perguntas_para(estado), "ia_disponivel": ia_ok,

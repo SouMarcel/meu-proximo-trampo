@@ -210,6 +210,14 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .kit-resp textarea { background: var(--card); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; }
 .kit-mais { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .kit-mais .btn-plain { margin: 0; color: var(--fg); }
+.pf-dc-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pf-dc-campos input[type="text"] { width: 100%; background: var(--col); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; }
+.pf-cvs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pf-cvs li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--col); }
+.pf-cvs small { color: var(--muted); }
+.seu-cv { display: grid; grid-template-columns: max-content 1fr; gap: 8px 12px; align-items: center; }
+.seu-cv select { background: var(--col); border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 8px; }
+@media (max-width: 720px) { .pf-dc-campos, .seu-cv { grid-template-columns: 1fr; } }
 .lem-topo { margin: 0 0 10px; color: var(--warn); font-weight: 600; }
 #dlg-kit { width: min(680px, calc(100vw - 32px)); }
 .kit-pergunta { display: flex; flex-direction: column; gap: 4px; }
@@ -1776,10 +1784,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     }).join("") + (e.existe_perfil ? '<button type="button" class="pf-passo" data-cv="base-ir"' + (et === "curriculos" ? ' aria-current="step"' : "") +
       ">Currículo base</button>" : "");
     var f = { ia: pfIA, materiais: pfMateriais, rascunho: pfRascunho, conflitos: pfConflitos, anamnese: pfAnamnese,
-      diagnostico: pfDiagnostico, revisao: pfRevisao, filtros: pfFiltros, concluido: pfConcluido, curriculos: pfCurriculos }[et] || pfIA;
+      diagnostico: pfDiagnostico, revisao: pfRevisao, filtros: pfFiltros, concluido: pfConcluido, curriculos: pfCurriculos,
+      "do-curriculo": pfDoCurriculo }[et] || pfIA;
     var r = f();
     $("pf-corpo").innerHTML = r.corpo + (pfSo() ? '<p class="fb-erro">Só dá para enviar arquivos e gravar no computador onde a ferramenta roda.</p>' : "");
-    $("pf-pe").innerHTML = (et !== "concluido" && et !== "curriculos" ? '<button type="button" class="btn-danger" data-pf="recomecar" data-escreve>Recomeçar</button>' : "") + r.pe;
+    $("pf-pe").innerHTML = (et !== "concluido" && et !== "curriculos" && et !== "do-curriculo" ? '<button type="button" class="btn-danger" data-pf="recomecar" data-escreve>Recomeçar</button>' : "") + r.pe;
     if (pfSo()) document.querySelectorAll("#dlg-perfil [data-escreve]").forEach(function (b) { b.disabled = true; });
   }
 
@@ -1787,7 +1796,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var nome = !IA.e ? "…" : IA.e.efetiva === "nenhum" ? "nenhuma (seguir sem IA)" :
       nomeIA(IA.e.efetiva) + (IA.e.modelo_efetivo ? " · " + IA.e.modelo_efetivo : "") + (IA.e.disponivel ? "" : " (falta a chave)");
     return {
-      corpo: "<p>Vamos montar o seu perfil de carreira a partir do que você já tem (currículos e LinkedIn) e de algumas perguntas. " +
+      corpo: '<p class="aviso-config"><b>Já tem um currículo pronto?</b> No próximo passo, envie o arquivo (ou escolha um da pasta anexos) e use ' +
+        "<b>Usar este currículo e ir para as vagas</b>: sem perguntas, você confere uma tela só e já vai para a busca.</p>" +
+        "<p>Vamos montar o seu perfil de carreira a partir do que você já tem (currículos e LinkedIn) e de algumas perguntas. " +
         "O perfil é a base da nota de aderência das vagas. Nada é gravado sem você conferir e confirmar; dá para parar e continuar depois.</p>" +
         '<section class="fb-sec"><h3>IA</h3><p class="ia-status">IA escolhida: <b>' + esc(nome) + "</b>" +
         '<button type="button" class="btn-plain btn-ia-mini" data-pf="ia">Trocar</button></p><ul class="ia-avisos">' +
@@ -1804,8 +1815,12 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       return "<li><div><b>" + esc(m.nome) + '</b> <span class="pf-tipo">' + esc(TIPOS_MATERIAL[m.tipo] || m.tipo) + "</span>" +
         (m.avisos.length ? '<p class="pf-aviso">' + m.avisos.map(esc).join("<br>") + "</p>" : "") +
         (m.trecho ? '<details><summary class="hint">Texto lido</summary><pre class="pf-texto">' + esc(m.trecho) + (m.trecho.length >= 600 ? "…" : "") + "</pre></details>" : "") +
-        '</div><button type="button" class="btn-plain btn-ia-mini" data-pf="remover" data-id="' + esc(m.id) + '" data-escreve>Remover</button></li>';
+        "</div><span>" + (/\.(pdf|docx)$/i.test(m.arquivo || "") && m.tem_texto ? '<button type="button" class="btn-plain btn-ia-mini" data-pf="dc-usar" data-arquivo="' +
+          esc(m.arquivo) + '" data-escreve>Usar este currículo e ir para as vagas</button>' : "") +
+        '<button type="button" class="btn-plain btn-ia-mini" data-pf="remover" data-id="' + esc(m.id) + '" data-escreve>Remover</button></span></li>';
     }).join("") + "</ul>" : '<p class="hint">Nenhum material ainda.</p>';
+    var usados = ms.map(function (m) { return m.arquivo; }), noAnexos = (PF.cvs ? PF.cvs.curriculos : []).filter(function (c) { return usados.indexOf(c.arquivo) < 0; });
+    if (!PF.cvs) pfCurriculosAnexos();
     return {
       corpo: '<section class="fb-sec"><h3>Arquivos</h3>' +
         '<label class="pf-drop" id="pf-drop"><input type="file" id="pf-arquivo" accept=".pdf,.docx,.zip" multiple data-escreve hidden>' +
@@ -1815,6 +1830,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         "<li><b>Exportação de dados</b> (mais completa): <i>Eu → Configurações e privacidade → Privacidade de dados → Obter uma cópia dos seus dados</i>. O LinkedIn manda o ZIP por e-mail.</li>" +
         "<li>A ferramenta não abre o LinkedIn: lê só os arquivos que você enviar. Eles ficam na pasta anexos, neste computador.</li></ul></details>" +
         lista + "</section>" +
+        (noAnexos.length ? '<section class="fb-sec"><h3>Currículos que já estão na pasta anexos</h3><ul class="pf-cvs">' + noAnexos.map(function (c) {
+          return "<li><span><b>" + esc(c.nome) + "</b> <small>" + esc(c.arquivo) + " · " + esc(c.idioma === "en" ? "inglês" : "português") + "</small></span>" +
+            '<button type="button" class="btn-plain btn-ia-mini" data-pf="dc-usar" data-arquivo="' + esc(c.arquivo) + '" data-escreve>Usar este currículo e ir para as vagas</button></li>';
+        }).join("") + "</ul></section>" : "") +
         '<section class="fb-sec"><h3>Ou cole um texto</h3><div class="field"><label for="pf-colar">Texto do currículo ou do perfil</label>' +
         '<textarea id="pf-colar" maxlength="60000" data-escreve></textarea></div>' +
         '<div class="add-row"><button type="button" class="btn-plain" data-pf="colar" data-escreve>Adicionar texto</button></div></section>' +
@@ -2047,11 +2066,81 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   }
   function pfConcluido() {
     return {
-      corpo: "<p><b>Perfil pronto.</b> Ele é a base da nota de aderência das vagas e dos currículos.</p><ul class=\"ia-avisos\">" +
+      corpo: (PF.e.perfil_do_curriculo ? '<p class="aviso-config">Seu perfil veio do currículo <b>' + esc(PF.e.perfil_do_curriculo.arquivo.split("/").pop()) +
+          "</b> em " + esc(ddmm(PF.e.perfil_do_curriculo.data)) + ". A nota das vagas fica mais precisa com o perfil completo (números, níveis, idiomas, vagas de fora). " +
+          '<button type="button" class="btn-plain btn-ia-mini" data-pf-ir="rascunho" data-escreve>Completar com a anamnese</button></p>' : "") +
+        "<p><b>Perfil pronto.</b> Ele é a base da nota de aderência das vagas e dos currículos.</p><ul class=\"ia-avisos\">" +
         "<li>Para buscar vagas, use o botão <b>Buscar vagas</b> no Relatório de Vagas (ou peça no chat do seu assistente).</li>" +
-        "<li>Para mudar o perfil depois, abra Meu perfil e escolha Atualizar o perfil: a versão atual fica guardada.</li></ul>" + cvSecao("base"),
+        "<li>Para mudar o perfil depois, abra Meu perfil e escolha Atualizar o perfil: a versão atual fica guardada.</li></ul>" + pfSeuCurriculo() + cvSecao("base"),
       pe: '<button type="button" class="btn-plain" data-pf="atualizar" data-escreve>Atualizar o perfil</button><button type="button" class="btn-primary" data-pf="fechar">Fechar</button>'
     };
+  }
+  function pfCurriculosAnexos() {
+    if (PF.cvsCarregando) return;
+    PF.cvsCarregando = true;
+    API.get("/api/perfil/curriculos").then(function (j) { PF.cvs = j; }).catch(function () { PF.cvs = { curriculos: [], curriculo_base: {} }; })
+      .then(function () { PF.cvsCarregando = false; if ($("dlg-perfil").open) montarPerfil(); });
+  }
+  function pfUsarCurriculo(arquivo) {
+    PF.dc = null; PF.etapa = "do-curriculo"; pfErro(""); montarPerfil();
+    API.send("POST", "/api/perfil/do-curriculo", { arquivo: arquivo }).then(function (j) { PF.dc = j; montarPerfil(); $("pf-corpo").scrollTop = 0; })
+      .catch(function (e) { PF.etapa = "materiais"; montarPerfil(); pfFalha(e); });
+  }
+  function pfDoCurriculo() {
+    var d = PF.dc;
+    if (!d) return carregandoPf("Lendo o currículo…");
+    var ed = d.edicao || {}, m = (d.filtros || {}).modelos || {}, idi = d.idioma === "en" ? "inglês" : "português";
+    var campo = function (id, rot, valor, dica) {
+      return '<div class="field"><label for="' + id + '">' + rot + '</label><input type="text" id="' + id + '" value="' + esc(valor || "") + '" data-escreve>' +
+        (dica ? '<span class="hint">' + dica + "</span>" : "") + "</div>"; };
+    var cargos = (ed.cargos || []).join(", "), cargosEn = (ed.cargos_en || []).join(", ");
+    if (!cargos && !cargosEn && d.filtros) cargos = d.filtros.termos.map(function (t) { return t.replace(/"/g, ""); }).join(", ");
+    return {
+      corpo: "<p>Do seu currículo <b>" + esc(d.nome) + "</b> (" + idi + "), direto para as vagas. Confira e ajuste; nada é gravado até você confirmar.</p>" +
+        (d.avisos.length ? '<ul class="ia-avisos">' + d.avisos.map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("") + "</ul>" : "") +
+        '<section class="fb-sec"><h3>Filtros da busca</h3><div class="pf-dc-campos">' +
+        campo("pf-dc-cargos", "Cargos (separados por vírgula)", cargos, d.dados && d.dados.origem === "ia" ? "Lidos pela IA no currículo" : "Do objetivo ou do cargo mais recente") +
+        campo("pf-dc-en", "Cargos em inglês", cargosEn, "Opcional; usados também na busca no exterior") +
+        campo("pf-dc-cidade", "Cidade", ed.cidade, "Para vagas híbridas e presenciais") + campo("pf-dc-uf", "Estado", ed.estado, "") +
+        "</div><div class=\"pills\">" + ["remoto", "hibrido", "presencial"].map(function (k) {
+          return '<label class="check"><input type="checkbox" id="pf-dc-m-' + k + '"' + (m[k] ? " checked" : "") + " data-escreve> " + { remoto: "Remoto", hibrido: "Híbrido", presencial: "Presencial" }[k] + "</label>"; }).join("") +
+        '</div><p class="hint">Idiomas, busca no exterior e o resto dos filtros ficam como estão.' + (d.existe_perfil ? " Se você mantiver o seu perfil, estes filtros também ficam como estão: só o currículo é marcado." : "") + '</p></section>' +
+        '<section class="fb-sec"><h3>Perfil</h3>' + (d.existe_perfil ?
+          '<label class="check"><input type="radio" name="pf-dc-perfil" value="manter" checked data-escreve> Manter o meu perfil e só marcar este como o meu currículo</label>' +
+          '<label class="check"><input type="radio" name="pf-dc-perfil" value="substituir" data-escreve> Trocar o perfil pelo texto deste currículo (o atual fica guardado)</label>' :
+          "<p>O seu perfil será o texto do currículo, sem perguntas. Depois, em Meu perfil, dá para completar com a anamnese.</p>") +
+        (d.perfil ? '<details' + (d.existe_perfil ? "" : " open") + '><summary class="hint">Ver e editar o perfil</summary><div class="field"><textarea id="pf-dc-texto" style="min-height:220px" data-escreve>' +
+          esc(d.perfil) + "</textarea></div></details>" : "") + "</section>" +
+        '<section class="fb-sec"><label class="check"><input type="checkbox" id="pf-dc-base" checked data-escreve> Marcar como o meu currículo em ' + idi +
+        ' (aparece nas vagas, no item Currículo)</label></section>',
+      pe: botaoIr("materiais", "Voltar") + '<button type="button" class="btn-primary" data-pf="dc-confirmar" data-escreve>Confirmar e ir para as vagas</button>'
+    };
+  }
+  function pfConfirmarCurriculo(t) {
+    var d = PF.dc, lista = function (id) { return ($(id).value || "").split(",").map(function (x) { return x.trim(); }).filter(Boolean); };
+    var manter = d.existe_perfil && (document.querySelector('input[name="pf-dc-perfil"]:checked') || {}).value !== "substituir";
+    var corpo = { arquivo: d.arquivo, idioma: d.idioma, manter_perfil: manter, marcar_base: $("pf-dc-base").checked,
+      perfil: manter ? "" : ($("pf-dc-texto") ? $("pf-dc-texto").value : d.perfil),
+      edicao: { cargos: lista("pf-dc-cargos"), cargos_en: lista("pf-dc-en"), cidade: $("pf-dc-cidade").value.trim(), estado: $("pf-dc-uf").value.trim(),
+        modelos: ["remoto", "hibrido", "presencial"].filter(function (k) { return $("pf-dc-m-" + k).checked; }) } };
+    if (manter) delete corpo.edicao;
+    else if (!corpo.edicao.cargos.length && !corpo.edicao.cargos_en.length) return pfErro("Escreva pelo menos um cargo.");
+    t.disabled = true; pfErro("");
+    API.send("POST", "/api/perfil/do-curriculo/confirmar", corpo).then(function () {
+      PF.cvs = null; $("dlg-perfil").close(); toast(manter ? "Pronto: seu currículo marcado; perfil e filtros como estavam." : "Pronto: perfil feito do seu currículo e filtros gravados. Agora é só buscar.");
+      carregar(); abrirBusca();
+    }).catch(function (e) { pfFalha(e); t.disabled = false; });
+  }
+  function pfSeuCurriculo() {
+    if (!PF.cvs) { pfCurriculosAnexos(); return '<section class="fb-sec"><h3>Seu currículo</h3><p class="hint">Carregando…</p></section>'; }
+    var cvs = PF.cvs.curriculos || [], base = PF.cvs.curriculo_base || {};
+    var sel = function (idioma, rot) {
+      return "<label for=\"pf-seu-" + idioma + "\">" + rot + '</label><select id="pf-seu-' + idioma + '" data-seu-cv="' + idioma + '" data-escreve><option value="">Nenhum</option>' +
+        cvs.map(function (c) { return '<option value="' + esc(c.arquivo) + '"' + (base[idioma] === c.arquivo ? " selected" : "") + ">" + esc(c.arquivo) + "</option>"; }).join("") + "</select>"; };
+    return '<section class="fb-sec"><h3>Seu currículo</h3><p class="hint">O currículo que você já tem, para mostrar em cada vaga (item Currículo do checklist). ' +
+      "Fica na pasta anexos, neste computador; a ferramenta só gera outro se você pedir.</p>" +
+      (cvs.length ? '<div class="seu-cv">' + sel("pt", "Em português") + sel("en", "Em inglês") + "</div>" :
+        '<p class="hint">Nenhum PDF ou Word na pasta anexos. Envie o arquivo em Arquivos (primeiros passos).</p>') + "</section>";
   }
   function pfRecomecar(pergunta) {
     if (pergunta && !confirm("Recomeçar apaga o progresso (respostas e rascunho). Os arquivos enviados continuam na pasta anexos. Continuar?")) return;
@@ -2064,12 +2153,21 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var dlg = $("dlg-perfil");
     $("btn-perfil").addEventListener("click", abrirPerfil);
     $("dlg-ia").addEventListener("close", function () { if (dlg.open) pfCarregar().then(montarPerfil).catch(function () {}); });
+    dlg.addEventListener("change", function (ev) {
+      var idioma = ev.target.getAttribute("data-seu-cv");
+      if (!idioma) return;
+      API.send("PUT", "/api/curriculo-base", { idioma: idioma, arquivo: ev.target.value || null }).then(function (j) {
+        PF.cvs.curriculo_base = j.curriculo_base; toast(ev.target.value ? "Seu currículo marcado." : "Desmarcado."); carregar();
+      }).catch(pfFalha);
+    });
     dlg.addEventListener("click", function (ev) {
       var t = ev.target.closest("button");
       if (!t || t.disabled) return;
       var ir = t.getAttribute("data-pf-ir"), acao = t.getAttribute("data-pf");
       if (ir) return pfIr(ir);
       if (acao === "fechar") return dlg.close();
+      if (acao === "dc-usar") return pfUsarCurriculo(t.getAttribute("data-arquivo"));
+      if (acao === "dc-confirmar") return pfConfirmarCurriculo(t);
       if (acao === "ia") return abrirIA();
       if (acao === "recomecar") return pfRecomecar(true);
       if (acao === "atualizar") return pfRecomecar(false);
@@ -2443,7 +2541,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (acao === "base-ir") { PF.etapa = "curriculos"; return montarPerfil(); }
   }
   function pfCurriculos() {
-    return { corpo: '<p class="hint">O currículo base é o que você envia para a maioria das vagas, voltado para os cargos que procura.</p>' + cvSecao("base"),
+    return { corpo: pfSeuCurriculo() + '<p class="hint">O currículo base gerado pela IA é uma versão nova, voltada para os cargos que procura.</p>' + cvSecao("base"),
       pe: botaoIr(PF.e.etapa && PF.e.etapa !== "curriculos" ? PF.e.etapa : "ia", "Voltar ao perfil") };
   }
 
@@ -2492,11 +2590,14 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         esc(ktSistema(v)) + "</a>" : '<span class="hint">sem link</span>';
     } else if (i.acao) acao = '<button type="button" class="btn-plain btn-ia-mini" data-kit-acao="' + esc(i.acao) + '"' + (S.offline ? " disabled" : "") + ">" + KT_ACOES[i.acao] + "</button>";
     var origem = { analise: "A análise leu: ", anuncio: "No anúncio: " }[i.origem];
+    if (i.base) acao = '<a class="btn-plain btn-ia-mini" href="' + esc(BASE + i.base.url) + '" target="_blank" rel="noopener" title="Seu currículo: ' + esc(i.base.nome) + '">Abrir o seu</a>' + acao;
     return '<li class="kit-item" data-e="' + esc(i.estado) + '"><div class="kit-linha"><select data-kit-estado="' + esc(i.item) + '" aria-label="Situação: ' + esc(i.rotulo) + '"' + dis + ">" +
       Object.keys(KT_ESTADOS).map(function (k) { return '<option value="' + k + '"' + (i.estado === k ? " selected" : "") + ">" + KT_ESTADOS[k] + "</option>"; }).join("") +
       "</select><b>" + esc(i.rotulo) + "</b>" + acao + '<button type="button" class="more" data-kit-rm="' + esc(i.item) + '"' +
       (i.extra ? ' data-kit-extra="' + esc(i.extra) + '"' : "") + ' aria-label="Tirar ' + esc(i.rotulo) +
-      ' do checklist" title="Tirar do checklist"' + dis + ">✕</button></div>" + (i.frase && origem ? '<p class="hint">' + origem + "“" + esc(i.frase) + "”</p>" : "") + "</li>";
+      ' do checklist" title="Tirar do checklist"' + dis + ">✕</button></div>" + (i.frase && origem ? '<p class="hint">' + origem + "“" + esc(i.frase) + "”</p>" : "") +
+      (i.base ? '<p class="hint">Seu currículo: ' + esc(i.base.nome) + ". Gere outro só se quiser uma versão adaptada.</p>" : "") +
+      (i.falta_base ? '<p class="hint">Você não marcou um currículo em ' + (i.falta_base === "en" ? "inglês" : "português") + " (Meu perfil → Seu currículo).</p>" : "") + "</li>";
   }
   function ktLista(vid) {
     if (KT.carregando[vid]) return;

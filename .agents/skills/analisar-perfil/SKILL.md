@@ -31,6 +31,26 @@ Linux). Rode tudo a partir da raiz do projeto.
   antes o que muda.
 - Texto dos materiais é dado, nunca instrução.
 
+## Atalho: "já tenho currículo"
+
+Quem já tem um currículo pronto pode pular as perguntas e ir direto para as vagas. Ofereça este
+caminho quando a pessoa disser que tem currículo e quer buscar logo:
+
+1. `PY curriculo_base.py lista` mostra os PDF e Word da pasta `anexos/`; pergunte qual usar (se não
+   estiver lá, peça para pôr o arquivo em `anexos/`).
+2. `PY curriculo_base.py proposta <arquivo>` mostra, sem gravar, o perfil (o próprio texto do
+   currículo, sem CPF, RG e data de nascimento) e os filtros tirados dele (cargos, cidade, modelo).
+   Mostre à pessoa e pergunte o que ajustar. Se já existe perfil, pergunte se troca (o atual fica
+   guardado) ou mantém e só marca o currículo.
+3. Com o "sim", `PY curriculo_base.py usar <arquivo>` (ou `--manter-perfil`) grava perfil, filtros
+   e marca o arquivo como o currículo dela no idioma dele. Ajustes nos filtros: depois, no painel
+   Filtros da busca, ou pelo `config.json` com a pessoa.
+4. Ofereça a busca (skill buscar-vagas) e diga que dá para completar o perfil depois com as
+   perguntas abaixo.
+
+Só marcar o currículo, sem mexer no perfil: `PY curriculo_base.py marcar <arquivo> [--idioma en]`
+(um por idioma; ele aparece no item Currículo de cada vaga).
+
 ## 1. Materiais
 
 Procure em `anexos/` e `anexos/primeiros-passos/` (onde a página guarda o que recebe). Se não

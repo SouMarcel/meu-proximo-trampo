@@ -32,7 +32,9 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   `PY consultar_gupy.py <ferramenta> chave=valor …` (perguntas pontuais à Gupy sem a integração
   MCP) e `python iniciar.py` (abre o dashboard em http://127.0.0.1:8765). Perfil: `PY primeiros_passos.py extrair <arquivo>` (texto de
   currículo ou LinkedIn sem documentos de identificação), `diagnostico [perfil.md]` e
-  `gravar <rascunho.md>` (só com o OK da pessoa).
+  `gravar <rascunho.md>` (só com o OK da pessoa). Já tem currículo: `PY curriculo_base.py lista`,
+  `proposta <arquivo>` (não grava), `usar <arquivo> [--manter-perfil]` (só com o OK da pessoa) e
+  `marcar <arquivo> [--idioma en]`.
 
 ## Skills da ferramenta
 

@@ -172,6 +172,28 @@ class Handler(BaseHTTPRequestHandler):
                 estado.update(rascunho=rascunho, etapa="rascunho")
                 pp.salvar(estado)
             return self._json(200, pp.estado_para_pagina(True))
+        if metodo == "POST" and caminho == "/api/perfil/do-curriculo":  # a proposta: lê e propõe, não grava
+            import curriculo_base
+            corpo = self._corpo()
+            arquivo = str(corpo.get("arquivo") or "")
+            if not arquivo and corpo.get("material_id"):
+                with TRAVA_PERFIL:
+                    material = next((m for m in pp.carregar()["materiais"] if m["id"] == corpo["material_id"]), None)
+                arquivo = (material or {}).get("arquivo") or ""
+            if not arquivo:
+                raise ValueError("escolha um currículo em PDF ou Word (.docx)")
+            return self._json(200, curriculo_base.proposta(arquivo))
+        if metodo == "POST" and caminho == "/api/perfil/do-curriculo/confirmar":
+            import curriculo_base
+            with TRAVA_PERFIL:
+                return self._json(200, curriculo_base.confirmar(self._corpo()))
+        if metodo == "PUT" and caminho == "/api/curriculo-base":
+            import curriculo_base
+            corpo = self._corpo()
+            idioma = str(corpo.get("idioma") or "")
+            marc = (curriculo_base.marcar(idioma, corpo["arquivo"]) if corpo.get("arquivo")
+                    else curriculo_base.desmarcar(idioma))
+            return self._json(200, {"curriculo_base": marc})
         if metodo == "POST" and caminho == "/api/perfil/filtros-propostos":
             sugerir = bool(self._corpo().get("sugerir_en")) and ia.disponivel()
             return self._json(200, pp.propor_filtros(pp.carregar()["respostas"], sugerir_en=sugerir))
@@ -283,6 +305,29 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(dados)
 
+    def _arquivo_curriculo_base(self, idioma: str):
+        """O currículo da própria pessoa marcado para o idioma, e nenhum outro arquivo; só deste computador."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        sys.path.insert(0, str(banco.DASH.parent))
+        import curriculo_base
+        rel = curriculo_base.marcados().get(idioma) if idioma in curriculo_base.IDIOMAS else None
+        if not rel:
+            return self._erro(404, "arquivo não encontrado")
+        caminho = curriculo_base.RAIZ / rel
+        dados = caminho.read_bytes()
+        pdf = caminho.suffix.lower() == ".pdf"
+        self.send_response(200)
+        self.send_header("Content-Type", "application/pdf" if pdf else
+                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        self.send_header("Content-Length", str(len(dados)))
+        self.send_header("Content-Disposition", ("inline" if pdf else "attachment") + f"; filename*=UTF-8''{quote(caminho.name)}")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self._cabecalhos_cors()
+        self.end_headers()
+        self.wfile.write(dados)
+
     def _id_da_rota(self, caminho: str) -> str | None:
         prefixo = "/api/vagas/"
         if not caminho.startswith(prefixo):
@@ -315,7 +360,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(201 if nova else 200, {"vaga": banco.com_kit(vaga), "nova": nova, "analise_automatica": auto})
             if caminho == "/api/ia" or caminho.startswith("/api/ia/"):
                 return self._ia(metodo, caminho)
-            if caminho == "/api/perfil" or caminho.startswith("/api/perfil/"):
+            if caminho in ("/api/perfil", "/api/curriculo-base") or caminho.startswith("/api/perfil/"):
                 return self._perfil(metodo, caminho)
             if caminho == "/api/busca" or caminho.startswith("/api/busca/"):
                 return self._busca(metodo, caminho)
@@ -348,6 +393,8 @@ class Handler(BaseHTTPRequestHandler):
                                     "ia_erro": analise.FILA.erro(), "busca": buscador.BUSCA.resumo()})
         if caminho == "/api/ia":
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
+        if caminho.startswith("/arquivos/curriculo-base/"):
+            return self._arquivo_curriculo_base(caminho.rsplit("/", 1)[1])
         if caminho.startswith("/arquivos/curriculos/"):
             return self._arquivo_curriculo(caminho[len("/arquivos/curriculos/"):])
         if caminho == "/api/kit/lista":  # cartas e respostas de uma vaga
@@ -371,12 +418,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {**buscador.BUSCA.estado(), "pode_alterar": self._local()})
         if caminho == "/api/busca/plano":
             return self._json(200, buscador.BUSCA.plano())
+        if caminho == "/api/perfil/curriculos":  # os currículos de anexos/ e o seu currículo de cada idioma
+            if not self._local():
+                return self._erro(403, SO_LOCAL_PERFIL)
+            import curriculo_base
+            return self._json(200, {"curriculos": curriculo_base.candidatos(), "curriculo_base": curriculo_base.marcados(),
+                                    "existe_perfil": pp.caminho_perfil().exists()})
         if caminho == "/api/perfil/estado":
             return self._json(200, pp.estado_para_pagina(self._local()))
         if caminho == "/api/perfil/filtros-propostos":
             return self._json(200, pp.propor_filtros(pp.carregar()["respostas"]))
         if caminho == "/api/vagas":
-            return self._json(200, {"versao": banco.versao(), "vagas": [banco.com_kit(v) for v in banco.listar_vagas()]})
+            base = banco.curriculos_base()
+            return self._json(200, {"versao": banco.versao(), "vagas": [banco.com_kit(v, base) for v in banco.listar_vagas()]})
         if caminho == "/api/buscas/ultima":
             return self._json(200, {"busca": banco.ultima_busca()})
         if caminho == "/api/config":

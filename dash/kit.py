@@ -153,8 +153,10 @@ def _no_anuncio(descricao) -> list[tuple[str, str]]:
     return achados
 
 
-def checklist(v: dict) -> list[dict]:
-    """O checklist da vaga: [{item, rotulo, origem (vaga|analise|anuncio|pessoa), estado, frase, acao}]."""
+def checklist(v: dict, base: dict | None = None) -> list[dict]:
+    """O checklist da vaga: [{item, rotulo, origem (vaga|analise|anuncio|pessoa), estado, frase, acao}]. Com `base`
+    ({pt, en}: o currículo da própria pessoa de cada idioma, {nome, url} ou None), o item Currículo mostra o do idioma
+    da vaga e começa "Pronto", ou diz que falta."""
     marcado = v.get("kit") if isinstance(v.get("kit"), dict) else {}
     estados, removidos = marcado.get("estados") or {}, set(marcado.get("removidos") or [])
     itens: dict[str, dict] = {}
@@ -180,11 +182,19 @@ def checklist(v: dict) -> list[dict]:
         if itens[conhecido or _id_extra(texto)]["origem"] == "pessoa":
             itens[conhecido or _id_extra(texto)].setdefault("extra", texto)  # para tirar, sai da lista da pessoa
     por("candidatura", "vaga", "Enviar a candidatura")
+    padrao = {}
+    if base and any(base.values()):
+        idioma = "en" if (ingles or v.get("idioma") == "en") else "pt"
+        if base.get(idioma):
+            itens["curriculo"]["base"] = {**base[idioma], "idioma": idioma}
+            padrao["curriculo"] = "pronto"
+        else:
+            itens["curriculo"]["falta_base"] = idioma
     saida = []
     for i in itens.values():
         if i["item"] in removidos:
             continue
-        saida.append({**i, "estado": estados.get(i["item"], "a_fazer"), "acao": ACOES.get(i["item"])})
+        saida.append({**i, "estado": estados.get(i["item"], padrao.get(i["item"], "a_fazer")), "acao": ACOES.get(i["item"])})
     return saida
 
 
