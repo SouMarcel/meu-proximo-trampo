@@ -117,7 +117,7 @@ description: "Tarefas da feature 012: análise de perfil contínua (Windows)"
 
 - [X] T024 [P] `README.md` (análises do perfil), `AGENTS.md` (comandos) e `dash/README.md` (o arquivo de análises)
 - [X] T025 Rodar `python -m unittest discover -s tests` e o quickstart.md; registrar os resultados no `quickstart.md`
-- [ ] T026 Com o OK do usuário, rodar as lacunas das vagas e a prontidão com os dados dele (sem IA) e mostrar
+- [X] T026 Com o OK do usuário, rodar as lacunas das vagas e a prontidão com os dados dele (sem IA) e mostrar
 - [X] T027 Busca de dados pessoais no diff, mostrar ao usuário e, com o OK, commit na `master`, push, merge na branch
   pessoal, reiniciar o servidor e `graphify update .`; marcar a T024 da spec 011
 

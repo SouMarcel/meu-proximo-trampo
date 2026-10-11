@@ -38,11 +38,13 @@ comprovada comprovado boa bom otimo otima capacidade habilidade habilidades perf
 nivel area areas atuacao pratica experience experienced strong knowledge years year solid advanced proficiency
 proficient familiarity hands working understanding required preferred plus nice deep excellent good ability skills
 skill must minimum least background track record exposure""".split()) | conferir.VAZIAS_EN
-NIVEL_INGLES = {"basico": ("basico", "basic", "beginner", "elementar", "iniciante"),
-                "intermediario": ("intermediario", "intermediate", "pre-intermediate"),
-                "avancado": ("avancado", "advanced", "upper-intermediate", "upper"),
-                "fluente": ("fluente", "fluent", "proficient", "c1", "c2"),
-                "nativo": ("nativo", "native", "bilingue", "bilingual")}
+NIVEL_INGLES = {  # a ordem importa: a escala do LinkedIn antes das palavras soltas
+    "nativo": ("native or bilingual", "nativo", "native", "bilingue", "bilingual"),
+    "fluente": ("full professional", "fluente", "fluent", "proficient", "c1", "c2"),
+    "avancado": ("professional working", "avancado", "advanced", "upper-intermediate", "upper", "b2"),
+    "basico": ("limited working", "elementary", "basico", "basic", "beginner", "elementar", "iniciante", "a1", "a2"),
+    "intermediario": ("intermediario", "intermediate", "pre-intermediate", "b1"),
+}
 
 
 class AnaliseErro(ValueError):
@@ -304,15 +306,18 @@ def filtros_com_cargos(cargos: list[dict], confirmar: bool = False) -> dict:
 # ---------------------------------------------------------------- prontidão internacional
 
 def _nivel_ingles(perfil: str) -> tuple[str | None, str]:
+    """O nível de inglês que o perfil declara (procura em todas as linhas: "suporte em inglês" não diz o nível)."""
+    citada = ""
     for linha in str(perfil or "").splitlines():
-        m = re.search(r"\b(ingl[eê]s|english)\b\s*[—–:\-(]\s*(.+)", linha, re.I)
-        if m:
-            resto = filtros.sem_acento(m.group(2))
-            for nivel, palavras in NIVEL_INGLES.items():
-                if any(re.search(r"\b" + re.escape(p) + r"\b", resto) for p in palavras):
-                    return nivel, linha.strip()[:120]
-            return None, linha.strip()[:120]
-    return None, ""
+        m = re.search(r"\b(ingl[eê]s|english)\b\s*[—–:\-(]?\s*(.+)", linha, re.I)
+        if not m:
+            continue
+        citada = citada or linha.strip()[:120]
+        resto = re.split(r"[.;|]\s", filtros.sem_acento(m.group(2)) + " ")[0]  # só a frase do inglês (não a do alemão)
+        for nivel, palavras in NIVEL_INGLES.items():
+            if any(re.search(r"\b" + re.escape(p) + r"\b", resto) for p in palavras):
+                return nivel, linha.strip()[:120]
+    return None, citada
 
 
 def prontidao(perfil: str, cfg: dict | None = None) -> list[dict]:

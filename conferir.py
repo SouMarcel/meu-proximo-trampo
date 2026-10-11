@@ -41,10 +41,15 @@ nice must using use etc e/ou tipo tipos atuacao atuar trabalhar trabalho saber t
 CABECALHOS_REQ = ("requisitos", "qualificacoes", "o que buscamos", "o que esperamos", "o que voce precisa",
                   "o que procuramos", "para se candidatar", "desejavel", "desejaveis", "diferenciais", "competencias",
                   "requirements", "qualifications", "must have", "nice to have", "what you'll need", "what you need",
-                  "what we're looking for", "what we are looking for", "you have", "you bring", "skills")
+                  "what we're looking for", "what we are looking for", "you have", "you bring", "skills",
+                  "what you bring", "about you", "who you are", "minimum qualifications", "preferred qualifications",
+                  "basic qualifications", "requirements and qualifications", "education", "formacao")
 CABECALHOS_OUTROS = ("responsabilidades", "atividades", "atribuicoes", "beneficios", "sobre", "quem somos",
                      "o que oferecemos", "local", "jornada", "responsibilities", "what you'll do", "benefits",
-                     "about", "perks", "we offer", "salario", "remuneracao")
+                     "about", "perks", "we offer", "salario", "remuneracao", "what you will do", "what youll do",
+                     "key responsibilities", "your responsibilities", "your role", "the role", "what we offer",
+                     "why join", "why join us", "equal opportunity", "our benefits", "compensation", "o que voce vai fazer",
+                     "suas responsabilidades", "nossos beneficios", "o que oferecemos")
 FAMILIAS = [{"jira", "azure boards", "azure devops", "trello", "clickup", "asana"},
             {"power bi", "tableau", "looker", "metabase", "qlik", "data studio"},
             {"scrum", "kanban", "agil", "agile", "safe", "lean"},
@@ -247,6 +252,9 @@ def _conferir_datas(texto: str, perfil: str) -> list[dict]:
     return pontos
 
 
+_CABECALHOS = {" ".join(re.sub(r"[^a-z ]", "", c).split()) for c in CABECALHOS_REQ + CABECALHOS_OUTROS}
+
+
 def requisitos_da_vaga(vaga: str) -> list[str]:
     linhas = [l.strip() for l in str(vaga or "").splitlines()]
     reqs, dentro = [], False
@@ -254,15 +262,22 @@ def requisitos_da_vaga(vaga: str) -> list[str]:
         if not l:
             continue
         cab = norm(l).strip("#*:- ")
-        curta = len(l) <= 60 and (l.rstrip().endswith(":") or l.startswith("#") or l.isupper() or cab in CABECALHOS_REQ)
+        chave = " ".join(re.sub(r"[^a-z ]", "", cab).split())  # "What You’ll Do**" -> "what you ll do"
+        chave = chave.replace("you ll ", "youll ")
+        item = re.match(r"^[\-*•·▪◦‣–]\s", l)  # item de lista nunca é cabeçalho
+        # nome de seção sem ":" nem "#" ("We offer**", "Perks and benefits") e linha só em negrito ("**Education**")
+        conhecido = not item and any(chave == c or chave.startswith(c + " ") for c in _CABECALHOS)
+        negrito = not item and re.fullmatch(r"(\*\*|__)[^*_]{2,58}(\*\*|__)\s*:?", l) is not None
+        curta = len(l) <= 60 and (l.rstrip().endswith(":") or l.startswith("#") or l.isupper() or cab in CABECALHOS_REQ
+                                  or conhecido or negrito)
         if curta and any(cab.startswith(c) for c in CABECALHOS_REQ):
             dentro = True
             continue
-        if curta and any(cab.startswith(c) for c in CABECALHOS_OUTROS):
-            dentro = False
+        if curta and (any(cab.startswith(c) for c in CABECALHOS_OUTROS) or negrito or conhecido):
+            dentro = False  # outra seção (benefícios, modelo de trabalho…): acabaram os requisitos
             continue
         if dentro:
-            reqs.append(re.sub(r"^[\-*•·▪◦‣–\d.)\s]+", "", l).strip())
+            reqs.append(re.sub(r"^(?:[\-*•·▪◦‣–]\s*|\d{1,2}[.)]\s+)+", "", l).strip())  # marcador ou "1." (não o "5+")
     if not reqs:  # sem cabeçalho: as linhas com marcador
         reqs = [re.sub(r"^[\-*•·▪◦‣–\s]+", "", l).strip() for l in linhas if re.match(r"^[\-*•·▪◦‣–]\s+", l)]
     return [r for r in reqs if termos(r)][:40]

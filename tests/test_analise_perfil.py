@@ -97,6 +97,26 @@ class TestLacunas(unittest.TestCase):
             ap.plano_estudo(PERFIL, itens)
 
 
+class TestLeituraDosAnuncios(unittest.TestCase):
+    def test_secoes_sem_dois_pontos(self):
+        anuncio = ("Requirements\n- 5+ years as Scrum Master\n1. PSM I\nWe offer**\n- Employee financial programs\n"
+                   "**Benefits**\n- Health insurance\nWhat You’ll Do\n- Escalate blockers\nAbout you\n- Strong facilitation")
+        import conferir
+        self.assertEqual(conferir.requisitos_da_vaga(anuncio), ["5+ years as Scrum Master", "PSM I", "Strong facilitation"])
+        outro = ("**Requirements**\n* PMP or PSM I\n**Education**\n* Bachelor's degree\n**Working Model & Collaboration:**\n"
+                 "* Schedule flexibility for global meetings\n**Nice to haves**\n* SAFe certificate\n**Perks and benefits**\n"
+                 "* **Growth without limits:** mentorship")
+        self.assertEqual(conferir.requisitos_da_vaga(outro), ["PMP or PSM I", "Bachelor's degree", "SAFe certificate"])
+
+    def test_nivel_de_ingles(self):
+        casos = {"Português nativo. Inglês Professional Working (Duolingo Score 115).": "avancado",
+                 "- Inglês — avançado": "avancado", "English: Limited Working": "basico", "Inglês fluente": "fluente",
+                 "Inglês: B1": "intermediario", "Inglês — Native or Bilingual": "nativo", "Português nativo": None,
+                 "- Suporte C-level em inglês.\nPortuguês nativo. Inglês Professional Working. Alemão básico": "avancado"}
+        for linha, nivel in casos.items():
+            self.assertEqual(ap._nivel_ingles(linha)[0], nivel, linha)
+
+
 class TestCargos(ComDados):
     def test_cargos_com_evidencia(self):
         resposta = json.dumps([
