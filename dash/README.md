@@ -48,7 +48,7 @@ sozinha.
 
 | Arquivo | Para quê |
 |---|---|
-| `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/vagas/link` para adicionar pelo link, `/api/versao` com o aviso de análise em andamento, `/api/buscas/ultima`, `/api/config` para ler e gravar os filtros da busca, `/api/ia` para a IA escolhida e `/api/perfil/…` para os primeiros passos: estado, envio e remoção de materiais, rascunho, progresso, prévia, gravação do perfil e filtros propostos; `/api/busca…` para buscar vagas pela página: plano, andamento, iniciar, cancelar e pedir a nota de novo; `/api/curriculo…` para gerar o currículo pela página: catálogo das técnicas, estado, lista, gerar e tentar de novo; e `/arquivos/curriculos/<nome>.pdf|.docx`, que serve só os arquivos dessa pasta). Só aceita pedidos da própria página; enviar arquivos, gerar o rascunho e gravar, só do próprio computador. |
+| `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/vagas/link` para adicionar pelo link, `/api/versao` com o aviso de análise em andamento, `/api/buscas/ultima`, `/api/config` para ler e gravar os filtros da busca, `/api/ia` para a IA escolhida e `/api/perfil/…` para os primeiros passos: estado, envio e remoção de materiais, rascunho, progresso, prévia, gravação do perfil e filtros propostos; `/api/busca…` para buscar vagas pela página: plano, andamento, iniciar, cancelar e pedir a nota de novo; `/api/curriculo…` para gerar o currículo pela página: catálogo das técnicas, estado, lista, gerar e tentar de novo; `/api/entrevista/…` para preparar a entrevista: preparação da vaga, texto da empresa, resumo, perguntas e histórias com IA, salvar e remover histórias, simulação e anotações; e `/arquivos/curriculos/<nome>.pdf|.docx`, que serve só os arquivos dessa pasta). Só aceita pedidos da própria página; enviar arquivos, gerar o rascunho e gravar, só do próprio computador. |
 | `banco.py` | Acesso ao SQLite e comandos `quadro`, `pendentes`, `analisar`, `vaga` (dados completos de uma vaga) e `anotar` (acrescenta uma linha às anotações). |
 | `buscador.py` | Busca de vagas pela página: roda a mesma busca do `vagas.py` em segundo plano, com andamento, cancelamento entre consultas, uma busca por vez no computador (trava em `.cache/busca.trava`, compartilhada com o terminal) e intervalo mínimo de 30 minutos entre buscas. Com IA e perfil, as vagas novas ficam para a análise automática. |
 | `gerador.py` | Currículo pela página: no clique, pede o currículo à IA escolhida (`curriculo_ia.py`, na raiz), gera os arquivos e a conferência, uma geração por vez, com andamento e "tentar de novo". |
@@ -87,6 +87,11 @@ outros sites e `m-…` nas preenchidas à mão.
 
 As análises do perfil (lacunas das vagas, cargos-alvo, plano de estudo e as marcações da prontidão
 internacional) ficam em `dash/dados/analises-perfil.json`, ao lado do banco, a última de cada tipo com a data.
+
+A preparação para entrevista fica fora do banco, em `entrevistas/` na raiz (fora do Git): `historias.json`
+(o banco de histórias, comum a todas as vagas, gravado só quando a pessoa confirma) e `vaga-<id>.json` (texto
+sobre a empresa, resumo, perguntas da IA, simulação e as anotações de cada entrevista). Rotas em
+`/api/entrevista/…`, só deste computador.
 | `sinais` | sinais positivos lidos no anúncio sem IA ("Oferece patrocínio de visto", "Oferece relocation" e as suas frases positivas); etiqueta verde na listagem, no card e no detalhe |
 | `triagem` | `pendente` (no relatório), `seguir` (foi para o quadro), `visitada` (não seguir), `fora` (furou os filtros da busca) |
 | `motivo_fora[]` | por que a vaga ficou fora dos critérios |

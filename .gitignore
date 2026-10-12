@@ -9,6 +9,8 @@ dash/dados/
 anexos/*
 !anexos/README.md
 curriculos/
+# Preparação para entrevista: suas histórias e respostas
+entrevistas/
 # Skills de LinkedIn (Liftli): seu tom de voz e o material dos posts (banners, imagens)
 .liftli/
 linkedin/

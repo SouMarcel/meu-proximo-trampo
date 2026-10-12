@@ -64,7 +64,7 @@ e o seu perfil e o texto das vagas vão para o provedor escolhido. A chave fica 
 As conversas (buscar vagas pelo chat, montar o currículo, consultar a Gupy) funcionam no
 Claude Code e em outros assistentes de código (Codex, Gemini CLI/Antigravity, OpenCode): as
 skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`analisar-perfil`,
-`buscar-vagas`, `consultar-gupy` e `gerar-curriculo`), e as instruções comuns no `AGENTS.md`. Veja
+`buscar-vagas`, `consultar-gupy`, `gerar-curriculo` e `preparar-entrevista`), e as instruções comuns no `AGENTS.md`. Veja
 [Usar com outros assistentes](#usar-com-outros-assistentes).
 
 ## Como funciona
@@ -306,6 +306,32 @@ há terceiro), e a vaga em **Entrevista**, um lembrete de agradecimento no dia s
 entrevista, se você informar no detalhe). Você marca "feito", "dispensar" ou "parar lembretes". A
 ferramenta só lembra: a mensagem é você quem escreve e envia.
 
+### Preparar entrevista
+
+No card da coluna **Entrevista** (e no detalhe de qualquer vaga do quadro), o botão **Preparar
+entrevista** abre a preparação da vaga, em seis abas. Nada é gerado nem gravado sem o clique:
+
+- **Dossiê**: o que a ferramenta já tem (análise, lacunas, faixa, suas anotações) e o que você
+  colar sobre a empresa. A ferramenta não pesquisa na internet. Com IA, um resumo em que cada ponto
+  diz de onde veio: da vaga, do seu texto ou dedução (que você confirma); o trecho que não está no
+  texto vira dedução.
+- **Perguntas**: comportamentais (lista padrão, em português e inglês), técnicas pelos requisitos
+  do anúncio, as lacunas da análise e as que caíram nas suas entrevistas anteriores, cada uma com o
+  porquê. Com IA, mais perguntas, sem repetir.
+- **Histórias**: situação, tarefa, ação, resultado e o que você aprendeu. Escreva à mão ou peça
+  rascunhos à IA, feitos só com as conquistas do perfil; número, data ou nome que não está no perfil
+  vem marcado para conferir. Só as que você salva ficam guardadas, e valem para as próximas vagas.
+- **Simular**: uma pergunta por vez, em português ou inglês. Você responde por escrito e, com IA,
+  recebe um retorno sem nota: o que funcionou, o que faltou e uma resposta mais forte só com fatos
+  seus (conferida). Dá para pular, repetir ou encerrar; no fim, a lista do que treinar.
+- **Salário**: a faixa da vaga, a sua pretensão (se estiver no perfil) e pontos para a conversa.
+  Nenhum valor de mercado inventado.
+- **Depois**: anote como foi (perguntas que caíram, o que foi bem e mal, próximos passos); as
+  perguntas entram na próxima preparação.
+
+Pelo chat, a skill `preparar-entrevista` faz o mesmo (`python entrevista.py preparar <vaga>` e
+`python entrevista.py historias`). Tudo fica em `entrevistas/`, fora do Git.
+
 > **Privacidade:** com IA, o seu perfil e as descrições das vagas são enviados ao
 > provedor escolhido no botão **IA** (Anthropic, OpenAI, Google etc.) para a análise. Em
 > planos gratuitos, alguns provedores podem usar os dados enviados; confira os termos. Sem
@@ -412,7 +438,7 @@ continua funcionando. Opções pontuais, sem mexer no arquivo:
 
 - Vagas e candidaturas: `dash/dados/candidaturas.db` (SQLite), com uma cópia de
   segurança por dia em `dash/dados/backup/`.
-- `config.json`, `perfil.md`, `anexos/`, `curriculos/`, `dash/dados/` e `.cache/` estão
+- `config.json`, `perfil.md`, `anexos/`, `curriculos/`, `entrevistas/`, `dash/dados/` e `.cache/` estão
   no `.gitignore` e não vão para o GitHub. Os primeiros passos guardam os arquivos enviados
   em `anexos/primeiros-passos/`, as versões anteriores do perfil em
   `anexos/perfis-anteriores/` e o progresso em `.cache/primeiros-passos.json`. O mesmo vale para `.liftli/` (o tom de voz
@@ -492,7 +518,7 @@ Para instalar à mão, no Claude Code:
 - [x] Fontes do exterior (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board)
   e empresas acompanhadas no Greenhouse, Lever e Ashby; opcionais
 - [ ] Outros portais: LinkedIn, InHire, Catho, Glassdoor
-- [ ] Simular entrevista para as vagas na coluna Entrevista
+- [x] Preparar e simular entrevista para as vagas na coluna Entrevista
 
 ### Adicionar um portal
 

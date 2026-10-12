@@ -307,6 +307,43 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"marcas": ap.marcar("linkedin_en", bool(corpo.get("linkedin_en")))})
         return self._erro(404, "rota não encontrada")
 
+    def _entrevista(self, metodo: str, caminho: str):
+        """Preparação para entrevista: só deste computador (histórias e respostas são da pessoa) e só no clique."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        sys.path.insert(0, str(banco.DASH.parent))
+        import entrevista
+        partes = [unquote(p) for p in caminho[len("/api/entrevista/"):].split("/")]
+        if partes[0] == "historias":
+            if metodo == "POST" and len(partes) == 1:
+                return self._json(200, {"historia": entrevista.salvar_historia(self._corpo().get("historia"))})
+            if metodo == "DELETE" and len(partes) == 2:
+                entrevista.remover_historia(partes[1])
+                return self._json(200, {"ok": True})
+            return self._erro(404, "rota não encontrada")
+        vid, acao = partes[0], (partes[1] if len(partes) == 2 else None)
+        if not banco.ID_VALIDO.match(vid) or len(partes) > 2:
+            return self._erro(404, "rota não encontrada")
+        if metodo == "GET" and acao is None:
+            return self._json(200, {**entrevista.preparacao(vid), "ia": ia.disponivel()})
+        if metodo == "PUT" and acao == "empresa":
+            return self._json(200, {"texto_empresa": entrevista.guardar_texto_empresa(vid, self._corpo().get("texto"))["texto_empresa"]})
+        if metodo == "POST" and acao == "resumo":
+            return self._json(200, {"resumo": entrevista.resumo_ia(vid)})
+        if metodo == "POST" and acao == "perguntas":
+            entrevista.perguntas_ia(vid)
+            return self._json(200, {"perguntas": entrevista.preparacao(vid)["perguntas"]})
+        if metodo == "POST" and acao == "historias":
+            return self._json(200, {"rascunhos": entrevista.historias_ia(vid)})
+        if metodo == "POST" and acao == "simulacao":
+            corpo = self._corpo()
+            r = entrevista.registrar_resposta(vid, corpo.get("pergunta"), corpo.get("resposta"), str(corpo.get("idioma") or "pt"),
+                                              com_retorno=corpo.get("retorno", True) is not False)
+            return self._json(200, {**r, "treinar": entrevista.resumo_simulacao(r["simulacao"])})
+        if metodo == "POST" and acao == "rodada":
+            return self._json(200, {"rodada": entrevista.registrar_rodada(vid, self._corpo())})
+        return self._erro(404, "rota não encontrada")
+
     def _arquivo_curriculo(self, nome: str):
         """Só .pdf, .docx e .txt de curriculos/, com o nome validado (nada de caminhos)."""
         sys.path.insert(0, str(banco.DASH.parent))
@@ -391,6 +428,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._curriculo(metodo, caminho)
             if caminho.startswith("/api/analises-perfil/"):
                 return self._analises(metodo, caminho)
+            if caminho.startswith("/api/entrevista/"):
+                return self._entrevista(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             vid = self._id_da_rota(caminho)
@@ -427,6 +466,8 @@ class Handler(BaseHTTPRequestHandler):
             perfil = ap.perfil_texto()
             return self._json(200, {"salvas": ap.carregar(), "prontidao": ap.prontidao(perfil), "ia": ia.disponivel(),
                                     "existe_perfil": bool(perfil.strip()), "pode_alterar": self._local()})
+        if caminho.startswith("/api/entrevista/"):
+            return self._entrevista("GET", caminho)
         if caminho == "/api/kit/lista":  # cartas e respostas de uma vaga
             sys.path.insert(0, str(banco.DASH.parent))
             import candidatura_ia

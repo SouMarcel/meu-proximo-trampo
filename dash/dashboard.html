@@ -227,6 +227,23 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .pa-lista p { margin: 3px 0 0; }
 .pa-lista li li { border: none; padding: 1px 0; background: none; border-radius: 0; }
 .pa-nivel { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-right: 6px; color: var(--muted); }
+
+/* Preparação para entrevista */
+#dlg-ent { width: min(820px, calc(100vw - 32px)); }
+.en-abas { display: flex; flex-wrap: wrap; gap: 6px; }
+.en-q { padding: 8px 10px; border: 1px solid var(--line); border-left: 3px solid var(--line-strong); border-radius: 8px; background: var(--col); font-size: 13px; }
+.en-q[data-o="vaga"], .en-q[data-t="tecnica"] { border-left-color: var(--info); }
+.en-q[data-o="texto"], .en-q[data-o="rodada"] { border-left-color: var(--good); }
+.en-q[data-o="deducao"], .en-q[data-o="lacuna"] { border-left-color: var(--warn); }
+.en-q p { margin: 3px 0 0; }
+.en-q .en-en { color: var(--muted); font-style: italic; }
+.en-hist textarea, .en-form textarea, .en-form input[type="text"], .en-form input[type="date"], #en-empresa, #en-resposta { width: 100%; background: var(--col); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 8px; padding: 7px 10px; }
+.en-form { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 10px; }
+.en-form label { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.en-form textarea { min-height: 54px; resize: vertical; }
+.en-conferir { color: var(--warn); font-size: 12.5px; margin: 0; }
+.en-pergunta-sim { font-size: 15px; font-weight: 600; margin: 0; }
+#en-resposta { min-height: 120px; resize: vertical; }
 .pa-linha { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .lem-topo { margin: 0 0 10px; color: var(--warn); font-weight: 600; }
 #dlg-kit { width: min(680px, calc(100vw - 32px)); }
@@ -662,6 +679,21 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   </div>
 </dialog>
 
+<dialog id="dlg-ent" aria-labelledby="en-titulo">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div>
+        <h2 id="en-titulo">Preparar entrevista</h2>
+        <p id="en-desc"></p>
+      </div>
+      <button type="button" class="more" data-en="fechar" aria-label="Fechar">✕</button>
+    </div>
+    <nav class="en-abas" id="en-abas" aria-label="Seções"></nav>
+    <div class="fb" id="en-corpo"></div>
+    <p class="fb-erro" id="en-erro" role="alert" hidden></p>
+  </div>
+</dialog>
+
 <script>
 (function () {
   "use strict";
@@ -932,7 +964,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       (url ? '<a class="btn-ghost" href="' + esc(url) + '" target="_blank" rel="noopener">' + ICON.ext + " Link da Vaga</a>"
            : '<span class="btn-ghost" aria-disabled="true">' + ICON.ext + " Sem link</span>") +
       '<button class="btn-sq" data-det="' + esc(v.id) + '" aria-label="Ver análise de ' + esc(v.titulo) + '" title="Ver análise">' + ICON.chart + "</button>" +
-      "</div></article>";
+      "</div>" + (v.etapa === "entrevista" ? '<button class="btn-ghost" data-ent="' + esc(v.id) + '" style="margin-top:8px;width:100%">Preparar entrevista</button>' : "") +
+      "</article>";
   }
 
   function ordenarQuadro(a, b) { return String(b.etapa_em || "").localeCompare(String(a.etapa_em || "")); }
@@ -1147,6 +1180,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       (url ? '<a class="btn-plain" href="' + esc(url) + '" target="_blank" rel="noopener" style="text-decoration:none">Abrir vaga</a>' : "") +
       (candidatura && candidatura !== url || candidatura && v.ats ? '<a class="btn-plain" href="' + esc(candidatura) + '" target="_blank" rel="noopener" style="text-decoration:none">Candidatar' +
         (v.ats ? " no " + esc(ATS[v.ats] || v.ats) : "") + "</a>" : "") +
+      (v.etapa ? '<button class="btn-plain" data-ent="' + esc(v.id) + '">Preparar entrevista</button>' : "") +
       '<button class="btn-primary" id="d-salvar"' + dis + ">Salvar anotações</button></div>";
   }
 
@@ -2928,6 +2962,224 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     });
   }
 
+  /* ---------- preparação para entrevista (só no clique; histórias salvas só na confirmação) ---------- */
+  var EN = { vid: null, d: null, aba: "dossie", rascunhos: [], editando: null, sim: null, ocupado: null, rmConfirma: null };
+  var EN_ABAS = [["dossie", "Dossiê"], ["perguntas", "Perguntas"], ["historias", "Histórias"], ["simular", "Simular"], ["salario", "Salário"], ["depois", "Depois"]];
+  var EN_ORIGEM = { vaga: "Da vaga", texto: "Do seu texto", deducao: "Dedução: confirme antes de usar" };
+  var EN_ORIGEM_Q = { padrao: "Lista padrão", requisito: "Requisito da vaga", lacuna: "Lacuna da análise", rodada: "Caiu antes", ia: "Sugerida pela IA" };
+  var EN_STAR = [["situacao", "Situação"], ["tarefa", "Tarefa"], ["acao", "Ação"], ["resultado", "Resultado"], ["reflexao", "O que você aprendeu"]];
+  function enIA() { return !!(EN.d && EN.d.ia); }
+  function enSemIA(oque) {
+    return enIA() ? "" : '<p class="banner">' + esc(oque) + ' precisa de uma IA: escolha uma no botão IA, ou peça no chat do seu assistente (skill preparar-entrevista).</p>';
+  }
+  function enBotao(acao, rotulo, ocupado, extra) {
+    return '<button type="button" class="btn-plain btn-ia-mini" data-en="' + acao + '"' + (EN.ocupado || extra === false ? " disabled" : "") + ">" +
+      esc(EN.ocupado === acao ? ocupado : rotulo) + "</button>";
+  }
+  function enCarregar(vid) {
+    return API.get("/api/entrevista/" + encodeURIComponent(vid)).then(function (j) { EN.d = j; enRender(); return j; });
+  }
+  function abrirEntrevista(vid) {
+    EN.vid = vid; EN.aba = "dossie"; EN.rascunhos = []; EN.editando = null; EN.sim = null; EN.ocupado = null; $("en-erro").hidden = true;
+    enCarregar(vid).then(function () { if (!$("dlg-ent").open) $("dlg-ent").showModal(); })
+      .catch(function (e) { toast(e && e.status === 403 ? e.message : erroMsg(e), true); });
+  }
+  function enErro(e) { var er = $("en-erro"); er.textContent = e && (e.status === 400 || e.status === 403) ? e.message : erroMsg(e); er.hidden = false; }
+  function enLista(itens) { return (itens || []).length ? "<ul>" + itens.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" : ""; }
+  function enDossie() {
+    var d = EN.d.dossie || {}, campos = [["resumo", "Resumo da análise"], ["salario", "Faixa da vaga"], ["autorizacao", "Autorização de trabalho"],
+      ["contratacao", "Contratação"], ["ingles", "Inglês"], ["fuso", "Fuso"], ["anotacao", "Suas anotações"]];
+    var h = '<section class="kit-sec"><h3>O que a ferramenta já tem</h3><dl class="kit-campos">' + campos.filter(function (c) { return d[c[0]]; }).map(function (c) {
+      return "<dt>" + c[1] + "</dt><dd>" + esc(d[c[0]]) + "</dd>"; }).join("") + "</dl>";
+    [["encaixe", "Encaixe"], ["lacunas", "Lacunas"], ["alertas", "Atenção"]].forEach(function (c) {
+      if ((d[c[0]] || []).length) h += "<div><b>" + c[1] + "</b>" + enLista(d[c[0]]) + "</div>"; });
+    if (!d.resumo && !(d.lacunas || []).length) h += '<p class="hint">Esta vaga ainda não tem análise; a descrição dela está no detalhe da vaga.</p>';
+    h += "</section>";
+    h += '<section class="kit-sec"><h3>Sobre a empresa</h3><p class="hint">Cole o que você leu sobre a empresa (site, notícias, o que o recrutador contou). A ferramenta não pesquisa na internet.</p>' +
+      '<textarea id="en-empresa" maxlength="20000" rows="5">' + esc(d.texto_empresa || "") + "</textarea>" +
+      '<div class="kit-mais"><button type="button" class="btn-plain" data-en="empresa">Salvar o texto</button></div></section>';
+    var r = d.resumo_ia;
+    h += '<section class="kit-sec"><h3>Resumo com IA</h3>' + enSemIA("O resumo") +
+      '<p class="hint">Cada ponto mostra de onde veio: da vaga, do seu texto, ou dedução da IA (confirme antes de usar).</p>' +
+      (r && (r.itens || []).length ? r.itens.map(function (i) {
+        return '<div class="en-q" data-o="' + esc(i.origem) + '"><b>' + esc(i.ponto) + '</b><p class="hint">' + esc(EN_ORIGEM[i.origem] || i.origem) +
+          (i.trecho ? ": “" + esc(i.trecho) + "”" : "") + "</p></div>"; }).join("") : "") +
+      '<div class="kit-mais">' + enBotao("resumo", r ? "Resumir de novo" : "Resumir com IA", "Resumindo…", enIA()) + "</div></section>";
+    return h;
+  }
+  function enPerguntas() {
+    var qs = EN.d.perguntas || [];
+    return '<section class="kit-sec"><h3>Perguntas prováveis (' + qs.length + ")</h3>" +
+      '<p class="hint">Pelo que a vaga pede, pelas lacunas da análise e pelo que caiu antes. Treine as respostas na aba Simular.</p>' +
+      qs.map(function (q) {
+        return '<div class="en-q" data-o="' + esc(q.origem) + '" data-t="' + esc(q.tipo) + '"><b>' + esc(q.texto) + "</b>" +
+          (q.texto_en && q.texto_en !== q.texto ? '<p class="en-en">' + esc(q.texto_en) + "</p>" : "") +
+          '<p class="hint">' + (q.tipo === "tecnica" ? "Técnica" : "Comportamental") + " · " + esc(EN_ORIGEM_Q[q.origem] || q.origem) + " · " + esc(q.porque) + "</p></div>";
+      }).join("") + enSemIA("Sugerir mais perguntas") +
+      '<div class="kit-mais">' + enBotao("perguntas", "Mais perguntas com IA", "Pensando…", enIA()) + "</div></section>";
+  }
+  function enForm(h, chave, conferir) {
+    return '<div class="en-form" data-en-form="' + esc(chave) + '"><label>Título<input type="text" data-en-f="titulo" maxlength="120" value="' + esc(h.titulo || "") + '"></label>' +
+      EN_STAR.map(function (c) { return "<label>" + c[1] + '<textarea data-en-f="' + c[0] + '" maxlength="1200">' + esc(h[c[0]] || "") + "</textarea></label>"; }).join("") +
+      (h.conquista ? '<p class="hint">Do perfil: “' + esc(h.conquista) + "”</p>" : "") +
+      ((h.perguntas || []).length ? '<p class="hint">Responde: ' + esc(h.perguntas.join("; ")) + "</p>" : "") +
+      ((conferir || []).length ? '<p class="en-conferir">Confira antes de salvar: ' + esc(conferir.join("; ")) + "</p>" : "") +
+      '<div class="kit-mais"><button type="button" class="btn-primary" data-en-salvar="' + esc(chave) + '">Salvar esta história</button>' +
+      '<button type="button" class="btn-plain" data-en-descartar="' + esc(chave) + '">' + (chave === "nova" || chave.indexOf("h") === 0 ? "Cancelar" : "Descartar") + "</button></div></div>";
+  }
+  function enHistorias() {
+    var hs = EN.d.historias || [];
+    var h = '<section class="kit-sec"><h3>Suas histórias (' + hs.length + ")</h3>" +
+      '<p class="hint">Situação, tarefa, ação, resultado e o que você aprendeu. Ficam guardadas para as próximas entrevistas, só neste computador.</p>';
+    h += hs.map(function (x) {
+      if (EN.editando === x.id) return enForm(x, x.id, x.conferir);
+      return '<div class="en-q en-hist"><b>' + esc(x.titulo) + "</b>" + EN_STAR.filter(function (c) { return x[c[0]]; }).map(function (c) {
+        return "<p><b>" + c[1] + ":</b> " + esc(x[c[0]]) + "</p>"; }).join("") +
+        ((x.perguntas || []).length ? '<p class="hint">Responde: ' + esc(x.perguntas.join("; ")) + "</p>" : "") +
+        '<div class="kit-mais"><button type="button" class="link-btn" data-en-editar="' + esc(x.id) + '">Editar</button>' +
+        '<button type="button" class="link-btn" data-en-remover="' + esc(x.id) + '">' + (EN.rmConfirma === x.id ? "Confirmar remoção" : "Remover") + "</button></div></div>";
+    }).join("");
+    if (EN.editando === "nova") h += enForm({}, "nova");
+    h += '<div class="kit-mais"><button type="button" class="btn-plain" data-en="nova"' + (EN.editando === "nova" ? " disabled" : "") + ">Escrever uma</button>" +
+      (enIA() ? enBotao("sugerir", "Sugerir histórias com IA", "Montando…") : "") + "</div></section>";
+    if (!EN.d.existe_perfil) h += '<p class="banner">Sem perfil, a IA não tem conquistas para usar: monte o perfil no botão Meu perfil.</p>';
+    if (EN.rascunhos.length) h += '<section class="kit-sec"><h3>Rascunhos da IA (não salvos)</h3><p class="hint">Só com fatos do seu perfil. Edite e salve os que servirem; os outros somem ao fechar.</p>' +
+      EN.rascunhos.map(function (r, i) { return enForm(r, "r" + i, r.conferir); }).join("") + "</section>";
+    return h;
+  }
+  function enSimular() {
+    var qs = EN.d.perguntas || [], s = EN.sim, sim = EN.d.simulacao || {}, feitas = (sim.respostas || []).length;
+    var idioma = (s && s.idioma) || sim.idioma || "pt";
+    if (!s || s.fim) {
+      var treinar = (sim.respostas || []).filter(function (r) { return r.retorno && r.retorno.faltou; }).map(function (r) { return r.retorno.faltou; });
+      return '<section class="kit-sec"><h3>Simulação</h3><p class="hint">Uma pergunta por vez; você responde por escrito' + (enIA() ? " e a IA dá um retorno honesto, sem nota" : "") + ". Pode pular ou encerrar quando quiser.</p>" +
+        (enIA() ? "" : '<p class="banner">Sem IA, você treina as respostas e elas ficam salvas para reler; o retorno precisa de uma IA (botão IA).</p>') +
+        '<div class="pills" role="radiogroup" aria-label="Idioma">' + [["pt", "Português"], ["en", "Inglês"]].map(function (x) {
+          return '<label class="check"><input type="radio" name="en-idioma" value="' + x[0] + '"' + (idioma === x[0] ? " checked" : "") + "> " + x[1] + "</label>"; }).join("") + "</div>" +
+        '<div class="kit-mais"><button type="button" class="btn-primary" data-en="comecar"' + (qs.length ? "" : " disabled") + ">Começar</button></div>" +
+        (feitas ? '<p class="hint">' + feitas + (feitas === 1 ? " resposta treinada" : " respostas treinadas") + " nesta vaga.</p>" : "") +
+        (treinar.length ? "<div><b>O que treinar</b>" + enLista(treinar) + "</div>" : "") + "</section>";
+    }
+    var q = qs[s.i] || {}, texto = idioma === "en" ? q.texto_en || q.texto : q.texto;
+    var h = '<section class="kit-sec"><h3>Pergunta ' + (s.i + 1) + " de " + qs.length + '</h3><p class="en-pergunta-sim">' + esc(texto) + "</p>";
+    if (s.retorno !== undefined) {
+      var r = s.retorno;
+      h += '<div class="en-q"><b>Sua resposta</b><p>' + esc(s.resposta) + "</p></div>" +
+        (r ? '<div class="en-q" data-o="texto"><b>O que funcionou</b><p>' + esc(r.funcionou || "—") + '</p></div><div class="en-q" data-o="deducao"><b>O que faltou</b><p>' + esc(r.faltou || "—") +
+          '</p></div><div class="en-q" data-o="vaga"><b>Uma resposta mais forte (só com fatos seus)</b><p>' + esc(r.mais_forte || "—") + "</p>" +
+          ((r.conferir || []).length ? '<p class="en-conferir">Confira: ' + esc(r.conferir.join("; ")) + "</p>" : "") + "</div>"
+          : '<p class="hint">Resposta salva.</p>') +
+        '<div class="kit-mais"><button type="button" class="btn-primary" data-en="proxima">Próxima</button><button type="button" class="btn-plain" data-en="repetir">Responder de novo</button>' +
+        '<button type="button" class="btn-plain" data-en="encerrar">Encerrar</button></div>';
+    } else {
+      h += '<textarea id="en-resposta" maxlength="4000" aria-label="Sua resposta">' + esc(s.rascunho || "") + "</textarea>" +
+        '<div class="kit-mais"><button type="button" class="btn-primary" data-en="responder"' + (EN.ocupado ? " disabled" : "") + ">" + (EN.ocupado === "responder" ? "Lendo a resposta…" : "Enviar resposta") + "</button>" +
+        '<button type="button" class="btn-plain" data-en="pular">Pular</button><button type="button" class="btn-plain" data-en="encerrar">Encerrar</button></div>';
+    }
+    return h + "</section>";
+  }
+  function enSalario() {
+    var s = EN.d.salario || {};
+    return '<section class="kit-sec"><h3>Salário</h3><dl class="kit-campos"><dt>Faixa da vaga</dt><dd>' + esc(s.faixa ? s.faixa + (s.moeda ? " (" + s.moeda + ")" : "") : "a vaga não informa") +
+      "</dd><dt>Sua pretensão</dt><dd>" + esc(s.pretensao || "não está no seu perfil (acrescente em Meu perfil, se quiser)") + "</dd></dl>" +
+      "<div><b>Para a conversa</b>" + enLista(s.pontos) + '</div><p class="hint">A ferramenta não estima valor de mercado: só mostra o que a vaga e o seu perfil dizem.</p></section>';
+  }
+  function enDepois() {
+    var rs = EN.d.rodadas || [];
+    return '<section class="kit-sec"><h3>Como foi a entrevista</h3><p class="hint">O que você anotar aqui entra na próxima preparação: as perguntas que caíram viram perguntas prováveis.</p>' +
+      '<div class="en-form"><label>Data<input type="date" id="en-r-data" value="' + esc(hoje()) + '"></label>' +
+      '<label>Etapa (ex.: RH, técnica, gestor)<input type="text" id="en-r-etapa" maxlength="80"></label>' +
+      '<label>Perguntas que caíram (uma por linha)<textarea id="en-r-perguntas"></textarea></label>' +
+      '<label>O que foi bem<textarea id="en-r-bem" maxlength="2000"></textarea></label><label>O que foi mal<textarea id="en-r-mal" maxlength="2000"></textarea></label>' +
+      '<label>Próximos passos<textarea id="en-r-proximos" maxlength="1000"></textarea></label>' +
+      '<div class="kit-mais"><button type="button" class="btn-primary" data-en="rodada">Salvar anotação</button></div></div></section>' +
+      (rs.length ? '<section class="kit-sec"><h3>Entrevistas anteriores</h3>' + rs.slice().reverse().map(function (r) {
+        return '<div class="en-q"><b>' + esc(ddmm(r.data)) + (r.etapa ? " · " + esc(r.etapa) : "") + "</b>" + enLista(r.perguntas) +
+          (r.bem ? "<p><b>Bem:</b> " + esc(r.bem) + "</p>" : "") + (r.mal ? "<p><b>Mal:</b> " + esc(r.mal) + "</p>" : "") +
+          (r.proximos ? "<p><b>Próximos:</b> " + esc(r.proximos) + "</p>" : "") + "</div>"; }).join("") + "</section>" : "");
+  }
+  function enRender() {
+    var v = EN.d.vaga || {};
+    $("en-desc").textContent = (v.titulo || "") + " · " + (v.empresa || "") + (v.entrevista_em ? " · entrevista em " + ddmm(v.entrevista_em) : "");
+    $("en-abas").innerHTML = EN_ABAS.map(function (a) {
+      return '<button type="button" class="pill" data-en-aba="' + a[0] + '" aria-pressed="' + (EN.aba === a[0]) + '">' + a[1] + "</button>"; }).join("");
+    $("en-corpo").innerHTML = { dossie: enDossie, perguntas: enPerguntas, historias: enHistorias, simular: enSimular, salario: enSalario, depois: enDepois }[EN.aba]();
+  }
+  function enLerForm(chave) {
+    var f = document.querySelector('[data-en-form="' + chave + '"]'), h = {};
+    f.querySelectorAll("[data-en-f]").forEach(function (c) { h[c.getAttribute("data-en-f")] = c.value; });
+    return h;
+  }
+  function enPedir(acao, metodo, rota, corpo, depois) {
+    EN.ocupado = acao; $("en-erro").hidden = true; enRender();
+    return API.send(metodo, "/api/entrevista/" + rota, corpo).then(function (j) { EN.ocupado = null; return depois(j); })
+      .catch(function (e) { EN.ocupado = null; enRender(); enErro(e); });
+  }
+  function enAcao(acao) {
+    var vid = encodeURIComponent(EN.vid), s = EN.sim;
+    if (acao === "fechar") return $("dlg-ent").close();
+    if (acao === "empresa") return enPedir("empresa", "PUT", vid + "/empresa", { texto: $("en-empresa").value }, function () { toast("Texto sobre a empresa salvo"); return enCarregar(EN.vid); });
+    if (acao === "resumo") return enPedir("resumo", "POST", vid + "/resumo", {}, function () { return enCarregar(EN.vid); });
+    if (acao === "perguntas") return enPedir("perguntas", "POST", vid + "/perguntas", {}, function (j) { EN.d.perguntas = j.perguntas; enRender(); });
+    if (acao === "sugerir") return enPedir("sugerir", "POST", vid + "/historias", {}, function (j) { EN.rascunhos = j.rascunhos || []; enRender(); });
+    if (acao === "nova") { EN.editando = "nova"; return enRender(); }
+    if (acao === "comecar") {
+      EN.sim = { i: 0, idioma: (document.querySelector('input[name="en-idioma"]:checked') || {}).value || "pt" };
+      return enRender();
+    }
+    if (acao === "pular" || acao === "proxima") {
+      if (s.i + 1 >= (EN.d.perguntas || []).length) { s.fim = true; return enCarregar(EN.vid); }
+      EN.sim = { i: s.i + 1, idioma: s.idioma }; return enRender();
+    }
+    if (acao === "repetir") { EN.sim = { i: s.i, idioma: s.idioma, rascunho: s.resposta }; return enRender(); }
+    if (acao === "encerrar") { s.fim = true; return enCarregar(EN.vid); }
+    if (acao === "responder") {
+      var resp = $("en-resposta").value.trim(), q = EN.d.perguntas[s.i] || {};
+      if (!resp) return enErro({ status: 400, message: "Escreva a resposta antes de enviar (ou pule a pergunta)." });
+      s.rascunho = resp;
+      return enPedir("responder", "POST", vid + "/simulacao", { pergunta: s.idioma === "en" ? q.texto_en || q.texto : q.texto, resposta: resp, idioma: s.idioma }, function (j) {
+        s.resposta = resp; s.retorno = j.retorno || null; EN.d.simulacao = j.simulacao; enRender();
+      });
+    }
+    if (acao === "rodada") {
+      var corpo = { data: $("en-r-data").value, etapa: $("en-r-etapa").value, perguntas: $("en-r-perguntas").value, bem: $("en-r-bem").value,
+        mal: $("en-r-mal").value, proximos: $("en-r-proximos").value };
+      return enPedir("rodada", "POST", vid + "/rodada", corpo, function () { toast("Anotação salva: as perguntas entram na próxima preparação"); return enCarregar(EN.vid); });
+    }
+  }
+  function bindEntrevista() {
+    document.addEventListener("click", function (ev) {
+      var t = ev.target.closest("[data-ent],[data-en],[data-en-aba],[data-en-salvar],[data-en-descartar],[data-en-editar],[data-en-remover]");
+      if (!t || t.disabled) return;
+      if (t.hasAttribute("data-ent")) { ev.preventDefault(); ev.stopPropagation(); return abrirEntrevista(t.getAttribute("data-ent")); }
+      if (t.hasAttribute("data-en")) return enAcao(t.getAttribute("data-en"));
+      if (t.hasAttribute("data-en-aba")) {
+        if (EN.sim && !EN.sim.fim && EN.sim.retorno === undefined && $("en-resposta")) EN.sim.rascunho = $("en-resposta").value;
+        EN.aba = t.getAttribute("data-en-aba"); $("en-erro").hidden = true; return enRender();
+      }
+      if (t.hasAttribute("data-en-editar")) { EN.editando = t.getAttribute("data-en-editar"); EN.rmConfirma = null; return enRender(); }
+      if (t.hasAttribute("data-en-remover")) {
+        var hid = t.getAttribute("data-en-remover");
+        if (EN.rmConfirma !== hid) { EN.rmConfirma = hid; return enRender(); }
+        EN.rmConfirma = null;
+        return enPedir("remover", "DELETE", "historias/" + encodeURIComponent(hid), null, function () { toast("História removida"); return enCarregar(EN.vid); });
+      }
+      var chave = t.getAttribute("data-en-salvar") || t.getAttribute("data-en-descartar");
+      var rascunho = chave.charAt(0) === "r" ? +chave.slice(1) : -1;
+      if (t.hasAttribute("data-en-descartar")) {
+        if (rascunho >= 0) EN.rascunhos.splice(rascunho, 1); else EN.editando = null;
+        return enRender();
+      }
+      var h = enLerForm(chave), base = rascunho >= 0 ? EN.rascunhos[rascunho] : (EN.d.historias || []).filter(function (x) { return x.id === chave; })[0] || {};
+      h.perguntas = base.perguntas || []; h.conquista = base.conquista || ""; h.conferir = base.conferir || [];
+      if (chave !== "nova" && rascunho < 0) h.id = chave;
+      return enPedir("salvar", "POST", "historias", { historia: h }, function () {
+        if (rascunho >= 0) EN.rascunhos.splice(rascunho, 1); else EN.editando = null;
+        toast("História salva"); return enCarregar(EN.vid);
+      });
+    });
+  }
+
   /* ---------- dados ---------- */
   var carregando = null;
   function carregar() {
@@ -2967,6 +3219,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   bind();
   bindIA();
   bindPerfil();
+  bindEntrevista();
   renderAgora();
   carregar();
   carregarIA();
