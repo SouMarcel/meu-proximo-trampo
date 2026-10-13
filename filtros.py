@@ -77,6 +77,10 @@ GRUPOS_FORA = ("internacional:", "mudanca:")
 FONTES_INT = {"remotive": "Remotive", "himalayas": "Himalayas", "remoteok": "RemoteOK", "jobicy": "Jobicy",
               "weworkremotely": "We Work Remotely", "getonboard": "Get on Board"}
 GLOBAL = "internacional:global"
+# Portais da busca (config.json -> "fontes"), ligados no painel "Filtros da busca"; precisa = o que o portal exige
+FONTES_NAC = {"indeed": "Indeed", "gupy": "Gupy", "linkedin": "LinkedIn", "startupjobs": "startup.jobs"}
+FONTES_PADRAO = ["indeed", "gupy"]
+PRECISA = {"startupjobs": "da chave MCP_STARTUP_JOBS no arquivo .env"}
 MAX_EMPRESAS, MAX_FRASES, TAMANHO_FRASE = 50, 30, 120
 # palavras comuns que distinguem cada idioma (sem acento); o que aparece em mais de um idioma ficou de fora
 PALAVRAS_IDIOMA = {
@@ -260,6 +264,7 @@ def efetivos(cfg: dict) -> dict:
         "senioridades": [s for s in cfg.get("senioridades") or [] if s in SENIORIDADES],
         "moedas_aceitas": [m for m in cfg.get("moedas_aceitas") or [] if m in MOEDAS],
         "empresas_excluir": [str(e).strip() for e in cfg.get("empresas_excluir") or [] if str(e).strip()],
+        "fontes": [str(n) for n in cfg.get("fontes") or FONTES_PADRAO],
     }
     if not loc and cfg.get("local"):
         f["local_legado"] = str(cfg["local"])  # formato antigo: onde fazer a busca do país
@@ -404,7 +409,14 @@ def validar(e: dict) -> dict:
     moedas = e.get("moedas_aceitas") or []
     if not isinstance(moedas, list) or any(m not in MOEDAS for m in moedas):
         raise ValueError("moeda inválida")
-    return {
+    portais = {}
+    if "fontes" in e:  # só quando o painel manda: quem não manda mantém a lista do config.json
+        lista = e.get("fontes") if isinstance(e.get("fontes"), list) else []
+        fontes = [k for k in FONTES_NAC if k in lista]  # nome desconhecido (de um config antigo) é ignorado
+        if not fontes:
+            raise ValueError("marque pelo menos um portal")
+        portais["fontes"] = fontes
+    return {**portais,
         "termos": termos,
         "localidade": {"pais": pais, "estado": estado, "cidade": cidade, "raio_km": raio},
         "modelos": m,
@@ -438,7 +450,15 @@ def opcoes() -> dict:
     return {"paises": sorted(PAISES, key=sem_acento), "modelos": MODELOS, "tipos_emprego": TIPOS_EMPREGO,
             "senioridades": SENIORIDADES, "moedas": MOEDAS, "moeda_do_pais": MOEDA_DO_PAIS,
             "janelas": JANELAS, "raios_km": RAIOS_KM, "idiomas": IDIOMAS, "regioes": REGIOES,
-            "contratacao": CONTRATACOES, "fontes_int": fontes_int()}
+            "contratacao": CONTRATACOES, "fontes_int": fontes_int(), "fontes_nac": fontes_nac()}
+
+
+def fontes_nac() -> list[dict]:
+    """Os portais da busca para o painel: nome, rótulo, termos de uso e o que cada um precisa."""
+    from fontes import FONTES
+
+    return [{"nome": n, "rotulo": r, "termos": getattr(FONTES.get(n), "TERMOS", ""), "precisa": PRECISA.get(n, "")}
+            for n, r in FONTES_NAC.items() if n in FONTES]
 
 
 def fontes_int() -> list[dict]:
@@ -504,27 +524,34 @@ def consultas(f: dict, incluir_presencial: bool = False) -> list[dict]:
         for t in f["termos"]:
             lista.append({"grupo": "pais" if pais_sem_filtro else "remoto", "termo": t, "pais": pais,
                           "pais_nome": loc["pais"], "local": f.get("local_legado"), "raio_km": None,
-                          "remoto": not pais_sem_filtro, "area": "nacional"})
+                          "remoto": not pais_sem_filtro, "area": "nacional",
+                          "modelos": [k for k in MODELOS if m[k] or incluir_presencial] if pais_sem_filtro else ["remoto"],
+                          "tipos_emprego": f.get("tipos_emprego", [])})
     if cidade and (m["hibrido"] or m["presencial"]):
         for t in f["termos"]:
             lista.append({"grupo": "local", "termo": t, "pais": pais, "pais_nome": loc["pais"], "local": cidade,
                           "cidade": loc["cidade"], "estado": loc["estado"], "raio_km": loc["raio_km"],
-                          "remoto": False, "area": "nacional"})
+                          "remoto": False, "area": "nacional", "modelos": [k for k in ("presencial", "hibrido") if m[k]],
+                          "tipos_emprego": f.get("tipos_emprego", [])})
     if inter["ativo"]:  # não depende do remoto no país
         for p in inter["paises"]:
             for t in inter["termos"] or f["termos"]:
                 lista.append({"grupo": f"internacional:{p}", "termo": t, "pais": PAISES[p], "pais_nome": p,
-                              "local": None, "raio_km": None, "remoto": True, "area": "internacional"})
+                              "local": None, "raio_km": None, "remoto": True, "area": "internacional",
+                              "modelos": ["remoto"], "tipos_emprego": f.get("tipos_emprego", [])})
         if inter.get("aceita_mudar"):  # presencial e híbrido nos países para onde aceita se mudar
             for p in inter.get("paises_mudanca") or inter["paises"]:
                 for t in inter["termos"] or f["termos"]:
                     lista.append({"grupo": f"mudanca:{p}", "termo": t, "pais": PAISES[p], "pais_nome": p,
-                                  "local": None, "raio_km": None, "remoto": False, "area": "internacional"})
-        if inter.get("fontes") or inter.get("empresas"):  # fontes sem filtro de país: uma consulta por cargo
+                                  "local": None, "raio_km": None, "remoto": False, "area": "internacional",
+                                  "modelos": ["presencial", "hibrido"], "tipos_emprego": f.get("tipos_emprego", [])})
+        if inter.get("fontes") or inter.get("empresas") or "linkedin" in f.get("fontes", []):  # uma consulta por cargo
             for t in inter["termos"] or f["termos"]:
                 lista.append({"grupo": GLOBAL, "termo": t, "pais": None, "pais_nome": None, "local": None,
                               "raio_km": None, "remoto": not inter.get("aceita_mudar"), "area": "internacional",
-                              "global": True, "empresas": inter.get("empresas") or []})
+                              "global": True, "empresas": inter.get("empresas") or [],
+                              "modelos": list(MODELOS) if inter.get("aceita_mudar") else ["remoto"],
+                              "tipos_emprego": f.get("tipos_emprego", [])})
     return lista
 
 

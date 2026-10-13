@@ -1221,6 +1221,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (it.ativo && ((it.fontes || []).length || (it.empresas || []).length)) n += ti; // fontes do exterior: uma por cargo
     return n;
   }
+  function contarLinkedin(d) { // o LinkedIn roda em todos os grupos e, com a busca internacional, também no "mundo todo"
+    var it = d.internacional, ti = it.termos.length || d.termos.length;
+    return contarConsultas(d) + (it.ativo && !((it.fontes || []).length || (it.empresas || []).length) ? ti : 0);
+  }
   function abrirFiltros(proposta, depois, modo) { // proposta: filtros sugeridos pelos primeiros passos; modo "int": painel internacional
     FB.d = null; FB.depois = typeof depois === "function" ? depois : null; FB.modo = modo === "int" ? "int" : "nac";
     $("fb-title").textContent = FB.modo === "int" ? "Filtros da busca internacional" : "Filtros da busca";
@@ -1295,6 +1299,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     $("fb-corpo").innerHTML =
       '<section class="fb-sec"><h3>Cargos</h3><p class="hint">Cada cargo vira uma busca. Frase exata (entre aspas) traz só anúncios com aquela expressão, o que corta muito ruído.</p>' +
         '<div class="tags" id="fb-l-termos"></div>' + linhaAdicionar("fb-termo", "Ex.: scrum master", true, "Novo cargo") + "</section>" +
+      '<section class="fb-sec"><h3>Portais</h3><p class="hint">Onde buscar. Marque pelo menos um. O LinkedIn também busca as vagas de fora quando a busca internacional está ligada.</p>' +
+        (op.fontes_nac || []).map(function (x) {
+          return '<label class="fbi-fonte"><input type="checkbox" data-portal="' + esc(x.nome) + '"' + chk((d.fontes || []).indexOf(x.nome) >= 0) + "><span>" + esc(x.rotulo) +
+            "<small>" + esc([x.termos, x.precisa ? "Precisa " + x.precisa + "." : ""].filter(Boolean).join(" ")) + "</small></span></label>";
+        }).join("") + "</section>" +
       '<section class="fb-sec"><h3>Localidade</h3><div class="fb-grid">' +
         '<div class="field"><label for="fb-pais">País</label><select id="fb-pais">' + op.paises.map(function (p) {
           return "<option" + (p === loc.pais ? " selected" : "") + ">" + esc(p) + "</option>"; }).join("") + "</select></div>" +
@@ -1352,9 +1361,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         return '<label><input type="checkbox" data-pais="' + esc(p) + '"' + (d.internacional.paises.indexOf(p) >= 0 ? " checked" : "") + "> " + esc(p) + "</label>";
       }).join("") || '<span class="hint">Nenhum país com esse nome.</span>';
     }
-    var n = contarConsultas(d), c = $("fb-conta");
-    c.textContent = "Esta busca fará " + n + (n === 1 ? " consulta" : " consultas") + " por portal" + (n > 20 ? ": muitas consultas aumentam o risco de bloqueio" : "");
-    if (n > 20) c.setAttribute("data-muitas", ""); else c.removeAttribute("data-muitas");
+    var n = contarConsultas(d), c = $("fb-conta"), nl = (d.fontes || []).indexOf("linkedin") >= 0 ? contarLinkedin(d) : 0, maior = Math.max(n, nl);
+    c.textContent = "Esta busca fará " + n + (n === 1 ? " consulta" : " consultas") + " por portal" + (nl ? " (no LinkedIn, " + nl + ")" : "") +
+      (maior > 20 ? ": muitas consultas aumentam o risco de bloqueio" : "");
+    if (maior > 20) c.setAttribute("data-muitas", ""); else c.removeAttribute("data-muitas");
   }
   function adicionar(id) {
     var inp = $(id), txt = inp.value.trim();
@@ -1420,6 +1430,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       else if (t.hasAttribute("data-fonte")) {
         var nome = t.getAttribute("data-fonte"), fs = d.internacional.fontes = d.internacional.fontes || [];
         if (t.checked) { if (fs.indexOf(nome) < 0) fs.push(nome); } else fs.splice(fs.indexOf(nome), 1);
+      }
+      else if (t.hasAttribute("data-portal")) {
+        var portal = t.getAttribute("data-portal"), ps = d.fontes = d.fontes || [];
+        if (t.checked) { if (ps.indexOf(portal) < 0) ps.push(portal); } else if (ps.indexOf(portal) >= 0) ps.splice(ps.indexOf(portal), 1);
       }
       else if (t.hasAttribute("data-pais")) {
         var p = t.getAttribute("data-pais");

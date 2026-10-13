@@ -132,8 +132,13 @@ def _do_disco(chave: str, horas: float, fn):
     return itens
 
 
+AO_ESQUECER: list = []  # fontes com estado próprio da busca (ex.: o bloqueio do LinkedIn) se registram aqui
+
+
 def esquecer() -> None:
     _memoria.clear()
+    for fn in AO_ESQUECER:
+        fn()
 
 
 def buscar_lista(chave: str, baixar_lista, normalizar, consulta: dict, horas: int, por_termo: int,

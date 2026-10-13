@@ -1,3 +1,13 @@
+<!--
+Relatório de impacto da emenda (2026-10-12)
+- Versão: 1.0.0 → 2.0.0 (MAJOR: o princípio VI foi redefinido)
+- Princípio alterado: VI. Respeito aos portais. Sai "sem raspar o LinkedIn"; entram as regras para portais sem API
+  aberta (só a busca pública, sem login nem conta da pessoa, pausa, parar no primeiro bloqueio).
+- Motivo: decisão do usuário de ter o LinkedIn na busca de vagas (spec 014-linkedin-na-busca).
+- Arquivos atualizados: AGENTS.md (Respeite os portais), README.md (fontes e termos), skill buscar-vagas.
+- Pendências: nenhuma.
+-->
+
 # Constituição do meu-proximo-trampo
 
 ## Princípios
@@ -53,8 +63,11 @@ próximo passo e espera. Nunca se candidata, nunca envia mensagem e nunca clica 
 
 Preferir APIs públicas e oficiais; seguir os termos de cada fonte (citar a fonte e linkar a
 vaga original quando pedido); consultas espaçadas e só o necessário (ex.: descrição só das
-vagas que vão para o relatório). Sem raspar o LinkedIn, sem contornar bloqueios e sem
-automação de candidatura.
+vagas que vão para o relatório). Em portais sem API aberta (ex.: Indeed, LinkedIn), só a busca
+pública de vagas: sem login e sem usar a conta, as senhas ou os cookies da pessoa, com pausa
+maior entre as consultas e parando no primeiro bloqueio (limite de consultas ou pedido de
+login), sem nova tentativa nem forma de contornar. O perfil da pessoa não é lido de portais:
+só dos arquivos que ela mesma baixa. Sem automação de candidatura.
 
 ## Restrições técnicas
 
@@ -87,4 +100,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-07
+**Version**: 2.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-12

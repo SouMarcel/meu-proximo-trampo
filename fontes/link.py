@@ -253,7 +253,11 @@ def _ler_linkedin(partes) -> dict:
     vid = (q.get("currentJobId") or [""])[0] or partes.path.rstrip("/").split("/")[-1].split("-")[-1]
     if not vid.isdigit():
         raise LinkErro("não achei o número da vaga no link do LinkedIn")
-    pagina = _baixar(f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{vid}")
+    return vaga_linkedin(vid, _baixar(f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{vid}"))
+
+
+def vaga_linkedin(vid: str, pagina: str) -> dict:
+    """A vaga a partir da página pública do LinkedIn (também usada pela fonte da busca, fontes/linkedin.py)."""
     classes = ("top-card-layout__title", "topcard__org-name-link", "topcard__flavor--bullet",
                "show-more-less-html__markup", "description__job-criteria-subheader", "description__job-criteria-text")
     p = _Classes(classes)

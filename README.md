@@ -11,8 +11,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ## O que ela faz
 
-- **Busca** vagas no Indeed e na Gupy (e no startup.jobs, de startups, e em portais de vagas
-  remotas do exterior, se você ligar) com
+- **Busca** vagas no Indeed e na Gupy (e no LinkedIn, no startup.jobs, de startups, e em portais de
+  vagas remotas do exterior, se você ligar) com
   os seus cargos e filtros, que você ajusta no painel **Filtros da busca** do dashboard:
   remoto no seu país (e, se quiser, em outros países), híbrido e presencial só na sua
   cidade, data de publicação, tipo de emprego, senioridade, moedas aceitas para vagas de
@@ -71,7 +71,7 @@ skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`anal
 
 ```mermaid
 flowchart LR
-  A[Indeed, Gupy, startup.jobs<br/>e fontes do exterior] --> B[vagas.py buscar]
+  A[Indeed, Gupy, LinkedIn, startup.jobs<br/>e fontes do exterior] --> B[vagas.py buscar]
   B -->|sem IA| D[(banco local)]
   B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
   C --> D
@@ -479,6 +479,17 @@ Para instalar à mão, no Claude Code:
   que acessa o Indeed de forma não oficial. Ela pode parar de funcionar se o Indeed
   mudar algo, e uso exagerado pode gerar bloqueio temporário. Use para a sua busca
   pessoal, com moderação, e respeite os termos de uso do portal.
+- A busca no LinkedIn (desligada até você marcar em **Filtros da busca → Portais**) usa a busca
+  pública de vagas do site, a mesma que aparece para quem não entrou na conta: é uma consulta não
+  oficial, sem login e sem a sua conta, as suas senhas ou os seus cookies. Cada grupo da busca vira
+  uma consulta com o local e o modo de trabalho certos (remoto no país, cidade com raio, país inteiro,
+  cada país de fora, mudança para um país e, com a busca internacional, "mundo todo"), e o tipo de
+  emprego e a data de publicação vão como filtro do próprio LinkedIn. Há uma pausa de 3 a 7 segundos
+  entre os pedidos e a descrição só é lida para as vagas que vão para o relatório. Se o LinkedIn
+  limitar as consultas ou pedir login, ele fica de fora até o fim daquela busca, sem nova tentativa,
+  com o aviso no resumo, e os outros portais seguem: espere algumas horas antes de tentar de novo.
+  A candidatura é sempre no próprio LinkedIn. Use com moderação: muitas consultas aumentam o risco
+  de bloqueio, e o site pode mudar e parar de responder à ferramenta.
 - A busca na Gupy usa o MCP público de candidatos da própria Gupy
   (`https://candidates.mcp.api.gupy.io/mcp`), oficial, sem login e só de leitura. Ele
   não filtra por data nem busca frase exata: a ferramenta ordena pela publicação e para
@@ -517,7 +528,8 @@ Para instalar à mão, no Claude Code:
 - [x] startup.jobs (vagas de startups; opcional)
 - [x] Fontes do exterior (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board)
   e empresas acompanhadas no Greenhouse, Lever e Ashby; opcionais
-- [ ] Outros portais: LinkedIn, InHire, Catho, Glassdoor
+- [x] LinkedIn (busca pública, sem login; opcional)
+- [ ] Outros portais: InHire, Catho, Glassdoor
 - [x] Preparar e simular entrevista para as vagas na coluna Entrevista
 
 ### Adicionar um portal

@@ -200,9 +200,12 @@ def fontes_da_busca(cfg: dict, f: dict) -> list[str]:
 
 
 def atende(fonte, c: dict) -> bool:
-    """Cada portal só na sua área; as fontes sem filtro de país (POR_PAIS = False) só nas consultas globais."""
-    return (c.get("area", "nacional") in getattr(fonte, "AREAS", ("nacional", "internacional"))
-            and bool(c.get("global")) == (not getattr(fonte, "POR_PAIS", True)))
+    """Cada portal só na sua área; as fontes sem filtro de país (POR_PAIS = False) só nas consultas globais, e as
+    com GLOBAL = True nas duas."""
+    if c.get("area", "nacional") not in getattr(fonte, "AREAS", ("nacional", "internacional")):
+        return False
+    por_pais = getattr(fonte, "POR_PAIS", True)
+    return (not por_pais or getattr(fonte, "GLOBAL", False)) if c.get("global") else por_pais
 
 
 def contar_consultas(plano: list[dict], nomes_fontes: list[str]) -> int:
@@ -360,6 +363,8 @@ def cmd_buscar(args) -> int:
         return 2
     por_termo = args.resultados or cfg.get("resultados_por_termo", 40)
     nomes_fontes = args.fontes or fontes_da_busca(cfg, f)
+    if args.fontes:
+        f["fontes"] = list(args.fontes)  # o plano de consultas segue as fontes pedidas (ex.: o LinkedIn no "mundo todo")
     desconhecidas = [n for n in nomes_fontes if n not in FONTES]
     if desconhecidas:
         print(f"Fonte(s) desconhecida(s): {', '.join(desconhecidas)}. Disponíveis: {', '.join(FONTES)}", file=sys.stderr)
@@ -501,7 +506,7 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
             "termos": c["termos"], "grupos": c.get("grupos", []), "ids_relacionados": c["ids_relacionados"],
             "outras_plataformas": c.get("outras_plataformas", []),
             "area": area, "pais_vaga": pais_vaga, "idioma": filtros.idioma_da_vaga(c),
-            **{k: c[k] for k in ("restricao_local", "ats", "moeda", "modelo_trabalho") if c.get(k)},  # o que a fonte informa
+            **{k: c[k] for k in ("restricao_local", "ats", "moeda", "modelo_trabalho", "tipo_emprego") if c.get(k)},  # o que a fonte informa
             **({"sinais": s} if (s := filtros.sinais(c, f)) else {}),  # patrocínio de visto, relocation…
             **analise,
             "triagem": "pendente", "triada_em": None,

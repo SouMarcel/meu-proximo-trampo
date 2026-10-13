@@ -33,8 +33,9 @@ volta nas próximas buscas.
 - O arquivo de perfil apontado em `config.json` (padrão `perfil.md`): a única fonte
   sobre o usuário. Não complete lacunas com suposições.
 - `vagas.py`: `buscar`, `ver` e `gravar`. As buscas de cada portal ficam em `fontes/`
-  (`indeed.py`, `gupy.py`, `startupjobs.py`); os portais usados vêm de `fontes` no
-  `config.json` (o `startupjobs` só entra se estiver lá).
+  (`indeed.py`, `gupy.py`, `linkedin.py`, `startupjobs.py`); os portais usados vêm de `fontes` no
+  `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais (o `linkedin` e o
+  `startupjobs` só entram se estiverem lá).
 - `dash/`: o dashboard. `servidor.py` (porta 8765), `dashboard.html`, `banco.py` (dados
   em `dash/dados/candidaturas.db`, com comandos `quadro`, `pendentes` e `analisar`) e
   `README.md` (campos e valores).
@@ -80,7 +81,8 @@ servidor; ele só serve para ver e mexer no quadro.
    `buscar`: "últimos 3 dias" → `--janela-horas 72`; outro cargo →
    `--termos '"product owner"'`; "pode ser presencial em qualquer lugar" →
    `--incluir-presencial`; "só na Gupy" → `--fontes gupy`; "procura também no
-   startup.jobs" → `--fontes indeed gupy startupjobs`. Pedido pontual não altera
+   startup.jobs" → `--fontes indeed gupy startupjobs`; "inclui o LinkedIn" →
+   `--fontes indeed gupy linkedin`. Pedido pontual não altera
    o `config.json`; para mudar o padrão, sugira o painel Filtros da busca (ou edite o
    arquivo, se ele pedir).
 
@@ -225,7 +227,8 @@ a análise, como na busca.
 1. `PY dash/banco.py pendentes` lista essas vagas em JSON.
 2. Avalie com os mesmos critérios, usando `descricao`. Se só houver link, abra-o com a
    ferramenta de leitura web do assistente (WebFetch, web_fetch ou webfetch; Gupy e sites
-   de empresa costumam abrir, Indeed e LinkedIn bloqueiam); sem essa ferramenta, peça que
+   de empresa costumam abrir; Indeed e LinkedIn costumam bloquear a leitura pelo assistente, e uma vaga do
+   LinkedIn adicionada pelo link já vem com o texto); sem essa ferramenta, peça que
    a pessoa cole o texto. Sem conteúdo, não invente: use `"analise_status": "sem_dados"` e um
    `resumo` pedindo para colar a descrição no dashboard.
 3. Grave `.cache/analises.json` no mesmo formato do `avaliacoes.json` e rode
@@ -294,6 +297,12 @@ A Gupy é consultada pelo MCP público oficial de candidatos dela (`fontes/gupy.
 sem login e sem bloqueio conhecido; erro ali costuma ser instabilidade passageira.
 Para buscar num portal só enquanto o outro falha: `--fontes indeed` ou
 `--fontes gupy`.
+
+O LinkedIn é consultado pela busca pública do site (`fontes/linkedin.py`), sem login e sem a
+conta da pessoa, com pausa de 3 a 7 segundos entre os pedidos. No primeiro bloqueio ("o LinkedIn
+limitou as consultas; tente mais tarde"), ele fica de fora até o fim da busca e os outros portais
+seguem. Não repita a busca em seguida nem tente contornar: espere algumas horas. A descrição só é
+lida para as candidatas.
 
 O startup.jobs é consultado pelo MCP público do site (`fontes/startupjobs.py`), sem
 login. Sem conta, ele aceita 20 consultas por minuto e mostra só as vagas dos últimos
