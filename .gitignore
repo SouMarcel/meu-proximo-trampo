@@ -13,7 +13,7 @@ curriculos/
 entrevistas/
 # Skills de LinkedIn (Liftli): seu tom de voz e o material dos posts (banners, imagens)
 .liftli/
-linkedin/
+/linkedin/
 
 # Ambiente Python
 .venv/
