@@ -268,13 +268,13 @@ primeiro pedido e não grava a espera.
   - `.agents/skills/buscar-vagas/SKILL.md`: vagas de post adicionadas no dashboard e o e-mail de candidatura;
   - rodar `python sincronizar_skills.py` e `python sincronizar_skills.py --conferir`.
 - [X] T026 Rodar `.venv\Scripts\python.exe -m unittest discover -s tests`: total da T001 + os novos, todos passando.
-- [ ] T027 Verificação na página (Windows), pelo quickstart:
+- [X] T027 Verificação na página (Windows), pelo quickstart:
   - servidor da worktree com `--sem-navegador --porta 8766`, para não mexer no da branch pessoal;
   - cenários 1–7 com um post público real e a IA da pessoa, com o OK dela para cada pedido real ao LinkedIn;
   - nada do post real fica em arquivo do repositório.
-- [ ] T028 Com o OK da pessoa, um pedido real com um link de post no formato `share` ou `ugcPost` (research §2,
+- [ ] T028 (adiada em 2026-10-16: a pessoa não tinha link nesse formato; os testes automáticos cobrem os formatos) Com o OK da pessoa, um pedido real com um link de post no formato `share` ou `ugcPost` (research §2,
   quickstart cenário 8). Se o id canônico não vier, registrar em research.md.
-- [ ] T029 Antes do commit:
+- [X] T029 Antes do commit:
   - procurar dados pessoais no diff (nomes, empresas, e-mails reais, cargos do usuário, caminhos pessoais) e no
     `tests/dados/linkedin/post*.html`;
   - mostrar o resultado à pessoa;
