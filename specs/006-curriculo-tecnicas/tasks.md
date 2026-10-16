@@ -78,7 +78,7 @@ fictícios; o resto pelo quickstart.
 
 - [X] T016 [P] [US3] Criar `.agents/skills/gerar-curriculo/tecnicas.md`: como escrever cada técnica (bullet = ação + escopo + ferramenta + resultado; XYZ só com número confirmado, senão qualitativo e pergunta; foco: seleção, ordem e até 3 destaques; resultado primeiro; competências primeiro com 6 a 8 itens só de tem/sustentado; palavras-chave reformuladas a partir do que a pessoa tem; formato `us` em inglês fiel ao perfil, sem dados pessoais; expressões vazias a evitar)
 - [X] T017 [US3] Em `.agents/skills/gerar-curriculo/SKILL.md`: passo "Técnicas" depois do alvo (lê `PY curriculo.py --tecnicas [--vaga-id ID]`, pergunta as caixas com múltipla escolha e as três escolhas pela ferramenta de opções do assistente, sugestão marcada), leitura do `tecnicas.md`, conferência obrigatória (`PY conferir.py … --vaga-id ID`) antes de entregar, "bloquear" = não entrega até resolver, e limite de páginas pelo `tecnicas.paginas`; `modelo.json` com `tecnicas` e `destaques` de exemplo; conferir se `sincronizar_skills.py` copia os arquivos extras da pasta da skill e rodar
-- [ ] T018 [US3] Validar US3 pelo quickstart.md cenário 12 (Claude Code)
+- [x] T018 [US3] Validar US3 pelo quickstart.md cenário 12 (Claude Code)
 
 ---
 

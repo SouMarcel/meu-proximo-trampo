@@ -135,7 +135,7 @@ fictícios gerados nos testes e provedor de IA falso local; o resto pelo quickst
 
 - [X] T034 [P] `README.md` (primeiros passos na página, o que fica guardado e onde, privacidade dos documentos, `pypdf`, skill `analisar-perfil`) e `dash/README.md` (rotas novas)
 - [X] T035 Rodar `python -m unittest discover -s tests` e o quickstart.md; registrar os resultados no `quickstart.md`
-- [ ] T036 Busca de dados pessoais no diff, mostrar ao usuário e, com o OK, commit na `master`, push, merge na branch pessoal, instalar o `pypdf` no `.venv` dela (o `iniciar.py` pergunta) e reiniciar o servidor
+- [x] T036 Busca de dados pessoais no diff, mostrar ao usuário e, com o OK, commit na `master`, push, merge na branch pessoal, instalar o `pypdf` no `.venv` dela (o `iniciar.py` pergunta) e reiniciar o servidor
 
 ---
 

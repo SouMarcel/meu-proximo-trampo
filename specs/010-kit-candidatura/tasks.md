@@ -164,7 +164,7 @@ quickstart.
   `dash/README.md` (campos novos da vaga e da análise); `AGENTS.md` com os comandos novos
 - [X] T031 Rodar `python -m unittest discover -s tests` e o quickstart.md; registrar os resultados no
   `quickstart.md`
-- [ ] T032 Com o OK do usuário, uma carta com a IA configurada por ele (cenário 12)
+- [x] T032 Com o OK do usuário, uma carta com a IA configurada por ele (cenário 12)
 - [X] T033 Busca de dados pessoais no diff, mostrar ao usuário e, com o OK, commit na `master`, push,
   merge na branch pessoal, reiniciar o servidor e `graphify update .`; marcar a T031 da spec 009
 
