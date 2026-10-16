@@ -47,6 +47,12 @@ button { cursor: pointer; }
 .top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .top h1 { margin: 0; font-size: clamp(22px, 2.6vw, 30px); font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; }
 .top p { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+.top-titulo { display: flex; align-items: center; gap: 14px; min-width: 0; max-width: 100%; }
+.top-titulo > div { min-width: 0; }
+.apoio { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none; text-decoration: none; color: var(--muted); font-size: 11px; font-weight: 600; }
+.apoio:hover { color: var(--fg); }
+.apoio-qr { width: 60px; height: 60px; display: block; border-radius: 6px; }
+@media (max-width: 720px) { .apoio-qr { width: 46px; height: 46px; } }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .select-wrap { position: relative; display: flex; align-items: center; }
 .select-wrap svg { position: absolute; left: 12px; pointer-events: none; color: var(--muted); }
@@ -455,9 +461,15 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
 
 <div class="wrap">
   <header class="top">
-    <div>
-      <h1>Acompanhamento de Candidaturas</h1>
-      <p>Gerencie seu funil de vagas no quadro abaixo.</p>
+    <div class="top-titulo">
+      <a class="apoio" href="https://buymeacoffee.com/meuproximotrampo" target="_blank" rel="noopener" title="Gostou da ferramenta? Apoie o projeto com um café (Buy Me a Coffee)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="apoio-qr" role="img" aria-label="QR code do Buy Me a Coffee"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#000" d="M2 2.5h7m2 0h3m3 0h1m1 0h3m2 0h7m-29 1h1m5 0h1m2 0h1m1 0h3m1 0h2m1 0h1m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m3 0h3m4 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m3 0h2m2 0h3m1 0h2m2 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h1m1 0h8m3 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m1 0h2m3 0h4m1 0h3m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-18 1h2m1 0h1m2 0h4m-21 1h1m2 0h1m1 0h2m1 0h3m2 0h4m1 0h2m1 0h1m1 0h1m-22 1h2m3 0h2m1 0h1m1 0h1m3 0h1m4 0h2m2 0h1m2 0h1m-29 1h3m3 0h1m5 0h2m2 0h2m1 0h1m1 0h1m1 0h5m-28 1h1m1 0h2m1 0h1m4 0h1m2 0h1m1 0h2m1 0h2m3 0h2m1 0h2m-28 1h2m3 0h3m1 0h1m3 0h1m1 0h3m2 0h3m2 0h1m1 0h2m-26 1h3m1 0h1m1 0h1m1 0h1m2 0h1m4 0h3m-22 1h1m1 0h2m2 0h3m1 0h1m6 0h1m2 0h1m1 0h1m1 0h5m-27 1h4m1 0h3m3 0h1m1 0h1m1 0h4m2 0h3m1 0h1m-28 1h1m1 0h1m2 0h2m4 0h1m3 0h1m1 0h1m1 0h3m1 0h1m3 0h1m-27 1h3m3 0h1m2 0h3m1 0h1m1 0h1m4 0h3m1 0h1m2 0h1m-29 1h1m2 0h2m1 0h6m1 0h1m2 0h1m3 0h1m1 0h3m2 0h2m-26 1h1m3 0h2m3 0h1m1 0h7m6 0h2m-29 1h1m1 0h2m2 0h3m2 0h1m3 0h1m4 0h5m1 0h1m-19 1h2m2 0h2m2 0h5m3 0h1m1 0h3m-29 1h7m2 0h1m1 0h1m1 0h2m1 0h1m3 0h1m1 0h1m1 0h1m2 0h1m-28 1h1m5 0h1m1 0h2m1 0h4m1 0h1m1 0h1m1 0h1m3 0h3m-27 1h1m1 0h3m1 0h1m3 0h1m3 0h4m2 0h5m-25 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m3 0h2m1 0h1m1 0h1m1 0h4m-28 1h1m1 0h3m1 0h1m3 0h3m1 0h1m1 0h4m4 0h3m1 0h1m-29 1h1m5 0h1m5 0h1m4 0h1m1 0h2m1 0h3m2 0h1m-28 1h7m1 0h1m1 0h3m3 0h2m2 0h3m1 0h2m1 0h1"/></svg>
+        <span>Apoie ☕</span>
+      </a>
+      <div>
+        <h1>Acompanhamento de Candidaturas</h1>
+        <p>Gerencie seu funil de vagas no quadro abaixo.</p>
+      </div>
     </div>
     <div class="actions">
       <div class="select-wrap">

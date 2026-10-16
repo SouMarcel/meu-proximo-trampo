@@ -533,6 +533,12 @@ Para instalar à mão, no Claude Code:
   vaga antes de se candidatar.
 - A nota da IA serve para triagem; ela não substitui ler a vaga.
 
+## Apoie o projeto
+
+O meu-próximo-trampo é gratuito e de código aberto. Se ele te ajudou a encontrar o próximo trampo, um café
+ajuda a manter o desenvolvimento (novos portais, melhorias e correções): [buymeacoffee.com/meuproximotrampo](https://buymeacoffee.com/meuproximotrampo).
+O link e o QR code também ficam no canto de cima do dashboard.
+
 ## Próximos passos
 
 - [x] Indeed (Brasil e outros países)
@@ -541,7 +547,7 @@ Para instalar à mão, no Claude Code:
 - [x] Fontes do exterior (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board)
   e empresas acompanhadas no Greenhouse, Lever e Ashby; opcionais
 - [x] LinkedIn (busca pública, sem login; opcional)
-- [ ] Outros portais: InHire, Catho, Glassdoor
+- [ ] Mais portais do Brasil (ex.: InHire, Catho, Vagas.com, InfoJobs, Glassdoor)
 - [x] Preparar e simular entrevista para as vagas na coluna Entrevista
 
 ### Adicionar um portal

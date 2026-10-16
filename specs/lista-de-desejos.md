@@ -10,3 +10,10 @@ priorizado.
   e verificação do fluxo da primeira vez e do dia a dia nos dois sistemas. Entra depois que o
   Windows rodar sem problemas. Decisão do usuário em 2026-10-08: foco na experiência web no
   Windows.
+
+## Fontes de vagas
+
+- **Mais portais do Brasil** (pedido do usuário em 2026-10-13): ampliar a busca nacional com outros portais
+  brasileiros (ex.: InHire, Catho, Vagas.com, InfoJobs, Glassdoor). Para cada um, levantar antes se há API pública
+  ou oficial, os termos de uso e o risco de bloqueio, e seguir o princípio VI (só a busca pública, sem login, pausa,
+  parar no primeiro bloqueio). Entra como portal na seção Portais do painel, desligado por padrão.
