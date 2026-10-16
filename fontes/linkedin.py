@@ -30,7 +30,7 @@ AREAS = ("nacional", "internacional")
 POR_PAIS = True
 GLOBAL = True  # também na consulta "mundo todo" (Worldwide)
 TERMOS = ("Consulta não oficial à busca pública do LinkedIn, sem login e sem a sua conta. Há uma pausa de alguns "
-          "segundos entre as consultas e, se o LinkedIn limitar, a busca segue sem ele (tente mais tarde). "
+          "segundos entre as consultas e, se o LinkedIn limitar, a busca segue sem ele e ele fica 6 horas em espera. "
           "A candidatura é sempre no próprio LinkedIn.")
 
 BUSCA = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
@@ -46,7 +46,7 @@ ARQ_ESPERA = Path(__file__).resolve().parent.parent / ".cache" / "linkedin-esper
 TEMPO = 20
 LIMITE_BYTES = 3_000_000
 LIMITE_DESCRICAO = 12000
-BLOQUEIO = "o LinkedIn limitou as consultas; tente mais tarde"
+BLOQUEIO = "o LinkedIn limitou as consultas"
 ILEGIVEL = "não consegui ler as vagas do LinkedIn (a página pode ter mudado)"
 WT = {"presencial": "1", "remoto": "2", "hibrido": "3"}
 JT = {"tempo_integral": "F", "pj": "C", "meio_periodo": "P", "estagio": "I", "temporario": "T"}

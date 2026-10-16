@@ -327,6 +327,19 @@ class TestBuscaPagina(Base):
         self.assertEqual(banco.listar_vagas(), [])
         self.assertTrue(b.plano()["proxima_em"])
 
+    def test_um_portal_bloqueado_e_outro_sem_vagas_nao_e_bloqueio(self):
+        vazia = types.SimpleNamespace(NOME="vazia", PLATAFORMA="Vazia", buscar=lambda c, h, n: ([], []))
+        fonte_falsa.ERRO = "o LinkedIn limitou as consultas (excesso de pedidos)"
+        (self.tmp / "config.json").write_text(json.dumps({**CFG, "fontes": ["falsa", "vazia"]}), encoding="utf-8")
+        with mock.patch.dict(vagas.FONTES, {"vazia": vazia}):
+            e = self.busca_pagina().estado()
+        self.assertEqual(e["situacao"], "concluida", e)  # a Vazia respondeu: a busca vale, com zero vagas
+        self.assertEqual(e["resumo"]["novas"], 0)
+        self.assertTrue(e["erros"] and all(x.startswith("falsa: ") for x in e["erros"]))
+        r = {"brutas": 0, "por_busca": {"falsa: a": 0, "vazia: a": 0}, "erros": ["falsa: a: erro"]}
+        self.assertFalse(vagas.bloqueio_provavel(r))
+        self.assertTrue(vagas.bloqueio_provavel({**r, "erros": ["falsa: a: erro", "vazia: a: erro"]}))
+
     def test_recusas(self):
         sem_cargos = {**CFG, "termos": []}
         (self.tmp / "config.json").write_text(json.dumps(sem_cargos), encoding="utf-8")

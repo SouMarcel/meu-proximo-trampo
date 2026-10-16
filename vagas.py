@@ -426,8 +426,13 @@ def salvar_candidatas(resultado: dict, pasta: Path | None = None, trecho: int = 
 
 
 def bloqueio_provavel(resultado: dict) -> bool:
-    """O portal não devolveu nada e houve erros."""
-    return not resultado["brutas"] and bool(resultado["erros"])
+    """Nenhuma vaga e todos os portais consultados deram erro. Um portal que respondeu sem vagas não é bloqueio: a
+    busca vale, com zero vagas e o aviso do portal que falhou."""
+    if resultado["brutas"] or not resultado["erros"]:
+        return False
+    consultados = {rotulo.split(":", 1)[0] for rotulo in resultado.get("por_busca", {})}
+    com_erro = {erro.split(":", 1)[0] for erro in resultado["erros"]}
+    return not (consultados - com_erro)
 
 
 def confirmar_espera(nomes_fontes: list[str], confirmado: bool) -> bool:
