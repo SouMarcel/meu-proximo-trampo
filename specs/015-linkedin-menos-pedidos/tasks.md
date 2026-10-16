@@ -262,7 +262,7 @@ nota.
   Comparar a saída guardada na T001 (SC-006).
 - [X] T034 Verificação na página (Windows), pelo quickstart §3: servidor com `--sem-navegador`, Chrome sem janela
   ou Live Server, com espera simulada, aviso de cargos e chip de pendente.
-- [ ] T035 Antes do commit:
+- [X] T035 Antes do commit:
   - procurar dados pessoais no diff (nomes, empresas, cargos do usuário, caminhos pessoais);
   - mostrar o resultado à pessoa;
   - com o OK dela: commit no branch, merge na `master`, push, merge na branch pessoal e `graphify update .`.
