@@ -399,6 +399,32 @@ def aplicar_criterios(doc: dict) -> None:
         doc.update(triagem="fora", triada_em=hoje(), motivo_fora=motivos)
 
 
+def pendentes_de_descricao(plataforma: str) -> list[dict]:
+    """Vagas da busca que ficaram sem descrição (limite de pedidos ou bloqueio do portal) e ainda esperam decisão no
+    relatório: a fila da próxima busca, da mais recente para a mais antiga."""
+    pend = [v for v in listar_vagas() if v.get("descricao_pendente") and v.get("plataforma") == plataforma
+            and v.get("triagem") == "pendente" and not v.get("etapa")]
+    return sorted(pend, key=lambda v: (v.get("publicada_em") or "", v.get("encontrada_em") or ""), reverse=True)
+
+
+def completar_descricao(vid: str, descricao: str, tipo_emprego: list[str] | None = None) -> dict | None:
+    """Grava a descrição que faltava (vazia: a vaga não existe mais no portal) e tira a marca de pendente; os
+    critérios são conferidos de novo (o tipo de emprego pode mandar a vaga para Fora dos critérios)."""
+    with escrita() as con:
+        doc = _ler(con, vid)
+        if doc is None:
+            return None
+        if descricao:
+            doc["descricao"] = descricao
+        if tipo_emprego:
+            doc["tipo_emprego"] = tipo_emprego
+        doc.pop("descricao_pendente", None)
+        aplicar_criterios(doc)
+        doc["atualizada_em"] = agora()
+        _gravar(con, vid, doc)
+    return doc
+
+
 def definir_area(doc: dict, campos: dict | None = None) -> None:
     """Área (nacional ou internacional) e país da vaga: o que a pessoa escolheu, senão o palpite pelo local."""
     campos = campos or {}
@@ -687,7 +713,9 @@ def _cmd_quadro(args) -> int:
                 extra.append(v["resultado"])
             if isinstance(v.get("aderencia"), int):
                 extra.append(f"aderência {v['aderencia']}")
-            if v.get("analise_status") == "pendente":
+            if v.get("descricao_pendente"):
+                extra.append("descrição pendente")
+            elif v.get("analise_status") == "pendente":
                 extra.append("aguardando análise")
             nota = (v.get("anotacao") or "").replace("\n", " ")
             print(f"- {v.get('titulo')} | {v.get('empresa')} | {_plataformas(v)} | desde {v.get('etapa_em') or '?'}"
@@ -696,7 +724,10 @@ def _cmd_quadro(args) -> int:
 
 
 def precisa_analise(v: dict) -> bool:
-    """Adicionada à mão esperando análise, ou trazida pela busca sem nota e ainda não descartada."""
+    """Adicionada à mão esperando análise, ou trazida pela busca sem nota e ainda não descartada. A vaga com
+    descrição pendente espera o texto (lido na próxima busca) antes da nota."""
+    if v.get("descricao_pendente"):
+        return False
     if v.get("analise_status") == "pendente":
         return True
     return v.get("analise_status") == "sem_analise" and v.get("triagem") not in ("visitada", "fora")
@@ -711,6 +742,10 @@ def _cmd_pendentes(args) -> int:
     campos = ("id", "origem", "titulo", "empresa", "plataforma", "local", "url", "descricao")
     print(json.dumps([{k: v.get(k) for k in campos} for v in pend], ensure_ascii=False, indent=1))
     print(f"\n{len(pend)} vaga(s) aguardando análise.", file=sys.stderr)
+    sem_texto = sum(1 for v in listar_vagas() if v.get("descricao_pendente") and v.get("triagem") == "pendente")
+    if sem_texto:
+        print(f"{sem_texto} vaga(s) com descrição pendente: a próxima busca lê o texto delas; não avalie antes.",
+              file=sys.stderr)
     return 0
 
 

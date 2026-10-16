@@ -945,7 +945,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function chipsDe(v) {
     var h = "";
     var bnd = banda(v.aderencia);
-    if (v.analise_status === "pendente") h += '<span class="chip" data-b="pend">Aguardando análise</span>';
+    if (v.descricao_pendente) h += '<span class="chip" data-b="pend" title="O portal limita os pedidos: o texto é lido na próxima busca, e só então a vaga recebe nota">Descrição pendente</span>';
+    else if (v.analise_status === "pendente") h += '<span class="chip" data-b="pend">Aguardando análise</span>';
     else if (bnd) h += '<span class="chip" data-b="' + bnd + '">Aderência ' + v.aderencia + "</span>";
     if (v.etapa === "encerrada" && v.resultado) h += '<span class="chip result" data-r="' + esc(v.resultado) + '">' + esc(RESULTADOS[v.resultado] || v.resultado) + "</span>";
     return h ? '<div class="chips">' + h + "</div>" : "";
@@ -997,7 +998,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       h += "<tr><td><button class=\"link-btn t\" data-det=\"" + esc(v.id) + "\">" + esc(v.titulo) + '</button><div class="sub">' + esc(v.empresa) + "</div>" + intTag(v) + sinaisTags(v) + "</td>" +
         "<td>" + platTags(v) + "</td>" +
         "<td>" + esc(e ? e.label : v.etapa) + (v.etapa === "encerrada" && v.resultado ? '<div class="sub">' + esc(RESULTADOS[v.resultado] || v.resultado) + "</div>" : "") + "</td>" +
-        '<td class="num">' + (v.analise_status === "pendente" ? "—" : (typeof v.aderencia === "number" ? v.aderencia : "—")) + "</td>" +
+        '<td class="num">' + (v.analise_status === "pendente" || v.descricao_pendente ? "—" : (typeof v.aderencia === "number" ? v.aderencia : "—")) + "</td>" +
         '<td><time>' + esc(ddmm(v.etapa_em)) + "</time></td>" +
         "<td>" + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">Abrir</a>' : "—") + "</td></tr>";
     });
@@ -1041,7 +1042,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
                '<button class="btn-skip" data-desfazer="' + esc(v.id) + '"' + (S.canWrite ? "" : " disabled") + ">Voltar para triagem</button>";
     }
     return '<article class="rel-item">' +
-      '<div class="score" data-b="' + bnd + '" title="' + (temNota(v) ? "Aderência ao seu perfil (0 a 100)" : "Vaga sem nota de aderência") + '"><b>' + (temNota(v) ? v.aderencia : "—") + "</b><small>" + (temNota(v) ? rotuloBanda(bnd) : v.analise_status === "pendente" ? "aguardando" : "sem nota") + "</small></div>" +
+      '<div class="score" data-b="' + bnd + '" title="' + (temNota(v) ? "Aderência ao seu perfil (0 a 100)" : "Vaga sem nota de aderência") + '"><b>' + (temNota(v) ? v.aderencia : "—") + "</b><small>" + (temNota(v) ? rotuloBanda(bnd) : v.descricao_pendente ? "descrição pendente" : v.analise_status === "pendente" ? "aguardando" : "sem nota") + "</small></div>" +
       '<div class="rel-body"><h3>' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(v.titulo) + "</a>" : esc(v.titulo)) + "</h3>" +
       '<p class="meta">' + meta.filter(Boolean).map(function (m) { return "<span>" + m + "</span>"; }).join("") + "</p>" +
       ((v.motivo_fora || []).length ? '<p class="motivo-fora"><b>Fora dos critérios:</b> ' + esc(v.motivo_fora.join("; ")) + "</p>" : "") +
@@ -1148,7 +1149,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var url = safeUrl(v.url);
     var bnd = banda(v.aderencia);
     var analise;
-    if (v.analise_status === "pendente") analise = '<p class="banner">Aguardando análise. ' + (IA.e && IA.e.disponivel ? "A IA escolhida analisa em instantes." :
+    if (v.descricao_pendente) analise = '<p class="banner">Descrição pendente: o portal limitou os pedidos desta busca. O texto é lido na próxima busca, e só então a vaga recebe nota. Dá para abrir a vaga pelo link enquanto isso.</p>';
+    else if (v.analise_status === "pendente") analise = '<p class="banner">Aguardando análise. ' + (IA.e && IA.e.disponivel ? "A IA escolhida analisa em instantes." :
       'Escolha uma IA no botão IA, ou no Claude Code peça "analisa as vagas que adicionei no dashboard".') + "</p>";
     else if (v.analise_status === "sem_analise") analise = '<p class="hint">Sem nota de aderência. Opcional: com o Claude Code, peça "analisa as vagas do relatório".</p>';
     else if (bnd) analise = '<div style="display:flex;gap:14px;align-items:center"><div class="score" data-b="' + bnd + '"><b>' + v.aderencia + "</b><small>" + rotuloBanda(bnd) + "</small></div>" +
@@ -1212,18 +1214,19 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function semAcento(s) {
     return String(s || "").normalize("NFD").split("").filter(function (c) { var k = c.charCodeAt(0); return k < 768 || k > 879; }).join("").toLowerCase();
   }
-  function contarConsultas(d) { // mesma conta de filtros.consultas()
+  function contarConsultas(d, porGrupo) { // mesma conta de filtros.consultas(); porGrupo: os cargos numa consulta só (LinkedIn)
     var m = d.modelos, t = d.termos.length, locais = m.hibrido || m.presencial, cidade = !!d.localidade.cidade;
+    var it = d.internacional, ti = it.termos.length || t;  // a busca de fora não depende do remoto no país
+    if (porGrupo) { t = Math.min(t, 1); ti = Math.min(ti, 1); }
     var n = (m.remoto || (locais && !cidade)) ? t : 0;
     if (locais && cidade) n += t;
-    var it = d.internacional, ti = it.termos.length || t;  // a busca de fora não depende do remoto no país
     if (it.ativo) n += it.paises.length * ti + (it.aceita_mudar ? ((it.paises_mudanca || []).length || it.paises.length) * ti : 0);
     if (it.ativo && ((it.fontes || []).length || (it.empresas || []).length)) n += ti; // fontes do exterior: uma por cargo
     return n;
   }
-  function contarLinkedin(d) { // o LinkedIn roda em todos os grupos e, com a busca internacional, também no "mundo todo"
-    var it = d.internacional, ti = it.termos.length || d.termos.length;
-    return contarConsultas(d) + (it.ativo && !((it.fontes || []).length || (it.empresas || []).length) ? ti : 0);
+  function contarLinkedin(d) { // o LinkedIn roda em todos os grupos (uma consulta com os cargos juntos) e, com a busca internacional, também no "mundo todo"
+    var it = d.internacional, ti = Math.min(it.termos.length || d.termos.length, 1);
+    return contarConsultas(d, true) + (it.ativo && !((it.fontes || []).length || (it.empresas || []).length) ? ti : 0);
   }
   function abrirFiltros(proposta, depois, modo) { // proposta: filtros sugeridos pelos primeiros passos; modo "int": painel internacional
     FB.d = null; FB.depois = typeof depois === "function" ? depois : null; FB.modo = modo === "int" ? "int" : "nac";
@@ -1362,9 +1365,13 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       }).join("") || '<span class="hint">Nenhum país com esse nome.</span>';
     }
     var n = contarConsultas(d), c = $("fb-conta"), nl = (d.fontes || []).indexOf("linkedin") >= 0 ? contarLinkedin(d) : 0, maior = Math.max(n, nl);
+    // mais de 5 cargos com LinkedIn ou Indeed: só um aviso (a mesma regra de filtros.aviso_cargos)
+    var limitado = (d.fontes || []).some(function (x) { return x === "linkedin" || x === "indeed"; }), it = d.internacional;
+    var cargos = limitado && (d.termos.length > 5 || (it.ativo && it.termos.length > 5));
     c.textContent = "Esta busca fará " + n + (n === 1 ? " consulta" : " consultas") + " por portal" + (nl ? " (no LinkedIn, " + nl + ")" : "") +
-      (maior > 20 ? ": muitas consultas aumentam o risco de bloqueio" : "");
-    if (maior > 20) c.setAttribute("data-muitas", ""); else c.removeAttribute("data-muitas");
+      (maior > 20 ? ": muitas consultas aumentam o risco de bloqueio" : "") +
+      (cargos ? ". Mais de 5 cargos com LinkedIn ou Indeed ligados aumentam o risco de bloqueio desses portais." : "");
+    if (maior > 20 || cargos) c.setAttribute("data-muitas", ""); else c.removeAttribute("data-muitas");
   }
   function adicionar(id) {
     var inp = $(id), txt = inp.value.trim();
@@ -2471,7 +2478,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       else nota = "Notas prontas.";
       return '<div class="busca-painel bp-fim" role="status"><div class="bp-topo"><b>Busca concluída às ' + esc(buHora(e.fim)) + "</b>" + fechar + "</div><p>" +
         r.brutas + " vaga(s) encontrada(s) · <b>" + r.novas + " nova(s) para decidir</b> · " + r.fora_criterios + " fora dos critérios · " +
-        r.ja_vistas + " já vista(s) · " + r.excluidas_titulo + " cortada(s) pelo título · " + r.fora_da_janela + " fora da janela</p><p>" + nota + "</p>" + erros + "</div>";
+        r.ja_vistas + " já vista(s) · " + r.excluidas_titulo + " cortada(s) pelo título · " + r.fora_da_janela + " fora da janela</p>" +
+        (r.pendentes ? "<p>" + r.pendentes + " vaga(s) com descrição pendente: o portal limita os pedidos, e o texto delas é lido na próxima busca, antes da nota.</p>" : "") +
+        (r.completadas ? "<p>" + r.completadas + " descrição(ões) pendente(s) de buscas anteriores lida(s) agora.</p>" : "") +
+        "<p>" + nota + "</p>" + erros + "</div>";
     }
     var titulo = s === "cancelada" ? "Busca cancelada" : s === "interrompida" ? "Busca interrompida" : "A busca não terminou";
     return '<div class="busca-painel bp-fim' + (s === "falha" ? " bp-falha" : "") + '" role="status"><div class="bp-topo"><b>' + titulo + "</b>" + fechar + "</div>" +
@@ -2507,14 +2517,21 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     }
     if (espera) aviso = '<p class="fb-erro">Para os portais não bloquearem a busca, espere: dá para buscar de novo a partir das ' + esc(espera) + ".</p>";
     else if (p.recente && p.ultima) aviso = '<p class="aviso-config">A última busca terminou às ' + esc(buHora(p.ultima.fim)) + ": os portais devem ter pouca vaga nova.</p>";
+    var esperas = p.espera || [], portaisEspera = esperas.map(function (e) { return e.portal; }).join(" e o ");
+    esperas.forEach(function (e) {  // portal em espera depois de um bloqueio: fica de fora (ou não há o que buscar)
+      aviso += '<p class="' + (p.so_espera ? "fb-erro" : "aviso-config") + '">O ' + esc(e.portal) + " está em espera até " + esc(buHora(e.ate)) +
+        " (" + esc(e.motivo) + ")" + (p.so_espera ? " e é o único portal ligado: não há o que buscar agora." : ": fica de fora desta busca, que segue com os outros portais.") + "</p>";
+    });
+    if (p.aviso_cargos) aviso += '<p class="aviso-config">' + esc(p.aviso_cargos) + "</p>";
     $("bu-corpo").innerHTML = h + aviso + (buPodeAlterar() ? "" : '<p class="fb-erro">Só dá para buscar no computador onde a ferramenta roda.</p>');
-    var rotulo = BU.semNota ? "Buscar sem nota" : p.recente ? "Buscar mesmo assim" : "Buscar agora";
+    var rotulo = BU.semNota ? "Buscar sem nota" : esperas.length ? "Buscar sem o " + esc(portaisEspera) : p.recente ? "Buscar mesmo assim" : "Buscar agora";
     $("bu-pe").innerHTML = '<button type="button" class="btn-plain" data-bu="fechar">Cancelar</button>' +
-      '<button type="button" class="btn-primary" data-bu="iniciar"' + (espera || !buPodeAlterar() ? " disabled" : "") + ">" + rotulo + "</button>";
+      '<button type="button" class="btn-primary" data-bu="iniciar"' + (espera || p.so_espera || !buPodeAlterar() ? " disabled" : "") + ">" + rotulo + "</button>";
   }
   function buIniciar(btn) {
     btn.disabled = true; $("bu-erro").hidden = true;
-    API.send("POST", "/api/busca", { sem_nota: BU.semNota, confirmar_recente: !!(BU.plano && BU.plano.recente) }).then(function (j) {
+    API.send("POST", "/api/busca", { sem_nota: BU.semNota, confirmar_recente: !!(BU.plano && BU.plano.recente),
+      confirmar_espera: !!(BU.plano && BU.plano.espera && BU.plano.espera.length) }).then(function (j) {
       BU.e = j; BU.fechado = ""; BU.ate = Date.now() + 20000; $("dlg-busca").close(); S.triagem = "pendente"; render(); buEstado();
     }).catch(function (e) {
       var er = $("bu-erro"); er.textContent = e && (e.status === 400 || e.status === 403 || e.status === 409) ? e.message : erroMsg(e); er.hidden = false;

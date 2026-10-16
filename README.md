@@ -173,7 +173,8 @@ a página aberta pela extensão Live Server (`dash/dashboard.html`); e o
    no fim, as vagas novas entram no relatório com um resumo. Dá para usar a página enquanto
    isso e cancelar a qualquer momento (busca cancelada não grava nada). Uma busca por vez no
    computador, e a próxima só 30 minutos depois da última, para os portais não bloquearem;
-   se a última foi há menos de 6 horas, a página pede confirmação.
+   se a última foi há menos de 6 horas, a página pede confirmação. Se o LinkedIn estiver em espera
+   depois de um bloqueio, a página avisa até que horas e pergunta se busca só com os outros portais.
 
    Pelo terminal também dá, com o Python do ambiente que o `iniciar.py` preparou:
 
@@ -482,14 +483,25 @@ Para instalar à mão, no Claude Code:
 - A busca no LinkedIn (desligada até você marcar em **Filtros da busca → Portais**) usa a busca
   pública de vagas do site, a mesma que aparece para quem não entrou na conta: é uma consulta não
   oficial, sem login e sem a sua conta, as suas senhas ou os seus cookies. Cada grupo da busca vira
-  uma consulta com o local e o modo de trabalho certos (remoto no país, cidade com raio, país inteiro,
-  cada país de fora, mudança para um país e, com a busca internacional, "mundo todo"), e o tipo de
-  emprego e a data de publicação vão como filtro do próprio LinkedIn. Há uma pausa de 3 a 7 segundos
-  entre os pedidos e a descrição só é lida para as vagas que vão para o relatório. Se o LinkedIn
-  limitar as consultas ou pedir login, ele fica de fora até o fim daquela busca, sem nova tentativa,
-  com o aviso no resumo, e os outros portais seguem: espere algumas horas antes de tentar de novo.
-  A candidatura é sempre no próprio LinkedIn. Use com moderação: muitas consultas aumentam o risco
-  de bloqueio, e o site pode mudar e parar de responder à ferramenta.
+  **uma consulta só, com os seus cargos ligados por OR** (até 3 páginas), com o local e o modo de
+  trabalho certos (remoto no país, cidade com raio, país inteiro, cada país de fora, mudança para um
+  país e, com a busca internacional, "mundo todo"); o tipo de emprego e a data de publicação vão como
+  filtro do próprio LinkedIn. Há uma pausa de 3 a 7 segundos entre os pedidos, e a descrição só é lida
+  para as vagas que vão para o relatório, **no máximo 20 por busca**: as que sobram entram como
+  "Descrição pendente", sem nota, e o texto delas é lido primeiro na busca seguinte.
+  - **O limite do LinkedIn é por rede (IP)**, não por pessoa: quem está na mesma rede (casa,
+    escritório, Wi-Fi compartilhado) divide a mesma cota.
+  - Se o LinkedIn limitar as consultas ou pedir login, ele fica de fora até o fim daquela busca, sem
+    nova tentativa, e os outros portais seguem. O aviso traz o motivo: "excesso de pedidos" (espere);
+    "recusa automática, costuma ser a rede" (VPN, Wi-Fi corporativo ou internet compartilhada: outra
+    rede costuma resolver); ou "pediu login".
+  - Depois de um bloqueio, o LinkedIn fica **6 horas em espera**: nesse período nenhum pedido vai a
+    ele, e a página, o terminal e o chat perguntam antes de buscar só com os outros portais.
+  - Com mais de 5 cargos e o LinkedIn ou o Indeed ligados, o painel de filtros e a busca avisam do
+    risco de bloqueio (dá para salvar mesmo assim).
+
+  A candidatura é sempre no próprio LinkedIn. Use com moderação: o site pode mudar e parar de
+  responder à ferramenta.
 - A busca na Gupy usa o MCP público de candidatos da própria Gupy
   (`https://candidates.mcp.api.gupy.io/mcp`), oficial, sem login e só de leitura. Ele
   não filtra por data nem busca frase exata: a ferramenta ordena pela publicação e para

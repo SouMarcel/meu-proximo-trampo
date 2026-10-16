@@ -1,20 +1,25 @@
 """Fonte LinkedIn: a busca pública de vagas (a mesma que aparece para quem não entrou na conta), sem login e sem a
 conta, as senhas ou os cookies da pessoa.
 
-Cada consulta de filtros.consultas vira uma busca com o local (país, cidade com raio ou "Worldwide") e o modelo de
-trabalho do grupo; a janela de tempo e os tipos de emprego vão como filtro do próprio LinkedIn. A descrição vem da
-página pública da vaga, só para as vagas que vão para o relatório. Pausa de 3 a 7 segundos entre os pedidos e, no
-primeiro bloqueio (limite de consultas ou pedido de login), o LinkedIn fica de fora pelo resto da busca, sem nova
-tentativa (constituição, princípio VI).
+Os cargos de um grupo de filtros.consultas vão numa consulta só, ligados por OR (até 3 páginas), com o local (país,
+cidade com raio ou "Worldwide") e o modelo de trabalho do grupo; a janela de tempo e os tipos de emprego vão como
+filtro do próprio LinkedIn. A descrição vem da página pública da vaga, só das vagas que vão para o relatório,
+no máximo MAX_DESCRICOES por busca; as outras ficam pendentes para a próxima. Pausa de 3 a 7 segundos entre os
+pedidos e, no primeiro bloqueio (limite de consultas ou pedido de login), o LinkedIn fica de fora pelo resto da busca,
+sem nova tentativa (constituição, princípio VI), e também das buscas das 6 horas seguintes (a espera, gravada em
+.cache/). O aviso traz o motivo provável.
 """
 from __future__ import annotations
 
+import json
 import random
 import re
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timedelta
 from html.parser import HTMLParser
+from pathlib import Path
 from urllib.parse import urlencode
 
 from . import _comum, link
@@ -33,6 +38,11 @@ VAGA = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{}"
 PAUSA = (3.0, 7.0)
 POR_PAGINA = 10  # o que a busca pública devolve por página
 MAX_PAGINAS = 1  # uma página por consulta: poucas consultas, menos risco de bloqueio
+MAX_PAGINAS_AGRUPADA = 3  # a consulta com os cargos juntos (AGRUPAR) lê até 3 páginas
+AGRUPAR = True  # os cargos de um grupo numa consulta só, ligados por OR
+MAX_DESCRICOES = 20  # descrições lidas por busca; as outras ficam pendentes para a próxima
+ESPERA = timedelta(hours=6)  # depois de um bloqueio, o LinkedIn fica de fora das buscas
+ARQ_ESPERA = Path(__file__).resolve().parent.parent / ".cache" / "linkedin-espera.json"
 TEMPO = 20
 LIMITE_BYTES = 3_000_000
 LIMITE_DESCRICAO = 12000
@@ -49,11 +59,13 @@ TIPOS = [("tempo_integral", ("full-time", "full time", "tempo integral")),
          ("estagio", ("internship", "estágio", "estagio")),
          ("temporario", ("temporary", "temporário", "temporario"))]
 
-_estado = {"bloqueado": False, "ultimo": None}
+_estado = {"bloqueado": False, "ultimo": None, "avisou_espera": False}
+MOTIVOS = {429: "excesso de pedidos",
+           999: "recusa automática, costuma ser a rede: VPN, Wi-Fi corporativo ou internet compartilhada"}
 
 
 def _esquecer() -> None:
-    _estado.update(bloqueado=False)
+    _estado.update(bloqueado=False, avisou_espera=False)
 
 
 _comum.AO_ESQUECER.append(_esquecer)
@@ -73,9 +85,49 @@ def _pausar() -> None:
     _estado["ultimo"] = time.monotonic()
 
 
-def _bloquear() -> _comum.FonteErro:
+def _hora(iso: str) -> str:
+    return str(iso)[11:16]
+
+
+def _motivo(codigo: int) -> str:
+    if codigo in MOTIVOS:
+        return MOTIVOS[codigo]
+    if 300 <= codigo < 400:
+        return "pediu login"
+    return f"acesso negado (código {codigo})"
+
+
+def _bloquear(motivo: str) -> _comum.FonteErro:
+    """Para o LinkedIn nesta busca e grava a espera para as próximas (se não der para gravar, segue sem ela)."""
     _estado["bloqueado"] = True
-    return _comum.FonteErro(BLOQUEIO)
+    agora = datetime.now()
+    try:
+        ARQ_ESPERA.parent.mkdir(parents=True, exist_ok=True)
+        ARQ_ESPERA.write_text(json.dumps({"desde": agora.isoformat(timespec="seconds"), "motivo": motivo},
+                                         ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+    ate = (agora + ESPERA).isoformat(timespec="minutes")
+    return _comum.FonteErro(f"{BLOQUEIO} ({motivo}); em espera até {_hora(ate)}")
+
+
+def espera(agora: datetime | None = None) -> dict | None:
+    """{"ate", "motivo"} nas ESPERA horas depois do último bloqueio; None fora delas ou sem arquivo legível."""
+    agora = agora or datetime.now()
+    try:
+        dados = json.loads(ARQ_ESPERA.read_text(encoding="utf-8"))
+        desde = datetime.fromisoformat(str(dados["desde"]))
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
+    ate = min(desde, agora) + ESPERA  # hora gravada no futuro (relógio mudou) vale como agora
+    if agora >= ate:
+        return None
+    return {"ate": ate.isoformat(timespec="minutes"), "motivo": str(dados.get("motivo") or "bloqueio")}
+
+
+def parada() -> bool:
+    """Bloqueou nesta busca ou está em espera: a vaga sem texto fica pendente."""
+    return _estado["bloqueado"] or espera() is not None
 
 
 def _baixar(url: str) -> str:
@@ -88,7 +140,7 @@ def _baixar(url: str) -> str:
             charset = r.headers.get_content_charset() or "utf-8"
     except urllib.error.HTTPError as e:
         if e.code in (429, 999, 401, 403) or 300 <= e.code < 400:
-            raise _bloquear() from None
+            raise _bloquear(_motivo(e.code)) from None
         raise _comum.FonteErro(f"o LinkedIn respondeu {e.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         raise _comum.FonteErro(f"não consegui falar com o LinkedIn ({getattr(e, 'reason', e)})") from None
@@ -113,7 +165,8 @@ def parametros(consulta: dict, horas: int | None) -> dict:
     else:
         local = _pais(consulta)
     modelos = consulta.get("modelos") or (["remoto"] if consulta.get("remoto") else [])
-    p = {"keywords": str(consulta["termo"]).strip('"'), "location": local}
+    termo = str(consulta["termo"])  # a combinada mantém as aspas de cada cargo; um cargo só, como sempre
+    p = {"keywords": termo if consulta.get("agrupada") else termo.strip('"'), "location": local}
     if consulta.get("local") and consulta.get("raio_km"):
         p["distance"] = max(1, round(consulta["raio_km"] / 1.609))  # o LinkedIn mede o raio em milhas
     if modelos:
@@ -209,11 +262,17 @@ def ler_lista(pagina: str) -> list[dict]:
 def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list[str]]:
     if _estado["bloqueado"]:
         return [], []  # o aviso já saiu nesta busca; nenhum pedido a mais
+    esp = espera()
+    if esp:  # bloqueio recente: nenhum pedido; o aviso sai uma vez por busca
+        if _estado["avisou_espera"]:
+            return [], []
+        _estado["avisou_espera"] = True
+        return [], [f"LinkedIn em espera até {_hora(esp['ate'])} ({esp['motivo']}); ficou de fora desta busca"]
     params = parametros(consulta, horas)
     modelos = consulta.get("modelos") or []
     vagas: list[dict] = []
     inicio = 0
-    for _ in range(MAX_PAGINAS):
+    for _ in range(MAX_PAGINAS_AGRUPADA if consulta.get("agrupada") else MAX_PAGINAS):
         if len(vagas) >= max(1, por_termo):
             break
         try:
@@ -238,8 +297,8 @@ def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list
 
 def descrever(vaga: dict) -> str:
     """A descrição da página pública da vaga (com os critérios: tipo de emprego, nível). Também preenche
-    vaga["tipo_emprego"]. Depois de um bloqueio, devolve o que a vaga já tinha, sem pedido."""
-    if _estado["bloqueado"]:
+    vaga["tipo_emprego"]. Depois de um bloqueio ou na espera, devolve o que a vaga já tinha, sem pedido."""
+    if parada():
         return vaga.get("descricao") or ""
     numero = str(vaga["id"]).removeprefix("li-")
     lida = link.vaga_linkedin(numero, _baixar(VAGA.format(numero)))

@@ -59,8 +59,9 @@ def descricao_ia() -> str:
 
 
 def precisa(v: dict) -> bool:
-    """Espera nota e tem descrição. Só com o link, fica para o chat (lá a skill consegue abrir o link)."""
-    return v.get("analise_status") == "pendente" and bool(v.get("descricao"))
+    """Espera nota e tem descrição. Só com o link, fica para o chat (lá a skill consegue abrir o link); com a
+    descrição pendente (limite de pedidos do portal), espera o texto da próxima busca."""
+    return v.get("analise_status") == "pendente" and bool(v.get("descricao")) and not v.get("descricao_pendente")
 
 
 def _secao(texto: str, inicio: str, fim: str) -> str:

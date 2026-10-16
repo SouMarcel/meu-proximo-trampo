@@ -555,6 +555,69 @@ def consultas(f: dict, incluir_presencial: bool = False) -> list[dict]:
     return lista
 
 
+MAX_EXPRESSAO = 200  # caracteres da consulta combinada (cargos ligados por OR)
+
+
+def _forma_or(termo: str) -> str:
+    """O cargo como entra na expressão: entre aspas fica igual; de várias palavras sem aspas vai entre parênteses
+    (para o OR não separar as palavras); aspas soltas saem."""
+    t = " ".join(str(termo).split())
+    if len(t) > 2 and t[0] == '"' and t[-1] == '"' and t.count('"') == 2:
+        return t
+    t = t.replace('"', "").strip()
+    return f"({t})" if " " in t else t
+
+
+def expressao_or(termos: list[str], maximo: int = MAX_EXPRESSAO) -> list[tuple[list[str], str]]:
+    """Os cargos ligados por OR, em partes de até `maximo` caracteres, na ordem da configuração:
+    [(cargos da parte, expressão)]. Com um cargo só na parte, a expressão é o próprio cargo."""
+    partes: list[tuple[list[str], list[str]]] = []
+    for t in termos:
+        forma = _forma_or(t)
+        if not forma.strip('"()'):
+            continue
+        if partes and len(" OR ".join(partes[-1][1] + [forma])) <= maximo:
+            partes[-1][0].append(t)
+            partes[-1][1].append(forma)
+        else:
+            partes.append(([t], [forma]))
+    return [(ts, ts[0] if len(ts) == 1 else " OR ".join(fs)) for ts, fs in partes]
+
+
+def termos_no_titulo(titulo: str, termos: list[str]) -> list[str]:
+    """Os cargos que aparecem no título (sem acento, sem diferenciar maiúsculas): todas as palavras; entre aspas,
+    em sequência."""
+    tn = " " + " ".join(re.findall(r"\w+", sem_acento(titulo))) + " "
+    achados = []
+    for t in termos:
+        palavras = re.findall(r"\w+", sem_acento(t))
+        if not palavras:
+            continue
+        if str(t).strip().startswith('"'):
+            ok = " " + " ".join(palavras) + " " in tn
+        else:
+            ok = all(f" {p} " in tn for p in palavras)
+        if ok:
+            achados.append(t)
+    return achados
+
+
+MAX_CARGOS_AVISO = 5
+FONTES_LIMITADAS = ("linkedin", "indeed")  # portais que bloqueiam com muitas consultas
+
+
+def aviso_cargos(f: dict, fontes: list[str]) -> str | None:
+    """Aviso (não bloqueia) quando há mais de 5 cargos e um portal que bloqueia com muitas consultas está ligado."""
+    if not any(n in FONTES_LIMITADAS for n in fontes):
+        return None
+    inter = f.get("internacional") or {}
+    exterior = len(inter.get("termos") or []) if inter.get("ativo") else 0
+    if max(len(f.get("termos") or []), exterior) > MAX_CARGOS_AVISO:
+        return (f"Mais de {MAX_CARGOS_AVISO} cargos com LinkedIn ou Indeed ligados aumentam o risco de bloqueio desses "
+                "portais.")
+    return None
+
+
 def resumo(f: dict) -> str:
     m, loc = f["modelos"], f["localidade"]
     partes = []

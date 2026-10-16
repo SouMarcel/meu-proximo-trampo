@@ -96,6 +96,13 @@ servidor; ele só serve para ver e mexer no quadro.
    - Código de saída 4 = há uma busca rodando pela página do dashboard (botão **Buscar
      vagas**). Diga isso ao usuário e espere ela terminar; não tente de novo em seguida.
      Uma busca por vez no computador: página, terminal e chat.
+   - Código de saída 5 = um portal está em espera depois de um bloqueio (ex.: "LinkedIn em
+     espera até 15:12 (excesso de pedidos)"). Mostre o aviso e pergunte, com opções, se a
+     busca segue só com os outros portais. Só com o OK do usuário, repita o mesmo comando com
+     `--confirmar-espera`. Se o aviso disser que nenhum outro portal está ligado, não há o
+     que buscar agora: diga até que horas dura a espera.
+   - Aviso de cargos na primeira linha (mais de 5 cargos com LinkedIn ou Indeed): repasse ao
+     usuário no resumo. É só um aviso; a busca segue.
    - Código de saída 3 = nenhum portal respondeu. Avise o usuário e pare; veja "Se o
      portal bloquear". Não repita a busca em seguida. Se só um portal falhar, o erro
      aparece em "Erros reportados pelos portais" e a busca segue com o outro; diga
@@ -107,6 +114,9 @@ servidor; ele só serve para ver e mexer no quadro.
 
 3. **Avaliar.** Leia o perfil (uma vez por conversa) e `.cache/candidatas.md`. Avalie
    todas as candidatas, porque a que ficar sem avaliação volta na próxima busca.
+   - Exceção: a candidata marcada "descrição pendente" não tem texto (o portal limitou os
+     pedidos). Não avalie nem invente nota; ela entra no dashboard sem nota e o texto é lido
+     na próxima busca.
    - Vaga claramente de outra área pelo título e pelas primeiras linhas recebe nota
      baixa e resumo curto, sem leitura detalhada.
    - Nas plausíveis, o `candidatas.md` corta descrições longas, e o que decide a nota
@@ -298,10 +308,15 @@ Para buscar num portal só enquanto o outro falha: `--fontes indeed` ou
 `--fontes gupy`.
 
 O LinkedIn é consultado pela busca pública do site (`fontes/linkedin.py`), sem login e sem a
-conta da pessoa, com pausa de 3 a 7 segundos entre os pedidos. No primeiro bloqueio ("o LinkedIn
-limitou as consultas; tente mais tarde"), ele fica de fora até o fim da busca e os outros portais
-seguem. Não repita a busca em seguida nem tente contornar: espere algumas horas. A descrição só é
-lida para as candidatas.
+conta da pessoa, com pausa de 3 a 7 segundos entre os pedidos. O limite dele é por rede (IP):
+pessoas na mesma rede (casa, escritório, Wi-Fi compartilhado) dividem a mesma cota. No primeiro
+bloqueio, ele fica de fora até o fim da busca, os outros portais seguem e o aviso traz o motivo:
+"excesso de pedidos" (espere), "recusa automática, costuma ser a rede" (VPN, Wi-Fi corporativo ou
+internet compartilhada; outra rede costuma resolver) ou "pediu login". Depois do bloqueio, o
+LinkedIn fica **6 horas em espera**: a busca pergunta antes de seguir sem ele (código 5 acima).
+Não tente contornar. Por busca, no máximo 20 descrições do LinkedIn são lidas, e as vagas que
+sobram entram como **descrição pendente**: não avalie essas vagas (o digest avisa); elas são lidas
+primeiro na busca seguinte.
 
 O startup.jobs é consultado pelo MCP público do site (`fontes/startupjobs.py`), sem
 login. Sem conta, ele aceita 20 consultas por minuto e mostra só as vagas dos últimos

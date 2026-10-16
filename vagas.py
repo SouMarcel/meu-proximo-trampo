@@ -9,6 +9,8 @@
 
 Configuração em config.json (copie de config.exemplo.json). Dashboard: python dash/servidor.py
 Uma busca por vez no computador: com uma busca rodando pela página do dashboard, buscar sai com código 4.
+Portal em espera depois de um bloqueio (ex.: LinkedIn, 6 horas): buscar pergunta antes de seguir sem ele; sem
+terminal interativo, sai com código 5 até receber --confirmar-espera.
 """
 from __future__ import annotations
 
@@ -208,8 +210,43 @@ def atende(fonte, c: dict) -> bool:
     return (not por_pais or getattr(fonte, "GLOBAL", False)) if c.get("global") else por_pais
 
 
+def fontes_em_espera(nomes_fontes: list[str]) -> list[dict]:
+    """As fontes em espera depois de um bloqueio (as que têm espera()): [{nome, portal, ate, motivo}]."""
+    lista = []
+    for n in nomes_fontes:
+        fonte = FONTES.get(n)
+        esp = getattr(fonte, "espera", None)
+        e = esp() if esp else None
+        if e:
+            lista.append({"nome": n, "portal": fonte.PLATAFORMA, "ate": e["ate"], "motivo": e["motivo"]})
+    return lista
+
+
+def aviso_espera(esperas: list[dict]) -> str:
+    return "; ".join(f"{e['portal']} em espera até {str(e['ate'])[11:16]} ({e['motivo']})" for e in esperas)
+
+
+def consultas_da_fonte(plano: list[dict], fonte) -> list[dict]:
+    """As consultas do plano que o portal atende; com AGRUPAR, uma por grupo (os cargos ligados por OR, dividida
+    se a expressão passar do tamanho máximo)."""
+    lista = [c for c in plano if atende(fonte, c)]
+    if not getattr(fonte, "AGRUPAR", False):
+        return lista
+    grupos: dict[str, list[dict]] = {}
+    for c in lista:
+        grupos.setdefault(c["grupo"], []).append(c)
+    saida = []
+    for cs in grupos.values():
+        if len(cs) == 1:
+            saida.append(cs[0])
+            continue
+        for termos, expressao in filtros.expressao_or([c["termo"] for c in cs]):
+            saida.append({**cs[0], "termo": expressao, "termos": termos, "agrupada": len(termos) > 1})
+    return saida
+
+
 def contar_consultas(plano: list[dict], nomes_fontes: list[str]) -> int:
-    return sum(atende(FONTES[n], c) for n in nomes_fontes if n in FONTES for c in plano)
+    return sum(len(consultas_da_fonte(plano, FONTES[n])) for n in nomes_fontes if n in FONTES)
 
 
 def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa: float = 2.0,
@@ -229,6 +266,7 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
     horas = f["janela_horas"]
     plano = filtros.consultas(f, incluir_presencial=incluir_presencial)
     total = contar_consultas(plano, nomes_fontes)
+    esperas = fontes_em_espera(nomes_fontes)
     _comum.esquecer()  # as listas das fontes do exterior são baixadas de novo a cada busca
     brutas: dict[str, dict] = {}
     por_busca: dict[str, int] = {}
@@ -236,24 +274,29 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
     feitas = 0
     for nome in nomes_fontes:
         fonte = FONTES[nome]
-        for c in plano:
-            if not atende(fonte, c):
-                continue
+        for c in consultas_da_fonte(plano, fonte):
             conferir()
             if feitas:
                 time.sleep(pausa)
                 conferir()
-            evento = {"etapa": "consulta", "portal": fonte.PLATAFORMA, "cargo": c["termo"].strip('"'),
+            cargo = f"{len(c['termos'])} cargos" if c.get("agrupada") else c["termo"].strip('"')
+            evento = {"etapa": "consulta", "portal": fonte.PLATAFORMA, "cargo": cargo,
                       "grupo": rotulo_grupo(c["grupo"], f), "total": total}
             avisar({**evento, "feitas": feitas, "encontradas": len(brutas)})
             vagas, errs = fonte.buscar(c, horas, por_termo)
-            rotulo = f"{nome}: {c['termo']}" + ("" if c["grupo"] == "remoto" else f" [{rotulo_grupo(c['grupo'], f)}]")
+            rotulo = (f"{nome}: {cargo if c.get('agrupada') else c['termo']}"
+                      + ("" if c["grupo"] == "remoto" else f" [{rotulo_grupo(c['grupo'], f)}]"))
             erros += [f"{rotulo}: {m}" for m in errs]
             por_busca[rotulo] = len(vagas)
             for v in vagas:
                 atual = brutas.setdefault(v["id"], {**v, "termos": [], "grupos": []})
-                if c["termo"] not in atual["termos"]:
-                    atual["termos"].append(c["termo"])
+                # consulta combinada: os cargos que aparecem no título (ou a expressão, se nenhum aparecer)
+                termos_v = [c["termo"]]
+                if c.get("agrupada"):
+                    termos_v = filtros.termos_no_titulo(v["titulo"], c["termos"]) or termos_v
+                for t in termos_v:
+                    if t not in atual["termos"]:
+                        atual["termos"].append(t)
                 if c["grupo"] not in atual["grupos"]:
                     atual["grupos"].append(c["grupo"])
             feitas += 1
@@ -307,17 +350,7 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
             fora.append(v)
         else:
             candidatas.append(v)
-    por_plataforma = {x.PLATAFORMA: x for x in FONTES.values()}
-    # portais cuja busca não traz a descrição: só para as vagas que vão para o relatório
-    descrever = [(v, por_plataforma.get(v["plataforma"])) for v in candidatas + fora]
-    descrever = [(v, fonte) for v, fonte in descrever if hasattr(fonte, "descrever")]
-    for i, (v, fonte) in enumerate(descrever, 1):
-        conferir()
-        try:
-            v["descricao"] = fonte.descrever(v)
-        except Exception as e:  # cada portal tem o seu tipo de erro; a vaga segue com o que já tinha
-            erros.append(f"{fonte.NOME}: descrição de {v['id']}: {e}")
-        avisar({"etapa": "descricoes", "lidas": i, "total": len(descrever)})
+    descricoes_completadas = ler_descricoes(candidatas, fora, nomes_fontes, erros, avisar, conferir)
     candidatas.sort(key=lambda r: r.get("publicada_em") or "", reverse=True)
 
     return {
@@ -332,9 +365,57 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
         "ja_vistas": ja_vistas,
         "outros_portais": outros_portais,
         "erros": erros,
+        "espera": esperas,
+        "aviso_cargos": filtros.aviso_cargos(f, nomes_fontes),
+        "descricoes_completadas": descricoes_completadas,
         "candidatas": candidatas,
         "fora": fora,
     }
+
+
+def ler_descricoes(candidatas: list[dict], fora: list[dict], nomes_fontes: list[str], erros: list[str], avisar,
+                   conferir) -> list[dict]:
+    """Descrições dos portais cuja busca não traz o texto, só das vagas que vão para o relatório.
+
+    Portal com MAX_DESCRICOES (ex.: LinkedIn): no máximo N pedidos por busca, contando os que falham, nesta ordem:
+    as vagas do dashboard com descrição pendente, as candidatas novas e as fora dos critérios, das mais recentes
+    para as mais antigas. Candidata que fica sem texto (limite, bloqueio ou espera) sai com descricao_pendente;
+    as pendentes do dashboard tratadas agora voltam na lista devolvida, para gravar_resultado completar."""
+    por_plataforma = {x.PLATAFORMA: x for x in FONTES.values()}
+    recentes = lambda lista: sorted(lista, key=lambda v: v.get("publicada_em") or "", reverse=True)
+    ids_busca = {v["id"] for v in candidatas + fora}
+    ids_cand = {v["id"] for v in candidatas}
+    fila = []
+    for nome in nomes_fontes:
+        fonte = FONTES.get(nome)
+        if getattr(fonte, "MAX_DESCRICOES", None) and hasattr(fonte, "descrever"):
+            fila += [(v, fonte, True) for v in banco.pendentes_de_descricao(fonte.PLATAFORMA)
+                     if v["id"] not in ids_busca]
+    fila += [(v, por_plataforma.get(v["plataforma"]), False) for v in recentes(candidatas) + recentes(fora)]
+    fila = [(v, fonte, do_banco) for v, fonte, do_banco in fila if hasattr(fonte, "descrever")]
+    usadas: dict[str, int] = {}
+    completadas = []
+    for i, (v, fonte, do_banco) in enumerate(fila, 1):
+        conferir()
+        limite = getattr(fonte, "MAX_DESCRICOES", None)
+        parada = getattr(fonte, "parada", lambda: False)
+        pulada = limite is not None and (usadas.get(fonte.NOME, 0) >= limite or parada())  # sem pedido
+        if not pulada:
+            usadas[fonte.NOME] = usadas.get(fonte.NOME, 0) + 1
+            try:
+                v["descricao"] = fonte.descrever(v)
+            except Exception as e:  # cada portal tem o seu tipo de erro; a vaga segue com o que já tinha
+                erros.append(f"{fonte.NOME}: descrição de {v['id']}: {e}")
+        avisar({"etapa": "descricoes", "lidas": i, "total": len(fila)})
+        if limite is None:
+            continue
+        pendente = not v.get("descricao") and (pulada or parada())  # erro só da vaga (ex.: removida): não fica
+        if do_banco and not pendente:
+            completadas.append({"id": v["id"], "descricao": v.get("descricao") or "",
+                                "tipo_emprego": v.get("tipo_emprego") or []})
+        elif not do_banco and pendente and v["id"] in ids_cand:
+            v["descricao_pendente"] = True
+    return completadas
 
 
 def salvar_candidatas(resultado: dict, pasta: Path | None = None, trecho: int = 3500) -> None:
@@ -347,6 +428,33 @@ def salvar_candidatas(resultado: dict, pasta: Path | None = None, trecho: int = 
 def bloqueio_provavel(resultado: dict) -> bool:
     """O portal não devolveu nada e houve erros."""
     return not resultado["brutas"] and bool(resultado["erros"])
+
+
+def confirmar_espera(nomes_fontes: list[str], confirmado: bool) -> bool:
+    """Com portal em espera, só segue com a confirmação da pessoa (pergunta no terminal ou --confirmar-espera)."""
+    esperas = fontes_em_espera(nomes_fontes)
+    if not esperas:
+        return True
+    aviso = aviso_espera(esperas)
+    if len(esperas) == len(nomes_fontes):
+        print(f"{aviso}. Nenhum outro portal está ligado: não há o que buscar agora.", file=sys.stderr)
+        return False
+    if confirmado:
+        return True
+    portais = " e o ".join(e["portal"] for e in esperas)
+    if sys.stdin.isatty():
+        try:
+            resp = input(f"{aviso}: fica de fora desta busca. Seguir sem o {portais}? [s/N] ")
+        except EOFError:  # sem ninguém digitando (no Windows, NUL também conta como terminal)
+            print()
+        else:
+            if resp.strip().lower() in ("s", "sim"):
+                return True
+            print("Busca não iniciada.")
+            return False
+    print(f"{aviso}: fica de fora desta busca. Para seguir só com os outros portais, rode de novo com "
+          "--confirmar-espera.", file=sys.stderr)
+    return False
 
 
 def cmd_buscar(args) -> int:
@@ -369,6 +477,11 @@ def cmd_buscar(args) -> int:
     if desconhecidas:
         print(f"Fonte(s) desconhecida(s): {', '.join(desconhecidas)}. Disponíveis: {', '.join(FONTES)}", file=sys.stderr)
         return 2
+    if not confirmar_espera(nomes_fontes, args.confirmar_espera):
+        return 5
+    aviso = filtros.aviso_cargos(f, nomes_fontes)
+    if aviso:
+        print(f"Aviso: {aviso}")
 
     try:
         with TravaBusca("terminal") as trava:
@@ -398,6 +511,12 @@ def cmd_buscar(args) -> int:
     for v in fora:
         print(f"  - {v['titulo'][:55]} | {v['empresa'][:28]}: {'; '.join(v['motivo_fora'])}")
     print(f"CANDIDATAS: {len(candidatas)}")
+    sem_texto = sum(1 for c in candidatas if c.get("descricao_pendente"))
+    if sem_texto:
+        print(f"  {sem_texto} com descrição pendente (o portal limitou os pedidos): entram sem nota e o texto "
+              "é lido na próxima busca; não avalie essas.")
+    if resultado.get("descricoes_completadas"):
+        print(f"Descrições pendentes de buscas anteriores lidas agora: {len(resultado['descricoes_completadas'])}")
     if erros:
         print("\nErros reportados pelos portais:")
         for e in erros[:10]:
@@ -449,7 +568,8 @@ def escrever_digest(resultado: dict, trecho: int, pasta: Path | None = None) -> 
             f"{c['publicada_em'] or '?'} · salário: {c['salario'] or 'não informado'} · termos: {', '.join(c['termos'])}"
             f" · busca: {', '.join(rotulo_grupo(g, f) for g in c['grupos'])}{rep}",
             "",
-            desc or "(sem descrição)",
+            desc or ("(descrição pendente: o portal limitou os pedidos. NÃO avalie esta vaga; ela entra sem nota "
+                     "e o texto é lido na próxima busca)" if c.get("descricao_pendente") else "(sem descrição)"),
             "",
         ]
     ((pasta or CACHE) / "candidatas.md").write_text("\n".join(linhas), encoding="utf-8")
@@ -506,7 +626,8 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
             "termos": c["termos"], "grupos": c.get("grupos", []), "ids_relacionados": c["ids_relacionados"],
             "outras_plataformas": c.get("outras_plataformas", []),
             "area": area, "pais_vaga": pais_vaga, "idioma": filtros.idioma_da_vaga(c),
-            **{k: c[k] for k in ("restricao_local", "ats", "moeda", "modelo_trabalho", "tipo_emprego") if c.get(k)},  # o que a fonte informa
+            **{k: c[k] for k in ("restricao_local", "ats", "moeda", "modelo_trabalho", "tipo_emprego",
+                                 "descricao_pendente") if c.get(k)},  # o que a fonte informa
             **({"sinais": s} if (s := filtros.sinais(c, f)) else {}),  # patrocínio de visto, relocation…
             **analise,
             "triagem": "pendente", "triada_em": None,
@@ -537,6 +658,10 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
         docs.append(documento(c, analise, filtros.criterios({**c, **analise}, f)))
         avaliadas.add(jid)
         notas.append((analise.get("aderencia"), c))
+    for jid, c in cand.items():  # sem texto (limite de pedidos do portal): entra sem nota, à espera da descrição
+        if jid not in avaliadas and c.get("descricao_pendente"):
+            docs.append(documento(c, {"analise_status": "sem_analise"}, filtros.criterios(c, f)))
+            avaliadas.add(jid)
     for c in dados.get("fora", []):  # cortadas antes da IA (empresa excluída, senioridade do título)
         docs.append(documento(c, {"analise_status": "sem_analise"}, c["motivo_fora"]))
 
@@ -547,6 +672,9 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
     ids_fora = {d["id"] for d in fora_novas}
     faltando = [jid for jid in cand if jid not in avaliadas]
     faixas = [n for n, c in notas if c["id"] in novas and c["id"] not in ids_fora and n is not None]
+    completadas = sum(1 for c in dados.get("descricoes_completadas") or []
+                      if banco.completar_descricao(c["id"], c.get("descricao") or "", c.get("tipo_emprego")))
+    pendentes = sum(1 for d in docs if d.get("descricao_pendente") and d["id"] in novas and d["triagem"] != "fora")
     banco.registrar_busca(busca_id, {
         "data": agora, "fontes": p.get("fontes", []), "termos": p.get("termos", []),
         "janela_horas": p.get("janela_horas"), "resumo": p.get("resumo"), "consultas": p.get("consultas"),
@@ -560,7 +688,7 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
     })
     return {"busca_id": busca_id, "novas": novas, "existentes": existentes, "fora_novas": fora_novas,
             "ids_fora": ids_fora, "faltando": faltando, "problemas": problemas, "notas": notas, "docs": len(docs),
-            "para_decidir": len(novas) - len(fora_novas)}
+            "para_decidir": len(novas) - len(fora_novas), "completadas": completadas, "pendentes": pendentes}
 
 
 def gravar(sem_avaliacao: bool = False, arquivo: str | None = None, pasta: Path | None = None) -> int:
@@ -626,6 +754,8 @@ def main() -> int:
     p1.add_argument("--incluir-presencial", action="store_true", help="não restringe a vagas remotas")
     p1.add_argument("--trecho", type=int, default=3500, help="caracteres de descrição no .cache/candidatas.md")
     p1.add_argument("--pausa", type=float, default=2.0, help="segundos entre buscas")
+    p1.add_argument("--confirmar-espera", action="store_true",
+                    help="segue sem os portais em espera depois de um bloqueio (ex.: LinkedIn), sem perguntar")
 
     p2 = sub.add_parser("ver", help="descrição completa de uma ou mais candidatas")
     p2.add_argument("ids", nargs="+")

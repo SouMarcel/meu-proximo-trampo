@@ -32,6 +32,24 @@ Opcional, para portais cuja busca não traz a descrição:
         o relatório (as que já estão no dashboard não gastam consulta); se levantar um
         erro, a vaga segue com o que já tinha.'''
 
+Opcionais, para portais que limitam os pedidos (ex.: LinkedIn):
+
+    AGRUPAR = True               # o vagas.py junta as consultas de um mesmo grupo numa só: a consulta chega com
+                                 # "termos" (os cargos desta parte), "termo" (a expressão de filtros.expressao_or,
+                                 # com as aspas de cada cargo) e "agrupada": True
+    MAX_DESCRICOES = 20          # no máximo N chamadas a descrever() por busca (contando as que falham); a fila
+                                 # começa pelas vagas do dashboard com descricao_pendente desta plataforma, e as
+                                 # candidatas que ficarem sem texto saem com descricao_pendente = True
+
+    def espera() -> dict | None:
+        '''{"ate": ISO, "motivo": texto} enquanto o portal está em espera depois de um bloqueio; None fora dela.
+        Na espera, buscar() devolve ([], [aviso]) na primeira consulta da busca e ([], []) nas outras, e
+        descrever() devolve a descrição que a vaga já tinha, sem pedido.'''
+
+    def parada() -> bool:
+        '''Verdadeiro se o portal bloqueou nesta busca ou está em espera: a vaga sem texto fica pendente (e não
+        é um erro da vaga).'''
+
 O `id` precisa ser estável entre buscas (é ele que impede a mesma vaga de voltar).
 Use o identificador do próprio portal; para portais novos, prefixe com o nome da
 fonte (ex.: "gupy-12345") para não colidir com outros portais.

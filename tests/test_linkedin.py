@@ -1,12 +1,15 @@
 """LinkedIn na busca (fontes/linkedin.py), com HTML fictício e sem rede: leitura dos cards, parâmetros de cada grupo
 (SC-001), sem repetir (SC-002), bloqueio sem nova tentativa (SC-004), sem cookies e descrição só das candidatas
-(SC-005), portais na configuração e o contrato com GLOBAL."""
+(SC-005), portais na configuração e o contrato com GLOBAL. Spec 015: motivo do bloqueio e espera de 6 horas."""
+import contextlib
+import io
 import json
 import shutil
 import sys
 import tempfile
 import unittest
 import urllib.error
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -34,7 +37,10 @@ class SemRede(unittest.TestCase):
     def setUp(self):
         _comum.esquecer()
         li._estado["ultimo"] = None
-        for p in (mock.patch.object(li, "PAUSA", (0, 0)), mock.patch.object(li.time, "sleep")):
+        self.dir_espera = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir_espera, True)
+        for p in (mock.patch.object(li, "PAUSA", (0, 0)), mock.patch.object(li.time, "sleep"),
+                  mock.patch.object(li, "ARQ_ESPERA", self.dir_espera / ".cache" / "linkedin-espera.json")):
             p.start()
             self.addCleanup(p.stop)
         self.addCleanup(_comum.esquecer)
@@ -190,19 +196,29 @@ class TestBloqueio(SemRede):
         self.abridor([LISTA, 429])
         c = grupos(CFG)
         self.assertEqual(len(li.buscar(c["remoto"], 168, 20)[0]), 3)
-        self.assertEqual(li.buscar(c["local"], 168, 20), ([], [li.BLOQUEIO]))
+        vagas_, erros = li.buscar(c["local"], 168, 20)
+        self.assertEqual(vagas_, [])
+        self.assertTrue(erros[0].startswith(li.BLOQUEIO + " (excesso de pedidos); em espera até "), erros)
         self.assertEqual(li.buscar(c["internacional:Portugal"], 168, 20), ([], []))  # sem pedido e sem repetir o aviso
         self.assertEqual(li.descrever({"id": "li-1", "descricao": "da lista"}), "da lista")
         self.assertEqual(len(self.pedidos), 2)
-        _comum.esquecer()  # a busca seguinte tenta de novo
+        li.ARQ_ESPERA.unlink()  # passada a espera, a busca seguinte tenta de novo
+        _comum.esquecer()
         self.abridor([LISTA])
         self.assertEqual(len(li.buscar(c["remoto"], 168, 20)[0]), 3)
 
-    def test_login_e_999_contam_como_bloqueio(self):
-        for codigo in (302, 999):
+    def test_login_e_999_contam_como_bloqueio(self):  # 015: cada tipo de bloqueio com o seu motivo
+        motivos = {302: "pediu login", 999: "costuma ser a rede", 403: "acesso negado (código 403)",
+                   401: "acesso negado (código 401)"}
+        for codigo, motivo in motivos.items():
             _comum.esquecer()
+            li.ARQ_ESPERA.unlink(missing_ok=True)
             self.abridor([codigo])
-            self.assertEqual(li.buscar(grupos(CFG)["remoto"], 168, 20), ([], [li.BLOQUEIO]))
+            vagas_, erros = li.buscar(grupos(CFG)["remoto"], 168, 20)
+            self.assertEqual(vagas_, [])
+            self.assertTrue(erros[0].startswith(li.BLOQUEIO + " ("), erros)
+            self.assertIn(motivo, erros[0])
+            self.assertIn("em espera até", erros[0])
 
     def test_outro_erro_nao_bloqueia(self):
         self.abridor([500, LISTA])
@@ -216,6 +232,148 @@ class TestBloqueio(SemRede):
         cab = {k.lower() for k in self.pedidos[0].headers}
         self.assertNotIn("cookie", cab)
         self.assertNotIn("authorization", cab)
+
+
+class TestEspera(TestBloqueio):  # spec 015, US3
+    def gravar(self, desde, motivo="excesso de pedidos"):
+        li.ARQ_ESPERA.parent.mkdir(parents=True, exist_ok=True)
+        dados = {"desde": desde.isoformat(timespec="seconds"), "motivo": motivo}
+        li.ARQ_ESPERA.write_text(json.dumps(dados), encoding="utf-8")
+
+    def test_bloqueio_grava_a_espera(self):
+        self.abridor([429])
+        li.buscar(grupos(CFG)["remoto"], 168, 20)
+        dados = json.loads(li.ARQ_ESPERA.read_text(encoding="utf-8"))
+        self.assertEqual(dados["motivo"], "excesso de pedidos")
+        self.assertLess(abs(datetime.fromisoformat(dados["desde"]) - datetime.now()), timedelta(minutes=1))
+        self.assertIsNotNone(li.espera())
+
+    def test_espera_vale_6_horas(self):
+        agora = datetime(2026, 10, 15, 12, 0)
+        self.gravar(agora - timedelta(hours=1))
+        self.assertEqual(li.espera(agora), {"ate": "2026-10-15T17:00", "motivo": "excesso de pedidos"})
+        self.gravar(agora - timedelta(hours=6, minutes=1))
+        self.assertIsNone(li.espera(agora))
+
+    def test_hora_no_futuro_vale_como_agora(self):
+        agora = datetime(2026, 10, 15, 12, 0)
+        self.gravar(agora + timedelta(days=3))
+        self.assertEqual(li.espera(agora)["ate"], "2026-10-15T18:00")
+
+    def test_arquivo_ilegivel_ou_ausente_sem_espera(self):
+        self.assertIsNone(li.espera())
+        li.ARQ_ESPERA.parent.mkdir(parents=True, exist_ok=True)
+        li.ARQ_ESPERA.write_text("{quebrado", encoding="utf-8")
+        self.assertIsNone(li.espera())
+        self.assertFalse(li.parada())
+
+    def test_na_espera_nenhum_pedido_e_aviso_uma_vez(self):
+        self.gravar(datetime.now() - timedelta(minutes=30), "pediu login")
+        self.abridor([])
+        c = grupos(CFG)
+        vagas_, erros = li.buscar(c["remoto"], 168, 20)
+        self.assertEqual(vagas_, [])
+        self.assertTrue(erros[0].startswith("LinkedIn em espera até "), erros)
+        self.assertIn("(pediu login); ficou de fora desta busca", erros[0])
+        self.assertEqual(li.buscar(c["local"], 168, 20), ([], []))
+        self.assertEqual(li.descrever({"id": "li-1", "descricao": ""}), "")
+        self.assertTrue(li.parada())
+        self.assertEqual(self.pedidos, [])
+        _comum.esquecer()  # outra busca na espera: o aviso volta uma vez
+        self.assertEqual(len(li.buscar(c["remoto"], 168, 20)[1]), 1)
+
+    def test_espera_na_busca_e_no_terminal(self):
+        self.gravar(datetime.now() - timedelta(minutes=30))
+        for p in (contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO())):
+            p.__enter__()
+            self.addCleanup(p.__exit__, None, None, None)
+        esp = vagas.fontes_em_espera(["linkedin", "indeed"])
+        self.assertEqual([(e["nome"], e["portal"], e["motivo"]) for e in esp],
+                         [("linkedin", "LinkedIn", "excesso de pedidos")])
+        with mock.patch.object(vagas.sys.stdin, "isatty", return_value=False):
+            self.assertFalse(vagas.confirmar_espera(["linkedin", "indeed"], False))
+            self.assertTrue(vagas.confirmar_espera(["linkedin", "indeed"], True))
+            self.assertFalse(vagas.confirmar_espera(["linkedin"], True))  # só ele: não há o que buscar
+        with mock.patch.object(vagas.sys.stdin, "isatty", return_value=True):
+            with mock.patch("builtins.input", return_value="s"):
+                self.assertTrue(vagas.confirmar_espera(["linkedin", "indeed"], False))
+            with mock.patch("builtins.input", return_value=""):
+                self.assertFalse(vagas.confirmar_espera(["linkedin", "indeed"], False))
+            with mock.patch("builtins.input", side_effect=EOFError):  # NUL no Windows: sem ninguém digitando
+                self.assertFalse(vagas.confirmar_espera(["linkedin", "indeed"], False))
+        li.ARQ_ESPERA.unlink()
+        self.assertTrue(vagas.confirmar_espera(["linkedin"], False))
+
+
+def pagina(inicio, n):
+    """Uma página fictícia com n cards (ids a partir de inicio)."""
+    card = ('<li><div class="base-card base-search-card" data-entity-urn="urn:li:jobPosting:{n}">'
+            '<h3 class="base-search-card__title">Analista de Dados {n}</h3>'
+            '<h4 class="base-search-card__subtitle">Empresa {n}</h4>'
+            '<span class="job-search-card__location">Brasil</span><time datetime="2026-10-10"></time></div></li>')
+    return "".join(card.format(n=inicio + i) for i in range(n))
+
+
+class TestConsultaCombinada(SemRede):  # spec 015, US1
+    def test_expressao_or(self):
+        termos = ['"analista de dados"', "designer", "product owner", '"engenheiro de dados', '""']
+        [(ts, expr)] = filtros.expressao_or(termos)
+        self.assertEqual(expr, '"analista de dados" OR designer OR (product owner) OR (engenheiro de dados)')
+        self.assertEqual(ts, termos[:4])  # o vazio sai
+        self.assertEqual(filtros.expressao_or(['"analista de dados"']), [(['"analista de dados"'], '"analista de dados"')])
+        partes = filtros.expressao_or([f'"cargo numero {i}"' for i in range(10)], maximo=60)
+        self.assertGreater(len(partes), 1)
+        self.assertTrue(all(len(e) <= 60 for _, e in partes))
+        self.assertEqual(sum(len(ts) for ts, _ in partes), 10)
+
+    def test_termos_no_titulo(self):
+        termos = ['"analista de dados"', "product owner", "designer"]
+        self.assertEqual(filtros.termos_no_titulo("Analista de Dados Sênior", termos), ['"analista de dados"'])
+        self.assertEqual(filtros.termos_no_titulo("Owner, Product (remoto)", termos), ["product owner"])
+        self.assertEqual(filtros.termos_no_titulo("Dados de Analista", termos), [])  # entre aspas: em sequência
+        self.assertEqual(filtros.termos_no_titulo("Designer", termos), ["designer"])
+
+    def test_uma_consulta_por_grupo_so_no_linkedin(self):
+        cfg = {**CFG, "termos": ['"analista de dados"', "designer", "product owner"], "internacional": {"ativo": False}}
+        plano = filtros.consultas(filtros.efetivos(cfg))
+        li_c = vagas.consultas_da_fonte(plano, FONTES["linkedin"])
+        self.assertEqual([c["grupo"] for c in li_c], ["remoto", "local"])
+        self.assertTrue(all(c["agrupada"] and len(c["termos"]) == 3 for c in li_c))
+        self.assertEqual(len(vagas.consultas_da_fonte(plano, FONTES["indeed"])), 6)  # outras: uma por cargo
+        self.assertEqual(vagas.contar_consultas(plano, ["linkedin", "indeed"]), 8)
+        p = li.parametros(li_c[0], 168)
+        self.assertEqual(p["keywords"], '"analista de dados" OR designer OR (product owner)')
+        um = vagas.consultas_da_fonte(filtros.consultas(filtros.efetivos({**cfg, "termos": ['"analista de dados"']})),
+                                      FONTES["linkedin"])
+        self.assertFalse(um[0].get("agrupada"))
+        self.assertEqual(li.parametros(um[0], 168)["keywords"], "analista de dados")  # um cargo só: como antes
+
+    def test_ate_3_paginas_na_combinada(self):
+        c = {**grupos(CFG)["remoto"], "termos": ["a", "b"], "termo": "a OR b", "agrupada": True}
+        self.respostas(lambda url: pagina(int(url.split("start=")[1].split("&")[0]) + 5000000000, 10))
+        vs, _ = li.buscar(c, 168, 40)
+        self.assertEqual((len(vs), len(self.urls)), (30, 3))
+        self.urls.clear()
+        self.respostas(lambda url: pagina(6000000000, 10) if "start=0" in url else pagina(6000000100, 4))
+        vs, _ = li.buscar(c, 168, 40)
+        self.assertEqual((len(vs), len(self.urls)), (14, 2))  # página incompleta: para
+        self.urls.clear()
+        self.respostas(lambda url: pagina(7000000000, 10))
+        li.buscar({**c, "agrupada": False, "termo": "a"}, 168, 40)
+        self.assertEqual(len(self.urls), 1)  # um cargo: uma página, como antes
+
+    def test_cargos_da_vaga_na_busca(self):
+        self.respostas(lambda url: VAGA if "jobPosting" in url else pagina(8000000000, 3))
+        cfg = {**CFG, "fontes": ["linkedin"], "termos": ['"analista de dados"', "designer"],
+               "internacional": {"ativo": False},
+               "modelos": {"remoto": True}, "localidade": {"pais": "Brasil"}, "tipos_emprego": []}
+        with mock.patch.object(vagas, "CACHE", self.dir_espera), \
+                mock.patch.object(banco, "ARQUIVO", self.dir_espera / "banco.db"):
+            r = vagas.executar(cfg, filtros.efetivos(cfg), ["linkedin"], 40, pausa=0)
+        self.assertEqual(r["parametros"]["consultas"], 2)
+        buscas = [u for u in self.urls if "jobPosting" not in u]
+        self.assertEqual(len(buscas), 1)
+        self.assertTrue(all(v["termos"] == ['"analista de dados"'] for v in r["candidatas"]))
 
 
 class TestNaBusca(SemRede):

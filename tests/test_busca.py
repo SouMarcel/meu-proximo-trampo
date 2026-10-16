@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import types
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -130,6 +131,89 @@ class TestExecutar(Base):
         self.assertTrue(all(s == ("fora", "sem_analise") for vid, s in status.items() if vid.endswith("-1")))
         b = banco.ultima_busca()
         self.assertEqual((b["origem"], b["com_nota"]), ("pagina", True))
+
+
+class TestDescricoesPendentes(Base):  # spec 015, US1 (limite) e US2
+    def setUp(self):
+        super().setUp()
+        for p in (mock.patch.object(fonte_falsa, "MAX_DESCRICOES", 1, create=True),
+                  mock.patch.object(fonte_falsa, "COM_DESCRICAO", False)):
+            p.start()
+            self.addCleanup(p.stop)
+
+    def buscar(self, cfg=CFG):
+        return vagas.executar(cfg, filtros.efetivos(cfg), ["falsa"], 40, pausa=0)
+
+    def test_limite_e_marca_nas_que_sobram(self):
+        r = self.buscar()
+        self.assertEqual(len(fonte_falsa.DESCRITAS), 1)  # 3 candidatas e 2 fora: só 1 pedido
+        cand = {v["id"] for v in r["candidatas"]}
+        self.assertTrue(set(fonte_falsa.DESCRITAS) <= cand)  # candidatas antes das fora
+        pend = [v for v in r["candidatas"] if v.get("descricao_pendente")]
+        self.assertEqual(len(pend), 2)
+        self.assertTrue(all(not v["descricao"] for v in pend))
+        self.assertFalse(any(v.get("descricao_pendente") for v in r["fora"]))  # fora não vai para a IA
+        g = vagas.gravar_resultado(r, sem_avaliacao=True, status_sem_nota="pendente")
+        self.assertEqual(g["pendentes"], 2)
+        no_banco = [v for v in banco.listar_vagas() if v.get("descricao_pendente")]
+        self.assertEqual(len(no_banco), 2)
+        self.assertFalse(any(analise.precisa(v) or banco.precisa_analise(v) for v in no_banco))  # sem nota sem texto
+        self.assertEqual(len(banco.pendentes_de_descricao("Falsa")), 2)
+
+    def test_proxima_busca_le_pendentes_primeiro_e_completa(self):
+        vagas.gravar_resultado(self.buscar(), sem_avaliacao=True, status_sem_nota="pendente")
+        ids_pend = {v["id"] for v in banco.pendentes_de_descricao("Falsa")}
+        fonte_falsa.DESCRITAS.clear()
+        fonte_falsa.MAX_DESCRICOES = 3
+        r = self.buscar({**CFG, "termos": ["gerente"]})  # vagas novas também
+        self.assertEqual(set(fonte_falsa.DESCRITAS[:2]), ids_pend)
+        self.assertEqual(len(fonte_falsa.DESCRITAS), 3)
+        self.assertEqual({c["id"] for c in r["descricoes_completadas"]}, ids_pend)
+        g = vagas.gravar_resultado(r, sem_avaliacao=True, status_sem_nota="pendente")
+        self.assertEqual(g["completadas"], 2)
+        for vid in ids_pend:
+            v = banco.obter(vid)
+            self.assertNotIn("descricao_pendente", v)
+            self.assertIn("lida à parte", v["descricao"])
+            self.assertTrue(analise.precisa(v))  # agora vai para a IA
+
+    def test_fonte_parada_nao_pede_e_deixa_pendente(self):
+        with mock.patch.object(fonte_falsa, "parada", lambda: True, create=True):
+            r = self.buscar()
+        self.assertEqual(fonte_falsa.DESCRITAS, [])
+        self.assertEqual(sum(1 for v in r["candidatas"] if v.get("descricao_pendente")), 3)
+
+    def test_erro_da_vaga_tira_a_marca(self):
+        vagas.gravar_resultado(self.buscar(), sem_avaliacao=True, status_sem_nota="pendente")
+        fonte_falsa.MAX_DESCRICOES = 3
+        with mock.patch.object(fonte_falsa, "descrever", side_effect=ValueError("respondeu 404")), \
+                mock.patch.object(fonte_falsa, "parada", lambda: False, create=True):
+            r = self.buscar()
+        self.assertEqual(len(r["descricoes_completadas"]), 2)
+        self.assertTrue(any("respondeu 404" in e for e in r["erros"]))
+        vagas.gravar_resultado(r, sem_avaliacao=True, status_sem_nota="pendente")
+        self.assertEqual(banco.pendentes_de_descricao("Falsa"), [])
+
+    def test_descartada_ou_no_quadro_sai_da_fila(self):
+        vagas.gravar_resultado(self.buscar(), sem_avaliacao=True, status_sem_nota="pendente")
+        a, b = banco.pendentes_de_descricao("Falsa")
+        banco.atualizar_usuario(a["id"], {"triagem": "visitada"})
+        banco.atualizar_usuario(b["id"], {"triagem": "seguir", "etapa": "salva"})
+        self.assertEqual(banco.pendentes_de_descricao("Falsa"), [])
+
+    def test_chat_grava_pendente_sem_nota(self):
+        r = self.buscar()
+        vagas.gravar_resultado(r, avals=[])  # o chat não avalia as pendentes
+        pend = [v for v in banco.listar_vagas() if v.get("descricao_pendente")]
+        self.assertEqual(len(pend), 2)
+        self.assertTrue(all(v["analise_status"] == "sem_analise" for v in pend))
+
+    def test_fonte_sem_limite_continua_igual(self):
+        with mock.patch.object(fonte_falsa, "MAX_DESCRICOES", None):
+            r = self.buscar()
+        self.assertEqual(len(fonte_falsa.DESCRITAS), 5)
+        self.assertFalse(any(v.get("descricao_pendente") for v in r["candidatas"]))
+        self.assertEqual(r["descricoes_completadas"], [])
 
 
 class TestTrava(Base):
@@ -265,6 +349,50 @@ class TestBuscaPagina(Base):
         with self.assertRaises(buscador.BuscaRecusada) as ctx:  # busca no terminal
             b.iniciar(confirmar_recente=True)
         self.assertIn("terminal ou no chat", str(ctx.exception))
+
+    def test_portal_em_espera_pede_confirmacao(self):  # spec 015, US3
+        parada = types.SimpleNamespace(NOME="parada", PLATAFORMA="Parada", CHAMADAS=[],
+                                       espera=lambda: {"ate": "2026-10-15T17:00", "motivo": "excesso de pedidos"})
+        parada.buscar = lambda c, h, n: (parada.CHAMADAS.append(c), ([], []))[1]
+        cfg = {**CFG, "fontes": ["falsa", "parada"]}
+        (self.tmp / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+        with mock.patch.dict(vagas.FONTES, {"parada": parada}):
+            pl = buscador.Busca().plano()
+            self.assertEqual(pl["espera"],
+                             [{"portal": "Parada", "ate": "2026-10-15T17:00", "motivo": "excesso de pedidos"}])
+            self.assertFalse(pl["so_espera"])
+            with self.assertRaises(buscador.BuscaRecusada) as ctx:  # sem confirmar: não começa
+                buscador.Busca().iniciar()
+            self.assertTrue(ctx.exception.precisa_confirmar)
+            self.assertIn("em espera até 17:00", str(ctx.exception))
+            self.assertEqual(fonte_falsa.CHAMADAS, [])
+            b = self.busca_pagina(confirmar_espera=True)
+            self.assertEqual(b.estado()["situacao"], "concluida")
+            self.assertTrue(fonte_falsa.CHAMADAS)
+            vagas._gravar_registro({"origem": "pagina", "situacao": "concluida", "fim": "2026-01-01T00:00:00"})
+            (self.tmp / "config.json").write_text(json.dumps({**CFG, "fontes": ["parada"]}), encoding="utf-8")
+            self.assertTrue(buscador.Busca().plano()["so_espera"])
+            with self.assertRaises(buscador.BuscaRecusada) as ctx:  # só ele: não há o que buscar
+                buscador.Busca().iniciar(confirmar_espera=True)
+            self.assertFalse(ctx.exception.precisa_confirmar)
+            self.assertIn("único portal", str(ctx.exception))
+
+    def test_terminal_sai_com_5_na_espera(self):  # spec 015, US3
+        parada = types.SimpleNamespace(NOME="parada", PLATAFORMA="Parada",
+                                       espera=lambda: {"ate": "2026-10-15T17:00", "motivo": "pediu login"})
+        parada.buscar = lambda c, h, n: ([], [])
+        saida = io.StringIO()
+        with mock.patch.dict(vagas.FONTES, {"parada": parada}), \
+                mock.patch.object(vagas.sys.stdin, "isatty", return_value=False), \
+                contextlib.redirect_stderr(saida), contextlib.redirect_stdout(io.StringIO()):
+            with mock.patch.object(sys, "argv", ["vagas.py", "buscar", "--fontes", "falsa", "parada", "--pausa", "0"]):
+                self.assertEqual(vagas.main(), 5)
+            self.assertEqual(fonte_falsa.CHAMADAS, [])
+            self.assertIn("--confirmar-espera", saida.getvalue())
+            with mock.patch.object(sys, "argv", ["vagas.py", "buscar", "--fontes", "falsa", "parada", "--pausa", "0",
+                                                 "--confirmar-espera"]):
+                self.assertEqual(vagas.main(), 0)
+            self.assertTrue(fonte_falsa.CHAMADAS)
 
     def test_interrompida_aparece_no_estado(self):
         vagas._gravar_registro({"origem": "pagina", "inicio": "2026-10-09T10:00:00", "situacao": "rodando"})

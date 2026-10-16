@@ -62,6 +62,22 @@ class TestConfig(unittest.TestCase):
             filtros.validar({**cfg, "idiomas_aceitos": ["xx"]})
 
 
+class TestAvisoCargos(unittest.TestCase):  # spec 015, US4
+    def test_mais_de_5_cargos_com_linkedin_ou_indeed(self):
+        cinco, seis = [f"cargo {i}" for i in range(5)], [f"cargo {i}" for i in range(6)]
+        self.assertIsNone(filtros.aviso_cargos(efet(termos=cinco), ["linkedin"]))
+        self.assertIn("Mais de 5 cargos", filtros.aviso_cargos(efet(termos=seis), ["linkedin"]))
+        self.assertIn("Mais de 5 cargos", filtros.aviso_cargos(efet(termos=seis), ["gupy", "indeed"]))
+        self.assertIsNone(filtros.aviso_cargos(efet(termos=seis), ["gupy", "startupjobs"]))
+        inter = {"ativo": True, "paises": ["Portugal"], "termos": seis}
+        self.assertIn("Mais de 5 cargos", filtros.aviso_cargos(efet(internacional=inter), ["linkedin"]))
+        self.assertIsNone(filtros.aviso_cargos(efet(internacional={**inter, "ativo": False}), ["linkedin"]))
+
+    def test_aviso_nao_impede_salvar(self):
+        seis = [f"cargo {i}" for i in range(6)]
+        self.assertEqual(filtros.validar({**efet(termos=seis), "fontes": ["linkedin"]})["termos"], seis)
+
+
 class TestAreaEPais(unittest.TestCase):
     def test_pais_do_local(self):
         for local, esperado in (("Remote - United States", "Estados Unidos"), ("Lisboa, Portugal", "Portugal"),

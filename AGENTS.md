@@ -16,8 +16,10 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
 - **Dados pessoais ficam fora do Git**: `config.json`, `perfil.md`, `anexos/`, `curriculos/`, `entrevistas/`,
   `dash/dados/`, `.cache/` e `.env` (chaves de API). Nunca os coloque num commit.
 - **Respeite os portais**: consultas espaçadas, só o necessário; no Indeed e no LinkedIn, só a busca
-  pública, sem login nem a conta da pessoa, parando no primeiro bloqueio. O perfil da pessoa não é
-  lido do LinkedIn, só dos arquivos que ela baixa.
+  pública, sem login nem a conta da pessoa, parando no primeiro bloqueio. Depois de um bloqueio, o
+  LinkedIn fica 6 horas de fora, e a busca pergunta antes de seguir sem ele (`vagas.py buscar` sai com
+  código 5; repita com `--confirmar-espera` só com o OK da pessoa). O perfil da pessoa não é lido do
+  LinkedIn, só dos arquivos que ela baixa.
 
 ## Como rodar os scripts
 

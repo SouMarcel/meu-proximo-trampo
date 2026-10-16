@@ -7,7 +7,8 @@ em .cache/, ficam intactas) e a trava de vagas.TravaBusca. Com IA e perfil, as v
 esperando nota e a análise automática (analise.FILA) dá as notas; sem IA, ficam sem nota.
 
 Respeito aos portais: a página só inicia uma busca 30 minutos depois da última concluída (de qualquer
-origem) e pede confirmação se a última foi há menos de 6 horas.
+origem) e pede confirmação se a última foi há menos de 6 horas. Com um portal em espera depois de um bloqueio
+(ex.: LinkedIn), pede confirmação para buscar sem ele; se só ele estiver ligado, não busca.
 """
 from __future__ import annotations
 
@@ -153,6 +154,7 @@ class Busca:
         perfil = RAIZ / (cfg.get("perfil") or "perfil.md")
         ult = self.ultima()
         proxima, recente = self.intervalo(ult)
+        espera = v.fontes_em_espera(nomes)
         return {
             "filtros_ok": bool(f["termos"]), "perfil_ok": perfil.exists(), "consultas": consultas,
             "portais": [v.FONTES[n].PLATAFORMA for n in nomes], "cargos": [t.strip('"') for t in f["termos"]],
@@ -161,10 +163,13 @@ class Busca:
             "ia": {"ligada": ia.disponivel(cfg), "nome": prov["nome"], "modelo": ia.modelo_efetivo(escolha),
                    "cobranca": prov["cobranca"]},
             "ultima": ult, "proxima_em": proxima, "recente": recente,
+            "espera": [{k: e[k] for k in ("portal", "ate", "motivo")} for e in espera],
+            "so_espera": bool(nomes) and len(espera) == len(nomes),
+            "aviso_cargos": fm.aviso_cargos(f, nomes) if f["termos"] else None,
         }
 
     # ---------- iniciar e cancelar
-    def iniciar(self, sem_nota: bool = False, confirmar_recente: bool = False) -> dict:
+    def iniciar(self, sem_nota: bool = False, confirmar_recente: bool = False, confirmar_espera: bool = False) -> dict:
         v = _vagas()
         with self._inicio:
             if self.rodando():
@@ -178,6 +183,14 @@ class Busca:
             if pl["proxima_em"]:
                 raise BuscaRecusada(f"Para os portais não bloquearem a busca, espere um pouco: dá para buscar de novo "
                                     f"a partir das {_hora(pl['proxima_em'])}.")
+            if pl["espera"]:
+                aviso = "; ".join(f"O {e['portal']} está em espera até {_hora(e['ate'])} ({e['motivo']})"
+                                  for e in pl["espera"])
+                if pl["so_espera"]:
+                    raise BuscaRecusada(f"{aviso} e é o único portal ligado: não há o que buscar agora.")
+                if not confirmar_espera:
+                    raise BuscaRecusada(f"{aviso} e vai ficar de fora. Confirme para buscar só com os outros portais.",
+                                        precisa_confirmar=True)
             if pl["recente"] and not confirmar_recente:
                 raise BuscaRecusada(f"A última busca terminou às {_hora(pl['ultima']['fim'])}: os portais devem ter "
                                     "pouca vaga nova. Confirme para buscar mesmo assim.", precisa_confirmar=True)
@@ -238,8 +251,9 @@ class Busca:
                 "brutas": resultado["brutas"], "novas": r["para_decidir"], "fora_criterios": len(r["fora_novas"]),
                 "ja_vistas": resultado["ja_vistas"] + len(r["existentes"]),
                 "excluidas_titulo": resultado["excluidas_titulo"], "fora_da_janela": resultado["fora_da_janela"],
-                "busca_id": r["busca_id"], "com_nota": com_nota})
-            if com_nota and r["para_decidir"]:
+                "busca_id": r["busca_id"], "com_nota": com_nota,
+                "pendentes": r["pendentes"], "completadas": r["completadas"]})
+            if com_nota and (r["para_decidir"] or r["completadas"]):  # completadas: pendentes que ganharam o texto
                 analise.FILA.pedir()
         except v.Cancelada:
             self._fim("cancelada", mensagem="Busca cancelada; nada dela foi gravado.")

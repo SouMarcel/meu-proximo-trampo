@@ -244,7 +244,8 @@ class Handler(BaseHTTPRequestHandler):
             corpo = self._corpo()
             try:
                 estado = buscador.BUSCA.iniciar(sem_nota=bool(corpo.get("sem_nota")),
-                                                confirmar_recente=bool(corpo.get("confirmar_recente")))
+                                                confirmar_recente=bool(corpo.get("confirmar_recente")),
+                                                confirmar_espera=bool(corpo.get("confirmar_espera")))
             except buscador.BuscaRecusada as e:
                 return self._json(409, {"erro": str(e), "precisa_confirmar": e.precisa_confirmar,
                                         "estado": buscador.BUSCA.estado()})
