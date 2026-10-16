@@ -2,7 +2,8 @@
 
 - Indeed: a página bloqueia leitura automática, então usa a API do app do Indeed pelo
   código da vaga (jk), com os cabeçalhos do python-jobspy.
-- LinkedIn: a API pública de visitante (sem login), pelo número da vaga.
+- LinkedIn: a API pública de visitante (sem login), pelo número da vaga. Link de post não é vaga: fica com
+  fontes/post.py.
 - Gupy: o MCP público de candidatos da Gupy (fontes/gupy.py), pelo número da vaga; se
   ele falhar, os dados estruturados da página, como nos outros sites.
 - startup.jobs: o MCP público do site (fontes/startupjobs.py), pelo número da vaga; se
@@ -373,6 +374,9 @@ def ler(url: str) -> dict:
     if plat == "Indeed":
         vaga = _ler_indeed(partes)
     elif plat == "LinkedIn":
+        from . import post  # post importa este módulo
+        if post.id_do_post(url):
+            raise LinkErro("é um post, não uma página de vaga (veja fontes/post.py)", {"formato": "post"})
         vaga = _ler_linkedin(partes)
     elif plat == "Gupy" and gupy.id_do_link(url):
         vaga = _ler_gupy(url, gupy.id_do_link(url))

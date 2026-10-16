@@ -81,7 +81,7 @@ class TestAnaliseComIA(unittest.TestCase):
         banco.inserir_vagas([{**VAGAS["en"], "analise_status": "pendente", "origem": "link"}])
 
     def test_idioma_no_adicionar_vaga(self):
-        doc = banco.criar_manual({"titulo": "Data Analyst", "empresa": "Beta", "etapa": "salva", "descricao": VAGAS["en"]["descricao"]})
+        doc, _ = banco.criar_manual({"titulo": "Data Analyst", "empresa": "Beta", "etapa": "salva", "descricao": VAGAS["en"]["descricao"]})
         self.assertEqual(doc["idioma"], "en")
         self.assertEqual(banco.com_kit(doc)["checklist"][0]["rotulo"], "Currículo em inglês")
 

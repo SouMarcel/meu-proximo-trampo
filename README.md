@@ -31,6 +31,15 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   (Indeed, LinkedIn, Gupy, startup.jobs, site da empresa…). O dashboard lê os dados, põe
   a vaga no relatório como as da busca e, com o Claude Code instalado, ela recebe a nota
   sozinha em cerca de 1 minuto. Se o site não deixar ler, o formulário pede o resto.
+- **Vaga publicada num post:** cole o link de um post do LinkedIn com uma vaga, ou use
+  "Colar texto de post ou mensagem" para posts privados e vagas vindas do WhatsApp, do
+  Instagram ou de um e-mail. O dashboard lê a versão pública do post (uma consulta, sem
+  login), e a IA escolhida tira do texto o cargo, a empresa, o local e o contato de
+  candidatura. O formulário abre preenchido para você conferir antes de adicionar. Sem
+  IA, ele abre com o texto do post para você completar. A vaga ganha a etiqueta Post.
+- **E-mail de candidatura:** quando a vaga pede o currículo por e-mail, o cartão da vaga
+  guarda o e-mail e o assunto e tem o botão "Enviar por e-mail", que só abre o seu
+  programa de e-mail; quem envia é você.
 - **Com IA:** nota de 0 a 100 por vaga, encaixes, lacunas e alertas (híbrido
   disfarçado de remoto, PJ, inglês fluente, vaga afirmativa).
 

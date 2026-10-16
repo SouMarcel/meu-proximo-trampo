@@ -180,6 +180,9 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .card .int-tag { margin-top: 2px; }
 .sinal-tag { display: inline-flex; align-items: center; border: 1px solid color-mix(in srgb, var(--good) 55%, transparent); color: var(--good); background: color-mix(in srgb, var(--good) 10%, transparent); border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; margin-left: 4px; }
 .card .sinal-tag { margin: 2px 4px 0 0; }
+.post-tag { display: inline-flex; align-items: center; border: 1px solid var(--line-strong); color: var(--muted); border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; margin-left: 4px; }
+.card .post-tag { margin: 2px 4px 0 0; }
+#a-colar { min-height: 160px; }
 .fbi-fonte { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; }
 .fbi-fonte input { margin-top: 3px; accent-color: var(--good); }
 .fbi-fonte small { display: block; color: var(--muted); font-weight: 400; }
@@ -560,7 +563,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     <div class="dlg-head">
       <div>
         <h2 id="add-title">Adicionar vaga</h2>
-        <p>Cole o link de uma vaga que você achou em outro lugar: o dashboard lê os dados, coloca a vaga no Relatório de Vagas e o Claude analisa a aderência, como nas vagas da busca.</p>
+        <p>Cole o link de uma vaga que você achou em outro lugar, ou de um post do LinkedIn com uma vaga: o dashboard lê os dados, coloca a vaga no Relatório de Vagas e o Claude analisa a aderência, como nas vagas da busca.</p>
       </div>
     </div>
     <div class="field full">
@@ -568,13 +571,22 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       <div class="add-row"><input type="text" id="a-link" inputmode="url" autocomplete="off" placeholder="https://… (Indeed, LinkedIn, Gupy, site da empresa…)"><button type="button" class="btn-primary" id="a-buscar">Buscar dados</button></div>
       <p class="hint" id="a-status" role="status"></p>
     </div>
-    <p class="hint" id="a-manual-wrap">Sem link ou prefere digitar? <button type="button" class="link-btn" id="a-manual">Preencher à mão</button></p>
+    <p class="hint" id="a-manual-wrap">Sem link ou prefere digitar? <button type="button" class="link-btn" id="a-manual">Preencher à mão</button>
+      · <button type="button" class="link-btn" id="a-colar-abrir">Colar texto de post ou mensagem</button></p>
+    <div class="field full" id="a-colar-wrap" hidden>
+      <label for="a-colar">Texto do post ou da mensagem</label>
+      <textarea id="a-colar" maxlength="20000" placeholder="Cole aqui o texto inteiro da vaga (post do LinkedIn, mensagem de WhatsApp, Instagram, e-mail…)"></textarea>
+      <div class="add-row"><button type="button" class="btn-primary" id="a-colar-ok">Continuar</button></div>
+    </div>
     <div class="form" id="a-form" hidden>
       <div class="field full"><label for="a-titulo">Cargo</label><input id="a-titulo" name="titulo" required maxlength="200" placeholder="Ex.: Scrum Master Sênior"></div>
       <div class="field"><label for="a-empresa">Empresa</label><input id="a-empresa" name="empresa" required maxlength="120"></div>
       <div class="field"><label for="a-plataforma">Plataforma</label><select id="a-plataforma" name="plataforma"></select></div>
       <div class="field full"><label for="a-url">Link da vaga</label><input id="a-url" name="url" type="url" placeholder="https://"></div>
       <div class="field"><label for="a-local">Local / modelo</label><input id="a-local" name="local" maxlength="120" placeholder="Remoto, Híbrido SP…"></div>
+      <div class="field"><label for="a-email">E-mail de candidatura</label><input id="a-email" name="email_candidatura" type="email" maxlength="254" placeholder="Se a vaga pede o currículo por e-mail"></div>
+      <div class="field"><label for="a-assunto">Assunto do e-mail</label><input id="a-assunto" name="assunto_candidatura" maxlength="200" placeholder="O assunto que a vaga pede, se pedir"></div>
+      <input type="hidden" id="a-formato" name="formato"><input type="hidden" id="a-post-id" name="post_id"><input type="hidden" id="a-publicado-por" name="publicado_por">
       <div class="field"><label for="a-etapa">Etapa</label><select id="a-etapa" name="etapa"></select></div>
       <div class="field"><label for="a-area">Área</label><select id="a-area" name="area"><option value="nacional">Nacional (seu país)</option><option value="internacional">Internacional</option></select></div>
       <div class="field"><label for="a-pais">País da vaga (internacional)</label><input id="a-pais" name="pais_vaga" maxlength="60" placeholder="Ex.: Portugal, mundo todo"></div>
@@ -793,6 +805,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (areaDe(v) !== "internacional") return "";
     return '<span class="int-tag" title="Vaga internacional">Internacional · ' + esc(paisDe(v) || "exterior") + (v.moeda ? " · " + esc(v.moeda) : "") + "</span>";
   }
+  // Vaga que veio de um post ou de texto colado (spec 016)
+  function postTag(v) {
+    return v.formato === "post" ? '<span class="post-tag" title="Vaga publicada num post ou mensagem, sem anúncio estruturado">Post</span>' : "";
+  }
   // Sinais positivos lidos no anúncio (patrocínio de visto, relocation, frases da pessoa)
   function sinaisTags(v) {
     return (v.sinais || []).map(function (x) { return '<span class="sinal-tag" title="Lido no anúncio">' + esc(x) + "</span>"; }).join("");
@@ -971,7 +987,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<div class="card-top">' + platTags(v) +
       '<time datetime="' + esc(v.etapa_em || "") + '">' + esc(ddmm(v.etapa_em || v.encontrada_em)) + "</time>" +
       '<button class="more" data-menu="' + esc(v.id) + '" aria-label="Opções de ' + esc(v.titulo) + '" aria-haspopup="menu">' + ICON.dots + "</button></div>" +
-      "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" + intTag(v) + sinaisTags(v) +
+      "<h3>" + esc(v.titulo) + '</h3><p class="company">' + esc(v.empresa) + "</p>" + intTag(v) + postTag(v) + sinaisTags(v) +
       (v.termos && v.termos.length ? '<p class="termos" title="Termos de busca que encontraram esta vaga">busca: ' + esc(termosDe(v)) + "</p>" : "") + chipsDe(v) + lembreteHTML(v) +
       '<div class="card-actions">' +
       (url ? '<a class="btn-ghost" href="' + esc(url) + '" target="_blank" rel="noopener">' + ICON.ext + " Link da Vaga</a>"
@@ -1007,7 +1023,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     itens.forEach(function (v) {
       var e = ETAPAS.filter(function (x) { return x.k === v.etapa; })[0];
       var url = safeUrl(v.url);
-      h += "<tr><td><button class=\"link-btn t\" data-det=\"" + esc(v.id) + "\">" + esc(v.titulo) + '</button><div class="sub">' + esc(v.empresa) + "</div>" + intTag(v) + sinaisTags(v) + "</td>" +
+      h += "<tr><td><button class=\"link-btn t\" data-det=\"" + esc(v.id) + "\">" + esc(v.titulo) + '</button><div class="sub">' + esc(v.empresa) + "</div>" + intTag(v) + postTag(v) + sinaisTags(v) + "</td>" +
         "<td>" + platTags(v) + "</td>" +
         "<td>" + esc(e ? e.label : v.etapa) + (v.etapa === "encerrada" && v.resultado ? '<div class="sub">' + esc(RESULTADOS[v.resultado] || v.resultado) + "</div>" : "") + "</td>" +
         '<td class="num">' + (v.analise_status === "pendente" || v.descricao_pendente ? "—" : (typeof v.aderencia === "number" ? v.aderencia : "—")) + "</td>" +
@@ -1031,7 +1047,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var url = safeUrl(v.url);
     var d = dias(v.publicada_em);
     var analisada = (v.encaixe || []).length || (v.lacunas || []).length || (v.alertas || []).length;
-    var meta = [platTags(v) + intTag(v) + sinaisTags(v), esc(v.empresa), esc(v.local || "")];
+    var meta = [platTags(v) + intTag(v) + postTag(v) + sinaisTags(v), esc(v.empresa), esc(v.local || "")];
     var nv = niveis(v);
     if (nv.length) {
       var rot = nv.map(function (x) { return NIVEIS[x]; }).join("/");
@@ -1158,6 +1174,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var box = $("det");
     if (!v) { box.innerHTML = '<div class="dlg-head"><h2 id="det-title">Vaga removida</h2></div><div class="dlg-foot"><button class="btn-plain" data-fechar>Fechar</button></div>'; return; }
     var notaAtual = inicial ? (v.anotacao || "") : ($("d-nota") ? $("d-nota").value : (v.anotacao || ""));
+    var emailAtual = inicial || !$("d-email") ? (v.email_candidatura || "") : $("d-email").value;
+    var assuntoAtual = inicial || !$("d-assunto") ? (v.assunto_candidatura || "") : $("d-assunto").value;
+    var mailto = mailtoDe(v);
     var url = safeUrl(v.url);
     var bnd = banda(v.aderencia);
     var analise;
@@ -1175,7 +1194,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     var fonte = [v.restricao_local ? "Onde a vaga aceita (informado pelo portal): " + v.restricao_local : "",
                  v.ats ? "Candidatura pelo " + (ATS[v.ats] || v.ats) : ""].filter(Boolean).join(" · ");
     box.innerHTML =
-      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(plataformasDe(v).join(", ")) + " " + intTag(v) + sinaisTags(v) + "</p>" +
+      '<div class="dlg-head"><div><h2 id="det-title">' + esc(v.titulo) + "</h2><p>" + esc(v.empresa) + (v.local ? " · " + esc(v.local) : "") + " · " + esc(plataformasDe(v).join(", ")) + " " + intTag(v) + postTag(v) + sinaisTags(v) + "</p>" +
       (fonte ? '<p class="det-fonte">' + esc(fonte) + "</p>" : "") +
       (v.termos && v.termos.length ? '<p class="termos">Encontrada pela busca: ' + esc(termosDe(v)) + "</p>" : "") + "</div>" +
       '<button class="more" data-fechar aria-label="Fechar">✕</button></div>' + analise + kitSecao(v) +
@@ -1186,6 +1205,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       (v.etapa === "entrevista" ? '<div class="field"><label for="d-entrevista">Data da entrevista</label><input type="date" id="d-entrevista" value="' +
         esc(v.entrevista_em || "") + '"' + dis + "></div>" : "") +
       "</div>" + lembreteHTML(v) +
+      '<div class="det-grid">' +
+      '<div class="field"><label for="d-email">E-mail de candidatura</label><input type="email" id="d-email" maxlength="254" placeholder="Se a vaga pede o currículo por e-mail" value="' +
+        esc(emailAtual) + '"' + dis + "></div>" +
+      '<div class="field"><label for="d-assunto">Assunto do e-mail</label><input id="d-assunto" maxlength="200" placeholder="O assunto que a vaga pede" value="' +
+        esc(assuntoAtual) + '"' + dis + "></div></div>" +
       '<div class="field"><label for="d-nota">Anotações</label><textarea id="d-nota" maxlength="5000" placeholder="Contato do recrutador, datas, próximos passos…"' + dis + ">" + esc(notaAtual) + "</textarea></div>" +
       (v.descricao ? '<details class="desc"><summary>Descrição da vaga</summary><div class="desc-body">' + md(v.descricao) + "</div></details>" : "") +
       cvSecao(cvChave(v.id)) +
@@ -1194,8 +1218,15 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       (url ? '<a class="btn-plain" href="' + esc(url) + '" target="_blank" rel="noopener" style="text-decoration:none">Abrir vaga</a>' : "") +
       (candidatura && candidatura !== url || candidatura && v.ats ? '<a class="btn-plain" href="' + esc(candidatura) + '" target="_blank" rel="noopener" style="text-decoration:none">Candidatar' +
         (v.ats ? " no " + esc(ATS[v.ats] || v.ats) : "") + "</a>" : "") +
+      (mailto ? '<a class="btn-plain" href="' + esc(mailto) + '" title="Só abre o seu programa de e-mail; nada é enviado" style="text-decoration:none">Enviar por e-mail</a>' : "") +
       (v.etapa ? '<button class="btn-plain" data-ent="' + esc(v.id) + '">Preparar entrevista</button>' : "") +
-      '<button class="btn-primary" id="d-salvar"' + dis + ">Salvar anotações</button></div>";
+      '<button class="btn-primary" id="d-salvar"' + dis + ">Salvar</button></div>";
+  }
+  // Link que abre o programa de e-mail da pessoa com o destinatário e o assunto da vaga; nada é enviado pela ferramenta
+  function mailtoDe(v) {
+    var email = String(v.email_candidatura || "");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "";
+    return "mailto:" + encodeURIComponent(email).replace(/%40/g, "@") + (v.assunto_candidatura ? "?subject=" + encodeURIComponent(v.assunto_candidatura) : "");
   }
 
   /* ---------- menu ---------- */
@@ -1525,18 +1556,27 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     $("f-area").value = S.areaQ || "";
     $("f-area").addEventListener("change", function (ev) { S.areaQ = ev.target.value; try { localStorage.setItem("cand.area", S.areaQ); } catch (e) {} render(); });
 
-    // Adicionar vaga: primeiro pelo link; se não der para ler, o formulário pede o resto
+    // Adicionar vaga: primeiro pelo link; se não der para ler, o formulário pede o resto. Link de post do LinkedIn ou
+    // texto colado: a IA escolhida preenche o formulário (com aviso de espera); sem IA, o formulário vem direto.
+    var ADD = { seq: 0, colarUrl: "" }; // seq: respostas que chegam depois de fechar ou reabrir o diálogo são ignoradas
     function abrirAdicionar() {
-      $("form-add").reset(); selA.value = "LinkedIn";
-      $("a-form").hidden = true; $("add-save").hidden = true; $("a-manual-wrap").hidden = false;
+      $("form-add").reset(); selA.value = "LinkedIn"; ADD.seq++; ADD.colarUrl = "";
+      ["a-formato", "a-post-id", "a-publicado-por"].forEach(function (id) { $(id).value = ""; }); // reset() não limpa os ocultos
+      $("a-form").hidden = true; $("add-save").hidden = true; $("a-manual-wrap").hidden = false; $("a-colar-wrap").hidden = true;
+      $("a-buscar").disabled = false; $("a-colar-ok").disabled = false;
       $("a-status").textContent = ""; $("a-status").removeAttribute("data-erro");
       $("dlg-add").showModal(); $("a-link").focus();
     }
     function mostrarFormulario(etapa, parcial) {
       parcial = parcial || {};
-      $("a-form").hidden = false; $("add-save").hidden = false; $("a-manual-wrap").hidden = true;
-      $("a-url").value = parcial.url || $("a-link").value.trim();
+      $("a-form").hidden = false; $("add-save").hidden = false; $("a-manual-wrap").hidden = true; $("a-colar-wrap").hidden = true;
+      $("a-url").value = parcial.url || (parcial.formato ? "" : $("a-link").value.trim());
       ["titulo", "empresa", "local", "descricao"].forEach(function (k) { if (parcial[k]) $("a-" + k).value = parcial[k]; });
+      if (parcial.email_candidatura) $("a-email").value = parcial.email_candidatura;
+      if (parcial.assunto_candidatura) $("a-assunto").value = parcial.assunto_candidatura;
+      $("a-formato").value = parcial.formato === "post" ? "post" : "";
+      $("a-post-id").value = parcial.post_id || "";
+      $("a-publicado-por").value = parcial.publicado_por || "";
       selA.value = PLATAFORMAS.indexOf(parcial.plataforma) >= 0 ? parcial.plataforma : ($("a-url").value ? plataformaDoLink($("a-url").value) : "LinkedIn");
       $("a-area").value = parcial.area === "internacional" ? "internacional" : "nacional";
       $("a-pais").value = parcial.pais_vaga || "";
@@ -1566,36 +1606,93 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       st.removeAttribute("data-erro");
       if (!url) { st.textContent = "Cole o link da vaga."; $("a-link").focus(); return; }
       btn.disabled = true; st.textContent = "Lendo a vaga…";
+      var seq = ADD.seq;
       API.send("POST", "/api/vagas/link", { url: url }).then(function (j) {
+        if (seq !== ADD.seq) return;
+        if (j.post) { preencherComIA(j.parcial, { texto: j.post.texto, autor: j.post.autor, autor_tipo: j.post.autor_tipo }, j.ia); return; }
         $("dlg-add").close();
         trocarLocal(j.vaga); irPara(j.vaga);
         toast(j.nova ? avisoAdicionada(j.vaga, j.analise_automatica) : jaEstava(j.vaga));
         render();
       }).catch(function (e) {
+        if (seq !== ADD.seq) return;
         st.setAttribute("data-erro", "");
-        if (e && e.status === 422) {
+        if (e && e.status === 422 && e.dados && e.dados.sugestao === "colar") { // post que não deu para ler: colar o texto
+          ADD.colarUrl = (e.dados.parcial && e.dados.parcial.url) || "";
+          st.textContent = "Não consegui ler o post (" + e.message + "). Copie o texto do post e cole abaixo, ou preencha à mão.";
+          abrirColar();
+        } else if (e && e.status === 422) {
           st.textContent = "Não consegui ler a vaga (" + e.message + "). Complete os dados abaixo.";
           mostrarFormulario("relatorio", e.dados && e.dados.parcial);
         } else st.textContent = e && e.status === 400 ? e.message : erroMsg(e);
-      }).then(function () { btn.disabled = false; });
+      }).then(function () { if (seq === ADD.seq) btn.disabled = false; });
+    }
+    // Com IA (deste computador): "Em análise pela IA, aguarde…" e o formulário já preenchido. Sem IA, ou se a IA não
+    // conseguir, o formulário vem direto com o que houver (texto na descrição, link, empresa da página que publicou).
+    function preencherComIA(parcial, fonte, ia) {
+      var st = $("a-status"), seq = ADD.seq, avisos = [];
+      if (fonte.autor_tipo !== undefined && (fonte.texto || "").length < 200)
+        avisos.push("o texto do post é curto: a vaga pode estar na imagem do post; se estiver, cole o texto dela na descrição");
+      function abrir(msg, erro) {
+        mostrarFormulario("relatorio", parcial);
+        var t = [msg].concat(avisos).filter(Boolean).join(" · ");
+        st.textContent = t;
+        if (erro || avisos.length) st.setAttribute("data-erro", ""); else st.removeAttribute("data-erro");
+      }
+      if (!ia || !ia.disponivel || !ia.local) {
+        abrir(!ia || !ia.disponivel ? "Sem IA: confira os dados e complete o cargo e o local."
+          : "A leitura com IA só funciona no computador onde a ferramenta roda: confira os dados e complete o cargo e o local.", true);
+        return;
+      }
+      st.removeAttribute("data-erro");
+      st.textContent = "Em análise pela IA (" + [ia.provedor, ia.modelo].filter(Boolean).join(" · ") + "), aguarde…";
+      $("a-buscar").disabled = true; $("a-colar-ok").disabled = true; $("a-manual-wrap").hidden = true; $("a-colar-wrap").hidden = true;
+      API.send("POST", "/api/vagas/extrair", fonte).then(function (j) {
+        if (seq !== ADD.seq) return;
+        Object.keys(j.campos || {}).forEach(function (k) { if (j.campos[k]) parcial[k] = j.campos[k]; });
+        if (j.parece_vaga === false) avisos.push("a IA achou que o texto não parece uma vaga");
+        if (j.vagas > 1) avisos.push("o texto traz " + j.vagas + " vagas e esta é a primeira; para as outras, use Colar texto de post ou mensagem");
+        abrir("Preenchido pela IA (" + [j.provedor, j.modelo].filter(Boolean).join(" · ") + "): confira antes de adicionar.");
+      }).catch(function (e) {
+        if (seq !== ADD.seq) return;
+        abrir("A IA não conseguiu ler (" + (e && e.message || "erro") + "). Confira os dados e complete o cargo e o local.", true);
+      }).then(function () { if (seq === ADD.seq) { $("a-buscar").disabled = false; $("a-colar-ok").disabled = false; } });
+    }
+    function abrirColar() {
+      $("a-colar-wrap").hidden = false; $("a-manual-wrap").hidden = false; $("a-form").hidden = true; $("add-save").hidden = true;
+      $("a-colar").focus();
+    }
+    function seguirComTexto() {
+      var texto = $("a-colar").value.trim(), st = $("a-status");
+      if (!texto) { st.setAttribute("data-erro", ""); st.textContent = "Cole o texto."; $("a-colar").focus(); return; }
+      var parcial = { descricao: texto, plataforma: "LinkedIn", formato: "post", url: ADD.colarUrl };
+      var e = IA.e || {};
+      preencherComIA(parcial, { texto: texto }, { disponivel: !!e.disponivel, local: !!e.pode_alterar,
+        provedor: e.efetiva ? nomeIA(e.efetiva) : "", modelo: e.modelo_efetivo || "" });
+      if (texto.length >= 20000) toast("O texto foi cortado em 20.000 caracteres.", true);
     }
     $("btn-add").addEventListener("click", abrirAdicionar);
     $("a-buscar").addEventListener("click", buscarLink);
     $("a-manual").addEventListener("click", function () { $("a-status").textContent = ""; mostrarFormulario("salva"); });
+    $("a-colar-abrir").addEventListener("click", function () { $("a-status").textContent = ""; $("a-status").removeAttribute("data-erro"); abrirColar(); });
+    $("a-colar-ok").addEventListener("click", seguirComTexto);
     $("a-link").addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); buscarLink(); } });
     $("add-cancel").addEventListener("click", function () { $("dlg-add").close(); });
+    $("dlg-add").addEventListener("close", function () { ADD.seq++; }); // Cancelar, Esc ou adicionada: resposta atrasada é ignorada
     $("form-add").addEventListener("submit", function (ev) {
       ev.preventDefault();
-      if ($("a-form").hidden) { buscarLink(); return; }
+      if ($("a-form").hidden) { if (!$("a-colar-wrap").hidden) seguirComTexto(); else buscarLink(); return; }
       var f = new FormData(ev.target);
       var corpo = {};
-      ["titulo", "empresa", "plataforma", "url", "local", "etapa", "descricao", "area", "pais_vaga"].forEach(function (k) { corpo[k] = String(f.get(k) || "").trim(); });
+      ["titulo", "empresa", "plataforma", "url", "local", "etapa", "descricao", "area", "pais_vaga", "email_candidatura",
+       "assunto_candidatura", "formato", "post_id", "publicado_por"].forEach(function (k) { corpo[k] = String(f.get(k) || "").trim(); });
       if (!corpo.titulo || !corpo.empresa) { toast("Informe pelo menos o cargo e a empresa.", true); return; }
+      if (!$("a-email").checkValidity()) { toast("O e-mail de candidatura não parece válido.", true); $("a-email").focus(); return; }
       var btn = $("add-save"); btn.disabled = true;
       API.send("POST", "/api/vagas", corpo).then(function (j) {
         $("dlg-add").close();
         if (j.vaga) { trocarLocal(j.vaga); irPara(j.vaga); }
-        toast(j.vaga ? avisoAdicionada(j.vaga, j.analise_automatica) : "Vaga adicionada");
+        toast(!j.vaga ? "Vaga adicionada" : j.nova === false ? jaEstava(j.vaga) : avisoAdicionada(j.vaga, j.analise_automatica));
         render();
       }).catch(function (e) { toast(e && e.status === 400 ? e.message : erroMsg(e), true); }).then(function () { btn.disabled = false; });
     });
@@ -1646,7 +1743,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         return;
       }
       if (t.hasAttribute("data-fechar")) { $("dlg-det").close(); return; }
-      if (t.id === "d-salvar") { salvar(S.detId, { anotacao: $("d-nota").value }, "Anotações salvas"); return; }
+      if (t.id === "d-salvar") {
+        if (!$("d-email").checkValidity()) { toast("O e-mail de candidatura não parece válido.", true); $("d-email").focus(); return; }
+        salvar(S.detId, { anotacao: $("d-nota").value, email_candidatura: $("d-email").value.trim(), assunto_candidatura: $("d-assunto").value.trim() }, "Salvo");
+        return;
+      }
       if (t.id === "d-remover") {
         if (!t.getAttribute("data-confirm")) { t.setAttribute("data-confirm", "1"); t.textContent = "Confirmar remoção"; return; }
         var rv = achar(S.detId); $("dlg-det").close(); if (rv) remover(rv); return;
@@ -2752,7 +2853,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     ["problema", "Que problema da empresa você resolveria?", "Pelo anúncio, o que eles precisam resolver e como você ajudaria."],
     ["primeiro_movimento", "Qual seria o seu primeiro movimento no cargo?", "O que você faria nas primeiras semanas."]];
   function ktFrase(f) { return f ? ' <small class="kit-frase">“' + esc(f) + "”</small>" : ""; }
-  function ktSistema(v) { return v.ats ? (ATS[v.ats] || v.ats) : (v.sistema_candidatura || (v.url_candidatura ? plataformaDoLink(v.url_candidatura) : v.plataforma) || "site da vaga"); }
+  function ktSistema(v) {
+    if (!v.ats && !v.url_candidatura && mailtoDe(v)) return "e-mail";
+    return v.ats ? (ATS[v.ats] || v.ats) : (v.sistema_candidatura || (v.url_candidatura ? plataformaDoLink(v.url_candidatura) : v.plataforma) || "site da vaga");
+  }
   function ktCampos(v) {
     var feita = v.analise_status === "feita", fora = areaDe(v) === "internacional", linhas = [];
     var nada = feita ? '<span class="hint">não informado</span>' : '<span class="hint">vem com a análise</span>';
@@ -2763,6 +2867,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     linha("Inglês", v.ingles ? esc(KT_ING[v.ingles.nivel] || v.ingles.nivel) + ktFrase(v.ingles.frase) : nada, fora || v.ingles);
     linha("Fuso", v.fuso ? esc(v.fuso.texto) + ktFrase(v.fuso.frase) : nada, fora || v.fuso);
     linha("Candidatura pelo", esc(ktSistema(v)), true);
+    linha("Candidatura por e-mail", esc(v.email_candidatura || "") + (v.assunto_candidatura ? '<br><span class="hint">Assunto: ' + esc(v.assunto_candidatura) + "</span>" : ""),
+      !!mailtoDe(v));
     linha("Atenção", (v.riscos || []).map(function (r) { return '<span class="kit-risco">' + esc(KT_RISCOS[r.tipo] || r.tipo) + "</span>" + ktFrase(r.frase); }).join("<br>"),
       (v.riscos || []).length);
     return '<dl class="kit-campos">' + linhas.join("") + "</dl>" +
@@ -2776,9 +2882,11 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function ktSalvar(v, k, msg) { v.kit = k; return salvar(v.id, { kit: k }, msg); } // a próxima mudança já parte desta
   function ktItem(v, i) {
     var dis = S.canWrite ? "" : " disabled", acao = "";
-    if (i.acao === "candidatar") {
+    if (i.acao === "candidatar" && !v.ats && !v.url_candidatura && mailtoDe(v)) {
+      acao = '<a class="btn-plain btn-ia-mini" href="' + esc(mailtoDe(v)) + '" title="Só abre o seu programa de e-mail; nada é enviado">Enviar por e-mail</a>';
+    } else if (i.acao === "candidatar") {
       var u = safeUrl(v.url_candidatura) || safeUrl(v.url);
-      acao = u ? '<a class="btn-plain btn-ia-mini" href="' + esc(u) + '" target="_blank" rel="noopener" title="Só abre a página; nada é preenchido nem enviado">Candidatar no ' +
+      acao = u ?'<a class="btn-plain btn-ia-mini" href="' + esc(u) + '" target="_blank" rel="noopener" title="Só abre a página; nada é preenchido nem enviado">Candidatar no ' +
         esc(ktSistema(v)) + "</a>" : '<span class="hint">sem link</span>';
     } else if (i.acao) acao = '<button type="button" class="btn-plain btn-ia-mini" data-kit-acao="' + esc(i.acao) + '"' + (S.offline ? " disabled" : "") + ">" + KT_ACOES[i.acao] + "</button>";
     var origem = { analise: "A análise leu: ", anuncio: "No anúncio: " }[i.origem];

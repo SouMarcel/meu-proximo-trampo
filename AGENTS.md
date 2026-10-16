@@ -19,7 +19,9 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   pública, sem login nem a conta da pessoa, parando no primeiro bloqueio. Depois de um bloqueio, o
   LinkedIn fica 6 horas de fora, e a busca pergunta antes de seguir sem ele (`vagas.py buscar` sai com
   código 5; repita com `--confirmar-espera` só com o OK da pessoa). O perfil da pessoa não é lido do
-  LinkedIn, só dos arquivos que ela baixa.
+  LinkedIn, só dos arquivos que ela baixa. Um link de post colado no Adicionar Vaga é uma consulta
+  pontual à versão pública do post (`fontes/post.py`), sem login, que para no primeiro bloqueio e não
+  mexe na espera da busca.
 
 ## Como rodar os scripts
 

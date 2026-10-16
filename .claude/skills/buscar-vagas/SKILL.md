@@ -232,7 +232,11 @@ Claude Code instalado), o próprio dashboard já analisa sozinho as vagas adicio
 têm descrição (`dash/analise.py`); sobram para este fluxo as que
 só têm o link e as que a análise automática não conseguiu fazer. Vaga do relatório
 (`origem` `link` ou `busca`) que furar os filtros vai para Fora dos critérios ao gravar
-a análise, como na busca.
+a análise, como na busca. Vagas com `formato` `post` vieram de um post ou de um texto colado
+(WhatsApp, Instagram, e-mail): o `descricao` é o texto inteiro, informal, e a candidatura
+pode ser por e-mail (`email_candidatura`, `assunto_candidatura`, editáveis no cartão da
+vaga). Se a pessoa colar um post na conversa, sugira o botão Adicionar Vaga → "Colar texto
+de post ou mensagem"; você não grava a vaga por ela.
 
 1. `PY dash/banco.py pendentes` lista essas vagas em JSON.
 2. Avalie com os mesmos critérios, usando `descricao`. Se só houver link, abra-o com a

@@ -284,6 +284,23 @@ def _lista(v, maximo: int = 6) -> list[str]:
     return [str(x).strip()[:300] for x in v if str(x).strip()][:maximo]
 
 
+EMAIL_VALIDO = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def limpar_contato(campos: dict) -> dict:
+    """E-mail e assunto de candidatura (vaga que pede o currículo por e-mail). Só as chaves recebidas; texto vazio
+    vira None (apaga o campo)."""
+    limpos = {}
+    if "email_candidatura" in campos:
+        email = _texto(campos["email_candidatura"], 254)
+        if email and not EMAIL_VALIDO.match(email):
+            raise ValueError("e-mail de candidatura inválido")
+        limpos["email_candidatura"] = email or None
+    if "assunto_candidatura" in campos:
+        limpos["assunto_candidatura"] = " ".join(_texto(campos["assunto_candidatura"], 400).split())[:200] or None
+    return limpos
+
+
 def _validar_usuario(campos: dict) -> dict:
     """Campos que o dashboard pode alterar."""
     limpos = {}
@@ -307,6 +324,8 @@ def _validar_usuario(campos: dict) -> dict:
             v = kit.validar_lembretes(v)
         elif k == "entrevista_em":
             v = _data_ou_nulo(v)
+        elif k in ("email_candidatura", "assunto_candidatura"):
+            v = limpar_contato({k: v})[k]
         else:
             raise ValueError(f"campo não editável: {k}")
         limpos[k] = v
@@ -469,11 +488,16 @@ def _da_fonte(doc: dict, dados: dict) -> None:
     doc.update({k: v for k, v in extras.items() if v})
 
 
-def criar_manual(campos: dict) -> dict:
-    """Vaga trazida pelo usuário pelo botão Adicionar Vaga (preenchida à mão).
+POST_ID = re.compile(r"^lip-[su]?\d{1,25}$")
+
+
+def criar_manual(campos: dict) -> tuple[dict, bool]:
+    """Vaga trazida pelo usuário pelo botão Adicionar Vaga (preenchida à mão, ou conferida depois da leitura de um
+    post ou de um texto colado). Devolve (vaga, nova).
 
     Com etapa "relatorio", vai para o Relatório de Vagas como as da busca (origem "link");
-    nas outras etapas, direto para o quadro.
+    nas outras etapas, direto para o quadro. Vaga de post (formato "post") com post_id usa o id do post (lip-…); se o
+    post, ou a mesma vaga, já está no banco, devolve a que existe, sem gravar.
     """
     titulo = _texto(campos.get("titulo"), 200)
     empresa = _texto(campos.get("empresa"), 120)
@@ -486,25 +510,43 @@ def criar_manual(campos: dict) -> dict:
     if url and not re.match(r"^https?://", url, re.I):
         raise ValueError("o link precisa começar com http:// ou https://")
     descricao = _texto(campos.get("descricao"), 20000)
+    contato = limpar_contato({k: campos[k] for k in ("email_candidatura", "assunto_candidatura") if k in campos})
+    post = campos.get("formato") == "post"
+    post_id = _texto(campos.get("post_id"), 64) if post else ""
+    if post_id and not (POST_ID.match(post_id) and ID_VALIDO.match(post_id)):
+        raise ValueError("id de post inválido")
+    publicado_por = _texto(campos.get("publicado_por"), 120) if post else ""
     m = re.search(r"[?&]jk=([0-9a-f]{16})", url, re.I)
-    vid = "m-" + datetime.now().strftime("%y%m%d%H%M%S") + secrets.token_hex(2)
+    vid = post_id or "m-" + datetime.now().strftime("%y%m%d%H%M%S") + secrets.token_hex(2)
+    existente = obter(vid) if post_id else None
+    if existente is not None:
+        return existente, False
     doc = {
         "origem": "link" if no_relatorio else "manual", "plataforma": plataforma, "titulo": titulo, "empresa": empresa,
         "local": _texto(campos.get("local"), 120), "url": url, "jk": m.group(1).lower() if m else None,
         "descricao": descricao, "triagem": "pendente" if no_relatorio else "seguir",
         "etapa": None if no_relatorio else etapa, "etapa_em": None if no_relatorio else hoje(),
-        "encontrada_em": hoje(), "resultado": None, "anotacao": "",
+        "encontrada_em": hoje(), "resultado": None, "anotacao": f"Publicado por: {publicado_por}" if publicado_por else "",
         "analise_status": "pendente" if descricao or (url and not no_relatorio) else "sem_dados",
         "criada_em": agora(), "atualizada_em": agora(),
     }
+    doc.update({k: v for k, v in contato.items() if v})
+    if post:
+        doc["formato"] = "post"
+        repetida = achar_repetida({**doc, "id": vid})
+        if repetida is not None:
+            return registrar_outros_portais(repetida["id"], [plataforma], [vid]) or repetida, False
     definir_area(doc, campos)
     if no_relatorio:
         doc["termos"] = []
     aplicar_criterios(doc)
     with escrita() as con:
+        atual = _ler(con, vid) if post_id else None
+        if atual is not None:  # o mesmo post salvo por outra aba no meio do caminho
+            return atual, False
         _gravar(con, vid, doc)
     doc["id"] = vid
-    return doc
+    return doc, True
 
 
 def criar_de_link(dados: dict) -> tuple[dict, bool]:

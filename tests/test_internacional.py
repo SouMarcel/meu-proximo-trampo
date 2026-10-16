@@ -186,7 +186,7 @@ class TestBuscaPorArea(unittest.TestCase):
                                          "local": "Remote - United States", "descricao": EN})
         self.assertTrue(nova)
         self.assertEqual((doc["area"], doc["pais_vaga"]), ("internacional", "Estados Unidos"))
-        doc = banco.criar_manual({"titulo": "Analista", "empresa": "Beta", "local": "Curitiba", "etapa": "relatorio",
+        doc, _ = banco.criar_manual({"titulo": "Analista", "empresa": "Beta", "local": "Curitiba", "etapa": "relatorio",
                                   "area": "internacional", "pais_vaga": "Chile", "descricao": ES})
         self.assertEqual((doc["area"], doc["pais_vaga"]), ("internacional", "Chile"))
         self.assertEqual(doc["triagem"], "fora")

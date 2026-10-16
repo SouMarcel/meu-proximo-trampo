@@ -33,9 +33,10 @@ import buscador  # noqa: E402  (busca de vagas pela página, em segundo plano)
 import gerador  # noqa: E402  (currículo pela página, em segundo plano)
 import filtros  # noqa: E402  (filtros.py, na raiz: lê e grava os filtros da busca no config.json)
 import ia  # noqa: E402  (ia.py, na raiz: provedores de IA)
+import post_ia  # noqa: E402  (post_ia.py, na raiz: vaga a partir de texto livre, com a IA)
 import primeiros_passos as pp  # noqa: E402  (primeiros_passos.py, na raiz: perfil a partir do currículo e do LinkedIn)
 import segredos  # noqa: E402  (segredos.py, na raiz: chaves no .env)
-from fontes import link  # noqa: E402  (lê a vaga a partir do link)
+from fontes import link, post  # noqa: E402  (lê a vaga a partir do link; o post do LinkedIn com uma vaga)
 
 PAGINA = banco.DASH / "dashboard.html"
 PORTA_PADRAO = 8765
@@ -120,6 +121,50 @@ class Handler(BaseHTTPRequestHandler):
     def _local(self) -> bool:
         """O pedido veio deste computador (não de outro aparelho da rede, com --rede)."""
         return self.client_address[0] in ("127.0.0.1", "::1")
+
+    def _ler_post(self, url: str):
+        """Link de post do LinkedIn (spec 016): um pedido à versão pública do post e os dados para o formulário do
+        Adicionar Vaga, sem gravar nada. O mesmo post já no banco não gera pedido."""
+        existente = banco.obter(post.id_do_post(url)["id"])
+        if existente is not None:
+            return self._json(200, {"vaga": banco.com_kit(existente), "nova": False})
+        try:
+            p = post.ler(url)
+        except post.PostErro as e:
+            return self._json(422, {"erro": str(e), "sugestao": "colar",
+                                    "parcial": {"url": url, "plataforma": "LinkedIn", "formato": "post"}})
+        existente = banco.obter(p["id"])
+        if existente is not None:
+            return self._json(200, {"vaga": banco.com_kit(existente), "nova": False})
+        parcial = {"url": p["url"], "plataforma": "LinkedIn", "formato": "post", "post_id": p["id"], "descricao": p["texto"]}
+        if p["autor_tipo"] == "empresa":
+            parcial["empresa"] = p["autor"]
+        elif p["autor_tipo"] == "pessoa":
+            parcial["publicado_por"] = p["autor"]
+        parcial["area"], parcial["pais_vaga"] = filtros.area_da_vaga({"local": ""}, filtros.efetivos(filtros.ler_config()))
+        escolha = ia.escolha_efetiva()
+        return self._json(200, {"post": p, "parcial": parcial, "ia": {
+            "disponivel": ia.disponivel(), "local": self._local(),
+            "provedor": ia.PROVEDORES.get(escolha["provedor"], {}).get("nome", ""), "modelo": ia.modelo_efetivo(escolha)}})
+
+    def _extrair(self):
+        """Cargo, empresa, local e contato de candidatura tirados de um texto livre pela IA escolhida, para o
+        formulário do Adicionar Vaga. Só deste computador (usa a chave e a cota da pessoa); nada é gravado."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        corpo = self._corpo()
+        texto = str(corpo.get("texto") or "").strip()
+        if not texto:
+            return self._erro(400, "cole o texto do post ou da mensagem")
+        if not ia.disponivel():
+            return self._erro(409, "nenhuma IA configurada")
+        try:
+            r = post_ia.extrair(texto, str(corpo.get("autor") or ""), str(corpo.get("autor_tipo") or ""))
+        except post_ia.ExtracaoErro as e:
+            return self._erro(502, str(e))
+        campos = {k: r[k] for k in ("titulo", "empresa", "local", "url", "email_candidatura", "assunto_candidatura")}
+        return self._json(200, {"campos": campos, "parece_vaga": r["parece_vaga"], "vagas": r["vagas"],
+                                "provedor": r["provedor"], "modelo": r["modelo"]})
 
     def _ia(self, metodo: str, caminho: str):
         """Rotas de escrita do painel IA: só deste computador; mensagens sem chave."""
@@ -406,11 +451,17 @@ class Handler(BaseHTTPRequestHandler):
             if not self._escrita_ok():
                 return self._erro(403, "pedido recusado")
             if metodo == "POST" and caminho == "/api/vagas":
-                vaga = banco.criar_manual(self._corpo())
+                vaga, nova = banco.criar_manual(self._corpo())
+                if not nova:
+                    return self._json(200, {"vaga": banco.com_kit(vaga), "nova": False})
                 auto = analise.precisa(vaga) and analise.FILA.pedir()
-                return self._json(201, {"vaga": banco.com_kit(vaga), "analise_automatica": auto})
+                return self._json(201, {"vaga": banco.com_kit(vaga), "nova": True, "analise_automatica": auto})
+            if metodo == "POST" and caminho == "/api/vagas/extrair":
+                return self._extrair()
             if metodo == "POST" and caminho == "/api/vagas/link":
                 url = str(self._corpo().get("url") or "").strip()[:1000]
+                if post.id_do_post(url):
+                    return self._ler_post(url)
                 try:
                     dados = link.ler(url)
                 except link.LinkErro as e:  # o dashboard abre o formulário com o que deu para ler
