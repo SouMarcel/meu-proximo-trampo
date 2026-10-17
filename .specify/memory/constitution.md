@@ -1,5 +1,15 @@
 <!--
-Relatório de impacto da emenda (2026-10-12)
+Relatório de impacto da emenda (2026-10-17)
+- Versão: 2.0.0 → 3.0.0 (MAJOR: o princípio VI foi redefinido)
+- Princípio alterado: VI. Respeito aos portais. Entra "Conta conectada": a ferramenta pode ler a área da própria
+  pessoa num portal (ex.: as candidaturas) com a sessão que ela abriu numa janela do navegador da ferramenta, sob
+  regras estritas. A busca pública continua como estava.
+- Motivo: decisão do usuário de atualizar o quadro de candidaturas com o status mostrado nos portais (spec
+  018-contas-conectadas). Liberados: Gupy e Indeed. LinkedIn preparado e desativado.
+- Arquivos atualizados: AGENTS.md (Respeite os portais), README.md, skills consultar-gupy e buscar-vagas.
+- Pendências: nenhuma.
+
+Emenda anterior (2026-10-12)
 - Versão: 1.0.0 → 2.0.0 (MAJOR: o princípio VI foi redefinido)
 - Princípio alterado: VI. Respeito aos portais. Sai "sem raspar o LinkedIn"; entram as regras para portais sem API
   aberta (só a busca pública, sem login nem conta da pessoa, pausa, parar no primeiro bloqueio).
@@ -69,6 +79,24 @@ maior entre as consultas e parando no primeiro bloqueio (limite de consultas ou 
 login), sem nova tentativa nem forma de contornar. O perfil da pessoa não é lido de portais:
 só dos arquivos que ela mesma baixa. Sem automação de candidatura.
 
+**Conta conectada.** A ferramenta pode ler a área da própria pessoa num portal (ex.: o andamento das candidaturas)
+só nestas condições:
+
+- **Janela da ferramenta:** a leitura acontece numa janela do navegador aberta pela ferramenta a pedido da pessoa,
+  com um perfil só da ferramenta, nunca o navegador do dia a dia dela.
+- **Login da pessoa:** quem faz o login é a pessoa, nessa janela. A ferramenta nunca pede, guarda ou lê senha, e
+  não copia cookies para fora do navegador.
+- **Sessão local e removível:** a sessão fica num perfil local, fora do Git. "Desconectar" apaga esse perfil.
+- **Só leitura, só no clique:** nada de se candidatar, desistir, responder, enviar mensagem ou clicar em botões que
+  mudem algo no portal. O que for lido vira uma proposta que a pessoa confirma antes de gravar (princípio V).
+- **Portal por portal:** cada portal é liberado pelo nome, em spec própria, com análise de risco. Liberados: Gupy e
+  Indeed. O LinkedIn fica preparado e desativado, porque restringe contas que considera automatizadas; ativar exige
+  nova decisão da pessoa.
+- **Parar no bloqueio:** captcha, verificação ou pedido de novo login param a leitura daquele portal, sem tentar
+  contornar; quem resolve é a pessoa, na janela.
+- **MCP oficial primeiro:** se um portal oferecer uma integração oficial com login (ex.: MCP com OAuth), ela
+  substitui a leitura pela janela.
+
 ## Restrições técnicas
 
 - Python 3.10+; Windows, macOS e Linux. Interface e textos em português do Brasil.
@@ -100,4 +128,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 2.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-12
+**Version**: 3.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-17
