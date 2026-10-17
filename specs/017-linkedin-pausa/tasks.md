@@ -37,6 +37,6 @@ description: "Tarefas da feature 017: Pausa do LinkedIn ajustável (Windows)"
   faixa usada entre os pedidos e lida de novo só na busca seguinte, aviso na busca com e sem LinkedIn e na espera.
 - [X] T007 [P] README (seção LinkedIn) e skill buscar-vagas, com `python sincronizar_skills.py`.
 - [X] T008 `python -m unittest discover -s tests`: 273 testes passando.
-- [ ] T009 Teste da pessoa na branch pessoal: `LINKEDIN_PAUSA` no `.env`, diálogo de busca com o aviso e uma busca
+- [X] T009 Teste da pessoa na branch pessoal: `LINKEDIN_PAUSA` no `.env`, diálogo de busca com o aviso e uma busca
   real.
-- [ ] T010 Com o OK: busca de dados pessoais no diff, merge na `master`, push e merge na branch pessoal.
+- [X] T010 Com o OK: busca de dados pessoais no diff, merge na `master`, push e merge na branch pessoal.
