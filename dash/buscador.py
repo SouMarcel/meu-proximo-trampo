@@ -166,6 +166,7 @@ class Busca:
             "espera": [{k: e[k] for k in ("portal", "ate", "motivo")} for e in espera],
             "so_espera": bool(nomes) and len(espera) == len(nomes),
             "aviso_cargos": fm.aviso_cargos(f, nomes) if f["termos"] else None,
+            "aviso_pausa": v.aviso_pausa(f, nomes),
         }
 
     # ---------- iniciar e cancelar

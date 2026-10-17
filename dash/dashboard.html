@@ -2636,6 +2636,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         " (" + esc(e.motivo) + ")" + (p.so_espera ? " e é o único portal ligado: não há o que buscar agora." : ": fica de fora desta busca, que segue com os outros portais.") + "</p>";
     });
     if (p.aviso_cargos) aviso += '<p class="aviso-config">' + esc(p.aviso_cargos) + "</p>";
+    if (p.aviso_pausa) aviso += '<p class="aviso-config">' + esc(p.aviso_pausa) + "</p>";
     $("bu-corpo").innerHTML = h + aviso + (buPodeAlterar() ? "" : '<p class="fb-erro">Só dá para buscar no computador onde a ferramenta roda.</p>');
     var rotulo = BU.semNota ? "Buscar sem nota" : esperas.length ? "Buscar sem o " + esc(portaisEspera) : p.recente ? "Buscar mesmo assim" : "Buscar agora";
     $("bu-pe").innerHTML = '<button type="button" class="btn-plain" data-bu="fechar">Cancelar</button>' +

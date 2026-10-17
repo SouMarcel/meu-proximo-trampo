@@ -249,6 +249,17 @@ def contar_consultas(plano: list[dict], nomes_fontes: list[str]) -> int:
     return sum(len(consultas_da_fonte(plano, FONTES[n])) for n in nomes_fontes if n in FONTES)
 
 
+def aviso_pausa(f: dict, nomes_fontes: list[str]) -> str | None:
+    """A pausa do LinkedIn quando LINKEDIN_PAUSA está definida (spec 017): no começo da busca, na página e no terminal.
+    Sem o LinkedIn na busca, ou em espera depois de um bloqueio, não há pedidos e não há aviso."""
+    if "linkedin" not in nomes_fontes or "linkedin" not in FONTES or not f.get("termos"):
+        return None
+    fonte = FONTES["linkedin"]
+    if getattr(fonte, "espera", None) and fonte.espera():
+        return None
+    return fonte.aviso_pausa(len(consultas_da_fonte(filtros.consultas(f), fonte)))
+
+
 def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa: float = 2.0,
              incluir_presencial: bool = False, progresso=None, cancelado=None) -> dict:
     """A busca, sem imprimir: consulta os portais, corta, agrupa repetidas e lê as descrições que faltam.
@@ -484,9 +495,9 @@ def cmd_buscar(args) -> int:
         return 2
     if not confirmar_espera(nomes_fontes, args.confirmar_espera):
         return 5
-    aviso = filtros.aviso_cargos(f, nomes_fontes)
-    if aviso:
-        print(f"Aviso: {aviso}")
+    for aviso in (filtros.aviso_cargos(f, nomes_fontes), aviso_pausa(f, nomes_fontes)):
+        if aviso:
+            print(f"Aviso: {aviso}")
 
     try:
         with TravaBusca("terminal") as trava:

@@ -500,6 +500,10 @@ Para instalar à mão, no Claude Code:
   "Descrição pendente", sem nota, e o texto delas é lido primeiro na busca seguinte.
   - **O limite do LinkedIn é por rede (IP)**, não por pessoa: quem está na mesma rede (casa,
     escritório, Wi-Fi compartilhado) divide a mesma cota.
+  - **Bloqueado com frequência?** Ponha `LINKEDIN_PAUSA=10` (segundos) no arquivo `.env` da raiz:
+    a pausa passa a ser sorteada entre 10 e 14 segundos. O valor vai de 3 (o padrão) a 60; fora disso,
+    vale o limite mais próximo, com aviso. A busca avisa no começo a pausa em uso e quanto tempo ela
+    soma (com 10 s, cerca de 5 minutos). Vale a partir da busca seguinte, sem reiniciar.
   - Se o LinkedIn limitar as consultas ou pedir login, ele fica de fora até o fim daquela busca, sem
     nova tentativa, e os outros portais seguem. O aviso traz o motivo: "excesso de pedidos" (espere);
     "recusa automática, costuma ser a rede" (VPN, Wi-Fi corporativo ou internet compartilhada: outra

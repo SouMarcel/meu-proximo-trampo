@@ -313,7 +313,9 @@ Para buscar num portal só enquanto o outro falha: `--fontes indeed` ou
 `--fontes gupy`.
 
 O LinkedIn é consultado pela busca pública do site (`fontes/linkedin.py`), sem login e sem a
-conta da pessoa, com pausa de 3 a 7 segundos entre os pedidos. O limite dele é por rede (IP):
+conta da pessoa, com pausa de 3 a 7 segundos entre os pedidos (`LINKEDIN_PAUSA=N` no `.env` aumenta
+para N a N+4 segundos, com N de 3 a 60; sugira a quem é bloqueado com frequência, por exemplo 10, e
+deixe a pessoa editar o arquivo). O limite dele é por rede (IP):
 pessoas na mesma rede (casa, escritório, Wi-Fi compartilhado) dividem a mesma cota. No primeiro
 bloqueio, ele fica de fora até o fim da busca, os outros portais seguem e o aviso traz o motivo:
 "excesso de pedidos" (espere), "recusa automática, costuma ser a rede" (VPN, Wi-Fi corporativo ou

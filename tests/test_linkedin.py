@@ -424,5 +424,63 @@ class TestConfig(unittest.TestCase):
         self.assertIn("MCP_STARTUP_JOBS", nomes["startupjobs"]["precisa"])
 
 
+class TestPausa(SemRede):  # spec 017: LINKEDIN_PAUSA no .env
+    def env(self, valor):
+        p = mock.patch.object(li.segredos, "ler", side_effect=lambda nome: valor if nome == li.VAR_PAUSA else "")
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_sem_a_variavel_fica_como_antes(self):  # SC-002
+        self.env("")
+        self.assertEqual(li.pausa(), {"faixa": li.PAUSA, "definida": False, "ajuste": ""})
+        self.assertIsNone(li.aviso_pausa(2))
+
+    def test_valores(self):  # SC-003, SC-004
+        casos = {"10": ((10, 14), ""), "7,5": ((7.5, 11.5), ""), "7.5": ((7.5, 11.5), ""), "3": ((3, 7), ""),
+                 "1": ((3, 7), "mínimo"), "0": ((3, 7), "mínimo"), "-5": ((3, 7), "mínimo"),
+                 "500": ((60, 64), "máximo"), "abc": (li.PAUSA, "não é um número"), "nan": (li.PAUSA, "não é um número")}
+        for valor, (faixa, ajuste) in casos.items():
+            self.env(valor)
+            p = li.pausa()
+            self.assertEqual(p["faixa"], faixa, valor)
+            self.assertTrue(p["definida"])
+            self.assertIn(ajuste, p["ajuste"]) if ajuste else self.assertEqual(p["ajuste"], "", valor)
+            if p["faixa"] != li.PAUSA:  # o padrão está zerado nestes testes (SemRede); o valor da variável não
+                self.assertGreaterEqual(p["faixa"][0], 3)
+                self.assertLessEqual(p["faixa"][1], 64)
+
+    def test_aviso(self):
+        self.env("10")
+        self.assertEqual(li.aviso_pausa(2), "LinkedIn: pausa de 10 a 14 s entre os pedidos (LINKEDIN_PAUSA), "
+                                            "até cerca de 5 min só de pausa no LinkedIn.")  # (2 × 3 + 20) × 12 s
+        self.env("1")
+        self.assertIn("Atenção: LINKEDIN_PAUSA abaixo do mínimo de 3 segundos", li.aviso_pausa(2))
+        self.assertIsNone(li.aviso_pausa(0))
+
+    def test_pausa_usada_entre_os_pedidos(self):  # SC-001
+        self.env("10")
+        _comum.esquecer()
+        with mock.patch.object(li.random, "uniform", return_value=12.0) as sorteio:
+            li._pausar()
+            li._pausar()
+        sorteio.assert_called_with(10.0, 14.0)
+        self.env("")  # muda o .env: vale na busca seguinte (esquecer), não no meio desta
+        with mock.patch.object(li.random, "uniform", return_value=5.0) as sorteio:
+            li._pausar()
+            self.assertEqual(sorteio.call_args.args, (10.0, 14.0))
+            _comum.esquecer()
+            li._pausar()
+            self.assertEqual(sorteio.call_args.args, li.PAUSA)
+
+    def test_aviso_na_busca(self):
+        self.env("10")
+        cfg = {**CFG, "fontes": ["linkedin"]}
+        f = filtros.efetivos(cfg)
+        self.assertIn("pausa de 10 a 14 s", vagas.aviso_pausa(f, ["linkedin"]))
+        self.assertIsNone(vagas.aviso_pausa(f, ["indeed"]))  # sem o LinkedIn, sem aviso
+        li._bloquear("excesso de pedidos")  # em espera: não há pedidos ao LinkedIn
+        self.assertIsNone(vagas.aviso_pausa(f, ["linkedin"]))
+
+
 if __name__ == "__main__":
     unittest.main()
