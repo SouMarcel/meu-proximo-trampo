@@ -51,7 +51,7 @@ export default function NavigationTabs({
     },
     {
       id: "internacional",
-      label: "Internacional & Remoto",
+      label: "Internacional",
       icon: <Globe2 className="w-4 h-4" />,
       count: countInternacional,
       countColor:
