@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-19
 
-**Status**: Draft
+**Status**: Aprovada (testada pela pessoa em 2026-10-19)
 
 **Input**: User description: "Fizemos uma melhoria para que as vagas ainda sem nota pudessem ser analisadas
 independente do período de 6h do LinkedIn. Podemos colocar um botão na vaga sem a nota ainda: embaixo de Seguir /

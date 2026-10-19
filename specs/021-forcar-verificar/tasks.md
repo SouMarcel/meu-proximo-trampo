@@ -103,7 +103,7 @@ description: "Tarefas da feature 021: Forçar verificar a nota de uma vaga (Wind
   `nota_sem_descricao`; `.agents/skills/buscar-vagas/SKILL.md`: a marca "nota sem a descrição" (não tratar como nota
   final) e o botão; `python sincronizar_skills.py` e `--conferir`
 - [X] T016 Rodar `python -m unittest discover -s tests` (tudo passa)
-- [ ] T017 Procurar dados pessoais nos arquivos alterados; commit na branch `021-forcar-verificar`; merge na branch
+- [X] T017 Procurar dados pessoais nos arquivos alterados; commit na branch `021-forcar-verificar`; merge na branch
   pessoal; reiniciar o dashboard (`--sem-navegador`) e passar o quickstart cenário 2 com a pessoa
 - [ ] T018 Com o OK da pessoa: merge na `master`, `git push origin master`, `git merge master` na branch pessoal,
   apagar a worktree e a branch; `graphify update .`
