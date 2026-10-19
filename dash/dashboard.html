@@ -1103,6 +1103,35 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       '<div class="decide">' + decide + "</div></article>";
   }
 
+  // Descrições pendentes (spec 019): vagas que a busca trouxe sem o texto (o portal limitou os pedidos). O botão
+  // lê só essas descrições, sem buscar vagas novas; durante a espera do portal fica desligado.
+  var PD = { e: null, timer: null };
+  function pdAviso() {
+    var e = PD.e;
+    if (!e) return "";
+    if (e.situacao === "lendo")
+      return '<p class="aviso-config" role="status">Completando as descrições pendentes' + (e.total ? " (" + e.lidas + " de " + e.total + ")" : "") + "…</p>";
+    var fim = e.situacao === "pronta" && e.completadas ? "Descrições completadas: " + e.completadas + ". " : "";
+    if (!e.pendentes) return fim ? '<p class="aviso-config">' + esc(fim) + "As vagas seguem para a nota de aderência.</p>" : "";
+    var espera = (e.espera || [])[0];
+    var botao = espera ? '<span class="hint">disponível a partir das ' + esc(String(espera.ate).slice(11, 16)) + " (" + esc(espera.portal) + " em espera: " + esc(espera.motivo) + ")</span>"
+      : '<button class="btn-plain btn-ia-mini" data-completar' + (e.pode_alterar ? "" : " disabled") + ">Completar descrições</button>";
+    return '<p class="aviso-config">' + esc(fim) + e.pendentes + " vaga(s) sem descrição: o portal limitou os pedidos na busca, e elas ficam sem nota até o texto chegar. " + botao + "</p>";
+  }
+  function pdCarregar() {
+    clearTimeout(PD.timer);
+    return API.get("/api/busca/pendentes").then(function (j) {
+      var antes = PD.e && PD.e.situacao;
+      PD.e = j;
+      if (antes === "lendo" && j.situacao !== "lendo") carregar();
+      else render();
+      if (j.situacao === "lendo") PD.timer = setTimeout(pdCarregar, 2000);
+    }).catch(function () {});
+  }
+  function pdIniciar() {
+    API.send("POST", "/api/busca/pendentes").then(function (j) { PD.e = Object.assign({}, PD.e, j); render(); pdCarregar(); })
+      .catch(function (e) { toast(e && e.message ? e.message : erroMsg(e), true); pdCarregar(); });
+  }
   function renderRelatorio() {
     var abertos = {};
     document.querySelectorAll("#pane-relatorio details[data-key]").forEach(function (d) { abertos[d.getAttribute("data-key")] = d.open; });
@@ -1143,6 +1172,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       h += '<p class="aviso-config aviso-ia">A análise automática não rodou: ' + esc(S.iaErro.motivo) +
         ' <button class="btn-plain" data-abrir-ia>Ajustar a IA</button></p>';
     }
+    h += pdAviso();
     $("rel-topo").innerHTML = h;
     document.querySelectorAll("[data-nivel]").forEach(function (b) {
       b.setAttribute("aria-pressed", S.filtro.niveis.indexOf(b.getAttribute("data-nivel")) >= 0);
@@ -1752,6 +1782,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (t.hasAttribute("data-abrir-filtros")) { abrirFiltros(); return; }
       if (t.hasAttribute("data-abrir-filtros-int") && !t.closest("#form-filtros")) { abrirFiltros(null, null, "int"); return; }
       if (t.hasAttribute("data-abrir-busca")) { abrirBusca(); return; }
+      if (t.hasAttribute("data-completar")) { t.disabled = true; pdIniciar(); return; }
       if (t.hasAttribute("data-cv")) { cvAcao(t.getAttribute("data-cv"), t); return; }
       if (t.hasAttribute("data-bu")) { buAcao(t.getAttribute("data-bu"), t); return; }
       if (t.hasAttribute("data-abrir-ia")) { abrirIA(); return; }
@@ -3484,7 +3515,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     carregando = Promise.all([API.get("/api/vagas"), API.get("/api/buscas/ultima")])
       .then(function (r) {
         S.vagas = r[0].vagas || []; S.versao = r[0].versao; S.busca = r[1].busca || null;
-        S.loaded = true; S.offline = false; render();
+        S.loaded = true; S.offline = false; render(); pdCarregar();
       })
       .catch(function () { S.offline = true; render(); })
       .then(function () { carregando = null; });

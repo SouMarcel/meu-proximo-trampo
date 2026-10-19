@@ -266,3 +266,57 @@ class Busca:
 
 
 BUSCA = Busca()
+
+
+class Completar:
+    """Só as descrições pendentes (spec 019), em segundo plano: a mesma fila e os mesmos limites da busca
+    (vagas.completar_pendentes), sem buscar vagas novas. Não roda junto com uma busca."""
+
+    def __init__(self):
+        self._trava = threading.Lock()
+        self._thread: threading.Thread | None = None
+        self._e: dict = {"situacao": "parada"}
+
+    def rodando(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
+    def estado(self) -> dict:
+        v = _vagas()
+        espera = v.fontes_em_espera(v.fontes_com_pendentes())
+        with self._trava:
+            e = dict(self._e)
+        return {**e, "pendentes": v.contar_pendentes(),
+                "espera": [{k: x[k] for k in ("portal", "ate", "motivo")} for x in espera]}
+
+    def iniciar(self) -> dict:
+        v = _vagas()
+        with self._trava:
+            if self.rodando():
+                return dict(self._e)
+            if BUSCA.rodando() or v.ocupada() is not None:
+                raise BuscaRecusada("há uma busca rodando; as descrições pendentes são lidas por ela")
+            if v.fontes_em_espera(v.fontes_com_pendentes()):
+                raise BuscaRecusada("o portal está em espera depois de um bloqueio; tente depois do horário indicado")
+            self._e = {"situacao": "lendo", "lidas": 0, "total": 0, "inicio": _agora().isoformat(timespec="seconds")}
+            self._thread = threading.Thread(target=self._rodar, daemon=True)
+            self._thread.start()
+            return dict(self._e)
+
+    def _rodar(self) -> None:
+        def avisar(ev):
+            with self._trava:
+                self._e.update(lidas=ev.get("lidas", 0), total=ev.get("total", 0))
+        try:
+            r = _vagas().completar_pendentes(avisar=avisar)
+            with self._trava:
+                self._e = {"situacao": "pronta", "completadas": r["completadas"], "restantes": r["restantes"],
+                           "erros": r["erros"][:LIMITE_ERROS], "fim": _agora().isoformat(timespec="seconds")}
+            if r["completadas"]:
+                analise.FILA.pedir()  # as vagas completadas ganham nota, como as da busca
+        except Exception as e:  # registra e não deixa o estado preso em "lendo"
+            print(f"[erro] completar descrições: {e!r}", file=sys.stderr)
+            with self._trava:
+                self._e = {"situacao": "erro", "mensagem": "não deu para completar as descrições agora"}
+
+
+COMPLETAR = Completar()

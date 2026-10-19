@@ -137,7 +137,8 @@ class TestDescricoesPendentes(Base):  # spec 015, US1 (limite) e US2
     def setUp(self):
         super().setUp()
         for p in (mock.patch.object(fonte_falsa, "MAX_DESCRICOES", 1, create=True),
-                  mock.patch.object(fonte_falsa, "COM_DESCRICAO", False)):
+                  mock.patch.object(fonte_falsa, "COM_DESCRICAO", False),
+                  mock.patch.object(vagas, "fontes_com_pendentes", return_value=["falsa"])):  # sem o LinkedIn real
             p.start()
             self.addCleanup(p.stop)
 
@@ -207,6 +208,45 @@ class TestDescricoesPendentes(Base):  # spec 015, US1 (limite) e US2
         pend = [v for v in banco.listar_vagas() if v.get("descricao_pendente")]
         self.assertEqual(len(pend), 2)
         self.assertTrue(all(v["analise_status"] == "sem_analise" for v in pend))
+
+    def test_completar_so_as_pendentes(self):  # spec 019: sem buscar vagas novas
+        vagas.gravar_resultado(self.buscar(), sem_avaliacao=True, status_sem_nota="pendente")
+        ids_pend = {v["id"] for v in banco.pendentes_de_descricao("Falsa")}
+        self.assertEqual(vagas.contar_pendentes(), 2)
+        fonte_falsa.DESCRITAS.clear()
+        fonte_falsa.MAX_DESCRICOES = 3
+        with mock.patch.object(fonte_falsa, "buscar", side_effect=AssertionError("não busca vagas novas")):
+            r = vagas.completar_pendentes()
+        self.assertEqual(set(fonte_falsa.DESCRITAS), ids_pend)
+        self.assertEqual((r["completadas"], r["restantes"], r["espera"]), (2, 0, []))
+        for vid in ids_pend:
+            v = banco.obter(vid)
+            self.assertNotIn("descricao_pendente", v)
+            self.assertTrue(analise.precisa(v))  # agora vai para a IA
+
+    def test_completar_respeita_limite_e_espera(self):
+        vagas.gravar_resultado(self.buscar(), sem_avaliacao=True, status_sem_nota="pendente")
+        fonte_falsa.DESCRITAS.clear()
+        espera = {"ate": "2026-10-18T16:09", "motivo": "excesso de pedidos"}
+        with mock.patch.object(fonte_falsa, "espera", lambda: espera, create=True):
+            r = vagas.completar_pendentes()
+        self.assertEqual(fonte_falsa.DESCRITAS, [])  # na espera, nenhum pedido
+        self.assertEqual((r["completadas"], r["restantes"], len(r["espera"])), (0, 2, 1))
+        r = vagas.completar_pendentes()  # limite de 1 por vez (MAX_DESCRICOES do setUp)
+        self.assertEqual((len(fonte_falsa.DESCRITAS), r["completadas"], r["restantes"]), (1, 1, 1))
+
+    def test_completar_pela_pagina(self):
+        vagas.gravar_resultado(self.buscar(), sem_avaliacao=True, status_sem_nota="pendente")
+        fonte_falsa.MAX_DESCRICOES = 3
+        c = buscador.Completar()
+        self.assertEqual(c.estado()["pendentes"], 2)
+        with mock.patch.object(analise.FILA, "pedir") as pedir:
+            c._rodar()
+        self.assertEqual((c.estado()["situacao"], c.estado()["completadas"], c.estado()["pendentes"]), ("pronta", 2, 0))
+        pedir.assert_called_once()  # as completadas vão para a nota
+        with mock.patch.object(fonte_falsa, "espera", lambda: {"ate": "2026-10-18T16:09", "motivo": "x"}, create=True):
+            with self.assertRaises(buscador.BuscaRecusada):
+                buscador.Completar().iniciar()
 
     def test_fonte_sem_limite_continua_igual(self):
         with mock.patch.object(fonte_falsa, "MAX_DESCRICOES", None):

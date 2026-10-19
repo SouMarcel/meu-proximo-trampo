@@ -510,7 +510,10 @@ Para instalar à mão, no Claude Code:
   país e, com a busca internacional, "mundo todo"); o tipo de emprego e a data de publicação vão como
   filtro do próprio LinkedIn. Há uma pausa de 3 a 7 segundos entre os pedidos, e a descrição só é lida
   para as vagas que vão para o relatório, **no máximo 20 por busca**: as que sobram entram como
-  "Descrição pendente", sem nota, e o texto delas é lido primeiro na busca seguinte.
+  "Descrição pendente", sem nota, e o texto delas é lido primeiro na busca seguinte. Sem esperar a
+  próxima busca, o botão **Completar descrições** (no topo do Relatório) ou `vagas.py completar`
+  lê só essas descrições, sem buscar vagas novas, com o mesmo limite e a mesma pausa; durante a
+  espera de 6 horas ele fica desligado e mostra o horário.
   - **O limite do LinkedIn é por rede (IP)**, não por pessoa: quem está na mesma rede (casa,
     escritório, Wi-Fi compartilhado) divide a mesma cota.
   - **Bloqueado com frequência?** Ponha `LINKEDIN_PAUSA=10` (segundos) no arquivo `.env` da raiz:

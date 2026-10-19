@@ -33,7 +33,8 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   (`.venv/bin/python` no macOS/Linux). Sem `.venv`, a pessoa prepara tudo com
   `python iniciar.py` (pergunta antes de instalar).
 - Rode sempre a partir da raiz do projeto.
-- Principais comandos: `PY vagas.py buscar` (busca), `PY dash/banco.py pendentes` (vagas que esperam
+- Principais comandos: `PY vagas.py buscar` (busca), `PY vagas.py completar` (só as descrições
+  pendentes do LinkedIn, sem buscar vagas novas), `PY dash/banco.py pendentes` (vagas que esperam
   nota), `PY curriculo.py <arquivo.json>` (gera o currículo; `--tecnicas` mostra as técnicas),
   `PY conferir.py <arquivo.json> [--vaga-id ID]` (conferência do currículo sem IA; `--carta
   carta.txt` confere uma carta), `PY candidatura_ia.py sensiveis perguntas.txt` (perguntas de
