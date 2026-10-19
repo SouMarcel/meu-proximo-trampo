@@ -111,6 +111,16 @@ class TestBusca(SemRede):
         self.assertEqual(numeros(remoto), [90019, 90015])  # 3 dias: de 16/10 em diante
         self.assertEqual(len(self.urls), 1)  # a página 1 já chega a vagas mais antigas que a janela
 
+    def test_janela_de_15_dias(self):  # FR-016: a janela do painel, com a opção de 15 dias
+        self.respostas()
+        remoto, _ = nerdin.buscar(grupos({**CFG, "janela_horas": 360})["remoto"], 360, 20)
+        self.assertEqual(numeros(remoto), [90019, 90015, 90008, 90005, 90002, 89999])  # 89997 (30/09) fica fora
+        self.assertEqual(filtros.opcoes()["janelas"][360], "Últimos 15 dias")
+        base = {"termos": ["analista"], "localidade": {"pais": "Brasil"}, "modelos": {"remoto": True}}
+        self.assertEqual(filtros.validar({**base, "janela_horas": 360})["janela_horas"], 360)
+        with self.assertRaises(ValueError):
+            filtros.validar({**base, "janela_horas": 721})  # máximo de 30 dias
+
     def test_estado_por_nome_e_modelos(self):
         self.respostas()
         cfg = {**CFG, "localidade": {"pais": "Brasil", "estado": "São Paulo", "cidade": "Osasco", "raio_km": 25},

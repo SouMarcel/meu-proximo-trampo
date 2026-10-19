@@ -135,6 +135,9 @@ quickstart.
   portais, exemplo de `--fontes`, parágrafo do portal); depois `python sincronizar_skills.py` e `--conferir`
 - [X] T023 Rodar `python -m unittest discover -s tests` (tudo passa) e a busca real pequena do quickstart cenário 2,
   com o OK da pessoa
+- [X] T026 [US1] Teste na branch pessoal: a busca de "scrum master" com janela de 7 dias deu zero (a última vaga
+  da Nerdin era de 13 dias antes). Decisão da pessoa: a janela segue o painel (máximo 30 dias) e o painel ganha
+  "Últimos 15 dias" (`filtros.JANELAS`, 360 h); README da chave `janela_horas`; teste em `tests/test_nerdin.py`
 - [ ] T024 Procurar dados pessoais nos arquivos alterados; commit na branch `020-nerdin`; merge na branch pessoal; com o OK
   da pessoa, acrescentar `nerdin` em `fontes` no `config.json` pessoal; reiniciar o dashboard (`--sem-navegador`) e
   passar o quickstart cenário 4 com a pessoa

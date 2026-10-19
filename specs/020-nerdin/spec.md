@@ -181,6 +181,9 @@ chegam ao relatório.
 - **FR-014**: A busca pelo terminal e pela skill MUST aceitar a Nerdin como as outras fontes.
 - **FR-015**: AGENTS.md, o README (portais, padrão da chave de portais, termos e avisos), o README do dashboard e a
   skill buscar-vagas MUST citar o novo portal.
+- **FR-016**: A busca na Nerdin MUST usar a janela de tempo que a pessoa marcou no painel, como os outros
+  portais (máximo de 30 dias); o painel MUST oferecer também "Últimos 15 dias", útil para portais com poucas vagas
+  novas por semana.
 
 ### Key Entities
 

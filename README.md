@@ -413,7 +413,7 @@ funcionar, abra uma issue.
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
 | `internacional` | Busca no exterior, desligada por padrão (painel **Filtros da busca internacional**): `ativo`, `paises`, `termos` (cargos em inglês), `regioes`, `salario_min_anual_usd`, `fuso_horas`, `contratacao`, a sua situação (`aceita_mudar` + `paises_mudanca`, `passaporte`, `autorizacao_trabalho`, `precisa_sponsor`), `fontes` (fontes do exterior: `remotive`, `himalayas`, `remoteok`, `jobicy`, `weworkremotely`, `getonboard`), `empresas` (empresas acompanhadas no Greenhouse, Lever ou Ashby, informadas pelo link da página de vagas), `frases_restricao` e `frases_positivas`. Cada país × cargo é uma consulta a mais; as fontes do exterior fazem uma consulta por cargo (as listas, uma por busca) |
 | `idiomas_aceitos` | `pt`, `en`, `es`, `fr`, `de`, `it`: vaga em outro idioma vai para Fora dos critérios. Vazio = todos |
-| `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias) |
+| `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias; no painel, de 24 horas a 30 dias, o máximo). Portais com poucas vagas novas por semana, como a Nerdin, aparecem mais com 15 dias (`360`) |
 | `tipos_emprego` | `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario`. Vazio = todos; com IA, conferido na descrição |
 | `senioridades` | `junior`, `pleno`, `senior`. Vazio = todas |
 | `empresas_excluir` | Empresas que você não quer ver |
