@@ -6,7 +6,6 @@ import {
   Sparkles,
   User,
   Coffee,
-  Server,
   CheckCircle2,
   Briefcase,
 } from "lucide-react"
@@ -14,12 +13,12 @@ import { ConfigIA } from "../types/job"
 
 interface HeaderProps {
   configIA: ConfigIA
-  isBackendConnected: boolean | null
+  isBackendConnected?: boolean | null
   onOpenAddModal: () => void
   onOpenSearchModal: () => void
   onOpenFiltersModal: () => void
   onOpenProfileModal: () => void
-  onOpenOnboardingModal: () => void
+  onOpenOnboardingModal?: () => void
   onOpenAIModal: () => void
 }
 
@@ -71,27 +70,6 @@ export default function Header({
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
             </button>
-
-            {/* Backend Connection Badge */}
-            <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
-                isBackendConnected
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
-                  : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
-              }`}
-              title={
-                isBackendConnected
-                  ? "Sincronizado com o servidor Python local (127.0.0.1:8765)"
-                  : "Modo Local Seguro: operando com dados em cache no navegador"
-              }
-            >
-              <Server className="w-3.5 h-3.5" />
-              <span>
-                {isBackendConnected
-                  ? "Servidor Local Conectado"
-                  : "Modo Seguro Local"}
-              </span>
-            </div>
           </div>
 
           {/* Action CTAs */}
@@ -130,16 +108,7 @@ export default function Header({
               </div>
             </button>
 
-            {/* Onboarding & Anamnese Trigger */}
-            <button
-              onClick={onOpenOnboardingModal}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition"
-              title="Primeiros Passos: Onboarding, Anamnese e Perguntas do Perfil"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span className="hidden sm:inline">Onboarding</span>
-              <span className="hidden md:inline">& Anamnese</span>
-            </button>
+
 
             {/* Profile Trigger */}
             <button
