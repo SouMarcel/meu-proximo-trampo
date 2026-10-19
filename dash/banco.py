@@ -41,7 +41,7 @@ MANTER_BACKUPS = 10
 ETAPAS = ("salva", "aplicada", "entrevista", "proposta", "encerrada")
 TRIAGENS = ("pendente", "seguir", "visitada", "fora")  # fora = furou os filtros da busca
 RESULTADOS = ("nao_aprovado", "desisti", "cancelada", "contratado")
-PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Remotive", "Himalayas", "RemoteOK",
+PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Nerdin", "Remotive", "Himalayas", "RemoteOK",
                "Jobicy", "We Work Remotely", "Get on Board", "Greenhouse", "Lever", "Ashby", "Outra")
 SISTEMAS_ATS = ("greenhouse", "lever", "ashby")
 MODELOS = ("remoto", "hibrido", "presencial", "nao_informado")

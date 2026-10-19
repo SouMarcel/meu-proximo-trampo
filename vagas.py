@@ -192,7 +192,7 @@ def rotulo_grupo(grupo: str, f: dict) -> str:
 def fontes_da_busca(cfg: dict, f: dict) -> list[str]:
     """As fontes do config.json e, com a busca internacional ligada, as do exterior escolhidas no painel e a das
     empresas acompanhadas."""
-    nomes = list(cfg.get("fontes", ["indeed", "gupy"]))
+    nomes = list(cfg.get("fontes", filtros.FONTES_PADRAO))
     inter = f["internacional"]
     if inter["ativo"]:
         nomes += [n for n in inter.get("fontes") or [] if n not in nomes]

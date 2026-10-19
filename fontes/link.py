@@ -53,8 +53,8 @@ def plataforma(host: str) -> str:
     host = (host or "").lower()
     for chave, nome in (("indeed.", "Indeed"), ("linkedin.", "LinkedIn"), ("gupy.io", "Gupy"),
                         ("inhire", "InHire"), ("catho.", "Catho"), ("startup.jobs", "Startup Jobs"),
-                        ("remotive.", "Remotive"), ("himalayas.app", "Himalayas"), ("remoteok.", "RemoteOK"),
-                        ("jobicy.", "Jobicy"), ("weworkremotely.", "We Work Remotely"), ("getonbrd.", "Get on Board"),
+                        ("nerdin.", "Nerdin"), ("remotive.", "Remotive"), ("himalayas.app", "Himalayas"),
+                        ("remoteok.", "RemoteOK"), ("jobicy.", "Jobicy"), ("weworkremotely.", "We Work Remotely"), ("getonbrd.", "Get on Board"),
                         ("getonboard.", "Get on Board"), ("greenhouse.io", "Greenhouse"), ("lever.co", "Lever"),
                         ("ashbyhq.com", "Ashby")):
         if chave in host:
@@ -296,6 +296,12 @@ def _ler_startupjobs(url: str, vid: str) -> dict:
     return {**vaga, "id": vid, "url": url}
 
 
+def _id_nerdin(url: str) -> str | None:
+    from . import nerdin  # nerdin importa este módulo
+
+    return nerdin.id_do_link(url)
+
+
 def _ler_ats(url: str, plat: str) -> dict:
     try:
         vaga = ats.ler(url)
@@ -382,6 +388,8 @@ def ler(url: str) -> dict:
         vaga = _ler_gupy(url, gupy.id_do_link(url))
     elif plat == "Startup Jobs" and startupjobs.id_do_link(url):
         vaga = _ler_startupjobs(url, startupjobs.id_do_link(url))
+    elif plat == "Nerdin" and _id_nerdin(url):
+        vaga = {**extrair_jobposting(_baixar(url), plat), "id": _id_nerdin(url), "url": url}
     elif plat in ("Greenhouse", "Lever", "Ashby") and ats.vaga_do_link(url):
         vaga = _ler_ats(url, plat)
     else:

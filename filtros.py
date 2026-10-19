@@ -61,7 +61,8 @@ MOEDA_DO_PAIS = {
     "Romênia": "RON", "Singapura": "SGD", "Suécia": "SEK", "Suíça": "CHF", "Tailândia": "THB", "Taiwan": "TWD",
     "Turquia": "TRY", "Ucrânia": "UAH", "Uruguai": "UYU", "Venezuela": "VES", "Vietnã": "VND",
 }
-JANELAS = {24: "Últimas 24 horas", 72: "Últimos 3 dias", 168: "Última semana", 720: "Último mês"}
+JANELAS = {24: "Últimas 24 horas", 72: "Últimos 3 dias", 168: "Última semana", 360: "Últimos 15 dias",
+           720: "Último mês"}
 RAIOS_KM = (10, 25, 50, 80)
 LEGADOS = ("local", "pais_indeed", "somente_remoto")  # formato antigo do config.json
 
@@ -78,8 +79,9 @@ FONTES_INT = {"remotive": "Remotive", "himalayas": "Himalayas", "remoteok": "Rem
               "weworkremotely": "We Work Remotely", "getonboard": "Get on Board"}
 GLOBAL = "internacional:global"
 # Portais da busca (config.json -> "fontes"), ligados no painel "Filtros da busca"; precisa = o que o portal exige
-FONTES_NAC = {"indeed": "Indeed", "gupy": "Gupy", "linkedin": "LinkedIn", "startupjobs": "startup.jobs"}
-FONTES_PADRAO = ["indeed", "gupy"]
+FONTES_NAC = {"indeed": "Indeed", "gupy": "Gupy", "nerdin": "Nerdin", "linkedin": "LinkedIn",
+              "startupjobs": "startup.jobs"}
+FONTES_PADRAO = ["indeed", "gupy", "nerdin"]
 PRECISA = {"startupjobs": "da chave MCP_STARTUP_JOBS no arquivo .env"}
 MAX_EMPRESAS, MAX_FRASES, TAMANHO_FRASE = 50, 30, 120
 # palavras comuns que distinguem cada idioma (sem acento); o que aparece em mais de um idioma ficou de fora
