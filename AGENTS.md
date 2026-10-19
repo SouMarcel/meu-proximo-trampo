@@ -1,6 +1,6 @@
 # meu-proximo-trampo — instruções para assistentes de código
 
-Ferramenta local para quem procura emprego: busca vagas (Indeed, Gupy, startup.jobs), dá nota de
+Ferramenta local para quem procura emprego: busca vagas (Indeed, Gupy, Nerdin, startup.jobs), dá nota de
 aderência ao perfil da pessoa, mostra tudo num dashboard local (Relatório de Vagas e quadro de
 candidaturas) e ajuda a montar o currículo. Este arquivo vale para Claude Code, Codex, Gemini CLI,
 OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em português do Brasil.

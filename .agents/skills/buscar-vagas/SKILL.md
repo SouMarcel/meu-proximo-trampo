@@ -1,6 +1,6 @@
 ---
 name: buscar-vagas
-description: Busca vagas de emprego (Indeed e Gupy; startup.jobs se estiver ligado), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir uma busca no Indeed, na Gupy ou no startup.jobs, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
+description: Busca vagas de emprego (Indeed, Gupy e Nerdin; LinkedIn e startup.jobs se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir uma busca no Indeed, na Gupy, na Nerdin ou no startup.jobs, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
 
 # Buscar vagas
@@ -32,9 +32,9 @@ volta nas próximas buscas.
 - O arquivo de perfil apontado em `config.json` (padrão `perfil.md`): a única fonte
   sobre o usuário. Não complete lacunas com suposições.
 - `vagas.py`: `buscar`, `ver` e `gravar`. As buscas de cada portal ficam em `fontes/`
-  (`indeed.py`, `gupy.py`, `linkedin.py`, `startupjobs.py`); os portais usados vêm de `fontes` no
-  `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais (o `linkedin` e o
-  `startupjobs` só entram se estiverem lá).
+  (`indeed.py`, `gupy.py`, `nerdin.py`, `linkedin.py`, `startupjobs.py`); os portais usados vêm de
+  `fontes` no `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais (sem a chave,
+  valem `indeed`, `gupy` e `nerdin`; o `linkedin` e o `startupjobs` só entram se estiverem lá).
 - `dash/`: o dashboard. `servidor.py` (porta 8765), `dashboard.html`, `banco.py` (dados
   em `dash/dados/candidaturas.db`, com comandos `quadro`, `pendentes` e `analisar`) e
   `README.md` (campos e valores).
@@ -80,8 +80,8 @@ servidor; ele só serve para ver e mexer no quadro.
    `buscar`: "últimos 3 dias" → `--janela-horas 72`; outro cargo →
    `--termos '"product owner"'`; "pode ser presencial em qualquer lugar" →
    `--incluir-presencial`; "só na Gupy" → `--fontes gupy`; "procura também no
-   startup.jobs" → `--fontes indeed gupy startupjobs`; "inclui o LinkedIn" →
-   `--fontes indeed gupy linkedin`. Pedido pontual não altera
+   startup.jobs" → `--fontes indeed gupy nerdin startupjobs`; "inclui o LinkedIn" →
+   `--fontes indeed gupy nerdin linkedin`; "só vagas de TI da Nerdin" → `--fontes nerdin`. Pedido pontual não altera
    o `config.json`; para mudar o padrão, sugira o painel Filtros da busca (ou edite o
    arquivo, se ele pedir).
 
@@ -149,7 +149,8 @@ servidor; ele só serve para ver e mexer no quadro.
    no fim da descrição traz o que a empresa marcou (modelo, contrato, prazo de
    inscrição, se aceita PCD); a Gupy não informa a cidade da vaga, então o local das
    vagas da busca na cidade é a cidade do usuário. Nas do startup.jobs, a linha "No
-   startup.jobs:" traz o modelo e o tipo de contrato que o site informa.
+   startup.jobs:" traz o modelo e o tipo de contrato que o site informa. Nas da Nerdin, o `tipo`
+   traz a linha do anúncio (ex.: "PJ • Senior • Home Office").
    `senioridade`: os níveis que a vaga aceita, entre `junior`, `pleno` e `senior`
    (pode ser mais de um, como em "PL/SR"), com `senioridade_origem`:
    - `declarada`: o título ou a descrição dizem o nível.
@@ -329,6 +330,13 @@ sobram entram como **descrição pendente**: não avalie essas vagas (o digest a
 primeiro na busca seguinte. Para completar sem uma busca nova, rode `PY vagas.py completar` (ou
 sugira o botão "Completar descrições" no topo do Relatório): lê só as pendentes, com o mesmo limite
 e a mesma pausa; sai com código 5 se o portal estiver em espera (nenhum pedido feito).
+
+A Nerdin (só vagas de tecnologia no Brasil) é consultada pela busca pública do site
+(`fontes/nerdin.py`), sem login nem cookies, com pausa de 3 segundos entre os pedidos: a lista de
+cada cargo é lida uma vez por busca e ficam só as vagas cujo título bate com o cargo. Por busca, no
+máximo 30 descrições da Nerdin são lidas (as outras ficam com **descrição pendente**, como no
+LinkedIn). Se ela recusar ou limitar as consultas, fica de fora até o fim da busca, sem nova
+tentativa, e os outros portais seguem; não tente contornar.
 
 O startup.jobs é consultado pelo MCP público do site (`fontes/startupjobs.py`), sem
 login. Sem conta, ele aceita 20 consultas por minuto e mostra só as vagas dos últimos
