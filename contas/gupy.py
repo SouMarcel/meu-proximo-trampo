@@ -4,7 +4,8 @@
 - O detalhe de cada candidatura em andamento (id da vaga, etapa atual e categoria dela) só responde a partir da
   página da empresa (<subdominio>.gupy.io/candidates/applications/<id>); o id da vaga fica guardado em
   .cache/contas/gupy.json para não abrir a página de novo.
-- A Gupy esquece o login quando a janela fecha: a leitura pede um clique de login da pessoa (research §3).
+- A Gupy esquece o login quando a janela fecha: a janela fica aberta (minimizada) enquanto o dashboard roda; se a
+  Gupy pedir login, a leitura traz a janela para a frente e espera a pessoa entrar (research §3).
 
 Só leitura: nunca clica em "Desistir" nem em nada que mude a candidatura.
 """
@@ -13,6 +14,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import date
+from urllib.parse import urlsplit
 
 from . import PASTA, PortalErro, buscar_json, lida
 
@@ -25,12 +27,19 @@ ICONE = ('<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><re
 URL_CANDIDATURAS = "https://portal.gupy.io/my/applications"
 HOST_LOGIN = "login.gupy.io"
 ORIGENS = ("https://portal.gupy.io", "https://login.gupy.io", "https://private-api.gupy.io")
-AVISO_LOGIN = "A Gupy esquece o login quando a janela fecha: a cada leitura, um clique em entrar (ex.: com o LinkedIn)."
+AVISO_LOGIN = ("A Gupy esquece o login quando a janela fecha: a janela fica aberta e minimizada enquanto o dashboard "
+               "roda, e você entra de novo (ex.: com o LinkedIn) só quando o dashboard reinicia.")
 API = "https://private-api.gupy.io/selection-process/candidate"
 MAPA = PASTA / "gupy.json"
 SUBDOMINIO = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 MODELO = {"remote": "Remoto", "hybrid": "Híbrido", "on-site": "Presencial"}
 TALENTOS = "vacancy_type_talent_pool"
+
+
+def logado(url: str) -> bool:
+    """De volta à Gupy fora da página de login (o "Entrar com LinkedIn" passa pelo LinkedIn no meio do caminho)."""
+    host = (urlsplit(url or "").hostname or "").lower()
+    return host.endswith("gupy.io") and host != HOST_LOGIN
 
 
 def _mapa() -> dict:

@@ -47,8 +47,9 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   - A leitura acontece numa janela do Edge (ou do Chrome) só da ferramenta, com perfil
     próprio em `.cache/navegador` (fora do Git). Você faz o login nessa janela; a ferramenta
     nunca vê nem guarda a sua senha e não clica em nada nos portais.
-  - O Indeed mantém o login entre as leituras. A Gupy esquece quando a janela fecha: a cada
-    leitura ela vem para a frente e pede um clique para entrar (ex.: "Entrar com LinkedIn").
+  - A janela fica aberta e minimizada enquanto o dashboard roda, porque a Gupy esquece o login
+    quando ela fecha. Ela fecha quando o dashboard para ou no "Desconectar". Se um portal pedir
+    login, a janela vem para a frente e a leitura segue sozinha depois que você entra.
   - "Desconectar" apaga a sessão daquele portal na janela da ferramenta.
   - O LinkedIn está pronto no código, mas desativado: ele restringe contas que considera
     automatizadas.

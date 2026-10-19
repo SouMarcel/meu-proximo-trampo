@@ -45,6 +45,12 @@ class AbaFalsa:
     def frente(self):
         pass
 
+    def minimizar(self):
+        self.minimizada = True
+
+    def fechar(self):
+        self.conexao_fechada = True
+
     def avaliar(self, js):
         self.js.append(js)
         alvo = json.loads(re.search(r"fetch\((\".*?\")", js).group(1))
@@ -110,6 +116,15 @@ class TestGupy(Base):
         with self.assertRaises(contas.PortalErro) as e:
             gupy.ler(AbaFalsa({f"{gupy.API}/applications": (401, None)}))
         self.assertTrue(e.exception.login)
+
+    def test_logado(self):  # o login pelo LinkedIn passa pelo linkedin.com antes de voltar
+        self.assertTrue(gupy.logado("https://portal.gupy.io/my/applications"))
+        self.assertTrue(gupy.logado("https://empresaalfa.gupy.io/candidates/applications/1"))
+        self.assertFalse(gupy.logado("https://login.gupy.io/candidates/signin"))
+        self.assertFalse(gupy.logado("https://www.linkedin.com/oauth/v2/authorization"))
+        self.assertTrue(indeed.logado("https://myjobs.indeed.com/applied"))
+        self.assertFalse(indeed.logado("https://secure.indeed.com/auth"))
+        self.assertFalse(linkedin.logado("https://www.linkedin.com/checkpoint/challenge"))
 
     def test_resposta_estranha(self):
         with self.assertRaises(contas.PortalErro) as e:
@@ -252,14 +267,16 @@ class TestLeitura(Base):
         self.assertEqual(leitura.estado["situacao"], "pronta")
         self.assertEqual(leitura.resultado["erros"], {"Indeed": "não consegui ler"})
         self.assertTrue(any(i["portal"] == "gupy" for i in leitura.resultado["itens"]))
-        fechar.assert_called_once()  # a janela fecha no fim
+        fechar.assert_not_called()  # a janela fica aberta (a Gupy esquece o login quando ela fecha)
+        self.assertTrue(aba.minimizada and aba.conexao_fechada)
         self.assertTrue(sincronia.ULTIMA.exists())
 
     def test_espera_o_login_e_segue(self):
         aba = AbaFalsa(respostas_gupy(), login="https://login.gupy.io/candidates/signin")
+        caminho = iter(["https://www.linkedin.com/oauth/v2/authorization?x=1", None])
 
-        def logou(_):
-            aba.login = None  # a pessoa entrou na janela
+        def logou(_):  # "Entrar com LinkedIn": passa pelo LinkedIn antes de voltar à Gupy
+            aba.login = next(caminho, None)
         with mock.patch.object(sincronia.navegador, "abrir", return_value=aba), \
                 mock.patch.object(sincronia.navegador, "fechar"), \
                 mock.patch.object(sincronia.time, "sleep", side_effect=logou), \
@@ -269,6 +286,21 @@ class TestLeitura(Base):
         frente.assert_called_once()
         self.assertEqual(leitura.resultado["erros"], {})
         self.assertTrue(leitura.resultado["itens"])
+
+    def test_erro_inesperado_nao_prende_a_leitura(self):
+        with mock.patch.object(sincronia.navegador, "abrir", side_effect=RuntimeError("x")):
+            leitura = sincronia.Leitura()
+            leitura._rodar(["gupy"])
+        self.assertEqual(leitura.estado["situacao"], "pronta")
+        self.assertIn("inesperado", leitura.resultado["erros"]["Gupy"])
+
+    def test_janela_fechada_durante_o_login(self):
+        aba = AbaFalsa(respostas_gupy(), login="https://login.gupy.io/candidates/signin")
+        with mock.patch.object(sincronia.navegador, "abrir", return_value=aba),                 mock.patch.object(sincronia.time, "sleep"),                 mock.patch.object(aba, "url", side_effect=["https://login.gupy.io/x"] + [sincronia.navegador.NavegadorErro("fechada")] * 3):
+            leitura = sincronia.Leitura()
+            leitura._rodar(["gupy"])
+        self.assertEqual(leitura.estado["situacao"], "pronta")
+        self.assertIn("login", leitura.resultado["erros"]["Gupy"])
 
     def test_aplicar_usa_a_proposta_do_servidor(self):
         leitura = sincronia.Leitura()

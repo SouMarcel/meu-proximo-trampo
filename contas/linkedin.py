@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, timedelta
+from urllib.parse import urlsplit
 
 from . import PortalErro, lida
 
@@ -30,6 +31,11 @@ JS_LINHAS = """(() => [...document.querySelectorAll('a[href*="/jobs/view/"]')].m
   const linha = a.closest('li, tr, [data-view-name]') || a.parentElement;
   return {href: a.href, texto: linha ? linha.innerText : a.innerText};
 }))()"""
+
+
+def logado(url: str) -> bool:
+    host = (urlsplit(url or "").hostname or "").lower()
+    return host.endswith("linkedin.com") and not any(x in (url or "") for x in ("/login", "/checkpoint", "/uas/", "/authwall"))
 
 
 def data_aproximada(texto: str, hoje: date | None = None) -> tuple[str, bool]:

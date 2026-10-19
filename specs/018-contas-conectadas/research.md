@@ -62,9 +62,12 @@ apagadas na hora. Aqui ficam só a estrutura e os valores de status.
   cargo + empresa.
 - **Sessão:** a Gupy **perde o login quando a janela fecha**. O "continuar de onde parou" do perfil não resolveu e
   foi desfeito.
-  - **Decision (da pessoa):** quando a Gupy pedir login, a janela vem para a frente, a pessoa dá um clique
-    ("Entrar com LinkedIn" entra direto) e a leitura segue sozinha quando a lista responde 200 (espera de até 3
-    minutos).
+  - **Decision (da pessoa, revista no teste de 2026-10-18):** a janela da ferramenta fica **aberta e minimizada
+    enquanto o dashboard roda** e fecha no "Desconectar" ou quando o dashboard para. Assim a Gupy pede login uma vez
+    por sessão do dashboard, não a cada leitura.
+  - Quando pedir, a janela vem para a frente e a leitura espera a página **voltar logada à Gupy**
+    (`gupy.logado`), até 3 minutos. O "Entrar com LinkedIn" passa pelo linkedin.com no meio: a primeira versão
+    tratava isso como fim do login e interrompia o caminho.
   - A ferramenta não clica no botão de login (constituição VI: quem faz o login é a pessoa).
 - **Tradução:**
 

@@ -151,19 +151,38 @@ class Leitura:
         return self.estado
 
     def _esperar_login(self, aba, modulo) -> bool:
+        """Traz a janela para a frente e espera a página voltar logada ao portal (o login pode passar por outro
+        site, como o LinkedIn no "Entrar com LinkedIn"); a pessoa é quem faz o login."""
         aba.frente()
         limite = time.monotonic() + ESPERA_LOGIN
         while time.monotonic() < limite:
             time.sleep(PASSO_LOGIN)
             try:
-                if modulo.HOST_LOGIN not in aba.url():
+                if modulo.logado(aba.url()):
+                    time.sleep(PASSO_LOGIN)  # deixa o portal terminar de gravar a sessão antes de ler
                     return True
             except navegador.NavegadorErro:
                 return False
         return False
 
+    def _ler_portal(self, modulo, aba) -> list[dict]:
+        try:
+            return modulo.ler(aba)
+        except contas.PortalErro as e:
+            if not e.login:
+                raise
+        self.estado.update(situacao="aguardando_login", portal=modulo.PLATAFORMA)
+        if not self._esperar_login(aba, modulo):
+            raise contas.PortalErro(f"o login na {modulo.PLATAFORMA} não foi concluído na janela")
+        self.estado.update(situacao="lendo")
+        lidas = modulo.ler(aba)
+        aba.minimizar()
+        return lidas
+
     def _rodar(self, portais: list[str]) -> None:
-        lidas, erros, aba = [], {}, None
+        """A janela fica aberta e minimizada depois da leitura (decisão da pessoa): a Gupy esquece o login quando
+        ela fecha. Ela fecha no Desconectar ou quando o dashboard para."""
+        lidas, erros, aba, r = [], {}, None, None
         try:
             for nome in portais:
                 modulo = contas.CONTAS.get(nome)
@@ -172,24 +191,24 @@ class Leitura:
                 self.estado.update(situacao="lendo", portal=modulo.PLATAFORMA)
                 try:
                     aba = aba or navegador.abrir(modulo.URL_CANDIDATURAS, minimizado=True)
-                    try:
-                        lidas += modulo.ler(aba)
-                    except contas.PortalErro as e:
-                        if not e.login:
-                            raise
-                        self.estado.update(situacao="aguardando_login", portal=modulo.PLATAFORMA)
-                        if not self._esperar_login(aba, modulo):
-                            raise contas.PortalErro(f"o login na {modulo.PLATAFORMA} não foi concluído") from None
-                        self.estado.update(situacao="lendo")
-                        lidas += modulo.ler(aba)
-                except (contas.PortalErro, navegador.NavegadorErro) as e:
+                    lidas += self._ler_portal(modulo, aba)
+                except contas.PortalErro as e:
                     erros[modulo.PLATAFORMA] = str(e)
+                except navegador.NavegadorErro as e:
+                    erros[modulo.PLATAFORMA] = str(e)
+                    aba = None  # a janela foi fechada ou não respondeu: o próximo portal abre de novo
+                except Exception as e:  # nada pode deixar a leitura presa em "lendo"
+                    erros[modulo.PLATAFORMA] = f"erro inesperado ({type(e).__name__})"
+                    aba = None
+            r = proposta(lidas, banco.listar_vagas())
         finally:
-            navegador.fechar()
-        r = proposta(lidas, banco.listar_vagas())
-        r.update(erros=erros, lidas_em=datetime.now().isoformat(timespec="seconds"))
-        self.resultado = r
-        self.estado = {"situacao": "pronta", "fim": r["lidas_em"]}
+            if aba is not None:
+                aba.minimizar()
+                aba.fechar()  # só a conexão; a janela continua aberta
+            r = r or {"itens": [], "sem_mudanca": 0}
+            r.update(erros=erros, lidas_em=datetime.now().isoformat(timespec="seconds"))
+            self.resultado = r
+            self.estado = {"situacao": "pronta", "fim": r["lidas_em"]}
         try:
             contas.PASTA.mkdir(parents=True, exist_ok=True)
             ULTIMA.write_text(json.dumps({"lidas_em": r["lidas_em"], "itens": len(r["itens"])}), encoding="utf-8")

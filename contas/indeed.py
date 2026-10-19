@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
+from urllib.parse import urlsplit
 
 from . import PortalErro, buscar_json, lida
 
@@ -25,6 +26,11 @@ HOST_LOGIN = "secure.indeed.com"
 ORIGENS = ("https://myjobs.indeed.com", "https://secure.indeed.com", "https://br.indeed.com", "https://www.indeed.com")
 AVISO_LOGIN = "O Indeed mantém o login entre as leituras."
 JK = re.compile(r"^[0-9a-f]{16}$")
+
+
+def logado(url: str) -> bool:
+    host = (urlsplit(url or "").hostname or "").lower()
+    return host.endswith("indeed.com") and host != HOST_LOGIN
 
 
 def _quando(ms) -> str | None:

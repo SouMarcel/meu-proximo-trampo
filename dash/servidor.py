@@ -149,22 +149,24 @@ class Handler(BaseHTTPRequestHandler):
                 if partes[3] == "conectar":
                     nav.abrir(modulo.URL_CANDIDATURAS).frente()
                     return self._json(200, {"ok": True})
-                if partes[3] == "pronto":
+                if partes[3] == "pronto":  # a janela fica aberta e minimizada: a Gupy esquece o login ao fechar
                     aba = nav.abrir(modulo.URL_CANDIDATURAS)
-                    ok = modulo.HOST_LOGIN not in aba.url()
+                    ok = modulo.logado(aba.url())
                     if ok:
                         contas.marcar(partes[2], True)
-                        nav.fechar()
+                        aba.minimizar()
+                    aba.fechar()
                     return self._json(200, {"conectado": ok})
                 if partes[3] == "desconectar":
                     contas.marcar(partes[2], False)
                     if not contas.conectados():
-                        nav.desconectar()  # nenhum portal: apaga o perfil inteiro
+                        nav.desconectar()  # nenhum portal: fecha a janela e apaga o perfil inteiro
                     else:
                         aba = nav.abrir("about:blank", minimizado=True)
                         for origem in modulo.ORIGENS:
                             aba.sessao.pedir("Storage.clearDataForOrigin", origin=origem, storageTypes="all")
-                        nav.fechar()
+                        aba.minimizar()
+                        aba.fechar()
                     return self._json(200, {"ok": True})
             except (nav.NavegadorErro, contas.PortalErro) as e:
                 return self._erro(409, str(e))
@@ -728,6 +730,7 @@ def main() -> int:
         pass
     finally:
         servidor.server_close()
+        sincronia.navegador.fechar()  # a janela das contas conectadas fecha junto com o dashboard
     return 0
 
 

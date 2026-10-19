@@ -125,17 +125,20 @@ class _WS:
         p = urlsplit(url)
         if p.hostname not in ("127.0.0.1", "localhost"):
             raise NavegadorErro("endereço de depuração inesperado")
-        self.sock = socket.create_connection((p.hostname, p.port), timeout=TEMPO_PEDIDO)
-        chave = base64.b64encode(os.urandom(16)).decode()
-        self.sock.sendall((f"GET {p.path} HTTP/1.1\r\nHost: {p.hostname}:{p.port}\r\nUpgrade: websocket\r\n"
-                           f"Connection: Upgrade\r\nSec-WebSocket-Key: {chave}\r\nSec-WebSocket-Version: 13\r\n\r\n")
-                          .encode())
-        resposta = b""
-        while b"\r\n\r\n" not in resposta:
-            parte = self.sock.recv(4096)
-            if not parte:
-                raise NavegadorErro("o navegador fechou a conexão")
-            resposta += parte
+        try:
+            self.sock = socket.create_connection((p.hostname, p.port), timeout=TEMPO_PEDIDO)
+            chave = base64.b64encode(os.urandom(16)).decode()
+            self.sock.sendall((f"GET {p.path} HTTP/1.1\r\nHost: {p.hostname}:{p.port}\r\nUpgrade: websocket\r\n"
+                               f"Connection: Upgrade\r\nSec-WebSocket-Key: {chave}\r\nSec-WebSocket-Version: 13\r\n\r\n")
+                              .encode())
+            resposta = b""
+            while b"\r\n\r\n" not in resposta:
+                parte = self.sock.recv(4096)
+                if not parte:
+                    raise NavegadorErro("o navegador fechou a conexão")
+                resposta += parte
+        except OSError:
+            raise NavegadorErro("a janela da ferramenta não respondeu (foi fechada?)") from None
         cabecalho, self._sobra = resposta.split(b"\r\n\r\n", 1)
         if b" 101 " not in cabecalho.split(b"\r\n", 1)[0]:
             raise NavegadorErro("o navegador recusou a conexão de depuração")
@@ -184,14 +187,17 @@ class _Sessao:
     def pedir(self, metodo: str, **params):
         self._id += 1
         meu = self._id
-        self.ws.enviar(json.dumps({"id": meu, "method": metodo, "params": params}))
-        limite = time.monotonic() + TEMPO_PEDIDO
-        while time.monotonic() < limite:
-            msg = json.loads(self.ws.receber())
-            if msg.get("id") == meu:
-                if "error" in msg:
-                    raise NavegadorErro(f"o navegador não fez {metodo}: {msg['error'].get('message', '')}")
-                return msg.get("result") or {}
+        try:
+            self.ws.enviar(json.dumps({"id": meu, "method": metodo, "params": params}))
+            limite = time.monotonic() + TEMPO_PEDIDO
+            while time.monotonic() < limite:
+                msg = json.loads(self.ws.receber())
+                if msg.get("id") == meu:
+                    if "error" in msg:
+                        raise NavegadorErro(f"o navegador não fez {metodo}: {msg['error'].get('message', '')}")
+                    return msg.get("result") or {}
+        except (OSError, ValueError):  # janela fechada no meio, resposta cortada
+            raise NavegadorErro("a janela da ferramenta não respondeu (foi fechada?)") from None
         raise NavegadorErro("o navegador demorou demais para responder")
 
     def fechar(self) -> None:
@@ -232,22 +238,40 @@ class Aba:
         self.sessao.pedir("Page.navigate", url=url)
         self.esperar_carregar()
 
-    def frente(self) -> None:
-        """Traz a janela para a frente (login, captcha ou verificação que a pessoa precisa resolver)."""
+    def _estado_janela(self, estado: str) -> None:
         try:
-            self.sessao.pedir("Page.bringToFront")
             janela = self.sessao.pedir("Browser.getWindowForTarget").get("windowId")
             if janela:
-                self.sessao.pedir("Browser.setWindowBounds", windowId=janela, bounds={"windowState": "normal"})
+                self.sessao.pedir("Browser.setWindowBounds", windowId=janela, bounds={"windowState": estado})
         except NavegadorErro:
             pass
+
+    def frente(self) -> None:
+        """Traz a janela para a frente (login, captcha ou verificação que a pessoa precisa resolver)."""
+        self._estado_janela("normal")
+        try:
+            self.sessao.pedir("Page.bringToFront")
+        except NavegadorErro:
+            pass
+
+    def minimizar(self) -> None:
+        self._estado_janela("minimized")
 
     def fechar(self) -> None:
         self.sessao.fechar()
 
 
 def abrir(url: str, minimizado: bool = False) -> Aba:
-    """Abre a janela da ferramenta na URL (ou uma aba nova nela, se já estiver aberta) e devolve a Aba."""
+    """Abre a janela da ferramenta na URL e devolve a Aba. Se a janela já está aberta, usa a aba que ela tem (sem
+    acumular abas) e só navega até a URL."""
+    if aberto():
+        paginas = [a for a in _http("/json/list") if a.get("type") == "page" and a.get("webSocketDebuggerUrl")]
+        if paginas:
+            aba = Aba(paginas[0])
+            aba.ir(url)
+            if not minimizado:
+                aba.frente()
+            return aba
     if not aberto():
         exe = achar()
         if not exe:

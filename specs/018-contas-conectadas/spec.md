@@ -33,6 +33,8 @@ leitura e só no clique, portal por portal.
 - Q: Quando lê? → A: Só no clique. Nada agendado.
 - Q: A janela aparece? → A: Minimizada durante a leitura; vem para a frente só para login, captcha ou verificação.
   Sem navegador invisível.
+- Q: (2026-10-18, depois do primeiro teste) A Gupy pede login a cada leitura; guardar a senha no `.env`? → A: Não;
+  a janela fica aberta e minimizada enquanto o dashboard roda, e a Gupy pede login só quando o dashboard reinicia.
 - Q: E se a Gupy lançar um MCP com login? → A: Ele substitui a leitura pela janela, sem mudar o resto.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -98,7 +100,8 @@ proposta (mudanças, para o quadro, novas e sem mudança); aplicar só parte del
    atualizada pela [portal] em AAAA-MM-DD: [status]", e a data da etapa é a do portal (ou hoje, se o portal não diz).
 8. **Given** um portal com erro, bloqueio ou pedido de login, **When** a leitura roda, **Then** só aquele portal fica
    de fora, com o motivo; os outros seguem.
-9. **Given** a leitura terminou, **When** a pessoa olha a tela, **Then** a janela do navegador fechou.
+9. **Given** a leitura terminou, **When** a pessoa olha a tela, **Then** a janela do navegador está minimizada (ela fica aberta enquanto o dashboard roda, para a Gupy não
+   esquecer o login).
 
 ---
 
@@ -181,8 +184,9 @@ funcionam com uma página fictícia.
   localmente fora do Git, na página de login do portal. A ferramenta MUST NOT pedir, guardar ou ler senha, nem copiar
   cookies para fora do navegador.
 - **FR-003**: "Desconectar" MUST fechar a janela e apagar a sessão do perfil da ferramenta.
-- **FR-004**: A leitura MUST acontecer só no clique em "Atualizar agora", com a janela minimizada, e MUST fechar a
-  janela ao terminar. Login, captcha ou verificação MUST trazer a janela para a frente e parar a leitura daquele
+- **FR-004**: A leitura MUST acontecer só no clique em "Atualizar agora", com a janela minimizada. A janela MUST ficar
+  aberta e minimizada enquanto o dashboard roda (a Gupy esquece o login ao fechar) e MUST fechar no "Desconectar" ou
+  quando o dashboard para. Login, captcha ou verificação MUST trazer a janela para a frente e parar a leitura daquele
   portal, com aviso.
 - **FR-005**: A leitura MUST ser só leitura: nunca clicar em botões que mudem a candidatura nem enviar nada ao
   portal.

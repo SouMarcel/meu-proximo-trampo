@@ -23,7 +23,7 @@ Esperado: todos passam, incluindo `tests/test_navegador.py` e `tests/test_contas
    - aparece "Lendo suas candidaturas…" e a janela fica minimizada;
    - se a Gupy pedir login, a janela vem para a frente e a tela diz "Faça o login na Gupy na janela que abriu"; um
      clique em "Entrar com LinkedIn" e a leitura segue sozinha;
-   - a janela fecha no fim.
+   - no fim, a janela fica minimizada (aberta); uma segunda leitura logo depois não pede login de novo.
 5. **Proposta:** agrupada por portal. As mudanças e as idas ao quadro vêm marcadas; as novas finalizadas vêm
    desmarcadas. Conferir com o que a Gupy e o Indeed mostram.
 6. **Aplicar marcadas:** o quadro muda só no que foi marcado. O cartão tem a linha "Etapa atualizada pela …", e os

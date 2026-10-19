@@ -27,8 +27,9 @@ priorizado.
   como a da Gupy e do Indeed (a API da página do Rastreador de vagas), por causa do risco de restrição da conta.
 - **Mais portais na conta conectada** (ex.: InHire, Catho, Vagas.com): um módulo em `contas/` por portal, em spec
   própria, com análise de risco.
-- **Gupy sem um clique de login por leitura**: a Gupy esquece o login quando a janela fecha. Manter a janela aberta
-  enquanto o dashboard roda resolveria, mas deixa a porta de depuração aberta por mais tempo; decidir com a pessoa.
+- **Gupy sem login a cada reinício do dashboard**: a Gupy esquece o login quando a janela fecha, então a janela fica
+  aberta enquanto o dashboard roda (decisão de 2026-10-18). Se a Gupy um dia lembrar a sessão, voltar a fechar a
+  janela depois de cada leitura.
 
 ## Divulgação
 

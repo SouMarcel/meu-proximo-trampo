@@ -11,6 +11,7 @@ Contrato de cada módulo de portal:
   ORIGENS                 origens do portal (para apagar a sessão dele ao desconectar)
   AVISO_LOGIN             frase curta sobre o login desse portal, para o painel
   ler(aba) -> [lida]      lê as candidaturas; levanta PortalErro(login=True) quando a sessão acabou
+  logado(url) -> bool     a aba voltou logada ao portal (o login pode passar por outro site, ex.: LinkedIn)
 
 Regras (constituição VI): só leitura. O código de um portal nunca clica em botões, nunca envia formulários e nunca
 pede dados da conta (CPF, celular, perfil): só as rotas de candidaturas. Pede pela API que a própria página usa
