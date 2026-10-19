@@ -16,6 +16,8 @@ import SearchJobsModal from "./components/modals/SearchJobsModal"
 import SearchFiltersModal from "./components/modals/SearchFiltersModal"
 import AISettingsModal from "./components/modals/AISettingsModal"
 import ProfileModal from "./components/modals/ProfileModal"
+import CandidateOnboardingModal from "./components/modals/CandidateOnboardingModal"
+import { Sparkles } from "lucide-react"
 
 export default function App() {
   // Main Data States
@@ -45,6 +47,7 @@ export default function App() {
   const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false)
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<string | null>(null)
