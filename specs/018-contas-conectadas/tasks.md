@@ -103,6 +103,6 @@ description: "Tarefas da feature 018: Contas conectadas (Windows)"
   - lista de desejos (MCP oficial com login, LinkedIn, mais portais, site/demo no GitHub Pages);
   - `python sincronizar_skills.py`.
 - [X] T018 Todos os testes passando; checagem de dados pessoais no diff, inclusive nos dados de teste.
-- [ ] T019 Commit na branch, merge na branch pessoal, reiniciar o dashboard e a pessoa testa pelo quickstart.
-- [ ] T020 Com o OK: merge na `master`, push, merge na branch pessoal, apagar a worktree e a branch e rodar
+- [X] T019 Commit na branch, merge na branch pessoal, reiniciar o dashboard e a pessoa testa pelo quickstart.
+- [X] T020 Com o OK: merge na `master`, push, merge na branch pessoal, apagar a worktree e a branch e rodar
   `graphify update .`.
