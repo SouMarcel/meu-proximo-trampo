@@ -921,10 +921,10 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   }
 
   /* ---------- escrita ---------- */
-  function toast(msg, err) {
+  function toast(msg, err, ms) {
     var t = $("toast"); t.textContent = msg; t.hidden = false;
     if (err) t.setAttribute("data-err", ""); else t.removeAttribute("data-err");
-    clearTimeout(toast._t); toast._t = setTimeout(function () { t.hidden = true; }, err ? 5200 : 2600);
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.hidden = true; }, ms || (err ? 5200 : 2600));
   }
   function erroMsg(e) {
     if (!e || !e.status) return "O servidor do dashboard não respondeu. Inicie com python dash/servidor.py e tente de novo.";
@@ -3392,7 +3392,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         }).join("") + "</section>";
       });
       if (!(r.itens || []).length) h += '<p class="hint">Nada a mudar: o quadro já está em dia com os portais.</p>';
-      else h += '<p class="hint">Marque o que quer gravar no quadro; o que ficar desmarcado não muda nada.</p>';
+      else h = '<p class="banner" role="status"><b>Encontrei ' + r.itens.length + " mudança(s) nos portais.</b> Confira e clique em Aplicar: só o que estiver marcado é gravado no quadro.</p>" + h;
       if (r.sem_mudanca) h += '<p class="hint">' + r.sem_mudanca + " candidatura(s) já estavam em dia.</p>";
       if ((r.historico || []).length) h += '<p class="hint">' + r.historico.length + " candidatura(s) já encerradas nos portais não estão no dashboard. " +
         '<button type="button" class="btn-plain btn-ia-mini" data-ct="historico">Importar como histórico</button></p>';
@@ -3400,14 +3400,27 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     $("ct-corpo").innerHTML = h;
     var algum = (c.portais || []).some(function (p) { return p.conectado; });
     var temItens = r && !lendo && (r.itens || []).length > 0;
-    $("ct-pe").innerHTML = '<button type="button" class="btn-plain" data-ct="fechar">Fechar</button>' +
-      (temItens ? '<button type="button" class="btn-plain" data-ct="aplicar">Aplicar marcadas</button>' : "") +
-      '<button type="button" class="btn-primary" data-ct="ler"' + (lendo || !algum ? " disabled" : "") + ">" + (lendo ? "Lendo…" : "Atualizar agora") + "</button>";
+    $("ct-pe").innerHTML = '<button type="button" class="btn-plain" data-ct="fechar">Fechar</button>' + (temItens
+      ? '<button type="button" class="btn-plain" data-ct="ler">Ler de novo</button><button type="button" class="btn-primary" data-ct="aplicar"></button>'
+      : '<button type="button" class="btn-primary" data-ct="ler"' + (lendo || !algum ? " disabled" : "") + ">" + (lendo ? "Lendo…" : "Atualizar agora") + "</button>");
+    ctContar();
+  }
+  function ctMarcadas() { return [].slice.call($("ct-corpo").querySelectorAll("[data-ct-chave]:checked")).map(function (x) { return x.getAttribute("data-ct-chave"); }); }
+  function ctContar() {
+    var b = $("ct-pe").querySelector('[data-ct="aplicar"]'); if (!b) return;
+    var n = ctMarcadas().length;
+    b.textContent = n ? "Aplicar " + n + (n === 1 ? " mudança" : " mudanças") : "Nada marcado"; b.disabled = !n;
   }
   function ctErro(e) { var el = $("ct-erro"); el.textContent = e ? (e.message || String(e)) : ""; el.hidden = !e; }
   function ctCarregar() {
     return Promise.all([API.get("/api/contas"), API.get("/api/candidaturas/estado")]).then(function (j) {
+      var antes = CT.estado && CT.estado.situacao, r = j[1].resultado || {};
       CT.contas = j[0]; CT.estado = j[1]; ctRender();
+      var acabou = (antes === "lendo" || antes === "aguardando_login") && j[1].situacao === "pronta";
+      if (acabou && !(r.itens || []).length && !(r.historico || []).length && !Object.keys(r.erros || {}).length) {
+        $("dlg-contas").close();
+        toast("Tudo certo: o quadro já está em dia com os portais (" + (r.sem_mudanca || 0) + " candidatura(s) conferida(s)).", false, 6000);
+      }
       clearTimeout(CT.timer);
       if ($("dlg-contas").open && (j[1].situacao === "lendo" || j[1].situacao === "aguardando_login")) CT.timer = setTimeout(ctCarregar, 1500);
     }).catch(function (e) { ctErro(e && e.status === 403 ? { message: "Contas conectadas só funcionam no computador onde a ferramenta roda." } : e); });
@@ -3420,6 +3433,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function bindContas() {
     $("btn-contas").addEventListener("click", abrirContas);
     $("dlg-contas").addEventListener("close", function () { clearTimeout(CT.timer); });
+    $("dlg-contas").addEventListener("change", function (ev) { if (ev.target.hasAttribute("data-ct-chave")) ctContar(); });
     $("dlg-contas").addEventListener("click", function (ev) {
       var t = ev.target.closest("button"); if (!t) return;
       var acao = t.getAttribute("data-ct");
@@ -3447,13 +3461,18 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
           carregar(); ctCarregar();
         }).catch(function (e) { ctErro(e); t.disabled = false; });
       } else if (acao === "aplicar") {
-        var chaves = [].slice.call($("ct-corpo").querySelectorAll("[data-ct-chave]:checked")).map(function (x) { return x.getAttribute("data-ct-chave"); });
+        var chaves = ctMarcadas();
         if (!chaves.length) { ctErro({ message: "Marque pelo menos uma candidatura." }); return; }
-        t.disabled = true;
+        var feitas = ((CT.estado.resultado || {}).itens || []).filter(function (i) { return chaves.indexOf(i.chave) >= 0; });
+        t.disabled = true; t.textContent = "Aplicando…";
         API.send("POST", "/api/candidaturas/aplicar", { chaves: chaves }).then(function (j) {
-          toast(j.aplicados + " vaga(s) atualizada(s) no quadro." + (j.erros && j.erros.length ? " Não deu em " + j.erros.length + "." : ""), !!(j.erros && j.erros.length));
-          carregar(); ctCarregar();
-        }).catch(function (e) { ctErro(e); t.disabled = false; });
+          var erros = j.erros || [];
+          var lista = feitas.slice(0, 3).map(function (i) { return i.titulo + " → " + ctEtapa(i.para); }).join("; ") + (feitas.length > 3 ? "; e mais " + (feitas.length - 3) : "");
+          if (erros.length) { ctErro({ message: "Não deu para gravar: " + erros.join(" · ") }); ctCarregar(); }
+          else $("dlg-contas").close();
+          toast("Quadro atualizado (" + j.aplicados + "): " + lista + "." + (erros.length ? " Com erro: " + erros.length + "." : ""), !!erros.length, 9000);
+          carregar(); if (erros.length) ctCarregar();
+        }).catch(function (e) { ctErro(e); t.disabled = false; ctContar(); });
       }
     });
   }
