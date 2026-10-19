@@ -390,6 +390,8 @@ def validar_analise(a: dict) -> dict:
             raise ValueError("analise_provedor inválido")
         limpos["analise_provedor"] = provedor
         limpos["analise_modelo"] = _texto(a.get("analise_modelo"), 120)
+    if a.get("nota_sem_descricao") and status == "feita":  # nota provisória, sem o texto da vaga (spec 021)
+        limpos["nota_sem_descricao"] = True
     return limpos
 
 
@@ -438,6 +440,8 @@ def completar_descricao(vid: str, descricao: str, tipo_emprego: list[str] | None
         if tipo_emprego:
             doc["tipo_emprego"] = tipo_emprego
         doc.pop("descricao_pendente", None)
+        if descricao and doc.pop("nota_sem_descricao", None):
+            doc["analise_status"] = "pendente"  # a nota provisória é refeita com o texto (spec 021)
         aplicar_criterios(doc)
         doc["atualizada_em"] = agora()
         _gravar(con, vid, doc)
@@ -709,10 +713,13 @@ def aplicar_analises(analises: list[dict]) -> tuple[list[str], list[str]]:
                 problemas.append(f"{vid!r}: vaga não encontrada")
                 continue
             try:
-                doc.update(validar_analise(a))
+                limpos = validar_analise(a)
             except ValueError as e:
                 problemas.append(f"{vid}: {e}")
                 continue
+            doc.update(limpos)
+            if not limpos.get("nota_sem_descricao"):
+                doc.pop("nota_sem_descricao", None)
             aplicar_criterios(doc)
             doc["atualizada_em"] = agora()
             _gravar(con, vid, doc)

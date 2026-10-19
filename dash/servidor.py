@@ -505,6 +505,23 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(dados)
 
+    def _forcar(self, vid: str):
+        """Forçar verificar (spec 021): a nota desta vaga, na frente das automáticas. Só deste computador, como o
+        "Tentar a nota de novo" (gasta a IA da pessoa)."""
+        self._corpo()  # lê o corpo ({}) antes de responder: recusar sem ler derruba a conexão no Windows
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        if not banco.ID_VALIDO.match(vid):
+            return self._erro(404, "rota não encontrada")
+        v = banco.obter(vid)
+        if v is None:
+            return self._erro(404, "vaga não encontrada")
+        if analise._tem_nota(v) and not v.get("nota_sem_descricao"):
+            return self._erro(409, "a vaga já tem nota")
+        if not analise.FILA.forcar(vid):
+            return self._json(409, {"erro": "Para dar nota, ligue uma IA", "sem_ia": True})
+        return self._json(202, {"verificando": analise.FILA.verificando()})
+
     def _id_da_rota(self, caminho: str) -> str | None:
         prefixo = "/api/vagas/"
         if not caminho.startswith(prefixo):
@@ -557,6 +574,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._entrevista(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
+            if metodo == "POST" and caminho.startswith("/api/vagas/") and caminho.endswith("/analisar"):
+                return self._forcar(unquote(caminho[len("/api/vagas/"):-len("/analisar")]))
             vid = self._id_da_rota(caminho)
             if vid is None:
                 return self._erro(404, "rota não encontrada")
@@ -579,7 +598,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._enviar(200, PAGINA.read_bytes(), "text/html; charset=utf-8")
         if caminho == "/api/versao":
             return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando,
-                                    "ia_erro": analise.FILA.erro(), "busca": buscador.BUSCA.resumo()})
+                                    "ia_erro": analise.FILA.erro(), "busca": buscador.BUSCA.resumo(),
+                                    "verificando": analise.FILA.verificando(), "falhas": analise.FILA.falhas_atuais()})
         if caminho == "/api/ia":
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
         if caminho.startswith(("/api/contas", "/api/candidaturas")):
