@@ -1,1 +1,10 @@
-{}
+{
+  "description": "This web app simplifies job searching by aggregating listings from multiple platforms, helping users find employment opportunities efficiently.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
