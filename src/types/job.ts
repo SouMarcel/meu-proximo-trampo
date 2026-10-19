@@ -139,3 +139,40 @@ export interface PerfilUsuario {
   github_url?: string
   curriculo_atualizado_em?: string
 }
+
+export interface PerguntaAnamnese {
+  id: string
+  tipo: "texto" | "lista" | "opcoes" | "multi" | "sim_nao"
+  texto: string
+  opcoes?: { valor: string rotulo: string }[]
+  condicao?: string
+  dica?: string
+}
+
+export interface ItemDiagnostico {
+  tipo: "falta" | "fraco" | "info"
+  mensagem: string
+  pergunta: string
+  pergunta_id?: string
+}
+
+export interface ConflitoMaterial {
+  id: string
+  campo: string
+  opcoes: { valor: string fonte: string }[]
+  escolha?: number
+}
+
+export interface EstadoOnboarding {
+  etapa: "materiais" | "rascunho" | "conflitos" | "anamnese" | "diagnostico" | "revisao" | "filtros" | "concluido"
+  respostas: Record<string, any>
+  materiais: {
+    nome: string
+    tamanho: string
+    tipo: string
+    contatos?: { emails?: string[] telefones?: string[] linkedin?: string }
+  }[]
+  conflitos: ConflitoMaterial[]
+  contato_confirmado: { email?: string telefone?: string linkedin?: string }
+  rascunho_md: string
+}

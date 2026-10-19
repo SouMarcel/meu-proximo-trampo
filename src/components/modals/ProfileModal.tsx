@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import {
   X,
+  Sparkles,
   User,
   Save,
   Plus,
@@ -22,6 +23,7 @@ interface ProfileModalProps {
   perfil: PerfilUsuario
   onSavePerfil: (perfil: PerfilUsuario) => void
   onReloadAllData: () => void
+  onOpenOnboarding: () => void
 }
 
 export default function ProfileModal({
@@ -30,6 +32,7 @@ export default function ProfileModal({
   perfil,
   onSavePerfil,
   onReloadAllData,
+  onOpenOnboarding,
 }: ProfileModalProps) {
   if (!isOpen) return null
 
