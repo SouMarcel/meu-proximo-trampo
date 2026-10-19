@@ -24,6 +24,10 @@ leitura, com as ferramentas `search_jobs`, `get_job_by_id`, `list_companies` e
 
 Não troque por leitura do site da Gupy.
 
+O MCP só traz vagas públicas: não traz as candidaturas da pessoa nem o andamento delas. Para isso,
+o caminho é o botão "Atualizar candidaturas" do dashboard (contas conectadas), que lê a área
+logada na janela da ferramenta com o login feito pela pessoa. Você não lê a área logada por ela.
+
 ## Esta skill ou a buscar-vagas?
 
 - "Busca vagas", "tem vaga nova?", "atualiza o relatório": **buscar-vagas**. A busca

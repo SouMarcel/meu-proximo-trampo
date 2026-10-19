@@ -30,6 +30,7 @@ sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 import analise  # noqa: E402  (análise automática pela IA escolhida)
 import banco  # noqa: E402
 import buscador  # noqa: E402  (busca de vagas pela página, em segundo plano)
+import sincronia  # noqa: E402  (contas conectadas: candidaturas lidas nos portais, spec 018)
 import gerador  # noqa: E402  (currículo pela página, em segundo plano)
 import filtros  # noqa: E402  (filtros.py, na raiz: lê e grava os filtros da busca no config.json)
 import ia  # noqa: E402  (ia.py, na raiz: provedores de IA)
@@ -121,6 +122,67 @@ class Handler(BaseHTTPRequestHandler):
     def _local(self) -> bool:
         """O pedido veio deste computador (não de outro aparelho da rede, com --rede)."""
         return self.client_address[0] in ("127.0.0.1", "::1")
+
+    def _contas(self, metodo: str, caminho: str):
+        """Contas conectadas (spec 018): só deste computador; a leitura só lê e propõe, aplicar grava o marcado."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        contas, nav = sincronia.contas, sincronia.navegador
+        if metodo == "GET" and caminho == "/api/contas":
+            ligados = contas.conectados()
+            return self._json(200, {"navegador": bool(nav.achar()), "ultima": sincronia.LEITURA.ultima(),
+                                    "portais": [{"nome": n, "plataforma": m.PLATAFORMA, "icone": m.ICONE,
+                                                 "conectado": n in ligados, "aviso_login": m.AVISO_LOGIN}
+                                                for n, m in contas.CONTAS.items()]})
+        if metodo == "GET" and caminho == "/api/candidaturas/estado":
+            r = sincronia.LEITURA.resultado
+            itens = [{k: v for k, v in i.items() if k != "lida"} for i in (r or {}).get("itens", [])]
+            return self._json(200, {**sincronia.LEITURA.estado, "resultado": {**r, "itens": itens} if r else None})
+        if metodo != "POST":
+            return self._erro(405, "método não permitido")
+        partes = caminho.strip("/").split("/")  # api / contas / <portal> / <acao>
+        if len(partes) == 4 and partes[1] == "contas":
+            modulo = contas.CONTAS.get(partes[2])
+            if modulo is None:
+                return self._erro(404, "portal desconhecido")
+            try:
+                if partes[3] == "conectar":
+                    nav.abrir(modulo.URL_CANDIDATURAS).frente()
+                    return self._json(200, {"ok": True})
+                if partes[3] == "pronto":
+                    aba = nav.abrir(modulo.URL_CANDIDATURAS)
+                    ok = modulo.HOST_LOGIN not in aba.url()
+                    if ok:
+                        contas.marcar(partes[2], True)
+                        nav.fechar()
+                    return self._json(200, {"conectado": ok})
+                if partes[3] == "desconectar":
+                    contas.marcar(partes[2], False)
+                    if not contas.conectados():
+                        nav.desconectar()  # nenhum portal: apaga o perfil inteiro
+                    else:
+                        aba = nav.abrir("about:blank", minimizado=True)
+                        for origem in modulo.ORIGENS:
+                            aba.sessao.pedir("Storage.clearDataForOrigin", origin=origem, storageTypes="all")
+                        nav.fechar()
+                    return self._json(200, {"ok": True})
+            except (nav.NavegadorErro, contas.PortalErro) as e:
+                return self._erro(409, str(e))
+            return self._erro(404, "rota não encontrada")
+        if caminho == "/api/candidaturas/ler":
+            ligados = contas.conectados()
+            if not ligados:
+                return self._erro(409, "conecte pelo menos um portal")
+            return self._json(200, sincronia.LEITURA.iniciar(ligados))
+        if caminho == "/api/candidaturas/aplicar":
+            chaves = self._corpo().get("chaves")
+            if not isinstance(chaves, list):
+                raise ValueError("chaves inválidas")
+            r = sincronia.LEITURA.aplicar([str(c) for c in chaves][:500])
+            if r["aplicados"]:
+                analise.FILA.pedir()  # vagas novas com descrição ganham nota, como no Adicionar Vaga
+            return self._json(200, r)
+        return self._erro(404, "rota não encontrada")
 
     def _ler_post(self, url: str):
         """Link de post do LinkedIn (spec 016): um pedido à versão pública do post e os dados para o formulário do
@@ -474,6 +536,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._ia(metodo, caminho)
             if caminho in ("/api/perfil", "/api/curriculo-base") or caminho.startswith("/api/perfil/"):
                 return self._perfil(metodo, caminho)
+            if caminho.startswith(("/api/contas", "/api/candidaturas")):
+                return self._contas(metodo, caminho)
             if caminho == "/api/busca" or caminho.startswith("/api/busca/"):
                 return self._busca(metodo, caminho)
             if caminho == "/api/curriculo" or caminho.startswith(("/api/curriculo/", "/api/kit/")):
@@ -509,6 +573,8 @@ class Handler(BaseHTTPRequestHandler):
                                     "ia_erro": analise.FILA.erro(), "busca": buscador.BUSCA.resumo()})
         if caminho == "/api/ia":
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
+        if caminho.startswith(("/api/contas", "/api/candidaturas")):
+            return self._contas("GET", caminho)
         if caminho.startswith("/arquivos/curriculo-base/"):
             return self._arquivo_curriculo_base(caminho.rsplit("/", 1)[1])
         if caminho.startswith("/arquivos/curriculos/"):

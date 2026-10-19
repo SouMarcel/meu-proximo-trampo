@@ -40,6 +40,18 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 - **E-mail de candidatura:** quando a vaga pede o currículo por e-mail, o cartão da vaga
   guarda o e-mail e o assunto e tem o botão "Enviar por e-mail", que só abre o seu
   programa de e-mail; quem envia é você.
+- **Atualizar candidaturas (contas conectadas):** o botão lê o andamento das suas candidaturas
+  na área logada da Gupy e do Indeed e propõe as mudanças no quadro: etapa nova, vaga do
+  relatório que você já se candidatou e candidaturas feitas fora da ferramenta. Você marca o
+  que aplicar; nada é gravado sozinho.
+  - A leitura acontece numa janela do Edge (ou do Chrome) só da ferramenta, com perfil
+    próprio em `.cache/navegador` (fora do Git). Você faz o login nessa janela; a ferramenta
+    nunca vê nem guarda a sua senha e não clica em nada nos portais.
+  - O Indeed mantém o login entre as leituras. A Gupy esquece quando a janela fecha: a cada
+    leitura ela vem para a frente e pede um clique para entrar (ex.: "Entrar com LinkedIn").
+  - "Desconectar" apaga a sessão daquele portal na janela da ferramenta.
+  - O LinkedIn está pronto no código, mas desativado: ele restringe contas que considera
+    automatizadas.
 - **Com IA:** nota de 0 a 100 por vaga, encaixes, lacunas e alertas (híbrido
   disfarçado de remoto, PJ, inglês fluente, vaga afirmativa).
 

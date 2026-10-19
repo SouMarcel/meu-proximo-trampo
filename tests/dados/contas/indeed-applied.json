@@ -1,0 +1,14 @@
+{"success": true, "body": {"appStatusJobs": [
+ {"appTk": "x", "jobTitle": "Analista de Projetos", "jobKey": "aaaaaaaaaaaaaaa1", "jobUrl": "https://br.indeed.com/viewjob?jk=aaaaaaaaaaaaaaa1", "jobCountry": "BR", "jobExpired": false, "jobReported": false, "withdrawn": false, "location": "Remoto", "company": {"name": "Empresa Alfa"},
+  "statuses": {"candidateStatus": {"status": "APPLIED", "timestamp": 1791100800000}, "selfReportedStatus": {"status": "APPLIED", "timestamp": 1791100800000}, "employerJobStatus": {"status": "OPEN", "timestamp": 1791100800000}, "userJobStatus": {"status": "POST_APPLY", "timestamp": 1791100800000}},
+  "applyTime": 1791100800000, "applicationStatus": "DELIVERY_SUCCESS"},
+ {"appTk": "x", "jobTitle": "Coordenador Ágil", "jobKey": "aaaaaaaaaaaaaaa2", "jobUrl": "https://br.indeed.com/viewjob?jk=aaaaaaaaaaaaaaa2", "jobCountry": "BR", "jobExpired": true, "jobReported": false, "withdrawn": false, "location": "Remoto", "company": {"name": "Empresa Beta"},
+  "statuses": {"candidateStatus": {"status": "REJECTED", "timestamp": 1790000000000}, "selfReportedStatus": {"status": "APPLIED", "timestamp": 1789000000000}, "employerJobStatus": null, "userJobStatus": {"status": "POST_APPLY", "timestamp": 1789000000000}},
+  "applyTime": 1789000000000, "applicationStatus": "DELIVERY_SUCCESS"},
+ {"appTk": "x", "jobTitle": "Agile Coach", "jobKey": "aaaaaaaaaaaaaaa3", "jobUrl": "https://br.indeed.com/viewjob?jk=aaaaaaaaaaaaaaa3", "jobCountry": "BR", "jobExpired": false, "jobReported": false, "withdrawn": false, "location": "Rio de Janeiro, RJ", "company": {"name": "Empresa Gama"},
+  "statuses": {"candidateStatus": null, "selfReportedStatus": {"status": "NOT_INTERESTED", "timestamp": 1788000000000}, "employerJobStatus": null, "userJobStatus": {"status": "POST_APPLY", "timestamp": 1787000000000}},
+  "applyTime": 1787000000000, "applicationStatus": null},
+ {"appTk": "x", "jobTitle": "Product Owner", "jobKey": "aaaaaaaaaaaaaaa4", "jobUrl": "https://br.indeed.com/viewjob?jk=aaaaaaaaaaaaaaa4", "jobCountry": "BR", "jobExpired": true, "jobReported": false, "withdrawn": false, "location": "Remoto", "company": {"name": "Empresa Delta"},
+  "statuses": {"candidateStatus": {"status": "APPLIED", "timestamp": 1786000000000}, "selfReportedStatus": {"status": "APPLIED", "timestamp": 1786000000000}, "employerJobStatus": {"status": "CLOSED", "timestamp": 1786500000000}, "userJobStatus": {"status": "POST_APPLY", "timestamp": 1786000000000}},
+  "applyTime": 1786000000000, "applicationStatus": "DELIVERY_SUCCESS"}
+]}}

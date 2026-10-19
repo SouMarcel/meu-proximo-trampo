@@ -356,6 +356,12 @@ td .sub { color: var(--muted); font-size: 12.5px; }
 .fb { display: flex; flex-direction: column; gap: 20px; max-height: calc(100vh - 260px); overflow-y: auto; padding-right: 4px; }
 .fb-sec { display: flex; flex-direction: column; gap: 8px; }
 .fb-sec h3 { margin: 0; font-size: 11.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.ct-portal { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ct-portal b { min-width: 70px; }
+.ct-portal .hint { flex-basis: 100%; margin: 0; }
+.ct-item { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-top: 1px solid var(--line); }
+.ct-item p { margin: 2px 0 0; }
+.ct-mudanca { font-weight: 700; }
 .fb-sub { margin-left: 26px; display: flex; flex-direction: column; gap: 8px; }
 .pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .pill { border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 13px; }
@@ -496,6 +502,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       </button>
       <button class="btn-plain" id="btn-perfil" title="Montar ou atualizar o seu perfil a partir do currículo e do LinkedIn">Meu perfil</button>
       <button class="btn-plain" id="btn-ia" title="Escolher a IA que dá as notas às vagas">IA</button>
+      <button class="btn-plain" id="btn-contas" title="Atualizar o quadro com o andamento das suas candidaturas nos portais (Gupy, Indeed)">Atualizar candidaturas</button>
       <button class="btn-primary" id="btn-add">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
         Adicionar Vaga
@@ -669,6 +676,21 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     <div class="fb" id="kit-corpo"></div>
     <p class="fb-erro" id="kit-erro" role="alert" hidden></p>
     <div class="dlg-foot" id="kit-pe"></div>
+  </div>
+</dialog>
+
+<dialog id="dlg-contas" aria-labelledby="ct-titulo">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div>
+        <h2 id="ct-titulo">Atualizar candidaturas</h2>
+        <p>Lê o andamento das suas candidaturas na área logada de cada portal, numa janela do navegador só da ferramenta, e propõe as mudanças no quadro. Você faz o login na janela; nada é gravado sem você marcar.</p>
+      </div>
+      <button type="button" class="more" data-ct="fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="fb" id="ct-corpo"></div>
+    <p class="fb-erro" id="ct-erro" role="alert" hidden></p>
+    <div class="dlg-foot" id="ct-pe"></div>
   </div>
 </dialog>
 
@@ -3332,6 +3354,102 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     });
   }
 
+  /* ---------- contas conectadas (spec 018) ---------- */
+  var CT = { contas: null, estado: null, conectando: null, timer: null };
+  function ctEtapa(p) {
+    if (!p || !p.etapa) return "Relatório";
+    var e = ETAPAS.filter(function (x) { return x.k === p.etapa; })[0];
+    return (e ? e.label : p.etapa) + (p.resultado ? " · " + (RESULTADOS[p.resultado] || p.resultado) : "");
+  }
+  function ctTexto(i) {
+    if (i.tipo === "mudar") return ctEtapa(i.de) + " → " + ctEtapa(i.para);
+    if (i.tipo === "quadro") return "Relatório → " + ctEtapa(i.para);
+    if (i.tipo === "nova") return "Nova no quadro · " + ctEtapa(i.para);
+    return "Sem mudança de etapa";
+  }
+  function ctRender() {
+    var c = CT.contas || {}, e = CT.estado || {}, r = e.resultado, h = "";
+    var lendo = e.situacao === "lendo" || e.situacao === "aguardando_login";
+    if (!c.navegador) h += '<p class="fb-erro">Precisa do Edge ou do Chrome neste computador.</p>';
+    h += '<section class="fb-sec"><h3>Portais</h3>' + (c.portais || []).map(function (p) {
+      var acao = p.conectado ? '<span class="hint">Conectado</span><button type="button" class="btn-plain btn-ia-mini" data-ct-desc="' + esc(p.nome) + '"' + (lendo ? " disabled" : "") + ">Desconectar</button>"
+        : CT.conectando === p.nome ? '<span class="hint">Faça o login na janela que abriu e clique em Pronto.</span><button type="button" class="btn-primary btn-ia-mini" data-ct-pronto="' + esc(p.nome) + '">Pronto</button>'
+        : '<button type="button" class="btn-plain btn-ia-mini" data-ct-con="' + esc(p.nome) + '"' + (lendo || !c.navegador ? " disabled" : "") + ">Conectar</button>";
+      return '<div class="ct-portal"><span aria-hidden="true">' + (p.icone || "") + "</span><b>" + esc(p.plataforma) + "</b>" + acao + '<p class="hint">' + esc(p.aviso_login) + "</p></div>";
+    }).join("") + "</section>";
+    if (e.situacao === "lendo") h += '<p class="banner" role="status">Lendo suas candidaturas' + (e.portal ? " (" + esc(e.portal) + ")" : "") + ", aguarde…</p>";
+    if (e.situacao === "aguardando_login") h += '<p class="banner" role="status">A ' + esc(e.portal) + " pediu login: faça o login na janela que abriu (ela veio para a frente). A leitura segue sozinha.</p>";
+    if (r && !lendo) {
+      Object.keys(r.erros || {}).forEach(function (p) { h += '<p class="fb-erro">' + esc(p) + ": " + esc(r.erros[p]) + "</p>"; });
+      var grupos = {};
+      (r.itens || []).forEach(function (i) { (grupos[i.plataforma] = grupos[i.plataforma] || []).push(i); });
+      Object.keys(grupos).forEach(function (pl) {
+        h += '<section class="fb-sec"><h3>' + esc(pl) + "</h3>" + grupos[pl].map(function (i) {
+          var marca = i.tipo === "info" ? '<span style="width:16px"></span>' : '<input type="checkbox" data-ct-chave="' + esc(i.chave) + '"' + (i.marcado ? " checked" : "") + ' aria-label="Aplicar: ' + esc(i.titulo) + '">';
+          var extra = [i.nota].concat(i.avisos || []).filter(Boolean).join(" · ");
+          var link = safeUrl(i.url) ? ' · <a href="' + esc(i.url) + '" target="_blank" rel="noopener">abrir</a>' : "";
+          return '<label class="ct-item">' + marca + "<div><b>" + esc(i.titulo) + "</b> — " + esc(i.empresa || "") + link +
+            '<p class="ct-mudanca">' + esc(ctTexto(i)) + "</p>" + (extra ? '<p class="hint">' + esc(extra) + "</p>" : "") + "</div></label>";
+        }).join("") + "</section>";
+      });
+      if (!(r.itens || []).length) h += '<p class="hint">Nada a mudar: o quadro já está em dia com os portais.</p>';
+      if (r.sem_mudanca) h += '<p class="hint">' + r.sem_mudanca + " candidatura(s) já estavam em dia.</p>";
+    }
+    $("ct-corpo").innerHTML = h;
+    var algum = (c.portais || []).some(function (p) { return p.conectado; });
+    var temItens = r && !lendo && (r.itens || []).some(function (i) { return i.tipo !== "info"; });
+    $("ct-pe").innerHTML = '<button type="button" class="btn-plain" data-ct="fechar">Fechar</button>' +
+      (temItens ? '<button type="button" class="btn-plain" data-ct="aplicar">Aplicar marcadas</button>' : "") +
+      '<button type="button" class="btn-primary" data-ct="ler"' + (lendo || !algum ? " disabled" : "") + ">" + (lendo ? "Lendo…" : "Atualizar agora") + "</button>";
+  }
+  function ctErro(e) { var el = $("ct-erro"); el.textContent = e ? (e.message || String(e)) : ""; el.hidden = !e; }
+  function ctCarregar() {
+    return Promise.all([API.get("/api/contas"), API.get("/api/candidaturas/estado")]).then(function (j) {
+      CT.contas = j[0]; CT.estado = j[1]; ctRender();
+      clearTimeout(CT.timer);
+      if ($("dlg-contas").open && (j[1].situacao === "lendo" || j[1].situacao === "aguardando_login")) CT.timer = setTimeout(ctCarregar, 1500);
+    }).catch(function (e) { ctErro(e && e.status === 403 ? { message: "Contas conectadas só funcionam no computador onde a ferramenta roda." } : e); });
+  }
+  function abrirContas() {
+    ctErro(null); CT.conectando = null;
+    if (!$("dlg-contas").open) $("dlg-contas").showModal();
+    ctCarregar();
+  }
+  function bindContas() {
+    $("btn-contas").addEventListener("click", abrirContas);
+    $("dlg-contas").addEventListener("close", function () { clearTimeout(CT.timer); });
+    $("dlg-contas").addEventListener("click", function (ev) {
+      var t = ev.target.closest("button"); if (!t) return;
+      var acao = t.getAttribute("data-ct");
+      if (acao === "fechar") { $("dlg-contas").close(); return; }
+      ctErro(null);
+      if (t.hasAttribute("data-ct-con")) {
+        var p = t.getAttribute("data-ct-con"); t.disabled = true;
+        API.send("POST", "/api/contas/" + encodeURIComponent(p) + "/conectar").then(function () { CT.conectando = p; ctRender(); }).catch(ctErro).then(function () { t.disabled = false; });
+      } else if (t.hasAttribute("data-ct-pronto")) {
+        var q = t.getAttribute("data-ct-pronto"); t.disabled = true;
+        API.send("POST", "/api/contas/" + encodeURIComponent(q) + "/pronto").then(function (j) {
+          if (j.conectado) { CT.conectando = null; toast("Conectado."); ctCarregar(); }
+          else { ctErro({ message: "O login ainda não foi concluído na janela. Termine o login e clique em Pronto de novo." }); t.disabled = false; }
+        }).catch(function (e) { ctErro(e); t.disabled = false; });
+      } else if (t.hasAttribute("data-ct-desc")) {
+        var d = t.getAttribute("data-ct-desc"); t.disabled = true;
+        API.send("POST", "/api/contas/" + encodeURIComponent(d) + "/desconectar").then(function () { toast("Desconectado: a sessão desse portal foi apagada da janela da ferramenta."); ctCarregar(); }).catch(ctErro);
+      } else if (acao === "ler") {
+        t.disabled = true;
+        API.send("POST", "/api/candidaturas/ler").then(ctCarregar).catch(function (e) { ctErro(e); t.disabled = false; });
+      } else if (acao === "aplicar") {
+        var chaves = [].slice.call($("ct-corpo").querySelectorAll("[data-ct-chave]:checked")).map(function (x) { return x.getAttribute("data-ct-chave"); });
+        if (!chaves.length) { ctErro({ message: "Marque pelo menos uma candidatura." }); return; }
+        t.disabled = true;
+        API.send("POST", "/api/candidaturas/aplicar", { chaves: chaves }).then(function (j) {
+          toast(j.aplicados + " vaga(s) atualizada(s) no quadro." + (j.erros && j.erros.length ? " Não deu em " + j.erros.length + "." : ""), !!(j.erros && j.erros.length));
+          carregar(); ctCarregar();
+        }).catch(function (e) { ctErro(e); t.disabled = false; });
+      }
+    });
+  }
+
   /* ---------- dados ---------- */
   var carregando = null;
   function carregar() {
@@ -3372,6 +3490,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   bindIA();
   bindPerfil();
   bindEntrevista();
+  bindContas();
   renderAgora();
   carregar();
   carregarIA();

@@ -21,7 +21,11 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   código 5; repita com `--confirmar-espera` só com o OK da pessoa). O perfil da pessoa não é lido do
   LinkedIn, só dos arquivos que ela baixa. Um link de post colado no Adicionar Vaga é uma consulta
   pontual à versão pública do post (`fontes/post.py`), sem login, que para no primeiro bloqueio e não
-  mexe na espera da busca.
+  mexe na espera da busca. **Conta conectada** (constituição VI): o botão "Atualizar candidaturas" lê
+  a área logada da Gupy e do Indeed numa janela do navegador só da ferramenta (`navegador.py`,
+  `contas/`), com o login feito pela pessoa; só leitura, só no clique, e a proposta só é gravada com
+  a marcação dela. Nunca peça, guarde ou digite senha; nunca clique em botões dos portais. O LinkedIn
+  fica desativado.
 
 ## Como rodar os scripts
 

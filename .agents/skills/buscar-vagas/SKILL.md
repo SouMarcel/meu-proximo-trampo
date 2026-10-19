@@ -252,7 +252,11 @@ de post ou mensagem"; você não grava a vaga por ela.
 ## Fluxo C: perguntas sobre o quadro
 
 "Em que pé estão minhas candidaturas?", "o que está em entrevista?": rode
-`PY dash/banco.py quadro` (ou `--etapa entrevista`) e responda com o que está lá.
+`PY dash/banco.py quadro` (ou `--etapa entrevista`) e responda com o que está lá. Se a pessoa
+quer o quadro em dia com a Gupy e o Indeed, sugira o botão "Atualizar candidaturas" do
+dashboard (contas conectadas): ele lê a área logada na janela da ferramenta, com o login feito
+por ela, e propõe as mudanças para ela marcar. Você não abre a área logada dos portais nem
+aplica a proposta por ela.
 "O que essa vaga pede?", "o que falta para eu me candidatar?": `PY dash/banco.py kit ID`
 (autorização, contratação, inglês, fuso, riscos e o checklist com o que a pessoa já
 marcou). "Tenho follow-up para fazer?": `PY dash/banco.py lembretes` (7 e 14 dias depois de
