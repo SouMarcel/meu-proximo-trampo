@@ -142,10 +142,10 @@ export default function JobCard({
             {vaga.sinais.slice(0, 2).map((sinal, i) => (
               <span
                 key={i}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                className="flex items-start gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 max-w-full"
               >
-                <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                <span className="truncate max-w-[190px]">{sinal}</span>
+                <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
+                <span className="whitespace-normal break-words leading-tight">{sinal}</span>
               </span>
             ))}
           </div>
