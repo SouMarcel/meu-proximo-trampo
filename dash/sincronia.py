@@ -31,7 +31,7 @@ PASSO_LOGIN = 3
 
 def _item(tipo: str, lida: dict, vaga: dict | None, para: dict) -> dict:
     de = {"etapa": (vaga or {}).get("etapa"), "resultado": (vaga or {}).get("resultado")} if vaga else None
-    marcado = tipo in ("mudar", "quadro") or (tipo == "nova" and lida.get("ativa"))
+    marcado = tipo != "historico"  # o que aparece na lista é mudança de verdade e vem marcado
     return {"chave": f"{lida['portal']}:{lida['id'] or lida['titulo']}", "portal": lida["portal"],
             "plataforma": lida["plataforma"], "tipo": tipo, "vaga_id": (vaga or {}).get("id"),
             "titulo": (vaga or {}).get("titulo") or lida["titulo"], "empresa": (vaga or {}).get("empresa") or lida["empresa"],
@@ -40,8 +40,13 @@ def _item(tipo: str, lida: dict, vaga: dict | None, para: dict) -> dict:
 
 
 def proposta(lidas: list[dict], vagas: list[dict]) -> dict:
-    """{"itens": [...], "sem_mudanca": n}. Casamento: os ids que o banco conhece (banco.ids_da_vaga) e, na falta,
-    cargo + empresa no banco inteiro."""
+    """{"itens": [...], "historico": [...], "sem_mudanca": n}. Casamento: os ids que o banco conhece
+    (banco.ids_da_vaga) e, na falta, cargo + empresa no banco inteiro.
+
+    Na lista ("itens") só entra mudança de verdade, já marcada: etapa à frente da do quadro, vaga do Relatório que a
+    pessoa já se candidatou e candidatura nova em andamento. Etapa igual (ou o portal atrás) só conta em sem_mudanca.
+    Candidatura nova que já acabou no portal (encerrada, vaga fechada) vai para "historico": uma linha na página, com
+    o botão para importar tudo como Encerrada (decisão da pessoa, 2026-10-18)."""
     por_id, por_chave = {}, {}
     id_gupy = banco._id_gupy()
     for v in vagas:
@@ -51,6 +56,7 @@ def proposta(lidas: list[dict], vagas: list[dict]) -> dict:
         if k:
             por_chave.setdefault(k, v)
     escolhidos: dict[str, dict] = {}
+    historico: dict[str, dict] = {}
     sem_mudanca = 0
     for x in lidas:
         vaga = por_id.get(x["id"]) if x.get("id") else None
@@ -59,23 +65,25 @@ def proposta(lidas: list[dict], vagas: list[dict]) -> dict:
         if vaga is None:
             if not x["etapa"] or not x["id"]:
                 continue
+            if x["etapa"] == "encerrada" or not x.get("ativa"):  # já acabou no portal: histórico, não mudança
+                fim = {"etapa": "encerrada", "resultado": para["resultado"]}
+                historico.setdefault(f"{x['portal']}:{x['id']}", _item("historico", x, None, fim))
+                continue
             item = _item("nova", x, None, para)
-        elif not vaga.get("etapa"):
-            item = _item("quadro", x, vaga, para) if x["etapa"] else _item("info", x, vaga, para)
-        elif contas.avancou(vaga.get("etapa"), x["etapa"]):
+        elif not vaga.get("etapa") and x["etapa"]:
+            item = _item("quadro", x, vaga, para)
+        elif vaga.get("etapa") and contas.avancou(vaga.get("etapa"), x["etapa"]):
             item = _item("mudar", x, vaga, para)
         else:
-            if x["avisos"]:
-                escolhidos.setdefault(f"info:{vaga['id']}:{x['portal']}", _item("info", x, vaga, para))
             sem_mudanca += 1
             continue
         alvo = vaga["id"] if vaga else item["chave"]
         atual = escolhidos.get(alvo)  # mesma vaga em dois portais: fica a etapa mais avançada
         if atual is None or contas.avancou((atual["para"] or {}).get("etapa"), para["etapa"]):
             escolhidos[alvo] = item
-    ordem = {"mudar": 0, "quadro": 1, "nova": 2, "info": 3}
-    itens = sorted(escolhidos.values(), key=lambda i: (i["plataforma"], ordem[i["tipo"]], not i["marcado"], i["titulo"]))
-    return {"itens": itens, "sem_mudanca": sem_mudanca}
+    ordem = {"mudar": 0, "quadro": 1, "nova": 2}
+    itens = sorted(escolhidos.values(), key=lambda i: (i["plataforma"], ordem[i["tipo"]], i["titulo"]))
+    return {"itens": itens, "historico": list(historico.values()), "sem_mudanca": sem_mudanca}
 
 
 def _anotacao(item: dict) -> str:
@@ -107,8 +115,8 @@ def aplicar(itens: list[dict]) -> dict:
         try:
             campos = {"etapa": para["etapa"], "etapa_em": lida["data"],
                       "resultado": para["resultado"] if para["etapa"] == "encerrada" else None}
-            if item["tipo"] == "nova":
-                publico = _descricao(lida)
+            if item["tipo"] in ("nova", "historico"):
+                publico = _descricao(lida) if item["tipo"] == "nova" else {}  # histórico: sem pedido a mais
                 dados = {**{k: v for k, v in publico.items() if v}, "id": lida["id"],
                          "plataforma": lida["plataforma"], "titulo": publico.get("titulo") or lida["titulo"],
                          "empresa": publico.get("empresa") or lida["empresa"], "local": publico.get("local") or lida["local"],
@@ -221,12 +229,16 @@ class Leitura:
         except (OSError, ValueError):
             return None
 
-    def aplicar(self, chaves: list[str]) -> dict:
-        """Aplica os itens da última proposta cujas chaves a pessoa marcou (o conteúdo vem do servidor, não da
-        página)."""
+    def aplicar(self, chaves: list[str], historico: bool = False) -> dict:
+        """Aplica os itens da última proposta cujas chaves a pessoa marcou, ou (historico=True) importa o histórico
+        inteiro como Encerrada. O conteúdo vem do servidor, não da página."""
         if self.rodando() or not self.resultado:
             raise ValueError("não há proposta para aplicar; atualize as candidaturas")
-        marcados = [i for i in self.resultado["itens"] if i["chave"] in set(chaves) and i["tipo"] != "info"]
+        if historico:
+            r = aplicar(self.resultado.get("historico") or [])
+            self.resultado["historico"] = []
+            return r
+        marcados = [i for i in self.resultado["itens"] if i["chave"] in set(chaves)]
         r = aplicar(marcados)
         self.resultado["itens"] = [i for i in self.resultado["itens"] if i not in marcados]
         return r

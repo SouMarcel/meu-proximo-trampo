@@ -136,8 +136,9 @@ class Handler(BaseHTTPRequestHandler):
                                                 for n, m in contas.CONTAS.items()]})
         if metodo == "GET" and caminho == "/api/candidaturas/estado":
             r = sincronia.LEITURA.resultado
-            itens = [{k: v for k, v in i.items() if k != "lida"} for i in (r or {}).get("itens", [])]
-            return self._json(200, {**sincronia.LEITURA.estado, "resultado": {**r, "itens": itens} if r else None})
+            limpar = lambda lista: [{k: v for k, v in i.items() if k != "lida"} for i in lista or []]
+            res = {**r, "itens": limpar(r.get("itens")), "historico": limpar(r.get("historico"))} if r else None
+            return self._json(200, {**sincronia.LEITURA.estado, "resultado": res})
         if metodo != "POST":
             return self._erro(405, "método não permitido")
         partes = caminho.strip("/").split("/")  # api / contas / <portal> / <acao>
@@ -177,10 +178,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._erro(409, "conecte pelo menos um portal")
             return self._json(200, sincronia.LEITURA.iniciar(ligados))
         if caminho == "/api/candidaturas/aplicar":
-            chaves = self._corpo().get("chaves")
+            corpo = self._corpo()
+            chaves = corpo.get("chaves") or []
             if not isinstance(chaves, list):
                 raise ValueError("chaves inválidas")
-            r = sincronia.LEITURA.aplicar([str(c) for c in chaves][:500])
+            r = sincronia.LEITURA.aplicar([str(c) for c in chaves][:500], historico=corpo.get("historico") is True)
             if r["aplicados"]:
                 analise.FILA.pedir()  # vagas novas com descrição ganham nota, como no Adicionar Vaga
             return self._json(200, r)

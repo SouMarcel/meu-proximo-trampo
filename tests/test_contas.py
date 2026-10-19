@@ -221,9 +221,32 @@ class TestProposta(Base):
         self.assertNotIn("indeed:aaaaaaaaaaaaaaa1", itens)  # entrevista no quadro, aplicada no portal: não rebaixa
         self.assertNotIn("gupy:gupya-1000003", itens)  # encerrada no quadro (casou por cargo + empresa): fica
         self.assertEqual((itens["gupy:gupy-9000002"]["tipo"], itens["gupy:gupy-9000002"]["marcado"]), ("nova", True))
-        self.assertEqual((itens["gupy:gupya-1000005"]["tipo"], itens["gupy:gupya-1000005"]["marcado"]), ("nova", False))
-        self.assertFalse(itens["indeed:aaaaaaaaaaaaaaa3"]["marcado"])  # nova já encerrada: desmarcada
+        self.assertTrue(all(i["marcado"] for i in r["itens"]))  # na lista só mudança de verdade, já marcada
+        historico = {i["chave"] for i in r["historico"]}  # encerradas fora do dashboard: só a linha do histórico
+        self.assertTrue({"gupy:gupya-1000005", "indeed:aaaaaaaaaaaaaaa3", "indeed:aaaaaaaaaaaaaaa4"} <= historico)
+        self.assertFalse(historico & set(itens))
         self.assertGreaterEqual(r["sem_mudanca"], 2)
+
+    def test_etapa_igual_nao_aparece(self):  # mesmo com aviso de vaga fechada
+        self.vaga("aaaaaaaaaaaaaaa4", "Indeed", "Product Owner", "Empresa Delta", "aplicada")
+        lida = indeed.traduzir(APLICADAS["body"]["appStatusJobs"][3], None, HOJE)
+        self.assertTrue(lida["avisos"])
+        r = sincronia.proposta([lida], banco.listar_vagas())
+        self.assertEqual((r["itens"], r["historico"], r["sem_mudanca"]), ([], [], 1))
+
+    def test_importar_historico(self):
+        r = self.montar()
+        leitura = sincronia.Leitura()
+        leitura.resultado = r
+        n = len(r["historico"])
+        res = leitura.aplicar([], historico=True)
+        self.assertEqual((res["aplicados"], res["erros"]), (n, []))
+        g = banco.obter("gupya-1000005")
+        self.assertEqual((g["etapa"], g["triagem"]), ("encerrada", "seguir"))
+        d = banco.obter("aaaaaaaaaaaaaaa3")
+        self.assertEqual((d["etapa"], d["resultado"]), ("encerrada", "desisti"))
+        self.assertEqual(leitura.resultado["historico"], [])
+        self.assertEqual(self.montar(criar=False)["historico"], [])
 
     def test_aplicar_so_o_marcado(self):  # SC-003
         r = self.montar()

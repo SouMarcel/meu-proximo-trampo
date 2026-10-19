@@ -3364,8 +3364,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function ctTexto(i) {
     if (i.tipo === "mudar") return ctEtapa(i.de) + " → " + ctEtapa(i.para);
     if (i.tipo === "quadro") return "Relatório → " + ctEtapa(i.para);
-    if (i.tipo === "nova") return "Nova no quadro · " + ctEtapa(i.para);
-    return "Sem mudança de etapa";
+    return "Nova no quadro · " + ctEtapa(i.para);
   }
   function ctRender() {
     var c = CT.contas || {}, e = CT.estado || {}, r = e.resultado, h = "";
@@ -3385,7 +3384,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       (r.itens || []).forEach(function (i) { (grupos[i.plataforma] = grupos[i.plataforma] || []).push(i); });
       Object.keys(grupos).forEach(function (pl) {
         h += '<section class="fb-sec"><h3>' + esc(pl) + "</h3>" + grupos[pl].map(function (i) {
-          var marca = i.tipo === "info" ? '<span style="width:16px"></span>' : '<input type="checkbox" data-ct-chave="' + esc(i.chave) + '"' + (i.marcado ? " checked" : "") + ' aria-label="Aplicar: ' + esc(i.titulo) + '">';
+          var marca = '<input type="checkbox" data-ct-chave="' + esc(i.chave) + '"' + (i.marcado ? " checked" : "") + ' aria-label="Aplicar: ' + esc(i.titulo) + '" title="Marcada: o botão Aplicar marcadas grava esta mudança no quadro">';
           var extra = [i.nota].concat(i.avisos || []).filter(Boolean).join(" · ");
           var link = safeUrl(i.url) ? ' · <a href="' + esc(i.url) + '" target="_blank" rel="noopener">abrir</a>' : "";
           return '<label class="ct-item">' + marca + "<div><b>" + esc(i.titulo) + "</b> — " + esc(i.empresa || "") + link +
@@ -3393,11 +3392,14 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
         }).join("") + "</section>";
       });
       if (!(r.itens || []).length) h += '<p class="hint">Nada a mudar: o quadro já está em dia com os portais.</p>';
+      else h += '<p class="hint">Marque o que quer gravar no quadro; o que ficar desmarcado não muda nada.</p>';
       if (r.sem_mudanca) h += '<p class="hint">' + r.sem_mudanca + " candidatura(s) já estavam em dia.</p>";
+      if ((r.historico || []).length) h += '<p class="hint">' + r.historico.length + " candidatura(s) já encerradas nos portais não estão no dashboard. " +
+        '<button type="button" class="btn-plain btn-ia-mini" data-ct="historico">Importar como histórico</button></p>';
     }
     $("ct-corpo").innerHTML = h;
     var algum = (c.portais || []).some(function (p) { return p.conectado; });
-    var temItens = r && !lendo && (r.itens || []).some(function (i) { return i.tipo !== "info"; });
+    var temItens = r && !lendo && (r.itens || []).length > 0;
     $("ct-pe").innerHTML = '<button type="button" class="btn-plain" data-ct="fechar">Fechar</button>' +
       (temItens ? '<button type="button" class="btn-plain" data-ct="aplicar">Aplicar marcadas</button>' : "") +
       '<button type="button" class="btn-primary" data-ct="ler"' + (lendo || !algum ? " disabled" : "") + ">" + (lendo ? "Lendo…" : "Atualizar agora") + "</button>";
@@ -3438,6 +3440,12 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       } else if (acao === "ler") {
         t.disabled = true;
         API.send("POST", "/api/candidaturas/ler").then(ctCarregar).catch(function (e) { ctErro(e); t.disabled = false; });
+      } else if (acao === "historico") {
+        t.disabled = true;
+        API.send("POST", "/api/candidaturas/aplicar", { historico: true }).then(function (j) {
+          toast(j.aplicados + " candidatura(s) importada(s) como Encerrada.");
+          carregar(); ctCarregar();
+        }).catch(function (e) { ctErro(e); t.disabled = false; });
       } else if (acao === "aplicar") {
         var chaves = [].slice.call($("ct-corpo").querySelectorAll("[data-ct-chave]:checked")).map(function (x) { return x.getAttribute("data-ct-chave"); });
         if (!chaves.length) { ctErro({ message: "Marque pelo menos uma candidatura." }); return; }
