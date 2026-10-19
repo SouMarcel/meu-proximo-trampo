@@ -412,6 +412,8 @@ details.desc > summary:hover { color: var(--fg); }
 .btn-skip:hover { color: var(--fg); }
 .decided { font-size: 12.5px; color: var(--muted); }
 .decide button:disabled { opacity: .5; cursor: not-allowed; }
+.forcar { display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed var(--line-strong); padding-top: 8px; }
+.forcar .hint { margin: 0; font-size: 12px; }
 details.baixa { border: 1px dashed var(--line-strong); border-radius: 12px; padding: 12px 14px; }
 details.baixa > summary { cursor: pointer; font-weight: 700; color: var(--muted); }
 details.baixa[open] > summary { margin-bottom: 12px; }
@@ -760,7 +762,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   var S = {
     vagas: [], busca: null, loaded: false, offline: false, versao: null, canWrite: true,
     aba: "quadro", vista: "quadro", plataforma: "", triagem: "pendente", detId: null, menuFor: null,
-    filtro: { niveis: [], modos: [], ader: null, dias: null }, ordem: "aderencia", configExiste: null
+    filtro: { niveis: [], modos: [], ader: null, dias: null }, ordem: "aderencia", configExiste: null,
+    verificando: [], falhas: {}, semIA: {}
   };
   var fila = {}; // uma escrita por vez por vaga
 
@@ -999,6 +1002,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     if (v.descricao_pendente) h += '<span class="chip" data-b="pend" title="O portal limita os pedidos: o texto é lido na próxima busca, e só então a vaga recebe nota">Descrição pendente</span>';
     else if (v.analise_status === "pendente") h += '<span class="chip" data-b="pend">Aguardando análise</span>';
     else if (bnd) h += '<span class="chip" data-b="' + bnd + '">Aderência ' + v.aderencia + "</span>";
+    if (bnd && v.nota_sem_descricao) h += '<span class="chip" data-b="pend" title="Nota provisória, dada sem o texto da vaga; é refeita quando a descrição chegar">Nota sem a descrição</span>';
     if (v.etapa === "encerrada" && v.resultado) h += '<span class="chip result" data-r="' + esc(v.resultado) + '">' + esc(RESULTADOS[v.resultado] || v.resultado) + "</span>";
     return h ? '<div class="chips">' + h + "</div>" : "";
   }
@@ -1065,6 +1069,34 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
   function temNota(v) { return typeof v.aderencia === "number"; }
   function nota(v) { return temNota(v) ? v.aderencia : -1; }
 
+  // Forçar verificar (spec 021): pede a nota desta vaga; o estado vem de /api/versao (conferir)
+  function forcarHTML(v) {
+    var h = '<div class="forcar">';
+    if (S.verificando.indexOf(v.id) >= 0) {
+      h += '<button class="btn-skip" disabled>Verificando…</button><p class="hint">A nota chega em alguns minutos.</p>';
+    } else {
+      h += '<button class="btn-skip" data-forcar="' + esc(v.id) + '"' + (S.canWrite ? "" : " disabled") + ' title="Pede a nota desta vaga à IA agora">Forçar verificar</button>';
+      if (S.semIA[v.id]) h += '<p class="hint">Para dar nota, ligue uma IA. <button class="btn-plain btn-ia-mini" data-abrir-ia>IA</button></p>';
+      else if (S.falhas[v.id]) h += '<p class="hint">Não deu para verificar: ' + esc(S.falhas[v.id].motivo) + "</p>";
+    }
+    return h + "</div>";
+  }
+  function forcar(id, botao) {
+    botao.disabled = true;
+    delete S.semIA[id];
+    API.send("POST", "/api/vagas/" + encodeURIComponent(id) + "/analisar", {}).then(function (j) {
+      S.verificando = j.verificando || [id];
+      delete S.falhas[id];
+      toast("Verificando a vaga: a nota chega em alguns minutos.");
+      render();
+    }).catch(function (e) {
+      if (e && e.dados && e.dados.sem_ia) { S.semIA[id] = true; toast("Para dar nota, ligue uma IA (botão IA, no topo).", true); render(); return; }
+      toast(e && e.message ? e.message : erroMsg(e), true);
+      botao.disabled = false;
+      if (e && e.status === 409) carregar();  // a vaga já ganhou nota
+    });
+  }
+
   function relItemHTML(v) {
     var bnd = temNota(v) ? banda(v.aderencia) : "na";
     var url = safeUrl(v.url);
@@ -1092,8 +1124,9 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       decide = '<p class="decided">' + (v.triagem === "seguir" ? "No quadro desde " + esc(ddmm(v.triada_em)) : "Marcada como visitada em " + esc(ddmm(v.triada_em))) + "</p>" +
                '<button class="btn-skip" data-desfazer="' + esc(v.id) + '"' + (S.canWrite ? "" : " disabled") + ">Voltar para triagem</button>";
     }
+    if ((v.triagem === "pendente" || v.triagem === "fora") && (!temNota(v) || v.nota_sem_descricao)) decide += forcarHTML(v);
     return '<article class="rel-item">' +
-      '<div class="score" data-b="' + bnd + '" title="' + (temNota(v) ? "Aderência ao seu perfil (0 a 100)" : "Vaga sem nota de aderência") + '"><b>' + (temNota(v) ? v.aderencia : "—") + "</b><small>" + (temNota(v) ? rotuloBanda(bnd) : v.descricao_pendente ? "descrição pendente" : v.analise_status === "pendente" ? "aguardando" : "sem nota") + "</small></div>" +
+      '<div class="score" data-b="' + bnd + '" title="' + (temNota(v) ? (v.nota_sem_descricao ? "Nota provisória, sem a descrição da vaga" : "Aderência ao seu perfil (0 a 100)") : "Vaga sem nota de aderência") + '"><b>' + (temNota(v) ? v.aderencia : "—") + "</b><small>" + (temNota(v) ? (v.nota_sem_descricao ? "sem a descrição" : rotuloBanda(bnd)) : v.descricao_pendente ? "descrição pendente" : v.analise_status === "pendente" ? "aguardando" : "sem nota") + "</small></div>" +
       '<div class="rel-body"><h3>' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(v.titulo) + "</a>" : esc(v.titulo)) + "</h3>" +
       '<p class="meta">' + meta.filter(Boolean).map(function (m) { return "<span>" + m + "</span>"; }).join("") + "</p>" +
       ((v.motivo_fora || []).length ? '<p class="motivo-fora"><b>Fora dos critérios:</b> ' + esc(v.motivo_fora.join("; ")) + "</p>" : "") +
@@ -1237,7 +1270,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
     else if (v.analise_status === "pendente") analise = '<p class="banner">Aguardando análise. ' + (IA.e && IA.e.disponivel ? "A IA escolhida analisa em instantes." :
       'Escolha uma IA no botão IA, ou no Claude Code peça "analisa as vagas que adicionei no dashboard".') + "</p>";
     else if (v.analise_status === "sem_analise") analise = '<p class="hint">Sem nota de aderência. Opcional: com o Claude Code, peça "analisa as vagas do relatório".</p>';
-    else if (bnd) analise = '<div style="display:flex;gap:14px;align-items:center"><div class="score" data-b="' + bnd + '"><b>' + v.aderencia + "</b><small>" + rotuloBanda(bnd) + "</small></div>" +
+    else if (bnd) analise = (v.nota_sem_descricao ? '<p class="banner">Nota sem a descrição: a IA avaliou só pelo cargo, empresa e local, porque o texto da vaga não estava disponível. A nota é provisória e será refeita quando a descrição chegar (Completar descrições ou a próxima busca).</p>' : "") +
+      '<div style="display:flex;gap:14px;align-items:center"><div class="score" data-b="' + bnd + '"><b>' + v.aderencia + "</b><small>" + (v.nota_sem_descricao ? "sem a descrição" : rotuloBanda(bnd)) + "</small></div>" +
       (v.resumo ? '<p class="resumo" style="margin:0">' + esc(v.resumo) + "</p>" : "") + "</div>" +
       '<div class="facets">' + facet("encaixe", "Encaixe", v.encaixe) + facet("lacunas", "Lacunas", v.lacunas) + facet("alertas", "Atenção", v.alertas) + "</div>";
     else analise = '<p class="hint">Sem análise para esta vaga.</p>';
@@ -1784,6 +1818,7 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       if (t.hasAttribute("data-abrir-filtros-int") && !t.closest("#form-filtros")) { abrirFiltros(null, null, "int"); return; }
       if (t.hasAttribute("data-abrir-busca")) { abrirBusca(); return; }
       if (t.hasAttribute("data-completar")) { t.disabled = true; pdIniciar(); return; }
+      if (t.hasAttribute("data-forcar")) { forcar(t.getAttribute("data-forcar"), t); return; }
       if (t.hasAttribute("data-cv")) { cvAcao(t.getAttribute("data-cv"), t); return; }
       if (t.hasAttribute("data-bu")) { buAcao(t.getAttribute("data-bu"), t); return; }
       if (t.hasAttribute("data-abrir-ia")) { abrirIA(); return; }
@@ -3530,6 +3565,8 @@ dialog::backdrop { background: rgba(5, 8, 6, .7); }
       S.analisando = !!j.analisando;
       var erroIA = j.ia_erro || null;
       if (JSON.stringify(erroIA) !== JSON.stringify(S.iaErro || null)) { S.iaErro = erroIA; mudou = true; }
+      var ver = j.verificando || [], fal = j.falhas || {};
+      if (JSON.stringify(ver) !== JSON.stringify(S.verificando) || JSON.stringify(fal) !== JSON.stringify(S.falhas)) { S.verificando = ver; S.falhas = fal; mudou = true; }
       var bj = j.busca || {}, be = BU.e || {};
       if (!BU.pedindo && !BU.timer && (bj.situacao !== be.situacao || BU_ATIVAS.indexOf(bj.situacao) >= 0)) buEstado();
       if (S.offline || j.versao !== S.versao) carregar();

@@ -27,6 +27,13 @@ só entrega o arquivo.
   ou mesmo cargo e empresa encontrados nos últimos 60 dias), avisa onde ela está e não
   duplica. Se não der para ler, o formulário abre com o que deu, para completar; dali
   dá para mandar para o relatório ou direto para o quadro.
+- **Forçar verificar:** toda vaga sem nota do Relatório (Para decidir e Fora dos critérios) tem, embaixo de
+  Seguir / Não seguir, o botão **Forçar verificar**. Ele manda só aquela vaga para a IA, na frente da análise
+  automática (`POST /api/vagas/<id>/analisar`, só deste computador); o cartão mostra "Verificando…" e a nota chega
+  em alguns minutos, ou o motivo, se não deu. Se a vaga está com descrição pendente, a ferramenta lê a descrição
+  dela antes (um pedido ao portal, fora da espera depois de um bloqueio e fora de uma busca); sem o texto, a nota
+  sai marcada **nota sem a descrição** (provisória) e é refeita quando a descrição chegar. Sem IA ligada, o botão
+  só avisa.
 - **Relatório de Vagas:** o que as buscas trouxeram, em quatro abas: Para decidir,
   Seguidas, Não seguidas e **Fora dos critérios** (vagas que furaram os filtros da
   busca, com o motivo). "Seguir com a vaga" manda para a coluna Salva, inclusive a
@@ -48,7 +55,7 @@ sozinha.
 
 | Arquivo | Para quê |
 |---|---|
-| `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/vagas/link` para adicionar pelo link, `/api/versao` com o aviso de análise em andamento, `/api/buscas/ultima`, `/api/config` para ler e gravar os filtros da busca, `/api/ia` para a IA escolhida e `/api/perfil/…` para os primeiros passos: estado, envio e remoção de materiais, rascunho, progresso, prévia, gravação do perfil e filtros propostos; `/api/busca…` para buscar vagas pela página: plano, andamento, iniciar, cancelar e pedir a nota de novo; `/api/curriculo…` para gerar o currículo pela página: catálogo das técnicas, estado, lista, gerar e tentar de novo; `/api/entrevista/…` para preparar a entrevista: preparação da vaga, texto da empresa, resumo, perguntas e histórias com IA, salvar e remover histórias, simulação e anotações; e `/arquivos/curriculos/<nome>.pdf|.docx`, que serve só os arquivos dessa pasta). Só aceita pedidos da própria página; enviar arquivos, gerar o rascunho e gravar, só do próprio computador. |
+| `servidor.py` | Servidor local: serve a página e a API (`/api/vagas`, `/api/vagas/link` para adicionar pelo link, `/api/versao` com o aviso de análise em andamento e as vagas em verificação (`verificando`, `falhas`), `/api/vagas/<id>/analisar` para o Forçar verificar, `/api/buscas/ultima`, `/api/config` para ler e gravar os filtros da busca, `/api/ia` para a IA escolhida e `/api/perfil/…` para os primeiros passos: estado, envio e remoção de materiais, rascunho, progresso, prévia, gravação do perfil e filtros propostos; `/api/busca…` para buscar vagas pela página: plano, andamento, iniciar, cancelar e pedir a nota de novo; `/api/curriculo…` para gerar o currículo pela página: catálogo das técnicas, estado, lista, gerar e tentar de novo; `/api/entrevista/…` para preparar a entrevista: preparação da vaga, texto da empresa, resumo, perguntas e histórias com IA, salvar e remover histórias, simulação e anotações; e `/arquivos/curriculos/<nome>.pdf|.docx`, que serve só os arquivos dessa pasta). Só aceita pedidos da própria página; enviar arquivos, gerar o rascunho e gravar, só do próprio computador. |
 | `banco.py` | Acesso ao SQLite e comandos `quadro`, `pendentes`, `analisar`, `vaga` (dados completos de uma vaga) e `anotar` (acrescenta uma linha às anotações). |
 | `buscador.py` | Busca de vagas pela página: roda a mesma busca do `vagas.py` em segundo plano, com andamento, cancelamento entre consultas, uma busca por vez no computador (trava em `.cache/busca.trava`, compartilhada com o terminal) e intervalo mínimo de 30 minutos entre buscas. Com IA e perfil, as vagas novas ficam para a análise automática. |
 | `gerador.py` | Currículo pela página: no clique, pede o currículo à IA escolhida (`curriculo_ia.py`, na raiz), gera os arquivos e a conferência, uma geração por vez, com andamento e "tentar de novo". |
@@ -100,6 +107,7 @@ sobre a empresa, resumo, perguntas da IA, simulação e as anotações de cada e
 | `resultado` | só em `encerrada`: `nao_aprovado`, `desisti`, `cancelada`, `contratado` |
 | `analise_status` | `feita`, `sem_analise` (gravada sem IA), `pendente` (adicionada no dashboard, esperando a IA), `sem_dados` |
 | `aderencia` | 0–100 (só com IA); faixas: ≥80 forte, 65–79 boa, 50–64 parcial, <50 baixa |
+| `nota_sem_descricao` | `true` quando a nota foi dada sem o texto da vaga (Forçar verificar com a descrição indisponível); sai quando a descrição chega, e a vaga volta a `pendente` para a nota nova |
 | `resumo`, `encaixe[]`, `lacunas[]`, `alertas[]`, `modelo_trabalho` | análise da IA |
 | `senioridade[]`, `senioridade_origem` | análise da IA: `junior`, `pleno`, `senior` (pode ter mais de um; `[]` = não informada), `declarada` pelo anúncio ou `sugerida` pela IA quando o anúncio não diz. Sem esse campo, o dashboard deduz pelo título (Jr, Pl, Sr, Pleno, Sênior, Snr, Mid-level, Intermediate, Semi Senior/SSr como pleno, II, III, Principal). O relatório mostra os níveis abreviados: Jr, Pl, Sr |
 | `tipo_emprego[]` | análise da IA: `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario` |

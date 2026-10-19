@@ -20,6 +20,7 @@ import math
 import os
 import re
 import sys
+import threading
 import time
 import unicodedata
 from datetime import date, datetime, timedelta
@@ -448,11 +449,50 @@ def completar_pendentes(avisar=None, conferir=None) -> dict:
     erros: list[str] = []
     completadas = 0
     if not espera:
-        lidas = ler_descricoes([], [], nomes, erros, avisar or (lambda evento: None), conferir or (lambda: None))
+        with _LEITURA:
+            lidas = ler_descricoes([], [], nomes, erros, avisar or (lambda evento: None), conferir or (lambda: None))
         completadas = sum(1 for c in lidas if banco.completar_descricao(c["id"], c.get("descricao") or "",
                                                                          c.get("tipo_emprego")))
     return {"completadas": completadas, "restantes": contar_pendentes(), "espera": fontes_em_espera(nomes),
             "erros": erros}
+
+
+_LEITURA = threading.Lock()  # uma leitura de descrições por vez (Completar descrições e Forçar verificar)
+
+
+def descrever_uma(vid: str) -> dict:
+    """A descrição de uma vaga só (spec 021, Forçar verificar): no máximo um pedido ao portal, pela descrever() da
+    fonte, fora da espera do portal e fora de uma busca ou de outra leitura. O texto é gravado com
+    banco.completar_descricao. Devolve {"descricao", "motivo"}; motivo None quando leu, senão "sem_vaga",
+    "sem_fonte", "espera", "busca", "bloqueio", "erro" ou "vazia"."""
+    v = banco.obter(vid)
+    if v is None:
+        return {"descricao": "", "motivo": "sem_vaga"}
+    nome, fonte = next(((n, f) for n, f in FONTES.items()
+                        if f.PLATAFORMA == v.get("plataforma") and hasattr(f, "descrever")), (None, None))
+    if fonte is None:
+        return {"descricao": "", "motivo": "sem_fonte"}
+    if fontes_em_espera([nome]):
+        return {"descricao": "", "motivo": "espera"}
+    if not _LEITURA.acquire(blocking=False):
+        return {"descricao": "", "motivo": "busca"}
+    try:
+        if ocupada() is not None:
+            return {"descricao": "", "motivo": "busca"}
+        _comum.esquecer()  # estado de bloqueio de uma busca anterior; a espera gravada já foi conferida
+        copia = dict(v)
+        try:
+            texto = fonte.descrever(copia)  # a fonte pode preencher copia["tipo_emprego"]
+        except Exception:  # cada portal tem o seu tipo de erro
+            parou = getattr(fonte, "parada", lambda: False)()
+            return {"descricao": "", "motivo": "bloqueio" if parou else "erro"}
+    finally:
+        _LEITURA.release()
+    texto = str(texto or "").strip()
+    if not texto:
+        return {"descricao": "", "motivo": "vazia"}
+    banco.completar_descricao(vid, texto, copia.get("tipo_emprego"))
+    return {"descricao": texto, "motivo": None}
 
 
 def salvar_candidatas(resultado: dict, pasta: Path | None = None, trecho: int = 3500) -> None:

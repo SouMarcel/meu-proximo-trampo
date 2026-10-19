@@ -118,6 +118,9 @@ servidor; ele só serve para ver e mexer no quadro.
    - Exceção: a candidata marcada "descrição pendente" não tem texto (o portal limitou os
      pedidos). Não avalie nem invente nota; ela entra no dashboard sem nota e o texto é lido
      na próxima busca.
+   - Vaga com `nota_sem_descricao` no dashboard (o botão Forçar verificar deu a nota sem o
+     texto): a nota é provisória. Não a trate como final; quando a descrição chegar, a vaga
+     volta a esperar nota.
    - Vaga claramente de outra área pelo título e pelas primeiras linhas recebe nota
      baixa e resumo curto, sem leitura detalhada.
    - Nas plausíveis, o `candidatas.md` corta descrições longas, e o que decide a nota
@@ -331,6 +334,8 @@ sobram entram como **descrição pendente**: não avalie essas vagas (o digest a
 primeiro na busca seguinte. Para completar sem uma busca nova, rode `PY vagas.py completar` (ou
 sugira o botão "Completar descrições" no topo do Relatório): lê só as pendentes, com o mesmo limite
 e a mesma pausa; sai com código 5 se o portal estiver em espera (nenhum pedido feito).
+Para a nota de uma vaga só, a página tem o botão **Forçar verificar** no cartão de cada vaga sem nota:
+lê a descrição daquela vaga se der (um pedido, fora da espera) e pede a nota à IA escolhida.
 
 A Nerdin (só vagas de tecnologia no Brasil) é consultada pela busca pública do site
 (`fontes/nerdin.py`), sem login nem cookies, com pausa de 3 segundos entre os pedidos: a lista de

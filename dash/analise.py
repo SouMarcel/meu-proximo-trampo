@@ -6,6 +6,10 @@ pedido leva o perfil, os filtros, as regras de nota da skill buscar-vagas e o te
 lotes; a resposta é só o JSON das análises, que este módulo grava com banco.aplicar_analises junto
 com o provedor e o modelo que deram a nota. Sem IA, as vagas ficam esperando até o usuário pedir a
 análise no chat. A última falha (já sem chave) fica em FILA.erro() para a página mostrar.
+
+O botão Forçar verificar da página (spec 021) chama FILA.forcar(id): a vaga passa na frente das automáticas, mesmo
+sem estar esperando nota. Se faltar a descrição, ela é lida uma vez (vagas.descrever_uma, fora da espera do portal);
+sem o texto, a nota sai com a marca nota_sem_descricao e é refeita quando a descrição chegar.
 """
 from __future__ import annotations
 
@@ -40,6 +44,16 @@ def _ia():
     _raiz()
     import ia
     return ia
+
+
+def _vagas():
+    _raiz()
+    import vagas
+    return vagas
+
+
+def _tem_nota(v: dict) -> bool:
+    return isinstance(v.get("aderencia"), (int, float)) and not isinstance(v.get("aderencia"), bool)
 
 
 def ligada() -> bool:
@@ -77,7 +91,12 @@ def _area(f, v: dict, efet: dict) -> str:
     return f"internacional ({pais})" if area == "internacional" and pais else area
 
 
-def montar_pedido(vagas: list[dict]) -> str:
+SEM_DESCRICAO = ("(NOTA SEM A DESCRIÇÃO: o texto da vaga não está disponível. Avalie só pelo cargo, empresa, "
+                 "local, salário e sinais acima; dê a nota mesmo assim e diga no resumo que ela é provisória, "
+                 "sem a descrição da vaga.)")
+
+
+def montar_pedido(vagas: list[dict], sem_descricao=frozenset()) -> str:
     f = _filtros()
     cfg = f.ler_config()
     efet = f.efetivos(cfg)
@@ -101,7 +120,8 @@ def montar_pedido(vagas: list[dict]) -> str:
             *([f"Restrição de local do portal: {v['restricao_local']}"] if v.get("restricao_local") else []),
             *([f"Sinais lidos no anúncio: {', '.join(v['sinais'])}"] if v.get("sinais") else []),
             "Descrição:",
-            (v.get("descricao") or "(sem descrição)")[:LIMITE_DESCRICAO],
+            *([SEM_DESCRICAO] if v["id"] in sem_descricao else []),
+            (v.get("descricao") or ("" if v["id"] in sem_descricao else "(sem descrição)"))[:LIMITE_DESCRICAO],
             "",
         ]
     return NL.join([
@@ -114,7 +134,9 @@ def montar_pedido(vagas: list[dict]) -> str:
         'opcionais: "autorizacao" {"valor", "frase"}, "contratacao" [{"valor", "frase"}], "ingles" {"nivel", "frase"}, '
         '"fuso" {"texto", "frase"}, "sistema_candidatura", "pede" [{"item", "frase"}], "riscos" [{"tipo", "frase"}]}.',
         'Se a descrição não basta para avaliar: {"id": "...", "analise_status": "sem_dados", '
-        '"resumo": "Sem descrição suficiente: cole o texto da vaga no dashboard."}.',
+        '"resumo": "Sem descrição suficiente: cole o texto da vaga no dashboard."}.'
+        + (" Isso não vale para as vagas marcadas NOTA SEM A DESCRIÇÃO: nelas, dê sempre a nota."
+           if any(v["id"] in sem_descricao for v in vagas) else ""),
         "",
         "## Perfil do usuário (a única fonte sobre ele; não complete lacunas com suposições)",
         texto_perfil,
@@ -132,8 +154,9 @@ def montar_pedido(vagas: list[dict]) -> str:
     ])
 
 
-def analisar(vagas: list[dict]) -> tuple[list[str], list[str]]:
+def analisar(vagas: list[dict], sem_descricao=frozenset()) -> tuple[list[str], list[str]]:
     """Analisa estas vagas com a IA escolhida, em lotes, e grava. Devolve (ids gravados, problemas).
+    As vagas em sem_descricao vão com o aviso de nota sem a descrição e voltam com a marca nota_sem_descricao.
     Falha da IA levanta ia.IAErro (mensagem legível e sem chave)."""
     modulo = _ia()
     if not vagas or not modulo.disponivel():
@@ -143,7 +166,7 @@ def analisar(vagas: list[dict]) -> tuple[list[str], list[str]]:
     gravadas, problemas = [], []
     for i in range(0, len(vagas), LOTE):
         lote = vagas[i:i + LOTE]
-        texto = modulo.responder(montar_pedido(lote), tempo=TEMPO_MAXIMO, escolha=escolha)
+        texto = modulo.responder(montar_pedido(lote, sem_descricao), tempo=TEMPO_MAXIMO, escolha=escolha)
         a, b = texto.find("["), texto.rfind("]")
         if a < 0 or b < a:
             raise modulo.IAErro("a resposta da IA não trouxe o JSON das análises")
@@ -152,7 +175,8 @@ def analisar(vagas: list[dict]) -> tuple[list[str], list[str]]:
         except ValueError:
             raise modulo.IAErro("a resposta da IA veio com um JSON inválido") from None
         ids = {v["id"] for v in lote}
-        analises = [{**x, **marca} for x in lista if isinstance(x, dict) and str(x.get("id")) in ids]
+        analises = [{**x, **marca, **({"nota_sem_descricao": True} if str(x.get("id")) in sem_descricao else {})}
+                    for x in lista if isinstance(x, dict) and str(x.get("id")) in ids]
         ok, erros = banco.aplicar_analises(analises)
         gravadas += ok
         problemas += erros
@@ -160,12 +184,15 @@ def analisar(vagas: list[dict]) -> tuple[list[str], list[str]]:
 
 
 class Fila:
-    """Uma análise por vez; pedidos que chegam durante uma análise disparam outra rodada no fim."""
+    """Uma análise por vez; pedidos que chegam durante uma análise disparam outra rodada no fim. As vagas que a
+    pessoa forçou (forcar) vêm primeiro em cada rodada."""
 
     def __init__(self):
         self._trava = threading.Lock()
         self._pedido = False
         self._thread: threading.Thread | None = None
+        self._forcadas: set[str] = set()
+        self.falhas: dict[str, dict] = {}  # id -> {motivo, em}: a última verificação forçada que não deu nota
         self.rodando = False
         self.ultimo_erro: dict | None = None
 
@@ -173,16 +200,77 @@ class Fila:
         """Motivo e hora da última rodada que falhou (None depois de uma rodada boa)."""
         return self.ultimo_erro
 
+    def verificando(self) -> list[str]:
+        """As vagas forçadas que ainda não voltaram da IA."""
+        with self._trava:
+            return sorted(self._forcadas)
+
+    def _acordar(self) -> None:  # com a trava
+        self._pedido = True
+        if self._thread is None:
+            self._thread = threading.Thread(target=self._rodar, daemon=True, name="analise-automatica")
+            self._thread.start()
+
     def pedir(self) -> bool:
         """Agenda a análise das vagas que esperam nota. Devolve False se não há IA ligada."""
         if not ligada():
             return False
         with self._trava:
-            self._pedido = True
-            if self._thread is None:
-                self._thread = threading.Thread(target=self._rodar, daemon=True, name="analise-automatica")
-                self._thread.start()
+            self._acordar()
         return True
+
+    def forcar(self, vid: str) -> bool:
+        """A pessoa pediu a nota desta vaga (botão Forçar verificar): ela passa na frente das automáticas, mesmo
+        já tentada. Não duplica. Devolve False se não há IA ligada (nada muda)."""
+        if not ligada():
+            return False
+        with self._trava:
+            self.falhas.pop(vid, None)
+            self._forcadas.add(vid)
+            self._acordar()
+        return True
+
+    def falhas_atuais(self) -> dict[str, dict]:
+        with self._trava:
+            return dict(self.falhas)
+
+    def _falhar(self, vid: str, motivo: str) -> None:
+        with self._trava:
+            self.falhas[vid] = {"motivo": motivo, "em": datetime.now().isoformat(timespec="minutes")}
+
+    def _verificar(self, ids: set[str]) -> None:
+        """As vagas forçadas: a descrição que falta (uma leitura, se der) e a nota; quem não ganha nota fica em
+        falhas com o motivo."""
+        vagas, sem_descricao = [], set()
+        try:
+            for vid in sorted(ids):
+                v = banco.obter(vid)
+                if v is None or (_tem_nota(v) and not v.get("nota_sem_descricao")):
+                    continue  # removida ou já com nota
+                if v.get("descricao_pendente") or not v.get("descricao"):
+                    _vagas().descrever_uma(vid)
+                    v = banco.obter(vid) or v
+                    if v.get("descricao_pendente") or not v.get("descricao"):
+                        sem_descricao.add(vid)
+                vagas.append(v)
+            ok, problemas = analisar(vagas, sem_descricao) if vagas else ([], [])
+            for v in vagas:
+                doc = banco.obter(v["id"])
+                if v["id"] in ok and doc and doc.get("analise_status") == "feita":
+                    continue
+                motivo = next((p.split(": ", 1)[1] for p in problemas if p.startswith(v["id"] + ":")), None)
+                padrao = ("a IA não conseguiu dar nota sem a descrição" if v["id"] in sem_descricao
+                          else "a IA não devolveu a nota desta vaga")
+                self._falhar(v["id"], motivo or padrao)
+            print(f"[forçar verificar] {len(ok)} de {len(vagas)} vaga(s) com nota")
+        except Exception as e:  # nunca derruba o servidor; o cartão volta a mostrar o botão com o motivo
+            motivo = _ia().mascarar(str(e)) or "falha desconhecida"
+            for vid in ids:
+                self._falhar(vid, motivo)
+            print(f"[forçar verificar] não rodou: {motivo}", file=sys.stderr)
+        finally:
+            with self._trava:
+                self._forcadas -= ids
 
     def _rodar(self):
         tentadas: set[str] = set()  # uma tentativa por vaga a cada rodada do servidor
@@ -193,7 +281,15 @@ class Fila:
                     self._thread = None
                     return
                 self._pedido = False
-            pendentes = [v for v in banco.listar_vagas() if precisa(v) and v["id"] not in tentadas]
+                forcadas = set(self._forcadas)
+            if forcadas:
+                self.rodando = True
+                try:
+                    self._verificar(forcadas)
+                finally:
+                    self.rodando = False
+            pendentes = [v for v in banco.listar_vagas()
+                         if precisa(v) and v["id"] not in tentadas and v["id"] not in forcadas]
             if not pendentes:
                 continue
             tentadas.update(v["id"] for v in pendentes)
