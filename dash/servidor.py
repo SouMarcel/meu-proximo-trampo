@@ -297,6 +297,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(202, {**estado, "pode_alterar": True})
         if metodo == "DELETE" and caminho == "/api/busca":
             return self._json(200, {**buscador.BUSCA.cancelar(), "pode_alterar": True})
+        if metodo == "POST" and caminho == "/api/busca/pendentes":
+            try:
+                return self._json(202, buscador.COMPLETAR.iniciar())
+            except buscador.BuscaRecusada as e:
+                return self._erro(409, str(e))
         if metodo == "POST" and caminho == "/api/busca/analisar":
             analise.FILA.pedir()
             return self._json(200, {"analise": buscador.BUSCA.analise()})
@@ -541,6 +546,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {**buscador.BUSCA.estado(), "pode_alterar": self._local()})
         if caminho == "/api/busca/plano":
             return self._json(200, buscador.BUSCA.plano())
+        if caminho == "/api/busca/pendentes":  # descrições pendentes (spec 019): quantas, a espera e o andamento
+            return self._json(200, {**buscador.COMPLETAR.estado(), "pode_alterar": self._local()})
         if caminho == "/api/perfil/curriculos":  # os currículos de anexos/ e o seu currículo de cada idioma
             if not self._local():
                 return self._erro(403, SO_LOCAL_PERFIL)

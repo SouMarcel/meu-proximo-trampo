@@ -322,7 +322,9 @@ internet compartilhada; outra rede costuma resolver) ou "pediu login". Depois do
 LinkedIn fica **6 horas em espera**: a busca pergunta antes de seguir sem ele (código 5 acima).
 Não tente contornar. Por busca, no máximo 20 descrições do LinkedIn são lidas, e as vagas que
 sobram entram como **descrição pendente**: não avalie essas vagas (o digest avisa); elas são lidas
-primeiro na busca seguinte.
+primeiro na busca seguinte. Para completar sem uma busca nova, rode `PY vagas.py completar` (ou
+sugira o botão "Completar descrições" no topo do Relatório): lê só as pendentes, com o mesmo limite
+e a mesma pausa; sai com código 5 se o portal estiver em espera (nenhum pedido feito).
 
 O startup.jobs é consultado pelo MCP público do site (`fontes/startupjobs.py`), sem
 login. Sem conta, ele aceita 20 consultas por minuto e mostra só as vagas dos últimos

@@ -429,6 +429,32 @@ def ler_descricoes(candidatas: list[dict], fora: list[dict], nomes_fontes: list[
     return completadas
 
 
+def fontes_com_pendentes() -> list[str]:
+    """Portais que limitam as descrições por busca e deixam vagas com descrição pendente (ex.: LinkedIn)."""
+    return [n for n, f in FONTES.items() if getattr(f, "MAX_DESCRICOES", None) and hasattr(f, "descrever")]
+
+
+def contar_pendentes() -> int:
+    return sum(len(banco.pendentes_de_descricao(FONTES[n].PLATAFORMA)) for n in fontes_com_pendentes())
+
+
+def completar_pendentes(avisar=None, conferir=None) -> dict:
+    """Só as descrições pendentes, sem buscar vagas novas (spec 019): a mesma fila da busca (ler_descricoes), com
+    o mesmo limite por portal, a pausa e a parada no bloqueio. Durante a espera do portal, nenhum pedido.
+    Devolve {"completadas", "restantes", "espera", "erros"}."""
+    nomes = fontes_com_pendentes()
+    _comum.esquecer()  # estado de bloqueio da busca anterior; a espera gravada continua valendo
+    espera = fontes_em_espera(nomes)
+    erros: list[str] = []
+    completadas = 0
+    if not espera:
+        lidas = ler_descricoes([], [], nomes, erros, avisar or (lambda evento: None), conferir or (lambda: None))
+        completadas = sum(1 for c in lidas if banco.completar_descricao(c["id"], c.get("descricao") or "",
+                                                                         c.get("tipo_emprego")))
+    return {"completadas": completadas, "restantes": contar_pendentes(), "espera": fontes_em_espera(nomes),
+            "erros": erros}
+
+
 def salvar_candidatas(resultado: dict, pasta: Path | None = None, trecho: int = 3500) -> None:
     pasta = pasta or CACHE
     pasta.mkdir(parents=True, exist_ok=True)
@@ -610,6 +636,24 @@ def cmd_ver(args) -> int:
 
 # ---------------------------------------------------------------- gravar
 
+def cmd_completar(args) -> int:
+    """Lê só as descrições pendentes. Sai com 5 se o portal está em espera (nenhum pedido feito)."""
+    antes = contar_pendentes()
+    if not antes:
+        print("Nenhuma vaga com descrição pendente.")
+        return 0
+    r = completar_pendentes(avisar=lambda e: print(f"  descrição {e['lidas']} de {e['total']}", end="\r"))
+    for e in r["espera"]:
+        print(f"O {e['portal']} está em espera até {e['ate'][11:16]} ({e['motivo']}): nenhum pedido feito agora.")
+    print(f"Descrições completadas: {r['completadas']} de {antes}; continuam pendentes: {r['restantes']}.")
+    for e in r["erros"][:5]:
+        print(f"  aviso: {e}")
+    if r["completadas"]:
+        print('Para a nota: no dashboard elas são analisadas sozinhas (com IA ligada) ou peça "analisa as vagas '
+              'que adicionei no dashboard".')
+    return 5 if r["espera"] and not r["completadas"] else 0
+
+
 def cmd_gravar(args) -> int:
     return gravar(sem_avaliacao=args.sem_avaliacao, arquivo=args.avaliacoes)
 
@@ -780,8 +824,11 @@ def main() -> int:
     p3.add_argument("--sem-avaliacao", action="store_true", help="grava sem nota de aderência")
     p3.add_argument("--avaliacoes", help="padrão: .cache/avaliacoes.json")
 
+    sub.add_parser("completar", help="lê só as descrições pendentes (ex.: depois de um bloqueio do LinkedIn), "
+                                     "sem buscar vagas novas")
+
     args = ap.parse_args()
-    return {"buscar": cmd_buscar, "ver": cmd_ver, "gravar": cmd_gravar}[args.cmd](args)
+    return {"buscar": cmd_buscar, "ver": cmd_ver, "gravar": cmd_gravar, "completar": cmd_completar}[args.cmd](args)
 
 
 if __name__ == "__main__":
