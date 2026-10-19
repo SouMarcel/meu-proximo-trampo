@@ -11,8 +11,6 @@ import {
   CheckCircle2,
   Briefcase,
   Globe,
-  Linkedin,
-  Github,
 } from "lucide-react"
 import { PerfilUsuario } from "../../types/job"
 import { JobStorageService } from "../../services/storage"

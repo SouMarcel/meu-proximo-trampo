@@ -144,7 +144,7 @@ export interface PerguntaAnamnese {
   id: string
   tipo: "texto" | "lista" | "opcoes" | "multi" | "sim_nao"
   texto: string
-  opcoes?: { valor: string rotulo: string }[]
+  opcoes?: { valor: string; rotulo: string }[]
   condicao?: string
   dica?: string
 }
@@ -159,7 +159,7 @@ export interface ItemDiagnostico {
 export interface ConflitoMaterial {
   id: string
   campo: string
-  opcoes: { valor: string fonte: string }[]
+  opcoes: { valor: string; fonte: string }[]
   escolha?: number
 }
 
@@ -170,9 +170,9 @@ export interface EstadoOnboarding {
     nome: string
     tamanho: string
     tipo: string
-    contatos?: { emails?: string[] telefones?: string[] linkedin?: string }
+    contatos?: { emails?: string[]; telefones?: string[]; linkedin?: string }
   }[]
   conflitos: ConflitoMaterial[]
-  contato_confirmado: { email?: string telefone?: string linkedin?: string }
+  contato_confirmado: { email?: string; telefone?: string; linkedin?: string }
   rascunho_md: string
 }

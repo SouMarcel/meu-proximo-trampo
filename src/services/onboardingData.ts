@@ -286,7 +286,7 @@ export function diagnosticarPerfil(
 export function gerarMarkdownPerfil(
   nome: string,
   respostas: Record<string, any>,
-  contato: { email?: string telefone?: string linkedin?: string },
+  contato: { email?: string; telefone?: string; linkedin?: string },
 ): string {
   const cargos = (respostas["cargos_alvo"] || ["Engenheiro de Software"]).join(
     ", ",
