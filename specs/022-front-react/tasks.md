@@ -23,8 +23,8 @@ description: "Tarefas da feature 022: front novo em React, montado pelo GitHub A
 - [X] T004 [US1] `.github/workflows/front.yml` (disparo manual + 6 h, sem novidade não faz nada, build com
   `--base ./`, `ORIGEM.json`, testes Python, PR `front/atualizacao`)
 - [X] T005 [P] [US1] `.gitattributes`: `dash/front/** linguist-generated=true`
-- [ ] T006 [US1] Com o OK da pessoa: ligar "Allow GitHub Actions to create and approve pull requests" no repositório
-- [ ] T007 [US1] Depois do push: `gh workflow run front.yml`, conferir o PR de teste e uma segunda execução sem
+- [X] T006 [US1] Com o OK da pessoa: ligar "Allow GitHub Actions to create and approve pull requests" no repositório
+- [X] T007 [US1] Depois do push: `gh workflow run front.yml`, conferir o PR de teste e uma segunda execução sem
   novidade
 
 ## Phase 3: Guia do Figma Make (US3)

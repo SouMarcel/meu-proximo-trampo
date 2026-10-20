@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-20
 
-**Status**: Aprovada para a `master` (2026-10-20); falta validar a Action no GitHub (T006, T007)
+**Status**: Concluída (2026-10-20): Action validada e primeiro PR do front (#1) mesclado
 
 **Input**: User description: "O front desta ferramenta está sendo desenvolvido por outro analista usando o Figma
 (Figma Make), que publicou a branch `frontend-react`. Vamos pelo processo do GitHub Actions: o Node fica só na nuvem,
