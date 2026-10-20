@@ -43,7 +43,7 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 | Resultado (Não aprovado, Desisti, Vaga cancelada, Contratado) | Quadro e detalhe | — | ✅ | [ ] |
 | Remover do quadro (dois cliques) | Quadro e detalhe | 1 | ✅ (o segundo clique entrou na H1) | [ ] |
 | Preparar entrevista no cartão em Entrevista | Quadro | 5 | ⚠️ | [ ] |
-| Lembrete de follow-up no cartão (Feito, Dispensar, Parar lembretes) | Quadro e detalhe | 4 | ❌ | [ ] |
+| Lembrete de follow-up no cartão (Feito, Dispensar, Parar lembretes) | Quadro e detalhe | 4 | ✅ | [ ] |
 
 ## Detalhe da vaga
 
@@ -53,12 +53,12 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 | Descrição com markdown mínimo, como texto | Detalhe | 1 | ✅ | [ ] |
 | Anotação, e-mail e assunto da candidatura (Salvar) | Detalhe | 1 | ✅ (e-mail e assunto entraram na H1) | [ ] |
 | Data da entrevista | Detalhe | — | ✅ | [ ] |
-| Candidatar no … (só abre o portal); Enviar por e-mail (`mailto:`) | Detalhe | 1, 4 | ✅ Abrir a vaga e Enviar por e-mail; ⚠️ rótulo "Candidatar no …" na H4 | [ ] |
-| O que esta candidatura pede (checklist, acrescentar e remover item, currículo base) | Detalhe | 4 | ⚠️ | [ ] |
-| Gerar currículo (técnicas, opções, aviso de IA), andamento, Tentar de novo | Detalhe | 4 | ❌ | [ ] |
-| Ver currículos (PDF, DOCX, conferência, cortes sugeridos) | Detalhe | 4 | ❌ | [ ] |
-| Carta ou mensagem (Escrever, Copiar) | Detalhe | 4 | ❌ | [ ] |
-| Respostas de formulário (Preparar respostas, sensíveis, Escrever a minha, Salvar) | Detalhe | 4 | ❌ | [ ] |
+| Candidatar no … (só abre o portal); Enviar por e-mail (`mailto:`) | Detalhe | 1, 4 | ✅ | [ ] |
+| O que esta candidatura pede (checklist, acrescentar e remover item, currículo base) | Detalhe | 4 | ✅ | [ ] |
+| Gerar currículo (técnicas, opções, aviso de IA), andamento, Tentar de novo | Detalhe | 4 | ✅ | [ ] |
+| Ver currículos (PDF, DOCX, conferência, cortes sugeridos) | Detalhe | 4 | ✅ | [ ] |
+| Carta ou mensagem (Escrever, Copiar) | Detalhe | 4 | ✅ | [ ] |
+| Respostas de formulário (Preparar respostas, sensíveis, Escrever a minha, Salvar) | Detalhe | 4 | ✅ | [ ] |
 | Ver análise e anotações | Detalhe | — | ✅ | [ ] |
 
 ## Adicionar vaga
@@ -89,7 +89,7 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 | Seu currículo (pt e en): marcar e trocar | Meu perfil | 3 | ✅ | [ ] |
 | Recomeçar / Atualizar o perfil | Meu perfil | 3 | ✅ | [ ] |
 | Análises: lacunas das vagas, prontidão internacional, carreiras e cargos-alvo (levar para os filtros), plano de estudo | Meu perfil → Análises | 3 | ✅ | [ ] |
-| Currículo base (gerar e ver) | Meu perfil | 4 | ❌ | [ ] |
+| Currículo base (gerar e ver) | Meu perfil | 4 | ✅ | [ ] |
 
 ## Preparar entrevista
 
