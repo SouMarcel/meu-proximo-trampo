@@ -49,7 +49,8 @@ class Base(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         for p in (mock.patch.object(banco, "ARQUIVO", self.tmp / "banco.db"),
                   mock.patch.object(filtros, "CONFIG", self.tmp / "config.json"),
-                  mock.patch.object(li, "ARQ_ESPERA", self.tmp / ".cache" / "linkedin-espera.json")):
+                  mock.patch.object(li, "ARQ_ESPERA", self.tmp / ".cache" / "linkedin-espera.json"),
+                  mock.patch.object(li, "ARQ_PEDIDOS", self.tmp / ".cache" / "linkedin-pedidos.json")):
             p.start()
             self.addCleanup(p.stop)
 

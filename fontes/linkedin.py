@@ -8,16 +8,23 @@ no máximo MAX_DESCRICOES por busca; as outras ficam pendentes para a próxima. 
 pedidos (LINKEDIN_PAUSA=N no .env aumenta para N a N+4, com N de 3 a 60) e, no primeiro bloqueio (limite de consultas ou pedido de login), o LinkedIn fica de fora pelo resto da busca,
 sem nova tentativa (constituição, princípio VI), e também das buscas das 6 horas seguintes (a espera, gravada em
 .cache/). O aviso traz o motivo provável.
+
+Cada pedido ao LinkedIn (busca, descrição, link e post colados) entra no registro .cache/linkedin-pedidos.json
+(spec 024): quando, de onde, o quê, a resposta e os segundos desde o pedido anterior, sem cargos nem endereços.
+`vagas.py pedidos-linkedin` resume o registro e mostra o que veio antes de cada bloqueio.
 """
 from __future__ import annotations
 
 import json
 import math
+import os
 import random
 import re
+import threading
 import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from html.parser import HTMLParser
 from pathlib import Path
@@ -48,6 +55,9 @@ AGRUPAR = True  # os cargos de um grupo numa consulta só, ligados por OR
 MAX_DESCRICOES = 20  # descrições lidas por busca; as outras ficam pendentes para a próxima
 ESPERA = timedelta(hours=6)  # depois de um bloqueio, o LinkedIn fica de fora das buscas
 ARQ_ESPERA = Path(__file__).resolve().parent.parent / ".cache" / "linkedin-espera.json"
+ARQ_PEDIDOS = ARQ_ESPERA.with_name("linkedin-pedidos.json")  # o registro dos pedidos (spec 024)
+MAX_PEDIDOS = 300  # o registro guarda os últimos N pedidos
+NOVA_RODADA = timedelta(minutes=30)  # no resumo, um intervalo maior que este começa outra rodada de pedidos
 TEMPO = 20
 LIMITE_BYTES = 3_000_000
 LIMITE_DESCRICAO = 12000
@@ -176,19 +186,126 @@ def parada() -> bool:
     return _estado["bloqueado"] or espera() is not None
 
 
+# ---------------------------------------------------------------- registro dos pedidos (spec 024)
+
+_TRAVA_PEDIDOS = threading.Lock()
+_origem = threading.local()  # a origem vale por thread: no servidor, a busca e o Forçar verificar rodam em paralelo
+
+
+@contextmanager
+def origem(nome: str):
+    """Marca no registro os pedidos ao LinkedIn feitos nesta thread dentro do bloco (busca, completar, forcar)."""
+    anterior = getattr(_origem, "nome", None)
+    _origem.nome = nome
+    try:
+        yield
+    finally:
+        _origem.nome = anterior
+
+
+def _ler_pedidos() -> list[dict]:
+    try:
+        dados = json.loads(ARQ_PEDIDOS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [d for d in dados if isinstance(d, dict)] if isinstance(dados, list) else []
+
+
+def registrar_pedido(tipo: str, resposta: int | str, de: str | None = None) -> None:
+    """Uma linha no registro: quando, de onde (`de` ou a origem da thread), o quê (pagina, descricao, link, post), a
+    resposta (código HTTP ou "rede") e os segundos desde o pedido anterior. Sem cargos nem endereços. Se não der
+    para gravar, segue sem o registro: ele só ajuda a entender os bloqueios."""
+    agora = datetime.now()
+    with _TRAVA_PEDIDOS:
+        lista = _ler_pedidos()
+        desde = None
+        if lista:
+            try:
+                desde = round((agora - datetime.fromisoformat(lista[-1]["em"])).total_seconds(), 1)
+            except (KeyError, TypeError, ValueError):
+                pass
+        lista.append({"em": agora.isoformat(timespec="seconds"), "origem": de or getattr(_origem, "nome", None) or "outro",
+                      "tipo": tipo, "resposta": resposta, "desde_anterior_s": desde})
+        try:
+            ARQ_PEDIDOS.parent.mkdir(parents=True, exist_ok=True)
+            tmp = ARQ_PEDIDOS.with_name(ARQ_PEDIDOS.name + ".tmp")
+            tmp.write_text(json.dumps(lista[-MAX_PEDIDOS:], ensure_ascii=False), encoding="utf-8")
+            os.replace(tmp, ARQ_PEDIDOS)
+        except OSError:
+            pass
+
+
+def _e_bloqueio(resposta) -> bool:
+    return isinstance(resposta, int) and (resposta in (429, 999, 401, 403) or 300 <= resposta < 400)
+
+
+def resumo_pedidos(horas: int = 48, agora: datetime | None = None) -> str:
+    """O registro das últimas `horas`, em rodadas (pedidos separados por menos de NOVA_RODADA): quantos pedidos de
+    cada tipo, as respostas e, em cada bloqueio, em que pedido ele veio, quanto tempo depois do anterior e quantos
+    pedidos houve nas 24 horas antes dele."""
+    agora = agora or datetime.now()
+    todos = []
+    for p in _ler_pedidos():
+        try:
+            todos.append({**p, "_em": datetime.fromisoformat(p["em"])})
+        except (KeyError, TypeError, ValueError):
+            continue
+    janela = [p for p in todos if p["_em"] >= agora - timedelta(hours=horas)]
+    if not janela:
+        return (f"Nenhum pedido ao LinkedIn registrado nas últimas {horas} horas "
+                f"(o registro começa a valer depois desta atualização).")
+    rodadas: list[list[dict]] = []
+    for p in janela:
+        if rodadas and p["_em"] - rodadas[-1][-1]["_em"] <= NOVA_RODADA:
+            rodadas[-1].append(p)
+        else:
+            rodadas.append([p])
+    linhas = [f"Pedidos ao LinkedIn nas últimas {horas} horas: {len(janela)}, em {len(rodadas)} rodada(s)."]
+    for r in rodadas:
+        tipos: dict[str, int] = {}
+        for p in r:
+            tipos[p["tipo"]] = tipos.get(p["tipo"], 0) + 1
+        origens = ", ".join(dict.fromkeys(p["origem"] for p in r))
+        respostas = ", ".join(f"{k}: {v}" for k, v in _contar(str(p["resposta"]) for p in r).items())
+        linhas.append(f"- {r[0]['_em']:%d/%m %H:%M}–{r[-1]['_em']:%H:%M} ({origens}): "
+                      + ", ".join(f"{v} {k}" for k, v in tipos.items()) + f"; respostas {respostas}")
+        for i, p in enumerate(r, 1):
+            if not _e_bloqueio(p["resposta"]):
+                continue
+            antes = sum(1 for q in todos if p["_em"] - timedelta(hours=24) <= q["_em"] < p["_em"])
+            intervalo = p.get("desde_anterior_s")
+            linhas.append(f"  bloqueio {p['resposta']} ({_motivo(p['resposta'])}) no {i}º pedido da rodada "
+                          f"({p['tipo']}, {p['origem']})"
+                          + (f", {intervalo:g} s depois do anterior" if isinstance(intervalo, (int, float)) else "")
+                          + f"; {antes} pedido(s) ao LinkedIn nas 24 h antes")
+    return "\n".join(linhas)
+
+
+def _contar(itens) -> dict[str, int]:
+    saida: dict[str, int] = {}
+    for i in itens:
+        saida[i] = saida.get(i, 0) + 1
+    return saida
+
+
 def _baixar(url: str) -> str:
-    """Um pedido ao LinkedIn: sem cookies, sem seguir redirecionamento e sem nova tentativa."""
+    """Um pedido ao LinkedIn: sem cookies, sem seguir redirecionamento e sem nova tentativa. Entra no registro."""
     _pausar()
+    tipo = "pagina" if url.startswith(BUSCA) else "descricao"
     req = urllib.request.Request(url, headers={"User-Agent": link.NAVEGADOR, "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8"})
     try:
         with urllib.request.build_opener(_SemRedirecionar).open(req, timeout=TEMPO) as r:
             corpo = r.read(LIMITE_BYTES + 1)
             charset = r.headers.get_content_charset() or "utf-8"
+            status = getattr(r, "status", None)
+        registrar_pedido(tipo, status if isinstance(status, int) else 200)
     except urllib.error.HTTPError as e:
+        registrar_pedido(tipo, e.code)
         if e.code in (429, 999, 401, 403) or 300 <= e.code < 400:
             raise _bloquear(_motivo(e.code)) from None
         raise _comum.FonteErro(f"o LinkedIn respondeu {e.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError) as e:
+        registrar_pedido(tipo, "rede")
         raise _comum.FonteErro(f"não consegui falar com o LinkedIn ({getattr(e, 'reason', e)})") from None
     if len(corpo) > LIMITE_BYTES:
         raise _comum.FonteErro("resposta grande demais do LinkedIn")

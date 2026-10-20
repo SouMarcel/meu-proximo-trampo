@@ -40,7 +40,8 @@ class SemRede(unittest.TestCase):
         self.dir_espera = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.dir_espera, True)
         for p in (mock.patch.object(li, "PAUSA", (0, 0)), mock.patch.object(li.time, "sleep"),
-                  mock.patch.object(li, "ARQ_ESPERA", self.dir_espera / ".cache" / "linkedin-espera.json")):
+                  mock.patch.object(li, "ARQ_ESPERA", self.dir_espera / ".cache" / "linkedin-espera.json"),
+                  mock.patch.object(li, "ARQ_PEDIDOS", self.dir_espera / ".cache" / "linkedin-pedidos.json")):
             p.start()
             self.addCleanup(p.stop)
         self.addCleanup(_comum.esquecer)

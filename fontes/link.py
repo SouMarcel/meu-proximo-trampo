@@ -96,7 +96,9 @@ def _baixar(url: str, dados: bytes | None = None, cabecalhos: dict | None = None
             corpo = r.read(LIMITE_BYTES + 1)
             charset = r.headers.get_content_charset() or "utf-8"
     except urllib.error.HTTPError as e:
-        raise LinkErro(f"o site respondeu {e.code}") from None
+        erro = LinkErro(f"o site respondeu {e.code}")
+        erro.codigo = e.code  # o registro dos pedidos ao LinkedIn guarda o código (spec 024)
+        raise erro from None
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         raise LinkErro(f"não consegui abrir o link ({getattr(e, 'reason', e)})") from None
     if len(corpo) > LIMITE_BYTES:
@@ -254,7 +256,14 @@ def _ler_linkedin(partes) -> dict:
     vid = (q.get("currentJobId") or [""])[0] or partes.path.rstrip("/").split("/")[-1].split("-")[-1]
     if not vid.isdigit():
         raise LinkErro("não achei o número da vaga no link do LinkedIn")
-    return vaga_linkedin(vid, _baixar(f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{vid}"))
+    from . import linkedin  # aqui, e não no topo: o linkedin importa este módulo
+    try:
+        pagina = _baixar(f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{vid}")
+    except LinkErro as e:
+        linkedin.registrar_pedido("link", getattr(e, "codigo", None) or "rede", de="adicionar")
+        raise
+    linkedin.registrar_pedido("link", 200, de="adicionar")
+    return vaga_linkedin(vid, pagina)
 
 
 def vaga_linkedin(vid: str, pagina: str) -> dict:

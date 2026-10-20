@@ -55,13 +55,16 @@ def _baixar(urn: str) -> str:
         with urllib.request.build_opener(linkedin._SemRedirecionar).open(req, timeout=TEMPO) as r:
             corpo = r.read(LIMITE_BYTES + 1)
             charset = r.headers.get_content_charset() or "utf-8"
+        linkedin.registrar_pedido("post", 200, de="adicionar")  # o registro dos pedidos ao LinkedIn (spec 024)
     except urllib.error.HTTPError as e:
+        linkedin.registrar_pedido("post", e.code, de="adicionar")
         if e.code in (404, 410):
             raise PostErro("o post não existe mais ou não é público (só para conexões)") from None
         if e.code in (429, 999, 401, 403) or 300 <= e.code < 400:
             raise PostErro(f"o LinkedIn não deixou ler o post ({linkedin._motivo(e.code)})") from None
         raise PostErro(f"o LinkedIn respondeu {e.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError) as e:
+        linkedin.registrar_pedido("post", "rede", de="adicionar")
         raise PostErro(f"não consegui falar com o LinkedIn ({getattr(e, 'reason', e)})") from None
     if len(corpo) > LIMITE_BYTES:
         raise PostErro("página grande demais")
