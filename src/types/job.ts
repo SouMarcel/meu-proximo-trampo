@@ -13,9 +13,6 @@ export type {
 } from "./api"
 import type { Plataforma, Etapa, Resultado } from "./api"
 
-/** Senioridade dos filtros antigos do protótipo (o servidor só tem junior, pleno e senior). */
-export type Senioridade = "junior" | "pleno" | "senior" | "especialista"
-
 export interface HistoriaSTAR {
   id: string
   titulo: string
@@ -32,93 +29,6 @@ export interface PerguntaEntrevista {
   tipo: "comportamental" | "tecnica" | "situacional"
   dica: string
   sugestao_resposta?: string
-}
-
-export interface FiltrosBusca {
-  termos: string[]
-  fontes: string[]
-  localidade: {
-    pais: string
-    estado: string
-    cidade: string
-    raio_km: number
-  }
-  modelos: {
-    remoto: boolean
-    hibrido: boolean
-    presencial: boolean
-  }
-  internacional: {
-    ativo: boolean
-    paises: string[]
-    termos: string[]
-    regioes: string[]
-    salario_min_anual_usd: number
-    fuso_horas: number
-    contratacao: string[]
-    precisa_sponsor: boolean
-    fontes: string[]
-    empresas: string[]
-  }
-  janela_horas: number
-  tipos_emprego: string[]
-  senioridades: Senioridade[]
-  moedas_aceitas: string[]
-  idiomas_aceitos: string[]
-  empresas_excluir: string[]
-  analise_automatica: boolean
-}
-
-export interface PerfilUsuario {
-  nome: string
-  cargo_atual: string
-  cargos_alvo: string[]
-  anos_experiencia: number
-  nivel_ingles: "basico" | "intermediario" | "avancado" | "fluente" | "nativo"
-  competencias_chave: string[]
-  pretensao_salarial_brl?: string
-  pretensao_salarial_usd?: string
-  bio?: string
-  linkedin_url?: string
-  github_url?: string
-  curriculo_atualizado_em?: string
-}
-
-export interface PerguntaAnamnese {
-  id: string
-  tipo: "texto" | "lista" | "opcoes" | "multi" | "sim_nao"
-  texto: string
-  opcoes?: { valor: string; rotulo: string }[]
-  condicao?: string
-  dica?: string
-}
-
-export interface ItemDiagnostico {
-  tipo: "falta" | "fraco" | "info"
-  mensagem: string
-  pergunta: string
-  pergunta_id?: string
-}
-
-export interface ConflitoMaterial {
-  id: string
-  campo: string
-  opcoes: { valor: string; fonte: string }[]
-  escolha?: number
-}
-
-export interface EstadoOnboarding {
-  etapa: "materiais" | "rascunho" | "conflitos" | "anamnese" | "diagnostico" | "revisao" | "filtros" | "concluido"
-  respostas: Record<string, any>
-  materiais: {
-    nome: string
-    tamanho: string
-    tipo: string
-    contatos?: { emails?: string[]; telefones?: string[]; linkedin?: string }
-  }[]
-  conflitos: ConflitoMaterial[]
-  contato_confirmado: { email?: string; telefone?: string; linkedin?: string }
-  rascunho_md: string
 }
 
 export interface PortalConectado {

@@ -28,6 +28,8 @@ interface InternationalHubProps {
   onSelectVaga: (vaga: Vaga) => void
   onSeguirVaga: (id: string) => void
   onOpenFiltersModal: () => void
+  /** Prontidão internacional (Meu perfil → Análises). */
+  onAbrirProntidao: () => void
 }
 
 export default function InternationalHub({
@@ -35,6 +37,7 @@ export default function InternationalHub({
   onSelectVaga,
   onSeguirVaga,
   onOpenFiltersModal,
+  onAbrirProntidao,
 }: InternationalHubProps) {
   const [filtroMoeda, setFiltroMoeda] = useState<string>("todas")
   const [somenteVisto, setSomenteVisto] = useState<boolean>(false)
@@ -194,7 +197,14 @@ export default function InternationalHub({
               onClick={onOpenFiltersModal}
               className="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 transition"
             >
-              Configurar Fontes
+              Filtros da busca internacional
+            </button>
+            <button
+              onClick={onAbrirProntidao}
+              className="px-3 py-1.5 rounded-xl text-xs font-medium text-teal-700 dark:text-teal-300 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 transition"
+              title="O que já está pronto e o que falta para se candidatar a vagas de fora"
+            >
+              Prontidão internacional
             </button>
           </div>
         </div>

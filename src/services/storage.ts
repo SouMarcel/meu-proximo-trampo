@@ -3,22 +3,6 @@
  * Regra do projeto: localStorage APENAS para preferências de tela, NUNCA para
  * vagas, perfil, configuração ou candidaturas.
  */
-import {
-  Vaga,
-  FiltrosBusca,
-  PerfilUsuario,
-  PortalConectado,
-  ItemSincronizacao,
-  HistoricoCandidatura,
-} from "../types/job"
-import {
-  MOCK_VAGAS,
-  MOCK_FILTROS_BUSCA,
-  MOCK_PERFIL,
-  MOCK_PORTAIS_CONECTADOS,
-  MOCK_ITENS_SINCRONIZACAO,
-  MOCK_HISTORICO_CANDIDATURAS,
-} from "./mockData"
 
 const PREF_KEYS = {
   ACTIVE_TAB: "mpt_pref_active_tab",
@@ -67,6 +51,21 @@ export class ScreenPreferencesService {
     } catch {}
   }
 
+  /** Primeiros passos abertos sozinhos (sem perfil) só uma vez por sessão do navegador. */
+  public static primeirosPassosJaAbertos(): boolean {
+    try {
+      return sessionStorage.getItem("mpt_sessao_primeiros_passos") === "1"
+    } catch {
+      return false
+    }
+  }
+
+  public static marcarPrimeirosPassosAbertos(): void {
+    try {
+      sessionStorage.setItem("mpt_sessao_primeiros_passos", "1")
+    } catch {}
+  }
+
   /** Tema: "sistema" (segue o computador), "claro" ou "escuro". */
   public static getTema(): Tema {
     try {
@@ -97,71 +96,3 @@ export function aplicarTema(tema: Tema): void {
   document.documentElement.style.colorScheme = escuro ? "dark" : "light"
 }
 
-/**
- * Compatibilidade legada para transição e suporte às telas ainda não migradas
- * Não grava vagas nem perfil em localStorage.
- */
-export class JobStorageService {
-  public static checkBackendConnection(): Promise<boolean> {
-    return Promise.resolve(false)
-  }
-
-  public static getBackendStatus(): boolean | null {
-    return null
-  }
-
-  public static getVagas(): Vaga[] {
-    return MOCK_VAGAS
-  }
-
-  public static saveVagas(_vagas: Vaga[]): void {}
-
-  public static updateVaga(id: string, updates: Partial<Vaga>): Vaga | null {
-    const v = MOCK_VAGAS.find((item) => item.id === id)
-    return v ? { ...v, ...updates } : null
-  }
-
-  public static addVaga(vaga: Vaga): Vaga {
-    return vaga
-  }
-
-  public static deleteVaga(_id: string): void {}
-
-  public static getFiltrosBusca(): FiltrosBusca {
-    return MOCK_FILTROS_BUSCA
-  }
-
-  public static saveFiltrosBusca(_filtros: FiltrosBusca): void {}
-
-  public static getPerfil(): PerfilUsuario {
-    return MOCK_PERFIL
-  }
-
-  public static savePerfil(_perfil: PerfilUsuario): void {}
-
-  public static getPortaisConectados(): PortalConectado[] {
-    return MOCK_PORTAIS_CONECTADOS
-  }
-
-  public static savePortaisConectados(_portais: PortalConectado[]): void {}
-
-  public static getItensSincronizacao(): ItemSincronizacao[] {
-    return MOCK_ITENS_SINCRONIZACAO
-  }
-
-  public static saveItensSincronizacao(_itens: ItemSincronizacao[]): void {}
-
-  public static getHistoricoCandidaturas(): HistoricoCandidatura[] {
-    return MOCK_HISTORICO_CANDIDATURAS
-  }
-
-  public static resetToDefaults(): void {}
-
-  public static exportData(): string {
-    return JSON.stringify({ version: "2.0.0", exported_at: new Date().toISOString() }, null, 2)
-  }
-
-  public static importData(_jsonString: string): boolean {
-    return true
-  }
-}

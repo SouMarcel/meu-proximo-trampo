@@ -9,8 +9,6 @@ import type {
   Versao,
 } from "./types/api"
 import {
-  FiltrosBusca,
-  PerfilUsuario,
   PortalConectado,
   ItemSincronizacao,
   HistoricoCandidatura,
@@ -25,8 +23,6 @@ import { useConsulta } from "./hooks/useConsulta"
 import { FerramentaProvider, useFerramenta, motivoSemGravar } from "./contexto/Ferramenta"
 import {
   MOCK_VAGAS,
-  MOCK_FILTROS_BUSCA,
-  MOCK_PERFIL,
   MOCK_PORTAIS_CONECTADOS,
   MOCK_ITENS_SINCRONIZACAO,
   MOCK_HISTORICO_CANDIDATURAS,
@@ -49,8 +45,9 @@ import AddJobModal from "./components/modals/AddJobModal"
 import SearchJobsModal from "./components/modals/SearchJobsModal"
 import SearchFiltersModal, { ModoFiltros } from "./components/modals/SearchFiltersModal"
 import AISettingsModal from "./components/modals/AISettingsModal"
-import ProfileModal from "./components/modals/ProfileModal"
-import CandidateOnboardingModal from "./components/modals/CandidateOnboardingModal"
+import MeuPerfil from "./components/perfil/MeuPerfil"
+import * as perfilApi from "./services/api/perfil"
+import type { Filtros } from "./services/api/config"
 import ConnectedAccountsModal from "./components/modals/ConnectedAccountsModal"
 import { Sparkles, AlertTriangle, RefreshCw, WifiOff } from "lucide-react"
 
@@ -105,8 +102,6 @@ function Pagina({
   const [pendentesVersao, setPendentesVersao] = useState(0) // pede ao "Completar descrições" para reler
 
   // Telas ainda simuladas (passam a usar o servidor nas próximas histórias da spec 025)
-  const [filtros, setFiltros] = useState<FiltrosBusca>(MOCK_FILTROS_BUSCA) // só os primeiros passos de exemplo (demonstração)
-  const [perfil, setPerfil] = useState<PerfilUsuario>(MOCK_PERFIL)
   const [portais, setPortais] = useState<PortalConectado[]>(MOCK_PORTAIS_CONECTADOS)
   const [itensSync] = useState<ItemSincronizacao[]>(MOCK_ITENS_SINCRONIZACAO)
   const [historicoSync] = useState<HistoricoCandidatura[]>(MOCK_HISTORICO_CANDIDATURAS)
@@ -125,8 +120,10 @@ function Pagina({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
   const [filtrosModo, setFiltrosModo] = useState<ModoFiltros | null>(null)
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
-  const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false)
+  const [filtrosProposta, setFiltrosProposta] = useState<Filtros | null>(null)
+  const filtrosDepois = useRef<(() => void) | null>(null) // o que fazer depois de salvar a proposta (primeiros passos)
+  // Meu perfil: null = fechado; senão, a tela em que abre (undefined = onde a pessoa parou)
+  const [perfilAberto, setPerfilAberto] = useState<{ tela?: "analises" } | null>(null)
   const [isAccountsModalOpen, setIsAccountsModalOpen] = useState(false)
 
   // Avisos
@@ -173,6 +170,15 @@ function Pagina({
   }, [carregarVagas, registrarPodeAlterar])
 
   const carregarTudo = useCallback(async () => {
+    perfilApi
+      .estado()
+      .then((j) => {
+        if (!j.existe_perfil && j.pode_alterar && !ScreenPreferencesService.primeirosPassosJaAbertos()) {
+          ScreenPreferencesService.marcarPrimeirosPassosAbertos()
+          setPerfilAberto({})
+        }
+      })
+      .catch(() => undefined)
     await carregarVagas()
     recarregarIA()
     consultarBusca()
@@ -405,19 +411,17 @@ function Pagina({
 
   // ---------- telas ainda simuladas (próximas histórias da spec 025) ----------
 
-  const handleFiltrosSalvos = () => {
+  const fecharFiltros = () => {
     setFiltrosModo(null)
+    setFiltrosProposta(null)
+    filtrosDepois.current = null
+  }
+  const handleFiltrosSalvos = () => {
+    const depois = filtrosDepois.current
+    fecharFiltros()
     showToast("Filtros salvos. Valem a partir da próxima busca.")
     buscaApi.plano().then(setPlanoBusca).catch(() => undefined)
-  }
-  const handleCompleteOnboarding = (perfilAtualizado: PerfilUsuario, filtrosAtualizados: FiltrosBusca) => {
-    setPerfil(perfilAtualizado)
-    setFiltros(filtrosAtualizados)
-    showToast("Onboarding concluído! Perfil e filtros calibrados com sucesso.")
-  }
-  const handleSavePerfil = (newPerfil: PerfilUsuario) => {
-    setPerfil(newPerfil)
-    showToast("Perfil profissional atualizado.")
+    if (depois) depois()
   }
   const handleConectarPortal = (portalId: string) => {
     setPortais((prev) => prev.map((p) => (p.id === portalId ? { ...p, conectado: true } : p)))
@@ -485,7 +489,7 @@ function Pagina({
         onOpenAddModal={() => setIsAddModalOpen(true)}
         onOpenSearchModal={() => setIsSearchModalOpen(true)}
         onOpenFiltersModal={() => setFiltrosModo("nacional")}
-        onOpenProfileModal={() => setIsProfileModalOpen(true)}
+        onOpenProfileModal={() => setPerfilAberto({})}
         onOpenAIModal={() => setIsAIModalOpen(true)}
         onOpenAccountsModal={() => setIsAccountsModalOpen(true)}
       />
@@ -500,34 +504,6 @@ function Pagina({
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Primeiros passos: só no modo demonstração até a História 3 da spec 025 */}
-        {servidor === "demo" && (
-        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-indigo-900/90 via-slate-900 to-purple-950 text-white border border-indigo-700/40 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-indigo-300" />
-                <span>Onboarding do Candidato</span>
-              </span>
-              <span className="text-xs text-indigo-200/80 font-medium">Primeiros Passos & Anamnese</span>
-            </div>
-            <h3 className="text-sm sm:text-base font-bold">
-              Calibre o perfil com as perguntas essenciais para a análise de vagas
-            </h3>
-            <p className="text-xs text-slate-300 max-w-2xl">
-              Responda às perguntas sobre cargos-alvo, conquistas com métricas, critérios inegociáveis e modelos de
-              trabalho para que a IA dê as notas de aderência com precisão.
-            </p>
-          </div>
-          <button
-            onClick={() => setIsOnboardingModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs shadow-indigo-600/30 shrink-0 transition"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Fazer Onboarding Agora</span>
-          </button>
-        </div>
-        )}
 
         {activeTab === "quadro" && (
           <KanbanBoard
@@ -573,6 +549,7 @@ function Pagina({
               onSelectVaga={(v) => setDetalheId(v.id)}
               onSeguirVaga={handleSeguirVaga}
               onOpenFiltersModal={() => setFiltrosModo("internacional")}
+              onAbrirProntidao={() => setPerfilAberto({ tela: "analises" })}
             />
           </div>
         )}
@@ -625,15 +602,40 @@ function Pagina({
           }}
           onAbrirPerfil={() => {
             setIsSearchModalOpen(false)
-            setIsProfileModalOpen(true)
+            setPerfilAberto({})
           }}
+        />
+      )}
+
+      {/* Meu perfil fica por baixo quando "Ajustar antes" abre os filtros, e volta ao mesmo passo */}
+      {perfilAberto && (
+        <MeuPerfil
+          telaInicial={perfilAberto.tela}
+          onClose={() => setPerfilAberto(null)}
+          onAviso={showToast}
+          onAjustarFiltros={(proposta, depois) => {
+            setFiltrosProposta(proposta)
+            filtrosDepois.current = depois
+            setFiltrosModo("nacional")
+          }}
+          onAbrirFiltrosInt={() => {
+            setPerfilAberto(null)
+            setFiltrosModo("internacional")
+          }}
+          onUsouCurriculo={() => {
+            setPerfilAberto(null)
+            carregarVagas().catch(() => undefined)
+            setIsSearchModalOpen(true)
+          }}
+          onPerfilMudou={() => buscaApi.plano().then(setPlanoBusca).catch(() => undefined)}
         />
       )}
 
       {filtrosModo && (
         <SearchFiltersModal
           modo={filtrosModo}
-          onClose={() => setFiltrosModo(null)}
+          proposta={filtrosProposta}
+          onClose={fecharFiltros}
           onTrocarModo={setFiltrosModo}
           onSalvo={handleFiltrosSalvos}
         />
@@ -655,21 +657,6 @@ function Pagina({
           caminho para a página de sempre; os dados de exemplo só aparecem no modo demonstração. */}
       {demo ? (
         <>
-          <ProfileModal
-            isOpen={isProfileModalOpen}
-            onClose={() => setIsProfileModalOpen(false)}
-            perfil={perfil}
-            onSavePerfil={handleSavePerfil}
-            onReloadAllData={conferirServidor}
-            onOpenOnboarding={() => setIsOnboardingModalOpen(true)}
-          />
-          <CandidateOnboardingModal
-            isOpen={isOnboardingModalOpen}
-            onClose={() => setIsOnboardingModalOpen(false)}
-            onCompleteOnboarding={handleCompleteOnboarding}
-            filtrosAtuais={filtros}
-            perfilAtual={perfil}
-          />
           <ConnectedAccountsModal
             isOpen={isAccountsModalOpen}
             onClose={() => setIsAccountsModalOpen(false)}
@@ -685,15 +672,6 @@ function Pagina({
         </>
       ) : (
         <>
-          {(isProfileModalOpen || isOnboardingModalOpen) && (
-            <AvisoTelaAntiga
-              tela={TELAS_ANTIGAS.perfil}
-              onClose={() => {
-                setIsProfileModalOpen(false)
-                setIsOnboardingModalOpen(false)
-              }}
-            />
-          )}
           {isAccountsModalOpen && (
             <AvisoTelaAntiga tela={TELAS_ANTIGAS.contas} onClose={() => setIsAccountsModalOpen(false)} />
           )}
