@@ -94,6 +94,11 @@ jobs:
         run: |
           npm install -g "pnpm@$PNPM"
           pnpm install --frozen-lockfile
+          # o vite build não confere os tipos: campo inventado ou com nome errado para aqui (spec 025)
+          if ! pnpm exec tsc --noEmit; then
+            echo "::error::A conferência de tipos (tsc --noEmit) falhou: corrija na frontend-react e rode de novo."
+            exit 1
+          fi
           # base relativa: o servidor entrega o front em /novo/ e o Live Server o abre em dash/front/
           pnpm exec vite build --base ./
           test -f dist/index.html

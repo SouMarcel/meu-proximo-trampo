@@ -25,20 +25,20 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
 
 - [x] T001 Criar a worktree da `frontend-react` em `scratchpad/wt-front` e instalar com
   `npx -y pnpm@10.34.3 install --frozen-lockfile` (feito no plano)
-- [ ] T002 Acrescentar o script `"typecheck": "tsc --noEmit"` em `package.json`
-- [ ] T003 Corrigir os 10 erros do `tsc`:
+- [X] T002 Acrescentar o script `"typecheck": "tsc --noEmit"` em `package.json`
+- [X] T003 Corrigir os 10 erros do `tsc`:
   - `src/App.tsx` (linhas 347, 364, 401);
   - `src/components/KanbanBoard.tsx` (109);
   - `src/components/modals/ConnectedAccountsModal.tsx` (311: `bg` e `text` → as chaves que existem no objeto);
   - `src/utils/formatters.ts` (271-282: importar `Vaga` e tipar `x`).
-- [ ] T004 [P] Em `.github/workflows/front.yml`, passo `pnpm exec tsc --noEmit` antes do `vite build`, com
+- [X] T004 [P] Em `.github/workflows/front.yml`, passo `pnpm exec tsc --noEmit` antes do `vite build`, com
   mensagem de erro clara na execução
 
 ---
 
 ## Phase 2: Foundational (bloqueia todas as histórias)
 
-- [ ] T005 Criar `src/types/api.ts` com os tipos do `dash/API.md`.
+- [X] T005 Criar `src/types/api.ts` com os tipos do `dash/API.md`.
   - `Vaga` com todos os campos do §2, incluindo:
     - `id` "`^[A-Za-z0-9_.:-]{1,64}$`", `origem` `"busca"|"link"|"manual"`, `formato`, `nota_sem_descricao`;
     - `analise_status` `pendente|feita|sem_dados|sem_analise`;
@@ -47,7 +47,7 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
     - os calculados `checklist` e `lembretes_pendentes`.
   - `Versao` (§3.13) e `ErroApi` `{status, message, dados}`.
   - Os demais tipos listados em `data-model.md`, cada um acrescentado na fase que o usa.
-- [ ] T006 Reescrever `src/services/api.ts`:
+- [X] T006 Reescrever `src/services/api.ts`:
   - manter `getApiBaseUrl()`;
   - função `pedir<T>(metodo, caminho, corpo?)`: escrita sempre com `Content-Type: application/json` e corpo `{}`
     quando vazio (também em DELETE); `cache: "no-store"`;
@@ -55,28 +55,28 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
   - falha de rede vira `ErroApi` com `status: 0` e "servidor fora do ar";
   - `urlArquivo(caminho)` = base + caminho, para os links `/arquivos/...`;
   - sai o objeto `ApiService`.
-- [ ] T007 [P] Criar `src/services/api/vagas.ts` (§3.1, §3.2): `versao()`, `listar()`, `ultimaBusca()`,
+- [X] T007 [P] Criar `src/services/api/vagas.ts` (§3.1, §3.2): `versao()`, `listar()`, `ultimaBusca()`,
   `atualizar(id, campos)`, `remover(id)`, `analisar(id)`, `porLink(url)`, `extrair(texto, autor?, autor_tipo?)`,
   `criar(campos)`.
-- [ ] T008 [P] Criar `src/hooks/useConsulta.ts`: `useConsulta(fn, intervaloMs, ativo)`.
+- [X] T008 [P] Criar `src/hooks/useConsulta.ts`: `useConsulta(fn, intervaloMs, ativo)`.
   - Não consulta com `document.hidden`; consulta de novo no `visibilitychange` ao voltar.
   - Para quando `ativo` vira `false`.
-- [ ] T009 [P] Criar `src/contexto/Ferramenta.tsx` (data-model "Contexto `Ferramenta`"):
+- [X] T009 [P] Criar `src/contexto/Ferramenta.tsx` (data-model "Contexto `Ferramenta`"):
   - campos `servidor` (`no_ar|fora|demo`), `podeAlterar`, `ia {disponivel, nome, modelo, cobranca}`, `perfilExiste`;
   - funções `registrarPodeAlterar(valor)`, `tratarErro(e)` (403 numa rota [local] → `podeAlterar = false`) e
     `exigirIA(abrirPainelIA)` (sem IA disponível, abre o painel IA e devolve `false`);
   - componente `<AvisoSoLeitura/>` com o motivo, para usar ao lado de botões desligados.
-- [ ] T010 [P] Criar `src/utils/filaVaga.ts`: `naFila(id, tarefa)`, que encadeia uma promessa por id para uma escrita
+- [X] T010 [P] Criar `src/utils/filaVaga.ts`: `naFila(id, tarefa)`, que encadeia uma promessa por id para uma escrita
   por vez na mesma vaga.
-- [ ] T011 [P] Criar `src/components/TextoDaVaga.tsx` (research R8): markdown mínimo montado como elementos React.
+- [X] T011 [P] Criar `src/components/TextoDaVaga.tsx` (research R8): markdown mínimo montado como elementos React.
   - Parágrafos, quebras, `**negrito**`, listas `-` e `*`.
   - Links só `http` e `https`, com `target="_blank" rel="noopener noreferrer"`.
   - Sem `dangerouslySetInnerHTML`.
-- [ ] T012 Em `src/utils/formatters.ts`, criar ou ajustar as funções do data-model "Estado derivado":
+- [X] T012 Em `src/utils/formatters.ts`, criar ou ajustar as funções do data-model "Estado derivado":
   - `situacaoNota(vaga, versao)`: `verificando` → `falha` → `analise_status`, mais o selo de nota provisória;
   - `areaDe(vaga)` (`area` ou dedução por `grupos`), `noQuadro(vaga)` e `noRelatorio(vaga)`;
   - `faixaNota(n)`: "≥80 forte, ≥65 boa, ≥50 parcial, abaixo baixa; sem número = sem nota".
-- [ ] T013 Reescrever o carregamento em `src/App.tsx`:
+- [X] T013 Reescrever o carregamento em `src/App.tsx`:
   - envolver a página no `FerramentaProvider`;
   - `useConsulta` de `versao()` a cada 4 s; quando `versao` muda ou o servidor volta, recarregar `listar()` e
     `ultimaBusca()`;
@@ -85,13 +85,13 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
   - queda depois de conectado → `fora` (faixa no topo e reconexão sozinha, sem trocar as vagas por exemplos);
   - todas as escritas de vaga por `naFila`, trocando a vaga local pela devolvida;
   - `vagasComStatus` deixa de reescrever `analise_status` e passa a usar `situacaoNota`.
-- [ ] T014 Trocar `Vaga` de `src/types/job.ts` pelo `Vaga` de `src/types/api.ts` em `KanbanBoard.tsx`,
+- [X] T014 Trocar `Vaga` de `src/types/job.ts` pelo `Vaga` de `src/types/api.ts` em `KanbanBoard.tsx`,
   `TriageReport.tsx`, `JobCard.tsx`, `InternationalHub.tsx`, `FunnelAnalytics.tsx`, `modals/JobDetailModal.tsx` e
   `InterviewCoach.tsx` (em `src/components/`), corrigindo os campos que não existem. O `checklist` e as entrevistas
   ficam vazios até US4 e US5.
-- [ ] T015 Reescrever `src/services/mockData.ts` no formato de `src/types/api.ts`, com empresas e pessoas fictícias,
+- [X] T015 Reescrever `src/services/mockData.ts` no formato de `src/types/api.ts`, com empresas e pessoas fictícias,
   usado só em `demo`. No `demo`, os botões que gravam ficam desligados com o aviso.
-- [ ] T016 Portões do quickstart (`tsc`, build, greps) e conferir em `/novo/` que quadro e Relatório continuam como
+- [X] T016 Portões do quickstart (`tsc`, build, greps) e conferir em `/novo/` que quadro e Relatório continuam como
   antes, sem regressão
 
 **Checkpoint**: base pronta; as histórias podem começar.
@@ -104,10 +104,10 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
 
 **Independent Test**: roteiro H1 do quickstart. Busca, vaga por link e vaga por texto aparecem também em `/`.
 
-- [ ] T017 [P] [US1] Criar `src/services/api/busca.ts` (§3.3): `plano()`,
+- [X] T017 [P] [US1] Criar `src/services/api/busca.ts` (§3.3): `plano()`,
   `iniciar({sem_nota?, confirmar_recente?, confirmar_espera?})`, `estado()`, `cancelar()`, `tentarNota()`,
   `pendentes()`, `completarPendentes()`.
-- [ ] T018 [US1] Reescrever `src/components/modals/SearchJobsModal.tsx` sobre `plano()`. Sai o `setTimeout`.
+- [X] T018 [US1] Reescrever `src/components/modals/SearchJobsModal.tsx` sobre `plano()`. Sai o `setTimeout`.
   - **Mostrar**: portais, cargos, `janela_horas`, `estimativa_min`, a IA (`nome`, `modelo`, "consome créditos"
     quando `cobranca == "uso"`), `aviso_cargos`, `aviso_pausa`, `espera` e `ultima`.
   - **Sem `filtros_ok` ou `perfil_ok`**: botões para Filtros e Meu perfil.
@@ -120,7 +120,7 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
   - **409 com `precisa_confirmar`**: mostrar o `erro` e pedir a confirmação.
   - **Sem IA**: opção "buscar sem nota" (`sem_nota: true`).
   - **Só leitura**: respeitar `podeAlterar`.
-- [ ] T019 [US1] Criar `src/components/AndamentoBusca.tsx`, mostrado no topo do Relatório.
+- [X] T019 [US1] Criar `src/components/AndamentoBusca.tsx`, mostrado no topo do Relatório.
   - `useConsulta(estado, 2000)` enquanto `situacao` estiver em `consultando, descricoes, gravando, cancelando,
     externa` ou a análise rodar; para 20 s depois da última ação (§1).
   - **Mostrar**: `feitas/total`, `consulta {portal, cargo}`, `descricoes {lidas,total}`, `erros`, `mensagem` e, no
@@ -129,17 +129,17 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
   - **Com `situacao == "externa"`**: "busca rodando pelo terminal ou pelo chat".
   - **Com `analise.erro`**: botão "Tentar a nota de novo" (`tentarNota()`).
   - Também abre com o aviso `ia_erro` de `versao`.
-- [ ] T020 [P] [US1] Criar `src/components/UltimaBusca.tsx` (linha do topo do Relatório).
+- [X] T020 [P] [US1] Criar `src/components/UltimaBusca.tsx` (linha do topo do Relatório).
   - Mostrar data, termos, brutas, avaliadas, fora_criterios, fortes, boas, parciais e baixas, tolerando registro
     antigo sem campos.
   - Usar em `src/components/TriageReport.tsx`.
-- [ ] T021 [US1] Criar `src/components/CompletarDescricoes.tsx` no Relatório.
+- [X] T021 [US1] Criar `src/components/CompletarDescricoes.tsx` no Relatório.
   - Botão com o número de `pendentes`, desligado com `espera` (mostrando até quando).
   - `completarPendentes()`; `useConsulta(pendentes, 2000)` enquanto `situacao == "lendo"`; no fim, recarregar as
     vagas e mostrar `completadas`, `restantes` e `erros`.
   - Tirar de `src/App.tsx` o `handleCompletarDescricao` simulado e a prop `onCompletarDescricao` de
     `modals/JobDetailModal.tsx`.
-- [ ] T022 [US1] Reescrever `src/components/modals/AddJobModal.tsx` (§3.2), sem `setTimeout`.
+- [X] T022 [US1] Reescrever `src/components/modals/AddJobModal.tsx` (§3.2), sem `setTimeout`.
   - **Por link** (`porLink(url)`, URL até 1.000):
     - 201/200 → vaga gravada; avisar quando `nova: false`;
     - resposta com `post` → abrir o formulário com `parcial` e, se `ia.disponivel`, o botão "Preencher com IA";
@@ -157,29 +157,48 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
     - `email_candidatura` e `assunto_candidatura`;
     - `formato`, `post_id` e `publicado_por` vindos do post.
   - **Adicionar**: `criar()`. Se a vaga voltar com `triagem: "fora"`, mostrar o `motivo_fora`.
-- [ ] T023 [US1] Ajustar `handleAddVaga` em `src/App.tsx` para receber a `Vaga` devolvida e acrescentar ou trocar
+- [X] T023 [US1] Ajustar `handleAddVaga` em `src/App.tsx` para receber a `Vaga` devolvida e acrescentar ou trocar
   pelo id.
-- [ ] T024 [US1] Em `src/components/TriageReport.tsx`, botão "Marcar todas como não seguidas" na sub-aba Para decidir.
+- [X] T024 [US1] Em `src/components/TriageReport.tsx`, botão "Marcar todas como não seguidas" na sub-aba Para decidir.
   - Dois cliques: o segundo diz "Confirmar: marcar todas".
   - Uma vaga por vez via `naFila`, com `{triagem: "visitada", etapa: null, triada_em: hoje}`.
-- [ ] T025 [US1] Em `src/components/Header.tsx`:
+- [X] T025 [US1] Em `src/components/Header.tsx`:
   - tirar a prop `configIA` e mostrar a IA do contexto (nome e modelo; "sem IA" leva ao painel);
   - link "Apoie o projeto" com o mesmo endereço e texto do `dash/dashboard.html`;
   - Buscar vagas abre o `SearchJobsModal`.
-- [ ] T026 [US1] Em `src/components/modals/JobDetailModal.tsx`, a análise como o servidor manda:
+- [X] T026 [US1] Em `src/components/modals/JobDetailModal.tsx`, a análise como o servidor manda:
   - descrição com `TextoDaVaga`;
   - análise com nota e faixa, "nota provisória" quando `nota_sem_descricao`, `resumo`, Encaixe, Lacunas, Atenção,
     `sinais`;
   - `autorizacao`, `ingles`, `contratacao`, `fuso` e `riscos` com a `frase` do anúncio;
   - `senioridade` com "sugerida" quando `senioridade_origem == "sugerida"`;
   - quem deu a nota (`analise_provedor` e `analise_modelo`).
-- [ ] T027 [US1] Em todo erro de API das telas desta fase, mostrar `ErroApi.message` (toast de erro) e passar por
+- [X] T027 [US1] Em todo erro de API das telas desta fase, mostrar `ErroApi.message` (toast de erro) e passar por
   `tratarErro` (`src/App.tsx`, modais da fase)
 - [ ] T028 [US1] Portões do quickstart; build copiado para `dash/front/` na `marcel`; roteiro H1 com a pessoa;
   marcar as linhas da História 1 em `contracts/paridade.md`. Com o OK: busca de dados pessoais, commit na
   `frontend-react` e o fluxo de entrega do quickstart.
 
 **Checkpoint**: uso diário possível só pela página nova.
+
+**Notas da implementação (H1, 2026-10-20)**:
+- `UltimaBusca`, `CompletarDescricoes` e `AndamentoBusca` ficam no `App.tsx`, acima do `TriageReport`; o andamento
+  também aparece na aba Internacional.
+- Entraram também:
+  - o botão de tema no cabeçalho (sistema → claro → escuro), que a lista de paridade dava como pronto e faltava;
+  - "Voltar para triagem" em Não seguidas;
+  - e-mail e assunto da candidatura no detalhe;
+  - o título e o idioma da página (`.figma/make/site.json`).
+- O detalhe da vaga deixou de chamar hooks antes do `return` (erro do React ao abrir) e lê a vaga direto da lista,
+  então as mudanças aparecem na hora.
+- A sub-aba "Seguidas" do Relatório continua fora: o analista a tirou de propósito (commit `3a7bc44`); as vagas
+  seguidas ficam no quadro.
+- Conferido sem a pessoa:
+  - `tsc` e build sem erros;
+  - greps limpos (o `storage.ts` ainda usa o `mockData` no `JobStorageService`, que sai na H3);
+  - 357 testes Python passando;
+  - página montada aberta num navegador sem janela, com o servidor no ar (vagas, IA, última busca e pendentes
+    reais) e com a API bloqueada (modo demonstração com os botões de gravar desligados).
 
 ---
 
