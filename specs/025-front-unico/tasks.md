@@ -397,10 +397,10 @@ local); a IA, não.
 
 **Independent Test**: roteiro H5. A história e a anotação aparecem também em `/`.
 
-- [ ] T052 [P] [US5] Criar `src/services/api/entrevista.ts` (§3.10: `ler(vid)`, `salvarEmpresa`, `resumir`,
+- [X] T052 [P] [US5] Criar `src/services/api/entrevista.ts` (§3.10: `ler(vid)`, `salvarEmpresa`, `resumir`,
   `maisPerguntas`, `sugerirHistorias`, `salvarHistoria`, `removerHistoria`, `simular`, `salvarRodada`), com os tipos
   `Entrevista`, `Historia`, `PerguntaProvavel`, `Rodada` e `RetornoSimulacao`
-- [ ] T053 [US5] Reescrever `src/components/InterviewCoach.tsx` com seletor de vaga e as abas:
+- [X] T053 [US5] Reescrever `src/components/InterviewCoach.tsx` com seletor de vaga e as abas:
   - **Dossiê**: campos do `dossie`; texto da empresa colado "até 20.000" com Salvar o texto; Resumo com IA (aviso de
     custo), com `origem` e `trecho` de cada ponto.
   - **Perguntas**: tipo, porquê, `texto_en`; Mais perguntas com IA.
@@ -411,8 +411,17 @@ local); a IA, não.
   - **Depois**: formulário da rodada e as anteriores.
 
   Tirar as dicas fixas.
-- [ ] T054 [US5] Em `src/App.tsx`, "Preparar entrevista" do cartão em Entrevista (`JobCard.tsx`) e do detalhe abre
+- [X] T054 [US5] Em `src/App.tsx`, "Preparar entrevista" do cartão em Entrevista (`JobCard.tsx`) e do detalhe abre
   a aba de entrevistas com a vaga escolhida. Tirar `perguntas_frequentes` e `historias_star` de todo `src/`.
+**Notas da implementação (H5, 2026-10-20)**:
+- O dossiê mostra autorização, contratação, inglês e fuso pelos rótulos. O dashboard antigo mostrava
+  "[object Object]" nesses campos, porque o servidor os manda como objetos.
+- O formulário de história fica fora do componente da página, para não perder o que se digita quando a página
+  atualiza (a consulta da versão roda a cada 4 s).
+- O JS montado tem 502 kB (o Vite avisa acima de 500); a meta do plano é ficar abaixo de 700 kB.
+- Conferido sem a pessoa: `tsc`, build e greps; as abas Dossiê, Perguntas, Salário e Depois abertas pelo
+  navegador sem janela, só com leituras, com os dados reais e sem erro de JavaScript.
+
 - [ ] T055 [US5] Portões, roteiro H5, linhas da História 5 em `contracts/paridade.md` e entrega com o OK
 
 ---
