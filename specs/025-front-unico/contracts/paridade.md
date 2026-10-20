@@ -42,7 +42,7 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 | Colunas Salva → Encerrada; arrastar; menu ⋯; seletor de etapa | Quadro | — | ✅ | [ ] |
 | Resultado (Não aprovado, Desisti, Vaga cancelada, Contratado) | Quadro e detalhe | — | ✅ | [ ] |
 | Remover do quadro (dois cliques) | Quadro e detalhe | 1 | ✅ (o segundo clique entrou na H1) | [ ] |
-| Preparar entrevista no cartão em Entrevista | Quadro | 5 | ⚠️ | [ ] |
+| Preparar entrevista no cartão em Entrevista | Quadro | 5 | ✅ | [ ] |
 | Lembrete de follow-up no cartão (Feito, Dispensar, Parar lembretes) | Quadro e detalhe | 4 | ✅ | [ ] |
 
 ## Detalhe da vaga
@@ -95,12 +95,12 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 
 | Função | Na página nova | H | Hoje | Conferido |
 |---|---|---|---|---|
-| Dossiê, Sobre a empresa (Salvar o texto), Resumo com IA | Entrevista | 5 | ⚠️ | [ ] |
-| Perguntas prováveis, Mais perguntas com IA | Entrevista | 5 | ⚠️ | [ ] |
-| Suas histórias: editar, Salvar esta história, Remover (dois cliques), rascunhos da IA não salvos | Entrevista | 5 | ⚠️ | [ ] |
-| Simulação pt/en com retorno | Entrevista | 5 | ⚠️ | [ ] |
-| Salário (sem valores inventados) | Entrevista | 5 | ⚠️ | [ ] |
-| Como foi a entrevista (Salvar anotação); entrevistas anteriores | Entrevista | 5 | ❌ | [ ] |
+| Dossiê, Sobre a empresa (Salvar o texto), Resumo com IA | Entrevista | 5 | ✅ | [ ] |
+| Perguntas prováveis, Mais perguntas com IA | Entrevista | 5 | ✅ | [ ] |
+| Suas histórias: editar, Salvar esta história, Remover (dois cliques), rascunhos da IA não salvos | Entrevista | 5 | ✅ | [ ] |
+| Simulação pt/en com retorno | Entrevista | 5 | ✅ | [ ] |
+| Salário (sem valores inventados) | Entrevista | 5 | ✅ | [ ] |
+| Como foi a entrevista (Salvar anotação); entrevistas anteriores | Entrevista | 5 | ✅ | [ ] |
 
 ## Contas conectadas
 
