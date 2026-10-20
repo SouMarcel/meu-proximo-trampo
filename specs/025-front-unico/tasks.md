@@ -249,7 +249,7 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
 exemplo (modo demonstração) e sai na H3. Gravar os filtros vale de outro aparelho (`PUT /api/config` não é só
 local); a IA, não.
 
-- [ ] T033 [US2] Portões, roteiro H2, linhas da História 2 em `contracts/paridade.md` e entrega com o OK
+- [X] T033 [US2] Portões, roteiro H2, linhas da História 2 em `contracts/paridade.md` e entrega com o OK
 
 ---
 
