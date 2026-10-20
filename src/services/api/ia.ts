@@ -27,3 +27,19 @@ export interface EstadoIA {
 }
 
 export const estado = () => pedir<EstadoIA>("GET", "/api/ia")
+
+export interface EscolhaIA {
+  provedor: string
+  modelo?: string
+  url_base?: string
+  /** Só vai quando a pessoa digita; nunca volta do servidor. */
+  chave?: string
+}
+
+export const salvar = (escolha: EscolhaIA) => pedir<EstadoIA>("PUT", "/api/ia", escolha)
+
+/** Testa a conexão; a chave passada não é gravada. */
+export const testar = (escolha: EscolhaIA) => pedir<{ ok: boolean; mensagem: string }>("POST", "/api/ia/testar", escolha)
+
+export const removerChave = (provedor: string) =>
+  pedir<EstadoIA & { aviso?: string }>("DELETE", `/api/ia/chave/${encodeURIComponent(provedor)}`)

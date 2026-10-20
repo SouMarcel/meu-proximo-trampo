@@ -1,227 +1,347 @@
-import React, { useState } from "react"
-import {
-  X,
-  Sparkles,
-  Save,
-  Key,
-  Cpu,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw,
-  ShieldCheck,
-} from "lucide-react"
-import { ConfigIA } from "../../types/job"
+/**
+ * Painel IA (dash/API.md §3.5): provedor, modelo, endereço (compatível) e chave. A chave nunca volta para a página
+ * (só os 4 últimos caracteres e a origem) e não fica guardada no navegador: o campo começa sempre vazio.
+ */
+import React, { useEffect, useState } from "react"
+import { X, Sparkles, Loader2, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
+import * as iaApi from "../../services/api/ia"
+import type { EstadoIA, Provedor, EscolhaIA } from "../../services/api/ia"
+import { mensagemDeErro } from "../../services/api"
+import { useFerramenta } from "../../contexto/Ferramenta"
+import { linkSeguro } from "../../utils/formatters"
 
-interface AISettingsModalProps {
-  isOpen: boolean
+interface Props {
   onClose: () => void
-  configIA: ConfigIA
-  onSaveConfig: (config: ConfigIA) => void
+  onSalvo: (mensagem: string) => void
+  onAviso: (mensagem: string, tipo?: "info" | "erro") => void
 }
 
-export default function AISettingsModal({
-  isOpen,
-  onClose,
-  configIA,
-  onSaveConfig,
-}: AISettingsModalProps) {
-  if (!isOpen) return null
+const SEC = "space-y-2 pb-4 border-b border-slate-100 dark:border-slate-800 last:border-0"
+const H = "font-bold text-sm text-slate-900 dark:text-white"
+const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
+const CAMPO =
+  "w-full px-3 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60"
+const ROTULO = "text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1"
 
-  const [config, setConfig] = useState<ConfigIA>({ ...configIA })
-  const [testStatus, setTestStatus] =
-    useState<"idle" | "testing" | "success" | "error">("idle")
-  const [savedSuccess, setSavedSuccess] = useState(false)
+/** O que a pessoa precisa saber antes de salvar (o mesmo texto do dashboard antigo). */
+function avisos(p: Provedor | undefined): string[] {
+  if (!p || p.id === "nenhum") {
+    return ["Nada é enviado a provedores de IA. Busca, relatório e quadro funcionam normalmente; as vagas ficam sem nota."]
+  }
+  const l = [
+    p.cobranca === "assinatura"
+      ? "Usa a sua assinatura do Claude: não há cobrança por chamada além do plano."
+      : "Cobrado por uso, na sua conta do provedor: cada análise de vaga consome créditos.",
+    "Notas de modelos diferentes podem variar para a mesma vaga.",
+    `O seu perfil e o texto das vagas vão para ${p.nome} a cada análise.`,
+  ]
+  if (p.cobranca === "uso") {
+    l.push("Em planos gratuitos, alguns provedores podem usar os dados enviados para melhorar os produtos deles. Confira os termos antes.")
+  }
+  if (p.dica) l.push(p.dica)
+  return l
+}
 
-  const handleTestConnection = () => {
-    setTestStatus("testing")
-    setTimeout(() => {
-      setTestStatus("success")
-      setConfig((prev) => ({
-        ...prev,
-        status_conexao: "conectado",
-        ultima_verificacao: "Agora",
-      }))
-    }, 1000)
+export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
+  const { servidor, tratarErro, recarregarIA, registrarPodeAlterar } = useFerramenta()
+  const [e, setE] = useState<EstadoIA | null>(null)
+  const [provedor, setProvedor] = useState("")
+  const [modelo, setModelo] = useState("")
+  const [urlBase, setUrlBase] = useState("")
+  const [chave, setChave] = useState("")
+  const [erro, setErro] = useState("")
+  const [teste, setTeste] = useState<{ ok: boolean; mensagem: string } | null>(null)
+  const [ocupado, setOcupado] = useState<"" | "testar" | "salvar" | "remover">("")
+
+  const escolher = (estado: EstadoIA, prov: string) => {
+    const g = estado.escolha
+    setProvedor(prov)
+    setModelo(g && g.provedor === prov ? g.modelo || "" : "")
+    setUrlBase(g && g.provedor === prov ? g.url_base || "" : "")
+    setChave("")
+    setTeste(null)
   }
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSaveConfig(config)
-    setSavedSuccess(true)
-    setTimeout(() => {
-      setSavedSuccess(false)
-      onClose()
-    }, 600)
+  useEffect(() => {
+    iaApi
+      .estado()
+      .then((j) => {
+        setE(j)
+        registrarPodeAlterar(j.pode_alterar)
+        escolher(j, j.escolha?.provedor || j.efetiva)
+      })
+      .catch((err) => setErro("Não deu para abrir o painel de IA: " + mensagemDeErro(err)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const p = e?.provedores.find((x) => x.id === provedor)
+  const podeMudar = Boolean(e?.pode_alterar) && servidor === "no_ar"
+  const c = (p && e?.chaves?.[p.id]) || null
+
+  const corpo = (): EscolhaIA => {
+    const x: EscolhaIA = { provedor, modelo: modelo.trim(), url_base: urlBase.trim() }
+    if (chave.trim()) x.chave = chave.trim()
+    return x
+  }
+
+  const testar = async () => {
+    setOcupado("testar")
+    setTeste(null)
+    try {
+      setTeste(await iaApi.testar(corpo()))
+    } catch (err) {
+      tratarErro(err)
+      setTeste({ ok: false, mensagem: mensagemDeErro(err) })
+    } finally {
+      setOcupado("")
+    }
+  }
+
+  const salvar = async (ev: React.FormEvent) => {
+    ev.preventDefault()
+    setOcupado("salvar")
+    setErro("")
+    try {
+      const j = await iaApi.salvar(corpo())
+      setChave("")
+      await recarregarIA()
+      onSalvo(`IA salva: ${j.provedores.find((x) => x.id === j.efetiva)?.nome || j.efetiva}.`)
+    } catch (err) {
+      tratarErro(err)
+      setErro(mensagemDeErro(err, "Não deu para salvar a IA."))
+    } finally {
+      setOcupado("")
+    }
+  }
+
+  const removerChave = async () => {
+    if (!p) return
+    setOcupado("remover")
+    try {
+      const j = await iaApi.removerChave(p.id)
+      setE(j)
+      await recarregarIA()
+      onAviso(j.aviso || "Chave removida do arquivo .env.", j.aviso ? "erro" : "info")
+    } catch (err) {
+      tratarErro(err)
+      onAviso(mensagemDeErro(err, "Não deu para remover a chave."), "erro")
+    } finally {
+      setOcupado("")
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div
-        className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={onClose}>
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-ia"
+        onSubmit={salvar}
+        className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+        onClick={(ev) => ev.stopPropagation()}
       >
-        {/* Top Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
-          <div className="flex items-center gap-3">
+        <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+          <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
-                Configurações do Modelo de IA
-              </h3>
+              <h3 id="titulo-ia" className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">IA</h3>
               <p className="text-xs text-slate-500">
-                Escolha a inteligência responsável pelas notas de aderência e
-                análise de requisitos
+                A IA dá a nota de aderência e ajuda no currículo e na entrevista. Sem IA, busca, relatório e quadro
+                continuam funcionando.
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100"
-          >
-            <X className="w-5 h-5 hover:text-slate-900 [button:hover_&]:text-slate-900 dark:hover:text-slate-900 dark:[button:hover_&]:text-slate-900 transition-colors" />
+          <button type="button" onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" aria-label="Fechar">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Body Content */}
-        <form onSubmit={handleSave} className="p-6 space-y-4">
-          <div>
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-              Provedor de Inteligência Artificial
-            </label>
-            <select
-              value={config.provedor}
-              onChange={(e) => {
-                const prov = e.target.value as ConfigIA["provedor"]
-                let defaultModel = "claude-3-7-sonnet"
-                if (prov === "openai") defaultModel = "gpt-4o"
-                if (prov === "gemini") defaultModel = "gemini-1.5-pro"
-                if (prov === "ollama") defaultModel = "llama3:latest"
-                if (prov === "deepseek") defaultModel = "deepseek-chat"
-                if (prov === "openrouter")
-                  defaultModel = "anthropic/claude-3.5-sonnet"
-                setConfig({ ...config, provedor: prov, modelo: defaultModel })
-              }}
-              className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold"
-            >
-              <option value="claude">
-                Anthropic (Claude 3.7 / 3.5 Sonnet) - Recomendado
-              </option>
-              <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
-              <option value="gemini">Google Gemini (1.5 Pro / Flash)</option>
-              <option value="ollama">
-                Ollama (Local / 100% Gratuito & Offline)
-              </option>
-              <option value="deepseek">DeepSeek (V3 / R1)</option>
-              <option value="openrouter">OpenRouter (Multi-modelos)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-              Nome do Modelo Efetivo
-            </label>
-            <div className="relative">
-              <Cpu className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={config.modelo}
-                onChange={(e) =>
-                  setConfig({ ...config, modelo: e.target.value })
-                }
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
-              />
-            </div>
-          </div>
-
-          {config.provedor !== "ollama" ? (
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Chave de API ({config.provedor.toUpperCase()})
-              </label>
-              <div className="relative">
-                <Key className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  value={config.chave_api || ""}
-                  onChange={(e) =>
-                    setConfig({ ...config, chave_api: e.target.value })
-                  }
-                  placeholder="sk-ant-... ou sk-..."
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
-                />
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                <span>
-                  Suas chaves são armazenadas localmente com segurança no seu
-                  próprio navegador.
-                </span>
-              </p>
-            </div>
-          ) : (
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Endereço do Servidor Ollama
-              </label>
-              <input
-                type="text"
-                value={config.url_base || "http://localhost:11434"}
-                onChange={(e) =>
-                  setConfig({ ...config, url_base: e.target.value })
-                }
-                className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
-              />
-            </div>
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs sm:text-sm">
+          {!e && !erro && (
+            <p className="flex items-center gap-2 text-slate-500">
+              <Loader2 className="w-4 h-4 animate-spin" /> Carregando…
+            </p>
           )}
 
-          {/* Test Status Feedback */}
-          {testStatus === "success" && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>
-                Conexão verificada! O modelo respondeu adequadamente às
-                requisições de teste.
-              </span>
-            </div>
+          {e && (
+            <>
+              <section className={SEC}>
+                <h4 className={H}>Provedor</h4>
+                <label htmlFor="ia-prov" className={ROTULO}>IA usada pela ferramenta</label>
+                <select id="ia-prov" value={provedor} disabled={!podeMudar} onChange={(ev) => escolher(e, ev.target.value)} className={CAMPO}>
+                  {e.provedores.map((x) => (
+                    <option key={x.id} value={x.id}>{x.nome}</option>
+                  ))}
+                </select>
+                {provedor === "claude_code" && (
+                  <p className={DICA}>
+                    {e.claude_instalado ? (
+                      "Claude Code encontrado neste computador."
+                    ) : (
+                      <>
+                        Claude Code não encontrado neste computador. Instale em{" "}
+                        <a href="https://claude.com/claude-code" target="_blank" rel="noopener noreferrer" className="underline">
+                          claude.com/claude-code
+                        </a>{" "}
+                        ou escolha outro provedor.
+                      </>
+                    )}
+                  </p>
+                )}
+                {e.ultimo_erro && (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400">Último erro: {e.ultimo_erro.motivo}</p>
+                )}
+              </section>
+
+              {provedor !== "nenhum" && (
+                <section className={SEC}>
+                  <h4 className={H}>Modelo</h4>
+                  <label htmlFor="ia-modelo" className={ROTULO}>Nome do modelo</label>
+                  <input
+                    id="ia-modelo"
+                    maxLength={120}
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={modelo}
+                    disabled={!podeMudar}
+                    onChange={(ev) => setModelo(ev.target.value)}
+                    placeholder={p?.modelo_padrao ? `${p.modelo_padrao} (padrão)` : "modelo padrão da sua conta"}
+                    className={CAMPO}
+                  />
+                  {provedor === "compativel" && (
+                    <>
+                      <label htmlFor="ia-url" className={ROTULO}>Endereço do serviço</label>
+                      <input
+                        id="ia-url"
+                        maxLength={300}
+                        autoComplete="off"
+                        spellCheck={false}
+                        value={urlBase}
+                        disabled={!podeMudar}
+                        onChange={(ev) => setUrlBase(ev.target.value)}
+                        placeholder={p?.url_padrao || "https://…/v1"}
+                        className={CAMPO}
+                      />
+                    </>
+                  )}
+                </section>
+              )}
+
+              {p?.aceita_chave && (
+                <section className={SEC}>
+                  <h4 className={H}>Chave de API</h4>
+                  <p className="text-slate-700 dark:text-slate-300">
+                    {c?.cadastrada ? (
+                      <>
+                        Chave cadastrada, terminada em <b>{c.final || "…"}</b>{" "}
+                        {c.origem === "ambiente" ? "(nas variáveis de ambiente do sistema)" : "(no arquivo .env deste computador)"}
+                        {c.origem === "arquivo" && (
+                          <button
+                            type="button"
+                            onClick={removerChave}
+                            disabled={!podeMudar || Boolean(ocupado)}
+                            className="ml-2 px-2 py-0.5 rounded-lg text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 disabled:opacity-50"
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </>
+                    ) : p.precisa_chave ? (
+                      "Nenhuma chave cadastrada."
+                    ) : (
+                      "Chave opcional para este serviço."
+                    )}
+                  </p>
+                  <label htmlFor="ia-chave" className={ROTULO}>
+                    {c?.cadastrada ? "Trocar a chave (em branco, mantém a atual)" : "Cole a chave"}
+                  </label>
+                  <input
+                    id="ia-chave"
+                    type="password"
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={400}
+                    value={chave}
+                    disabled={!podeMudar}
+                    onChange={(ev) => setChave(ev.target.value)}
+                    placeholder="fica só no arquivo .env deste computador"
+                    className={CAMPO}
+                  />
+                  {linkSeguro(p.onde_obter_chave) && (
+                    <p className={DICA}>
+                      Onde conseguir:{" "}
+                      <a href={linkSeguro(p.onde_obter_chave)} target="_blank" rel="noopener noreferrer" className="underline break-all">
+                        {p.onde_obter_chave}
+                      </a>
+                    </p>
+                  )}
+                </section>
+              )}
+
+              <section className={SEC}>
+                <h4 className={H}>Antes de salvar</h4>
+                <ul className="list-disc pl-5 space-y-1 text-slate-700 dark:text-slate-300">
+                  {avisos(p).map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              </section>
+
+              {teste && (
+                <p
+                  role="status"
+                  className={`flex items-start gap-2 p-3 rounded-xl border text-xs ${
+                    teste.ok
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200"
+                      : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200"
+                  }`}
+                >
+                  {teste.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                  <span>{teste.mensagem}</span>
+                </p>
+              )}
+              {!e.pode_alterar && (
+                <p className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs">
+                  Só dá para mudar a IA no computador onde a ferramenta roda.
+                </p>
+              )}
+            </>
           )}
 
-          {/* Footer Actions */}
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={handleTestConnection}
-              disabled={testStatus === "testing"}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 transition"
-            >
-              <RefreshCw
-                className={`w-3.5 h-3.5 ${
-                  testStatus === "testing" ? "animate-spin" : ""
-                }`}
-              />
-              <span>Testar Conexão</span>
-            </button>
+          {erro && (
+            <p role="alert" className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200 text-xs">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{erro}</span>
+            </p>
+          )}
+        </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs transition"
-              >
-                <Save className="w-4 h-4" />
-                <span>{savedSuccess ? "Configuração Salva!" : "Salvar"}</span>
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 flex-wrap">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={testar}
+            disabled={!e || !podeMudar || provedor === "nenhum" || Boolean(ocupado)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition disabled:opacity-50"
+            title="Testa a conexão com o que está no painel; a chave digitada não é gravada"
+          >
+            {ocupado === "testar" && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>{ocupado === "testar" ? "Testando a conexão…" : "Testar conexão"}</span>
+          </button>
+          <button
+            type="submit"
+            disabled={!e || !podeMudar || Boolean(ocupado)}
+            className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs transition disabled:opacity-50"
+          >
+            {ocupado === "salvar" && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>Salvar</span>
+          </button>
+        </div>
+      </form>
     </div>
   )
 }

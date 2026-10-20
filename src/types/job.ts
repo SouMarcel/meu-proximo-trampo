@@ -69,15 +69,6 @@ export interface FiltrosBusca {
   analise_automatica: boolean
 }
 
-export interface ConfigIA {
-  provedor: "claude" | "openai" | "gemini" | "ollama" | "deepseek" | "openrouter"
-  modelo: string
-  chave_api?: string
-  url_base?: string
-  status_conexao?: "conectado" | "erro" | "nao_configurado"
-  ultima_verificacao?: string
-}
-
 export interface PerfilUsuario {
   nome: string
   cargo_atual: string

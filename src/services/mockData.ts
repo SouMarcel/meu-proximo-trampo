@@ -1,6 +1,5 @@
 import {
   FiltrosBusca,
-  ConfigIA,
   PerfilUsuario,
   PortalConectado,
   ItemSincronizacao,
@@ -97,13 +96,6 @@ export const MOCK_FILTROS_BUSCA: FiltrosBusca = {
   idiomas_aceitos: ["pt", "en"],
   empresas_excluir: ["Consultoria Fake Ltda", "Spam Jobs Inc"],
   analise_automatica: true,
-}
-
-export const MOCK_CONFIG_IA: ConfigIA = {
-  provedor: "claude",
-  modelo: "claude-3-7-sonnet",
-  status_conexao: "conectado",
-  ultima_verificacao: "Há 12 minutos",
 }
 
 /**

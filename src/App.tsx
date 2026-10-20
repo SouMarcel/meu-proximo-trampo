@@ -10,7 +10,6 @@ import type {
 } from "./types/api"
 import {
   FiltrosBusca,
-  ConfigIA,
   PerfilUsuario,
   PortalConectado,
   ItemSincronizacao,
@@ -27,7 +26,6 @@ import { FerramentaProvider, useFerramenta, motivoSemGravar } from "./contexto/F
 import {
   MOCK_VAGAS,
   MOCK_FILTROS_BUSCA,
-  MOCK_CONFIG_IA,
   MOCK_PERFIL,
   MOCK_PORTAIS_CONECTADOS,
   MOCK_ITENS_SINCRONIZACAO,
@@ -49,7 +47,7 @@ import { AvisoTelaAntiga, CartaoTelaAntiga, TELAS_ANTIGAS } from "./components/A
 import JobDetailModal from "./components/modals/JobDetailModal"
 import AddJobModal from "./components/modals/AddJobModal"
 import SearchJobsModal from "./components/modals/SearchJobsModal"
-import SearchFiltersModal from "./components/modals/SearchFiltersModal"
+import SearchFiltersModal, { ModoFiltros } from "./components/modals/SearchFiltersModal"
 import AISettingsModal from "./components/modals/AISettingsModal"
 import ProfileModal from "./components/modals/ProfileModal"
 import CandidateOnboardingModal from "./components/modals/CandidateOnboardingModal"
@@ -107,8 +105,7 @@ function Pagina({
   const [pendentesVersao, setPendentesVersao] = useState(0) // pede ao "Completar descrições" para reler
 
   // Telas ainda simuladas (passam a usar o servidor nas próximas histórias da spec 025)
-  const [filtros, setFiltros] = useState<FiltrosBusca>(MOCK_FILTROS_BUSCA)
-  const [configIA, setConfigIA] = useState<ConfigIA>(MOCK_CONFIG_IA)
+  const [filtros, setFiltros] = useState<FiltrosBusca>(MOCK_FILTROS_BUSCA) // só os primeiros passos de exemplo (demonstração)
   const [perfil, setPerfil] = useState<PerfilUsuario>(MOCK_PERFIL)
   const [portais, setPortais] = useState<PortalConectado[]>(MOCK_PORTAIS_CONECTADOS)
   const [itensSync] = useState<ItemSincronizacao[]>(MOCK_ITENS_SINCRONIZACAO)
@@ -127,7 +124,7 @@ function Pagina({
   const [detalheId, setDetalheId] = useState<string | null>(null)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
-  const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false)
+  const [filtrosModo, setFiltrosModo] = useState<ModoFiltros | null>(null)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false)
   const [isAccountsModalOpen, setIsAccountsModalOpen] = useState(false)
@@ -408,13 +405,10 @@ function Pagina({
 
   // ---------- telas ainda simuladas (próximas histórias da spec 025) ----------
 
-  const handleSaveFilters = (newFiltros: FiltrosBusca) => {
-    setFiltros(newFiltros)
-    showToast("Filtros de busca atualizados.")
-  }
-  const handleSaveConfigIA = (newConfig: ConfigIA) => {
-    setConfigIA(newConfig)
-    showToast("Configuração de IA salva.")
+  const handleFiltrosSalvos = () => {
+    setFiltrosModo(null)
+    showToast("Filtros salvos. Valem a partir da próxima busca.")
+    buscaApi.plano().then(setPlanoBusca).catch(() => undefined)
   }
   const handleCompleteOnboarding = (perfilAtualizado: PerfilUsuario, filtrosAtualizados: FiltrosBusca) => {
     setPerfil(perfilAtualizado)
@@ -490,7 +484,7 @@ function Pagina({
         proximaBusca={buscaRodando ? "" : proximaBusca}
         onOpenAddModal={() => setIsAddModalOpen(true)}
         onOpenSearchModal={() => setIsSearchModalOpen(true)}
-        onOpenFiltersModal={() => setIsFiltersModalOpen(true)}
+        onOpenFiltersModal={() => setFiltrosModo("nacional")}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
         onOpenAIModal={() => setIsAIModalOpen(true)}
         onOpenAccountsModal={() => setIsAccountsModalOpen(true)}
@@ -578,7 +572,7 @@ function Pagina({
               vagas={vagasInternacional}
               onSelectVaga={(v) => setDetalheId(v.id)}
               onSeguirVaga={handleSeguirVaga}
-              onOpenFiltersModal={() => setIsFiltersModalOpen(true)}
+              onOpenFiltersModal={() => setFiltrosModo("internacional")}
             />
           </div>
         )}
@@ -627,7 +621,7 @@ function Pagina({
           onPlano={setPlanoBusca}
           onAbrirFiltros={() => {
             setIsSearchModalOpen(false)
-            setIsFiltersModalOpen(true)
+            setFiltrosModo("nacional")
           }}
           onAbrirPerfil={() => {
             setIsSearchModalOpen(false)
@@ -636,22 +630,31 @@ function Pagina({
         />
       )}
 
+      {filtrosModo && (
+        <SearchFiltersModal
+          modo={filtrosModo}
+          onClose={() => setFiltrosModo(null)}
+          onTrocarModo={setFiltrosModo}
+          onSalvo={handleFiltrosSalvos}
+        />
+      )}
+
+      {isAIModalOpen && (
+        <AISettingsModal
+          onClose={() => setIsAIModalOpen(false)}
+          onSalvo={(msg) => {
+            setIsAIModalOpen(false)
+            showToast(msg)
+            buscaApi.plano().then(setPlanoBusca).catch(() => undefined)
+          }}
+          onAviso={showToast}
+        />
+      )}
+
       {/* Telas ainda não ligadas ao servidor (histórias 2 a 6 da spec 025): com o servidor no ar, um aviso com o
           caminho para a página de sempre; os dados de exemplo só aparecem no modo demonstração. */}
       {demo ? (
         <>
-          <SearchFiltersModal
-            isOpen={isFiltersModalOpen}
-            onClose={() => setIsFiltersModalOpen(false)}
-            filtros={filtros}
-            onSaveFiltros={handleSaveFilters}
-          />
-          <AISettingsModal
-            isOpen={isAIModalOpen}
-            onClose={() => setIsAIModalOpen(false)}
-            configIA={configIA}
-            onSaveConfig={handleSaveConfigIA}
-          />
           <ProfileModal
             isOpen={isProfileModalOpen}
             onClose={() => setIsProfileModalOpen(false)}
@@ -682,10 +685,6 @@ function Pagina({
         </>
       ) : (
         <>
-          {isFiltersModalOpen && (
-            <AvisoTelaAntiga tela={TELAS_ANTIGAS.filtros} onClose={() => setIsFiltersModalOpen(false)} />
-          )}
-          {isAIModalOpen && <AvisoTelaAntiga tela={TELAS_ANTIGAS.ia} onClose={() => setIsAIModalOpen(false)} />}
           {(isProfileModalOpen || isOnboardingModalOpen) && (
             <AvisoTelaAntiga
               tela={TELAS_ANTIGAS.perfil}

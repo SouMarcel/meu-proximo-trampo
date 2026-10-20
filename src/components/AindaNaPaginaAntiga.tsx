@@ -70,8 +70,6 @@ export function CartaoTelaAntiga({ tela }: { tela: TelaAntiga }) {
 }
 
 export const TELAS_ANTIGAS = {
-  filtros: { titulo: "Filtros da busca", onde: 'botão "Filtros da busca", no Relatório' },
-  ia: { titulo: "Escolha da IA", onde: 'botão "IA", no topo' },
   perfil: { titulo: "Meu perfil", onde: 'botão "Meu perfil", no topo' },
   contas: { titulo: "Atualizar candidaturas", onde: 'botão "Atualizar candidaturas", no topo' },
   entrevista: { titulo: "Preparar entrevista", onde: 'botão "Preparar entrevista", no cartão da vaga em Entrevista' },

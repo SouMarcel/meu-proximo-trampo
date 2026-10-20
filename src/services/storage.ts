@@ -6,7 +6,6 @@
 import {
   Vaga,
   FiltrosBusca,
-  ConfigIA,
   PerfilUsuario,
   PortalConectado,
   ItemSincronizacao,
@@ -15,7 +14,6 @@ import {
 import {
   MOCK_VAGAS,
   MOCK_FILTROS_BUSCA,
-  MOCK_CONFIG_IA,
   MOCK_PERFIL,
   MOCK_PORTAIS_CONECTADOS,
   MOCK_ITENS_SINCRONIZACAO,
@@ -134,12 +132,6 @@ export class JobStorageService {
   }
 
   public static saveFiltrosBusca(_filtros: FiltrosBusca): void {}
-
-  public static getConfigIA(): ConfigIA {
-    return MOCK_CONFIG_IA
-  }
-
-  public static saveConfigIA(_config: ConfigIA): void {}
 
   public static getPerfil(): PerfilUsuario {
     return MOCK_PERFIL
