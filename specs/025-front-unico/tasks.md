@@ -249,7 +249,7 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
 exemplo (modo demonstração) e sai na H3. Gravar os filtros vale de outro aparelho (`PUT /api/config` não é só
 local); a IA, não.
 
-- [ ] T033 [US2] Portões, roteiro H2, linhas da História 2 em `contracts/paridade.md` e entrega com o OK
+- [X] T033 [US2] Portões, roteiro H2, linhas da História 2 em `contracts/paridade.md` e entrega com o OK
 
 ---
 
@@ -259,11 +259,11 @@ local); a IA, não.
 
 **Independent Test**: roteiro H3. O `perfil.md` é gravado só depois de "Ver o que muda".
 
-- [ ] T034 [P] [US3] Criar `src/services/api/perfil.ts` (todas as rotas do §3.6) e `src/services/api/analises.ts`
+- [X] T034 [P] [US3] Criar `src/services/api/perfil.ts` (todas as rotas do §3.6) e `src/services/api/analises.ts`
   (§3.7), com os tipos `EstadoPerfil`, `Material`, `Rascunho`, `Pergunta`, `Previa`, `FiltrosPropostos`,
   `CurriculosDaPasta`, `PropostaDoCurriculo`, `Analises`, `ItemLacuna`, `Prontidao`, `ItemPlano` e `Cargo` em
   `src/types/api.ts`
-- [ ] T035 [US3] Reescrever `src/components/modals/CandidateOnboardingModal.tsx` como passos guiados pela `etapa` do
+- [X] T035 [US3] Reescrever `src/components/modals/CandidateOnboardingModal.tsx` como passos guiados pela `etapa` do
   servidor (`ia, materiais, rascunho, conflitos, anamnese, diagnostico, revisao, filtros, concluido`). Cada troca de
   passo grava com `PUT /api/perfil/progresso`.
   - **Materiais**: arquivo PDF, DOCX ou ZIP "até 10 MB" em base64 (aviso antes de enviar se passar), ou texto
@@ -279,7 +279,7 @@ local); a IA, não.
     (`PUT /api/config`) ou "Pular (manter os atuais)".
   - **Recomeçar**: pede confirmação antes do `DELETE` do progresso.
   - Apagar `src/services/onboardingData.ts`.
-- [ ] T036 [US3] Reescrever `src/components/modals/ProfileModal.tsx`.
+- [X] T036 [US3] Reescrever `src/components/modals/ProfileModal.tsx`.
   - **Resumo**: `existe_perfil` e `perfil_do_curriculo`; "Atualizar o perfil" abre os primeiros passos.
   - **Já tenho currículo**:
     - `GET /api/perfil/curriculos`;
@@ -289,7 +289,7 @@ local); a IA, não.
     `/arquivos/curriculo-base/{pt|en}`.
   - **Sair**: exportar, importar, "restaurar padrões", `JobStorageService` (de `src/services/storage.ts`) e o tipo
     `PerfilUsuario`.
-- [ ] T037 [US3] Criar `src/components/analises/Analises.tsx` sobre `GET /api/analises-perfil` (aba "Análises" do
+- [X] T037 [US3] Criar `src/components/analises/Analises.tsx` sobre `GET /api/analises-perfil` (aba "Análises" do
   `ProfileModal`).
   - **Lacunas**: visão `todas|seguidas`, com termos, exemplo e peso.
   - **Prontidão internacional**.
@@ -297,10 +297,23 @@ local); a IA, não.
     `conferir`. "Levar os marcados para os filtros" mostra `mudancas` antes de `confirmar: true`.
   - **Plano de estudo** (IA, com aviso de custo).
   - **Marca** "Meu LinkedIn tem a versão em inglês" (`PUT marcas`).
-- [ ] T038 [US3] Em `src/components/InternationalHub.tsx`, painel de prontidão com os dados de
+- [X] T038 [US3] Em `src/components/InternationalHub.tsx`, painel de prontidão com os dados de
   `GET /api/analises-perfil`, mais o botão "Abrir o painel internacional" para a aba Análises
-- [ ] T039 [US3] Em `src/App.tsx`, abrir os primeiros passos uma vez por sessão quando `existe_perfil` for falso.
+- [X] T039 [US3] Em `src/App.tsx`, abrir os primeiros passos uma vez por sessão quando `existe_perfil` for falso.
   A marca da sessão vai em `sessionStorage` com `try/catch`. Tirar `perfil`/`MOCK_PERFIL` e `handleSavePerfil`.
+**Notas da implementação (H3, 2026-10-20)**:
+- Em vez de adaptar os dois modais do protótipo (`ProfileModal` e `CandidateOnboardingModal`, apagados com o
+  `onboardingData.ts`), a tela virou um componente só, como o diálogo do dashboard antigo:
+  `components/perfil/MeuPerfil.tsx`, com os passos, "Já tenho currículo" e "Seu currículo", mais
+  `components/perfil/Analises.tsx`.
+- "Ajustar antes" abre os Filtros da busca com a proposta por cima do perfil e volta ao passo Concluído depois de
+  salvar.
+- O rascunho do texto da revisão não fica no navegador (o antigo guardava no `localStorage`; a spec só permite
+  preferências de tela).
+- Currículo base e "Ver currículos" da prontidão ficam para a H4.
+- Conferido sem a pessoa: `tsc`, build e greps; 4 telas abertas por um navegador sem janela, só com leituras, com
+  os dados reais e sem erro de JavaScript (Meu perfil, Análises, Filtros, IA e a prontidão pela aba Internacional).
+
 - [ ] T040 [US3] Portões, roteiro H3, linhas da História 3 em `contracts/paridade.md` e entrega com o OK
 
 ---
