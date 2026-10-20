@@ -345,3 +345,45 @@ export function diaMes(iso?: string | null): string {
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
   return m ? `${m[3]}/${m[2]}` : ""
 }
+
+/** Portal pelo endereço do link (o mesmo do dashboard antigo); desconhecido = "Outra". */
+export function plataformaDoLink(u: string): string {
+  let h = ""
+  try {
+    h = new URL(u).hostname.toLowerCase()
+  } catch {
+    return "Outra"
+  }
+  const pares: [string, string][] = [
+    ["indeed.", "Indeed"],
+    ["linkedin.", "LinkedIn"],
+    ["gupy.io", "Gupy"],
+    ["inhire", "InHire"],
+    ["catho.", "Catho"],
+    ["startup.jobs", "Startup Jobs"],
+    ["nerdin.", "Nerdin"],
+    ["remotive.", "Remotive"],
+    ["himalayas.app", "Himalayas"],
+    ["remoteok.", "RemoteOK"],
+    ["jobicy.", "Jobicy"],
+    ["weworkremotely.", "We Work Remotely"],
+    ["getonbrd.", "Get on Board"],
+    ["getonboard.", "Get on Board"],
+    ["greenhouse.io", "Greenhouse"],
+    ["lever.co", "Lever"],
+    ["ashbyhq.com", "Ashby"],
+  ]
+  return pares.find(([trecho]) => h.includes(trecho))?.[1] || "Outra"
+}
+
+/** mailto: com o destinatário e o assunto da vaga; nada é enviado pela ferramenta. "" se o e-mail não parece válido. */
+export function mailtoDe(v: { email_candidatura?: string; assunto_candidatura?: string }): string {
+  const email = String(v.email_candidatura || "")
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return ""
+  return "mailto:" + encodeURIComponent(email).replace(/%40/g, "@") + (v.assunto_candidatura ? "?subject=" + encodeURIComponent(v.assunto_candidatura) : "")
+}
+
+/** Sem acento e em minúsculas, para comparar textos. */
+export function semAcento(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+}

@@ -14,7 +14,7 @@ import {
   ExternalLink,
   Clock,
 } from "lucide-react"
-import type { Vaga, Etapa } from "../types/api"
+import type { CamposEditaveis, Vaga, Etapa } from "../types/api"
 import JobCard from "./JobCard"
 import {
   getEtapaInfo,
@@ -35,6 +35,7 @@ interface KanbanBoardProps {
   onMoveStage: (id: string, stage: Etapa) => void
   onDeleteVaga: (id: string) => void
   onOpenAddModal: () => void
+  onUpdateVaga: (id: string, campos: CamposEditaveis, sucesso?: string) => Promise<boolean>
 }
 
 const ETAPAS: {
@@ -90,6 +91,7 @@ export default function KanbanBoard({
   onMoveStage,
   onDeleteVaga,
   onOpenAddModal,
+  onUpdateVaga,
 }: KanbanBoardProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterPlataforma, setFilterPlataforma] = useState<string>("")
@@ -321,6 +323,7 @@ export default function KanbanBoard({
                         onSelect={onSelectVaga}
                         onMoveStage={onMoveStage}
                         onDelete={onDeleteVaga}
+                        onUpdateVaga={onUpdateVaga}
                       />
                     </div>
                   ))}

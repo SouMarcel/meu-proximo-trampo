@@ -15,6 +15,7 @@ interface Props {
   onErro: (err: unknown) => void
   onAbrirFiltrosInt: () => void
   onCompletarPerfil: () => void
+  onVerCurriculos: () => void
 }
 
 const SEC = "space-y-2 pb-4 border-b border-slate-100 dark:border-slate-800 last:border-0"
@@ -35,7 +36,7 @@ function Data({ x }: { x?: { data?: string } | null }) {
   return x?.data ? <p className={DICA}>Análise de {diaMes(x.data)} às {horaDe(x.data)}</p> : null
 }
 
-export default function Analises({ so, onAviso, onErro, onAbrirFiltrosInt, onCompletarPerfil }: Props) {
+export default function Analises({ so, onAviso, onErro, onAbrirFiltrosInt, onCompletarPerfil, onVerCurriculos }: Props) {
   const { ia } = useFerramenta()
   const [d, setD] = useState<TAnalises | null>(null)
   const [visao, setVisao] = useState<"todas" | "seguidas">("todas")
@@ -332,7 +333,9 @@ export default function Analises({ so, onAviso, onErro, onAbrirFiltrosInt, onCom
                     Completar o perfil
                   </button>
                 ) : i.situacao !== "pronto" && i.acao === "curriculo" ? (
-                  <span className={DICA}>Currículos: por enquanto, na página de sempre.</span>
+                  <button type="button" onClick={onVerCurriculos} className={BTN_MINI}>
+                    Ver currículos
+                  </button>
                 ) : null}
               </div>
               <p className={DICA}>

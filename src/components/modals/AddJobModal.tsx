@@ -10,7 +10,7 @@ import { PLATAFORMAS } from "../../types/api"
 import * as vagasApi from "../../services/api/vagas"
 import { ehErroApi, mensagemDeErro } from "../../services/api"
 import { useFerramenta, motivoSemGravar } from "../../contexto/Ferramenta"
-import { noQuadro } from "../../utils/formatters"
+import { noQuadro, plataformaDoLink } from "../../utils/formatters"
 
 interface AddJobModalProps {
   onClose: () => void
@@ -35,35 +35,6 @@ const ROTULO_ETAPA: Record<Etapa, string> = {
   entrevista: "Entrevista",
   proposta: "Proposta Recebida",
   encerrada: "Encerrada",
-}
-
-function plataformaDoLink(u: string): string {
-  let h = ""
-  try {
-    h = new URL(u).hostname.toLowerCase()
-  } catch {
-    return "Outra"
-  }
-  const pares: [string, string][] = [
-    ["indeed.", "Indeed"],
-    ["linkedin.", "LinkedIn"],
-    ["gupy.io", "Gupy"],
-    ["inhire", "InHire"],
-    ["catho.", "Catho"],
-    ["startup.jobs", "Startup Jobs"],
-    ["nerdin.", "Nerdin"],
-    ["remotive.", "Remotive"],
-    ["himalayas.app", "Himalayas"],
-    ["remoteok.", "RemoteOK"],
-    ["jobicy.", "Jobicy"],
-    ["weworkremotely.", "We Work Remotely"],
-    ["getonbrd.", "Get on Board"],
-    ["getonboard.", "Get on Board"],
-    ["greenhouse.io", "Greenhouse"],
-    ["lever.co", "Lever"],
-    ["ashbyhq.com", "Ashby"],
-  ]
-  return pares.find(([trecho]) => h.includes(trecho))?.[1] || "Outra"
 }
 
 function avisoAdicionada(v: Vaga, automatica?: boolean): string {

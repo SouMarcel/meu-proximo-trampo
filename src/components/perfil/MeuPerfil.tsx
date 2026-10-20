@@ -12,8 +12,9 @@ import { mensagemDeErro } from "../../services/api"
 import { useFerramenta } from "../../contexto/Ferramenta"
 import { diaMes } from "../../utils/formatters"
 import Analises from "./Analises"
+import { GerarCurriculo, SecaoCurriculos } from "../curriculo/Curriculos"
 
-type Tela = EtapaPerfil | "do-curriculo" | "analises"
+type Tela = EtapaPerfil | "do-curriculo" | "analises" | "curriculos"
 
 interface Props {
   /** Abre direto numa tela (ex.: "analises", vindo do painel internacional). */
@@ -139,6 +140,7 @@ export default function MeuPerfil({
   const [ocupado, setOcupado] = useState(false)
   const [carregando, setCarregando] = useState("")
   const [erro, setErro] = useState("")
+  const [gerarBase, setGerarBase] = useState(false)
   const corpoRef = useRef<HTMLDivElement>(null)
 
   const so = Boolean(e && !e.pode_alterar) || !podeGravar // só leitura
@@ -169,7 +171,7 @@ export default function MeuPerfil({
     if (t === "diagnostico") setPrev(null)
     if (t === "filtros") setFp(null)
     if (t !== "revisao") setDica("")
-    if (!so && t !== "do-curriculo" && t !== "analises") {
+    if (!so && t !== "do-curriculo" && t !== "analises" && t !== "curriculos") {
       perfilApi.progresso({ etapa: t }).then(setE).catch(() => undefined)
     }
     corpoRef.current?.scrollTo(0, 0)
@@ -218,7 +220,7 @@ export default function MeuPerfil({
         .then(setFp)
         .catch((err) => setFp({ erro: mensagemDeErro(err) }))
         .finally(() => setCarregando(""))
-    } else if ((tela === "materiais" || tela === "concluido") && !cvs && e.pode_alterar) {
+    } else if ((tela === "materiais" || tela === "concluido" || tela === "curriculos") && !cvs && e.pode_alterar) {
       perfilApi
         .curriculos()
         .then(setCvs)
@@ -836,6 +838,7 @@ export default function MeuPerfil({
           <li>Para mudar o perfil depois, abra Meu perfil e escolha Atualizar o perfil: a versão atual fica guardada.</li>
         </ul>
         <SeuCurriculo cvs={cvs} so={so} onMudou={(base) => cvs && setCvs({ ...cvs, curriculo_base: base })} onAviso={onAviso} onErro={falhou} />
+        <SecaoCurriculos vagaId={null} onGerar={() => setGerarBase(true)} />
       </>
     )
     pe = (
@@ -871,6 +874,15 @@ export default function MeuPerfil({
       </p>
     )
     pe = null
+  } else if (tela === "curriculos") {
+    corpo = (
+      <>
+        <SeuCurriculo cvs={cvs} so={so} onMudou={(base) => cvs && setCvs({ ...cvs, curriculo_base: base })} onAviso={onAviso} onErro={falhou} />
+        <p className={DICA}>O currículo base gerado pela IA é uma versão nova, voltada para os cargos que procura.</p>
+        <SecaoCurriculos vagaId={null} onGerar={() => setGerarBase(true)} />
+      </>
+    )
+    pe = botaoIr(e.etapa && e.etapa !== "concluido" ? e.etapa : "concluido", "Voltar ao perfil")
   } else if (tela === "analises") {
     corpo = (
       <Analises
@@ -879,6 +891,7 @@ export default function MeuPerfil({
         onErro={falhou}
         onAbrirFiltrosInt={onAbrirFiltrosInt}
         onCompletarPerfil={() => ir("anamnese")}
+        onVerCurriculos={() => setTela("curriculos")}
       />
     )
     pe = (
@@ -888,7 +901,7 @@ export default function MeuPerfil({
     )
   }
 
-  const mostraRecomecar = e && !["concluido", "do-curriculo", "analises"].includes(tela)
+  const mostraRecomecar = e && !["concluido", "do-curriculo", "analises", "curriculos"].includes(tela)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={onClose}>
@@ -926,6 +939,23 @@ export default function MeuPerfil({
                   {p.label}
                 </button>
               ))}
+              {e.existe_perfil && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErro("")
+                    setTela("curriculos")
+                  }}
+                  aria-current={tela === "curriculos" ? "step" : undefined}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                    tela === "curriculos"
+                      ? "bg-indigo-600 text-white"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  Currículo base
+                </button>
+              )}
               {e.existe_perfil && (
                 <button
                   type="button"
@@ -975,6 +1005,7 @@ export default function MeuPerfil({
           </div>
         )}
       </div>
+      {gerarBase && <GerarCurriculo vagaId={null} onClose={() => setGerarBase(false)} onAbrirPerfil={() => setGerarBase(false)} />}
     </div>
   )
 }

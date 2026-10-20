@@ -21,6 +21,7 @@ import { areaDe, noRelatorio, noQuadro, hoje, horaDe } from "./utils/formatters"
 import { naFila } from "./utils/filaVaga"
 import { useConsulta } from "./hooks/useConsulta"
 import { FerramentaProvider, useFerramenta, motivoSemGravar } from "./contexto/Ferramenta"
+import { GeracaoProvider } from "./contexto/Geracao"
 import {
   MOCK_VAGAS,
   MOCK_PORTAIS_CONECTADOS,
@@ -455,6 +456,7 @@ function Pagina({
     ) : null
 
   return (
+    <GeracaoProvider onAviso={showToast}>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white transition-colors">
       {/* Modo demonstração: só quando o servidor não respondeu na abertura */}
       {servidor === "demo" && (
@@ -512,6 +514,7 @@ function Pagina({
             onMoveStage={handleMoveStage}
             onDeleteVaga={handleDeleteVaga}
             onOpenAddModal={() => setIsAddModalOpen(true)}
+            onUpdateVaga={handleUpdateVaga}
           />
         )}
 
@@ -580,6 +583,11 @@ function Pagina({
           onUpdateVaga={handleUpdateVaga}
           onDeleteVaga={handleDeleteVaga}
           onForcarVerificar={handleForcarVerificar}
+          onAviso={showToast}
+          onAbrirPerfil={() => {
+            setDetalheId(null)
+            setPerfilAberto({})
+          }}
         />
       )}
 
@@ -699,5 +707,6 @@ function Pagina({
         </div>
       )}
     </div>
+    </GeracaoProvider>
   )
 }

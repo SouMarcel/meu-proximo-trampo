@@ -80,7 +80,7 @@ export interface ItemChecklist {
   estado: EstadoKit
   frase?: string
   acao: "curriculo" | "carta" | "respostas" | "candidatar" | null
-  extra?: boolean
+  extra?: string // o texto do item que a pessoa acrescentou
   base?: { nome: string; url: string; idioma: string }
   falta_base?: "pt" | "en"
 }

@@ -13,7 +13,8 @@ import {
   MoreVertical,
   Trash2,
 } from "lucide-react"
-import type { Vaga, Etapa } from "../types/api"
+import type { CamposEditaveis, Vaga, Etapa } from "../types/api"
+import { Lembrete } from "./kit/Kit"
 import { useFerramenta } from "../contexto/Ferramenta"
 import {
   getPlataformaStyle,
@@ -31,6 +32,7 @@ interface JobCardProps {
   onSelect: (vaga: Vaga) => void
   onMoveStage?: (id: string, nextStage: Etapa) => void
   onDelete?: (id: string) => void
+  onUpdateVaga?: (id: string, campos: CamposEditaveis, sucesso?: string) => Promise<boolean>
 }
 
 const PROXIMA_ETAPA: Record<Etapa, Etapa | null> = {
@@ -54,6 +56,7 @@ export default function JobCard({
   onSelect,
   onMoveStage,
   onDelete,
+  onUpdateVaga,
 }: JobCardProps) {
   const platStyle = getPlataformaStyle(vaga.plataforma)
   const aderenciaInfo = getAderenciaBadge(vaga.aderencia)
@@ -156,6 +159,12 @@ export default function JobCard({
                 <span className="whitespace-normal break-words leading-tight shadow-none">{sinal}</span>
               </span>
             ))}
+          </div>
+        )}
+
+        {onUpdateVaga && (
+          <div className="mb-2.5">
+            <Lembrete vaga={vaga} onUpdateVaga={onUpdateVaga} compacto />
           </div>
         )}
 

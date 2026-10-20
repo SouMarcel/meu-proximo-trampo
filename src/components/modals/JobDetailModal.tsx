@@ -37,6 +37,8 @@ import {
 import { AUTORIZACAO, CONTRATACAO, ESTADOS_KIT, ETAPAS, INGLES, PEDE, RESULTADOS, RISCOS, TIPOS_EMPREGO } from "../../utils/rotulos"
 import { useFerramenta, AvisoSoLeitura } from "../../contexto/Ferramenta"
 import TextoDaVaga from "../TextoDaVaga"
+import { KitDaVaga, Lembrete } from "../kit/Kit"
+import { GerarCurriculo, SecaoCurriculos } from "../curriculo/Curriculos"
 
 interface JobDetailModalProps {
   vaga: Vaga
@@ -45,6 +47,8 @@ interface JobDetailModalProps {
   onUpdateVaga: (id: string, campos: CamposEditaveis, sucesso?: string) => Promise<boolean>
   onDeleteVaga: (id: string) => Promise<void>
   onForcarVerificar?: (id: string) => Promise<void> | void
+  onAviso: (mensagem: string, tipo?: "info" | "erro") => void
+  onAbrirPerfil: () => void
 }
 
 type DetailTab = "descricao" | "analise" | "kit" | "anotacoes"
@@ -65,6 +69,8 @@ export default function JobDetailModal({
   onUpdateVaga,
   onDeleteVaga,
   onForcarVerificar,
+  onAviso,
+  onAbrirPerfil,
 }: JobDetailModalProps) {
   const { podeGravar } = useFerramenta()
   const [activeTab, setActiveTab] = useState<DetailTab>("descricao")
@@ -74,6 +80,7 @@ export default function JobDetailModal({
   const [entrevistaEm, setEntrevistaEm] = useState(vaga.entrevista_em || "")
   const [salvando, setSalvando] = useState(false)
   const [confirmarRemocao, setConfirmarRemocao] = useState(false)
+  const [gerarCv, setGerarCv] = useState(false)
 
   const platStyle = getPlataformaStyle(vaga.plataforma)
   const aderBadge = getAderenciaBadge(vaga.aderencia)
@@ -191,7 +198,7 @@ export default function JobDetailModal({
         <div className="flex items-center border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 gap-1 sm:gap-2 bg-white dark:bg-slate-900 overflow-x-auto">
           {abaBotao("descricao", "Descrição")}
           {abaBotao("analise", "Análise da IA", Sparkles)}
-          {abaBotao("kit", "O que a candidatura pede", CheckSquare)}
+          {abaBotao("kit", "Candidatura", CheckSquare)}
           {abaBotao("anotacoes", "Andamento e anotações", Edit3)}
         </div>
 
@@ -372,41 +379,11 @@ export default function JobDetailModal({
             </div>
           )}
 
-          {/* O que a candidatura pede (o checklist vem do servidor; marcar e gerar documentos chegam na História 4) */}
+          {/* O que a candidatura pede, currículos, cartas e respostas */}
           {activeTab === "kit" && (
-            <div className="space-y-4">
-              {vaga.pede && vaga.pede.length > 0 && (
-                <div className="text-xs space-y-1">
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">O anúncio pede</h4>
-                  {vaga.pede.map((p, i) => (
-                    <p key={i}>
-                      {PEDE[p.item] || p.item}
-                      <Frase frase={p.frase} />
-                    </p>
-                  ))}
-                </div>
-              )}
-              {vaga.checklist && vaga.checklist.length > 0 ? (
-                <ul className="space-y-2">
-                  {vaga.checklist.map((item) => (
-                    <li
-                      key={item.item}
-                      className="flex items-start justify-between gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs sm:text-sm"
-                    >
-                      <span className={item.estado === "pronto" ? "line-through text-slate-400" : "text-slate-800 dark:text-slate-200"}>
-                        {item.rotulo}
-                        <Frase frase={item.frase} />
-                      </span>
-                      <span className="text-[11px] font-semibold text-slate-400 shrink-0">{ESTADOS_KIT[item.estado]}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-slate-500">Nada listado para esta vaga.</p>
-              )}
-              <p className="text-[11px] text-slate-500">
-                Marcar os itens, gerar currículo, carta e respostas: por enquanto, no dashboard de sempre (endereço /).
-              </p>
+            <div className="space-y-6">
+              <KitDaVaga vaga={vaga} onUpdateVaga={onUpdateVaga} onGerarCurriculo={() => setGerarCv(true)} onAviso={onAviso} />
+              <SecaoCurriculos vagaId={vaga.id} onGerar={() => setGerarCv(true)} />
             </div>
           )}
 
@@ -414,6 +391,7 @@ export default function JobDetailModal({
           {activeTab === "anotacoes" && (
             <div className="space-y-4">
               <AvisoSoLeitura />
+              <Lembrete vaga={vaga} onUpdateVaga={onUpdateVaga} />
               {estaNoQuadro && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -532,6 +510,7 @@ export default function JobDetailModal({
           )}
         </div>
       </div>
+      {gerarCv && <GerarCurriculo vagaId={vaga.id} onClose={() => setGerarCv(false)} onAbrirPerfil={onAbrirPerfil} />}
     </div>
   )
 }
