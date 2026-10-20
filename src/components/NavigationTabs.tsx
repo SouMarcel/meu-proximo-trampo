@@ -34,20 +34,20 @@ export default function NavigationTabs({
     countColor?: string
   }[] = [
     {
-      id: "quadro",
-      label: "Quadro de Candidaturas",
-      icon: <Kanban className="w-4 h-4" />,
-      count: countQuadro,
-      countColor:
-        "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300",
-    },
-    {
       id: "relatorio",
       label: "Relatório de Vagas (Triagem)",
       icon: <FileText className="w-4 h-4" />,
       count: countPendentes,
       countColor:
         "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+    },
+    {
+      id: "quadro",
+      label: "Quadro de Candidaturas",
+      icon: <Kanban className="w-4 h-4" />,
+      count: countQuadro,
+      countColor:
+        "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300",
     },
     {
       id: "internacional",
