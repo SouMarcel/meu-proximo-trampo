@@ -35,5 +35,5 @@ description: "Tarefas da feature 022: front novo em React, montado pelo GitHub A
 
 ## Phase 4: Entrega
 
-- [ ] T011 Merge na branch pessoal, `python -m unittest discover -s tests`, teste da pessoa em `/novo/`
-- [ ] T012 Com o OK: dados pessoais conferidos, merge na `master`, push, `graphify update .`
+- [X] T011 Merge na branch pessoal, `python -m unittest discover -s tests`, teste da pessoa em `/novo/`
+- [X] T012 Com o OK: dados pessoais conferidos, merge na `master`, push, `graphify update .`
