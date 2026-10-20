@@ -1,24 +1,20 @@
-export type Plataforma = "Gupy" | "Indeed" | "LinkedIn" | "Greenhouse" | "Lever" | "Ashby" | "RemoteOK" | "Remotive" | "Himalayas" | "Jobicy" | "We Work Remotely" | "Startup Jobs" | "Nerdin" | "Get on Board" | "InHire" | "Catho" | "Outra"
+/**
+ * Tipos antigos do protótipo. A vaga e seus campos vêm de types/api.ts (o contrato do servidor); o resto
+ * (filtros, IA, perfil, contas) sai à medida que cada tela passa a usar o servidor (spec 025).
+ */
+export type {
+  Plataforma,
+  Etapa,
+  Resultado,
+  Triagem,
+  ModeloTrabalho,
+  Area,
+  Vaga,
+} from "./api"
+import type { Plataforma, Etapa, Resultado } from "./api"
 
-export type Etapa = "salva" | "aplicada" | "entrevista" | "proposta" | "encerrada"
-
-export type Resultado = "nao_aprovado" | "desisti" | "cancelada" | "contratado"
-
-export type Triagem = "pendente" | "seguir" | "visitada" | "fora"
-
-export type ModeloTrabalho = "remoto" | "hibrido" | "presencial" | "nao_informado"
-
+/** Senioridade dos filtros antigos do protótipo (o servidor só tem junior, pleno e senior). */
 export type Senioridade = "junior" | "pleno" | "senior" | "especialista"
-
-export type Area = "nacional" | "internacional"
-
-export interface ChecklistItem {
-  id: string
-  texto: string
-  estado: "a_fazer" | "pronto" | "nao_se_aplica"
-  obrigatorio?: boolean
-  categoria?: string
-}
 
 export interface HistoriaSTAR {
   id: string
@@ -36,52 +32,6 @@ export interface PerguntaEntrevista {
   tipo: "comportamental" | "tecnica" | "situacional"
   dica: string
   sugestao_resposta?: string
-}
-
-export interface Vaga {
-  id: string
-  titulo: string
-  empresa: string
-  plataforma: Plataforma
-  outras_plataformas?: string[]
-  local: string
-  remoto: boolean
-  area?: Area
-  grupos?: string[]
-  pais_vaga?: string
-  idioma?: string
-  url: string
-  url_candidatura?: string | null
-  salario?: string | null
-  tipo?: string | null
-  descricao: string
-  publicada_em: string
-  encontrada_em: string
-  triagem: Triagem
-  motivo_fora?: string[]
-  etapa: Etapa | null
-  etapa_em?: string | null
-  resultado?: Resultado | null
-  anotacao?: string
-  entrevista_em?: string | null
-  aderencia?: number
-  analise_status?: "feita" | "pendente" | "sem_dados" | "verificando" | "falha"
-  motivo_falha?: string
-  descricao_pendente?: boolean
-  resumo?: string
-  encaixe?: string[]
-  lacunas?: string[]
-  alertas?: string[]
-  sinais?: string[]
-  ats?: "greenhouse" | "lever" | "ashby" | null
-  senioridade?: Senioridade[]
-  modelo_trabalho?: ModeloTrabalho
-  termos?: string[]
-  checklist?: ChecklistItem[]
-  email_candidatura?: string
-  assunto_candidatura?: string
-  perguntas_frequentes?: PerguntaEntrevista[]
-  historias_star?: HistoriaSTAR[]
 }
 
 export interface FiltrosBusca {

@@ -18,22 +18,34 @@ import {
   ChevronRight,
   Eye,
 } from "lucide-react"
-import { Vaga, Triagem, Senioridade, ModeloTrabalho, Etapa } from "../types/job"
+import type { Vaga, Senioridade, Versao } from "../types/api"
+import { useFerramenta, AvisoSoLeitura } from "../contexto/Ferramenta"
 import {
   getPlataformaStyle,
   getAderenciaBadge,
   formatarDataRelativa,
   formatarModelo,
   formatarSenioridade,
+  modoDe,
+  situacaoNota,
+  podeForcar,
+  linkSeguro,
+  temNota,
+  diaMes,
 } from "../utils/formatters"
 
 interface TriageReportProps {
   vagas: Vaga[]
+  versao: Versao | null
+  /** Vagas em que o Forçar verificar voltou "ligue uma IA". */
+  semIA: Record<string, boolean>
   onSelectVaga: (vaga: Vaga) => void
   onSeguirVaga: (id: string) => void
   onNaoSeguirVaga: (id: string) => void
-  onResgatarVaga: (id: string) => void
+  onVoltarTriagem: (id: string) => void
+  onMarcarTodasNaoSeguidas: (ids: string[]) => Promise<void>
   onForcarVerificar?: (id: string) => Promise<void> | void
+  onAbrirIA: () => void
 }
 
 type SubTab = "pendente" | "seguir" | "visitada" | "fora"
@@ -41,13 +53,20 @@ type OrdemFiltro = "aderencia" | "publicacao" | "plataforma" | "modo"
 
 export default function TriageReport({
   vagas,
+  versao,
+  semIA,
   onSelectVaga,
   onSeguirVaga,
   onNaoSeguirVaga,
-  onResgatarVaga,
+  onVoltarTriagem,
+  onMarcarTodasNaoSeguidas,
   onForcarVerificar,
+  onAbrirIA,
 }: TriageReportProps) {
+  const { podeGravar } = useFerramenta()
   const [subTab, setSubTab] = useState<SubTab>("pendente")
+  const [confirmarTodas, setConfirmarTodas] = useState(false)
+  const [marcandoTodas, setMarcandoTodas] = useState(false)
   const [verificandoMap, setVerificandoMap] = useState<Record<string, boolean>>({})
 
   const handleForcar = async (id: string) => {
@@ -107,13 +126,7 @@ export default function TriageReport({
         }
 
         // Modo
-        if (filtroModo) {
-          if (filtroModo === "remoto" && !v.remoto) return false
-          if (filtroModo === "hibrido" && v.modelo_trabalho !== "hibrido")
-            return false
-          if (filtroModo === "presencial" && v.modelo_trabalho !== "presencial")
-            return false
-        }
+        if (filtroModo && modoDe(v) !== filtroModo) return false
 
         // Aderência mínima
         if (aderenciaMinima > 0) {
@@ -127,18 +140,13 @@ export default function TriageReport({
           return (b.aderencia || 0) - (a.aderencia || 0)
         }
         if (ordem === "publicacao") {
-          return (
-            new Date(b.publicada_em).getTime() -
-            new Date(a.publicada_em).getTime()
-          )
+          return String(b.publicada_em || "").localeCompare(String(a.publicada_em || ""))
         }
         if (ordem === "plataforma") {
           return a.plataforma.localeCompare(b.plataforma)
         }
         if (ordem === "modo") {
-          return (a.modelo_trabalho || "").localeCompare(
-            b.modelo_trabalho || "",
-          )
+          return modoDe(a).localeCompare(modoDe(b))
         }
         return 0
       })
@@ -165,7 +173,7 @@ export default function TriageReport({
                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
-            <span>Para Decidir</span>
+            <span>Para decidir</span>
             <span
               className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                 subTab === "pendente"
@@ -186,7 +194,7 @@ export default function TriageReport({
                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
-            <span>Não Seguidas (Arquivadas)</span>
+            <span>Não seguidas</span>
             <span
               className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                 subTab === "visitada"
@@ -208,7 +216,7 @@ export default function TriageReport({
           >
             <div className="flex items-center gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Fora dos Critérios</span>
+              <span>Fora dos critérios</span>
             </div>
             <span
               className={`px-2 py-0.5 rounded-full text-xs font-bold ${
@@ -262,7 +270,7 @@ export default function TriageReport({
           {/* Seniority buttons */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-semibold text-slate-500">Senioridade:</span>
-            {(["", "junior", "pleno", "senior", "especialista"] as const).map(
+            {(["", "junior", "pleno", "senior"] as const).map(
               (sen) => (
                 <button
                   key={sen}
@@ -279,9 +287,7 @@ export default function TriageReport({
                       ? "Jr"
                       : sen === "pleno"
                         ? "Pl"
-                        : sen === "senior"
-                          ? "Sr"
-                          : "Lead"}
+                        : "Sr"}
                 </button>
               ),
             )}
@@ -330,13 +336,57 @@ export default function TriageReport({
         </div>
       </div>
 
+      {/* Marcar todas como não seguidas (dois cliques) */}
+      {subTab === "pendente" && counts.pendente > 0 && (
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <AvisoSoLeitura />
+          {confirmarTodas && (
+            <button
+              onClick={() => setConfirmarTodas(false)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Cancelar
+            </button>
+          )}
+          <button
+            disabled={!podeGravar || marcandoTodas}
+            onClick={async () => {
+              if (!confirmarTodas) {
+                setConfirmarTodas(true)
+                return
+              }
+              setMarcandoTodas(true)
+              try {
+                await onMarcarTodasNaoSeguidas(vagas.filter((v) => v.triagem === "pendente").map((v) => v.id))
+              } finally {
+                setMarcandoTodas(false)
+                setConfirmarTodas(false)
+              }
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition disabled:opacity-50 ${
+              confirmarTodas
+                ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-600"
+                : "text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+            title="Marca todas as vagas de Para decidir como não seguidas"
+          >
+            {marcandoTodas
+              ? "Marcando…"
+              : confirmarTodas
+                ? `Confirmar: marcar todas (${counts.pendente})`
+                : "Marcar todas como não seguidas"}
+          </button>
+        </div>
+      )}
+
       {/* Job Cards List */}
       <div className="space-y-3">
         {filteredVagas.map((vaga) => {
           const platStyle = getPlataformaStyle(vaga.plataforma)
           const aderBadge = getAderenciaBadge(vaga.aderencia)
-          const isVerificando =
-            Boolean(verificandoMap[vaga.id] || vaga.analise_status === "verificando")
+          const nota = situacaoNota(vaga, versao)
+          const isVerificando = Boolean(verificandoMap[vaga.id] || nota.tipo === "verificando")
+          const linkVaga = linkSeguro(vaga.url)
 
           return (
             <div
@@ -348,10 +398,14 @@ export default function TriageReport({
                 <div className="flex items-start gap-3.5 sm:gap-4 flex-1 min-w-0">
                   {/* Coluna propria de aderencia e nivel na extrema esquerda do card */}
                   <div className="shrink-0 pt-0.5">
-                    {vaga.aderencia !== undefined ? (
+                    {temNota(vaga) ? (
                       <div
                         className={`w-[74px] h-[74px] sm:w-[82px] sm:h-[82px] rounded-2xl bg-slate-900 dark:bg-slate-950 border ${aderBadge.boxBorder} ${aderBadge.boxGlow} shadow-xs flex flex-col items-center justify-center p-2 text-center select-none transition-transform hover:scale-105`}
-                        title={`Aderência de ${vaga.aderencia}% (${aderBadge.label})`}
+                        title={
+                          vaga.nota_sem_descricao
+                            ? "Nota provisória, sem a descrição da vaga"
+                            : `Aderência ao seu perfil: ${vaga.aderencia} de 100 (${aderBadge.label})`
+                        }
                       >
                         <span
                           className={`text-2xl sm:text-3xl font-extrabold leading-none tracking-tight ${aderBadge.scoreColor}`}
@@ -359,7 +413,7 @@ export default function TriageReport({
                           {vaga.aderencia}
                         </span>
                         <span className="text-[10px] sm:text-[11px] font-bold tracking-wider text-slate-400 uppercase mt-1 leading-none">
-                          {aderBadge.label}
+                          {vaga.nota_sem_descricao ? "provisória" : aderBadge.label}
                         </span>
                       </div>
                     ) : (
@@ -387,8 +441,12 @@ export default function TriageReport({
                             <span className="text-xl sm:text-2xl font-bold leading-none text-slate-500">
                               —
                             </span>
-                            <span className="text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-1 leading-none">
-                              Sem nota
+                            <span className="text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-1 leading-tight">
+                              {nota.tipo === "descricao_pendente"
+                                ? "descrição pendente"
+                                : nota.tipo === "pendente"
+                                  ? "aguardando"
+                                  : "sem nota"}
                             </span>
                           </>
                         )}
@@ -413,6 +471,7 @@ export default function TriageReport({
                     </span>
                     <span className="text-xs text-slate-500 font-medium">
                       {formatarSenioridade(vaga.senioridade)}
+                      {vaga.senioridade_origem === "sugerida" && vaga.senioridade?.length ? " (sugerida)" : ""}
                     </span>
                     <span className="text-slate-300 dark:text-slate-700">
                       ·
@@ -424,6 +483,14 @@ export default function TriageReport({
                       <span className="px-2 py-0.5 rounded-md text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
                         termo: {vaga.termos[0]}
                       </span>
+                    )}
+                    {vaga.formato === "post" && (
+                      <span className="px-2 py-0.5 rounded-md text-[11px] bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 font-medium">
+                        Post
+                      </span>
+                    )}
+                    {vaga.origem === "link" && !vaga.termos?.length && (
+                      <span className="text-[11px] text-slate-400">adicionada pelo link</span>
                     )}
                     {vaga.descricao_pendente && (
                       <span className="px-2 py-0.5 rounded-md text-[11px] bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-medium">
@@ -445,10 +512,12 @@ export default function TriageReport({
                         {vaga.empresa}
                       </span>
                       <span>·</span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        {vaga.local}
-                      </span>
+                      {vaga.local && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          {vaga.local}
+                        </span>
+                      )}
                       {vaga.salario && (
                         <>
                           <span>·</span>
@@ -468,7 +537,7 @@ export default function TriageReport({
                         <div className="font-semibold flex items-center gap-1.5">
                           <AlertTriangle className="w-4 h-4 text-rose-600" />
                           <span>
-                            Motivos da desqualificação automática pelos filtros:
+                            Fora dos critérios:
                           </span>
                         </div>
                         <ul className="list-disc list-inside space-y-0.5 pl-1 text-rose-700 dark:text-rose-300">
@@ -484,7 +553,7 @@ export default function TriageReport({
                     <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-100 dark:border-slate-800 space-y-2">
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-400">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>Análise de Compatibilidade do Claude</span>
+                        <span>Análise da IA</span>
                       </div>
                       <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
                         {vaga.resumo}
@@ -504,13 +573,13 @@ export default function TriageReport({
                           ))}
 
                         {vaga.lacunas &&
-                          vaga.lacunas.slice(0, 1).map((item, idx) => (
+                          vaga.lacunas.slice(0, 2).map((item, idx) => (
                             <span
                               key={idx}
                               className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                             >
                               <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-                              <span>Atenção: {item}</span>
+                              <span>Lacuna: {item}</span>
                             </span>
                           ))}
                       </div>
@@ -527,32 +596,34 @@ export default function TriageReport({
                       <>
                         {/* 1. Não Seguir */}
                         <button
+                          disabled={!podeGravar}
                           onClick={() => onNaoSeguirVaga(vaga.id)}
                           className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition w-full sm:w-auto"
-                          title="Descartar vaga (não aparecerá nas próximas buscas)"
+                          title="Marca como não seguida (a busca não traz de novo)"
                         >
                           <X className="w-3.5 h-3.5" />
-                          <span>Não Seguir</span>
+                          <span>Não seguir</span>
                         </button>
 
                         {/* 2. Seguir com a Vaga */}
                         <button
+                          disabled={!podeGravar}
                           onClick={() => onSeguirVaga(vaga.id)}
                           className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-xs shadow-indigo-600/30 transition w-full sm:w-auto"
                           title="Mover para a coluna Salva no seu Quadro"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          <span>Seguir com a Vaga</span>
+                          <span>Seguir com a vaga</span>
                         </button>
                       </>
                     )}
 
                     {/* 3. Forçar verificar (Spec 021) */}
-                    {vaga.aderencia === undefined && onForcarVerificar && (
+                    {podeForcar(vaga) && onForcarVerificar && (
                       <div className="flex flex-col items-stretch sm:items-end gap-1 w-full sm:w-auto">
                         <button
                           onClick={() => handleForcar(vaga.id)}
-                          disabled={isVerificando}
+                          disabled={isVerificando || !podeGravar}
                           className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 disabled:opacity-60 transition shadow-2xs w-full sm:w-auto"
                           title="Pede a nota desta vaga à IA agora"
                         >
@@ -571,7 +642,7 @@ export default function TriageReport({
                         </button>
                         {(isVerificando) && (
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 text-center sm:text-right">
-                            A nota chega em alguns instantes.
+                            A nota chega em alguns minutos.
                           </span>
                         )}
                         {vaga.descricao_pendente && !isVerificando && (
@@ -579,37 +650,82 @@ export default function TriageReport({
                             Lê descrição antes da IA
                           </span>
                         )}
-                        {vaga.motivo_falha && !isVerificando && (
+                        {semIA[vaga.id] && !isVerificando && (
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400 text-center sm:text-right">
+                            Para dar nota, ligue uma IA.{" "}
+                            <button onClick={onAbrirIA} className="underline font-semibold">
+                              IA
+                            </button>
+                          </span>
+                        )}
+                        {nota.tipo === "falha" && !semIA[vaga.id] && !isVerificando && (
                           <span className="text-[10px] text-rose-600 dark:text-rose-400 text-center sm:text-right">
-                            Falha: {vaga.motivo_falha}
+                            Não deu para verificar: {nota.motivo}
                           </span>
                         )}
                       </div>
                     )}
 
                     {subTab === "fora" && (
-                      <button
-                        onClick={() => onResgatarVaga(vaga.id)}
-                        className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800 transition w-full sm:w-auto"
-                        title="Resgatar vaga e mover diretamente para o Quadro"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Resgatar Vaga</span>
-                      </button>
+                      <>
+                        {vaga.triada_em && (
+                          <span className="text-[11px] text-slate-500 text-center sm:text-right">
+                            Fora dos critérios desde {diaMes(vaga.triada_em)}
+                          </span>
+                        )}
+                        <button
+                          disabled={!podeGravar}
+                          onClick={() => onSeguirVaga(vaga.id)}
+                          className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800 transition w-full sm:w-auto disabled:opacity-50"
+                          title="Seguir com a vaga mesmo fora dos critérios: vai para a coluna Salva do quadro"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Seguir com a vaga</span>
+                        </button>
+                      </>
+                    )}
+
+                    {subTab === "visitada" && (
+                      <>
+                        {vaga.triada_em && (
+                          <span className="text-[11px] text-slate-500 text-center sm:text-right">
+                            Marcada como não seguida em {diaMes(vaga.triada_em)}
+                          </span>
+                        )}
+                        <button
+                          disabled={!podeGravar}
+                          onClick={() => onVoltarTriagem(vaga.id)}
+                          className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition w-full sm:w-auto disabled:opacity-50"
+                          title="Devolve a vaga para Para decidir"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Voltar para triagem</span>
+                        </button>
+                      </>
                     )}
 
                     {/* 4. Ver detalhes completos / Acessar a vaga na plataforma original */}
                     <div className="flex items-center justify-end gap-1.5 pt-0.5 w-full">
+                      <button
+                        onClick={() => onSelectVaga(vaga)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition"
+                        title="Ver descrição, análise e anotações"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span className="text-[11px] font-medium">Detalhes</span>
+                      </button>
+                      {linkVaga && (
                       <a
-                        href={vaga.url_candidatura || vaga.url}
+                        href={linkVaga}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition border border-transparent hover:border-indigo-200 dark:border-indigo-800"
                         title="Abrir vaga no portal original"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span className="text-[11px] font-medium">Acessar vaga</span>
+                        <span className="text-[11px] font-medium">Abrir a vaga</span>
                       </a>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,134 +1,84 @@
-import { Vaga, Triagem, Etapa, Resultado } from "../types/job"
+/**
+ * Pedido único ao servidor local (dash/servidor.py). Regras do dash/API.md §1:
+ * - página servida pelo próprio servidor (porta 8765): caminhos relativos; em outro endereço deste computador
+ *   (Live Server, Vite), o endereço completo http://127.0.0.1:8765;
+ * - escrita (POST, PUT, PATCH, DELETE) sempre com Content-Type: application/json e corpo JSON, mesmo vazio;
+ * - erro vem como {"erro": "..."}: a mensagem já serve para mostrar à pessoa.
+ */
+import type { ErroApi } from "../types/api"
 
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
     const origin = window.location.origin
-    if (
-      origin === "http://127.0.0.1:8765" ||
-      origin === "http://localhost:8765"
-    ) {
+    if (origin === "http://127.0.0.1:8765" || origin === "http://localhost:8765") {
       return ""
     }
   }
   return "http://127.0.0.1:8765"
 }
 
-export interface VersaoResponse {
-  versao: number
-  analisando?: boolean
-  ia_erro?: string | null
-  busca?: any
-  verificando?: string[]
-  falhas?: Record<string, string>
+/** Endereço completo de um arquivo servido pelo servidor (/arquivos/...). */
+export function urlArquivo(caminho: string): string {
+  return getApiBaseUrl() + caminho
 }
 
-export interface VagasResponse {
-  versao: number
-  vagas: Vaga[]
+function criarErro(status: number, mensagem: string, dados: any): ErroApi {
+  const erro = new Error(mensagem) as ErroApi
+  erro.status = status
+  erro.dados = dados
+  return erro
 }
 
-export interface PatchVagaPayload {
-  triagem?: Triagem
-  etapa?: Etapa | null
-  resultado?: Resultado | null
-  etapa_em?: string | null
-  triada_em?: string | null
-  anotacao?: string
-  kit?: any
-  lembretes?: any
-  entrevista_em?: string | null
-  email_candidatura?: string
-  assunto_candidatura?: string
+export function ehErroApi(e: unknown): e is ErroApi {
+  return e instanceof Error && typeof (e as ErroApi).status === "number"
 }
 
-async function tratarResposta<T>(res: Response): Promise<T> {
+/** Mensagem para a pessoa, em português, a partir de qualquer erro. */
+export function mensagemDeErro(e: unknown, padrao = "Não deu certo."): string {
+  if (ehErroApi(e)) return e.message || padrao
+  if (e instanceof Error && e.message) return e.message
+  return padrao
+}
+
+type Metodo = "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
+
+export async function pedir<T>(
+  metodo: Metodo,
+  caminho: string,
+  corpo?: unknown,
+  opcoes: { timeoutMs?: number } = {},
+): Promise<T> {
+  const init: RequestInit = { method: metodo, cache: "no-store" }
+  if (metodo !== "GET") {
+    init.headers = { "Content-Type": "application/json" }
+    init.body = JSON.stringify(corpo ?? {})
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  if (opcoes.timeoutMs) {
+    const controle = new AbortController()
+    init.signal = controle.signal
+    timer = setTimeout(() => controle.abort(), opcoes.timeoutMs)
+  }
+  let res: Response
+  try {
+    res = await fetch(getApiBaseUrl() + caminho, init)
+  } catch {
+    throw criarErro(
+      0,
+      "O servidor da ferramenta não respondeu. Ele está rodando? (python iniciar.py)",
+      null,
+    )
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
   let dados: any = {}
   try {
     dados = await res.json()
   } catch {
     dados = {}
   }
-
   if (!res.ok) {
-    const mensagem = dados?.erro || `Erro no servidor (${res.status})`
-    const erro: any = new Error(mensagem)
-    erro.status = res.status
-    erro.dados = dados
-    throw erro
+    throw criarErro(res.status, dados?.erro || `Erro no servidor (${res.status})`, dados)
   }
-
   return dados as T
-}
-
-export const ApiService = {
-  /**
-   * Checa se o backend Python está respondendo em GET /api/versao
-   */
-  async getVersao(timeoutMs = 2500): Promise<VersaoResponse> {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/versao`, {
-        signal: controller.signal,
-        cache: "no-store",
-      })
-      clearTimeout(timer)
-      return await tratarResposta<VersaoResponse>(res)
-    } catch (e: any) {
-      clearTimeout(timer)
-      throw e
-    }
-  },
-
-  /**
-   * Obtém a lista real de vagas do banco SQLite via GET /api/vagas
-   */
-  async getVagas(): Promise<VagasResponse> {
-    const res = await fetch(`${getApiBaseUrl()}/api/vagas`, {
-      cache: "no-store",
-    })
-    return await tratarResposta<VagasResponse>(res)
-  },
-
-  /**
-   * Atualiza campos editáveis pelo usuário de uma vaga via PATCH /api/vagas/{id}
-   */
-  async patchVaga(id: string, payload: PatchVagaPayload): Promise<{ vaga: Vaga }> {
-    const res = await fetch(`${getApiBaseUrl()}/api/vagas/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-    return await tratarResposta<{ vaga: Vaga }>(res)
-  },
-
-  /**
-   * Remove uma vaga do banco de dados via DELETE /api/vagas/{id}
-   */
-  async deleteVaga(id: string): Promise<{ ok: boolean }> {
-    const res = await fetch(`${getApiBaseUrl()}/api/vagas/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-    return await tratarResposta<{ ok: boolean }>(res)
-  },
-
-  /**
-   * Pede a análise imediata de uma vaga específica pela IA (Forçar verificar)
-   * POST /api/vagas/{id}/analisar
-   */
-  async forcarAnalisar(id: string): Promise<{ verificando: string[] }> {
-    const res = await fetch(`${getApiBaseUrl()}/api/vagas/${encodeURIComponent(id)}/analisar`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
-    })
-    return await tratarResposta<{ verificando: string[] }>(res)
-  },
 }

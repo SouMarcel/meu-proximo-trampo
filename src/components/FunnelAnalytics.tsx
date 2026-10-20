@@ -12,7 +12,7 @@ import {
   Clock,
   Sparkles,
 } from "lucide-react"
-import { Vaga, Etapa } from "../types/job"
+import type { Vaga, Etapa } from "../types/api"
 
 interface FunnelAnalyticsProps {
   vagas: Vaga[]

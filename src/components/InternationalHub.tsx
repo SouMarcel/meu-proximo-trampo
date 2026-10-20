@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   ArrowUpRight,
 } from "lucide-react"
-import { Vaga, Etapa } from "../types/job"
+import type { Vaga, Etapa } from "../types/api"
 import {
   getPlataformaStyle,
   getAderenciaBadge,
@@ -20,6 +20,7 @@ import {
   formatarModelo,
   areaDe,
   paisDe,
+  linkSeguro,
 } from "../utils/formatters"
 interface InternationalHubProps {
   vagas: Vaga[]
@@ -46,7 +47,7 @@ export default function InternationalHub({
         const q = busca.toLowerCase()
         const matchTitulo = v.titulo.toLowerCase().includes(q)
         const matchEmpresa = v.empresa.toLowerCase().includes(q)
-        const matchLocal = v.local.toLowerCase().includes(q)
+        const matchLocal = (v.local || "").toLowerCase().includes(q)
         if (!matchTitulo && !matchEmpresa && !matchLocal) return false
       }
       if (
@@ -296,7 +297,7 @@ export default function InternationalHub({
                   </button>
 
                   <a
-                    href={vaga.url_candidatura || vaga.url}
+                    href={linkSeguro(vaga.url_candidatura || vaga.url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition"

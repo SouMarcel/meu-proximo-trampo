@@ -1,10 +1,12 @@
 {
-  "description": "This web app simplifies job searching by aggregating listings from multiple platforms, helping users find employment opportunities efficiently.",
+  "description": "Busca de vagas, nota de aderência e quadro de candidaturas, tudo no seu computador.",
   "robots": {
     "index": false
   },
   "accessibility": {
     "addBypassLinks": false,
     "ignoreReducedMotion": false
-  }
+  },
+  "title": "Meu Próximo Trampo",
+  "language": "pt-BR"
 }

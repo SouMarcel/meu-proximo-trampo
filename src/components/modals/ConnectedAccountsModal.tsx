@@ -308,7 +308,7 @@ export default function ConnectedAccountsModal({
 
                       <div className="text-right shrink-0">
                         <span
-                          className={`px-2.5 py-1 rounded-xl text-xs font-semibold ${etapaNovaInfo.bg} ${etapaNovaInfo.text}`}
+                          className={`px-2.5 py-1 rounded-xl text-xs font-semibold ${etapaNovaInfo.badgeBg} ${etapaNovaInfo.badgeText}`}
                         >
                           → {etapaNovaInfo.label}
                         </span>

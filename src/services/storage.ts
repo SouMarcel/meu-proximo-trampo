@@ -68,6 +68,35 @@ export class ScreenPreferencesService {
       localStorage.setItem(PREF_KEYS.TRIAGE_FILTROS, JSON.stringify(prefs))
     } catch {}
   }
+
+  /** Tema: "sistema" (segue o computador), "claro" ou "escuro". */
+  public static getTema(): Tema {
+    try {
+      const t = localStorage.getItem(PREF_KEYS.THEME)
+      return t === "claro" || t === "escuro" ? t : "sistema"
+    } catch {
+      return "sistema"
+    }
+  }
+
+  public static setTema(tema: Tema): void {
+    try {
+      if (tema === "sistema") localStorage.removeItem(PREF_KEYS.THEME)
+      else localStorage.setItem(PREF_KEYS.THEME, tema)
+    } catch {}
+  }
+}
+
+export type Tema = "sistema" | "claro" | "escuro"
+
+/** Aplica o tema na página (classe "dark" no <html>); no "sistema", segue o prefers-color-scheme. */
+export function aplicarTema(tema: Tema): void {
+  if (typeof document === "undefined") return
+  const escuroDoSistema =
+    typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches
+  const escuro = tema === "escuro" || (tema === "sistema" && escuroDoSistema)
+  document.documentElement.classList.toggle("dark", Boolean(escuro))
+  document.documentElement.style.colorScheme = escuro ? "dark" : "light"
 }
 
 /**

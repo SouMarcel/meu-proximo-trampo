@@ -1,1 +1,12 @@
 @import 'tailwindcss';
+
+/* Tema escuro pela classe "dark" no <html> (botão de tema no cabeçalho; no "sistema", segue o computador). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+body {
+  background-color: var(--color-slate-50);
+}
+
+.dark body {
+  background-color: var(--color-slate-950);
+}

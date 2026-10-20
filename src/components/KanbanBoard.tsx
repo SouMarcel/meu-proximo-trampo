@@ -14,7 +14,7 @@ import {
   ExternalLink,
   Clock,
 } from "lucide-react"
-import { Vaga, Etapa, Plataforma, Area, ModeloTrabalho } from "../types/job"
+import type { Vaga, Etapa } from "../types/api"
 import JobCard from "./JobCard"
 import {
   getEtapaInfo,
@@ -23,6 +23,10 @@ import {
   formatarDataRelativa,
   formatarModelo,
   areaDe,
+  noQuadro,
+  modoDe,
+  linkSeguro,
+  temNota,
 } from "../utils/formatters"
 
 interface KanbanBoardProps {
@@ -106,8 +110,7 @@ export default function KanbanBoard({
   // Filtrar apenas vagas que possuem etapa (isto é, estão no funil)
   const pipelineVagas = useMemo(() => {
     return vagas.filter((v) => {
-      const noQuadro = Boolean(v.etapa && (v.origem === "manual" || v.triagem === "seguir"))
-      if (!noQuadro) return false
+      if (!noQuadro(v)) return false
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         const matchTitulo = v.titulo.toLowerCase().includes(q)
@@ -124,13 +127,7 @@ export default function KanbanBoard({
       if (filterArea && areaDe(v) !== filterArea) {
         return false
       }
-      if (filterModo) {
-        if (filterModo === "remoto" && !v.remoto) return false
-        if (filterModo === "hibrido" && v.modelo_trabalho !== "hibrido")
-          return false
-        if (filterModo === "presencial" && v.modelo_trabalho !== "presencial")
-          return false
-      }
+      if (filterModo && modoDe(v) !== filterModo) return false
       return true
     })
   }, [vagas, searchQuery, filterPlataforma, filterArea, filterModo])
@@ -391,7 +388,7 @@ export default function KanbanBoard({
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        {vaga.aderencia !== undefined ? (
+                        {temNota(vaga) ? (
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-bold border ${ader.bg} ${ader.text} ${ader.ring}`}
                           >
@@ -413,8 +410,9 @@ export default function KanbanBoard({
                         className="py-3.5 px-4 text-right"
                         onClick={(e) => e.stopPropagation()}
                       >
+                        {linkSeguro(vaga.url_candidatura || vaga.url) && (
                         <a
-                          href={vaga.url_candidatura || vaga.url}
+                          href={linkSeguro(vaga.url_candidatura || vaga.url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
@@ -422,6 +420,7 @@ export default function KanbanBoard({
                           <span>Abrir</span>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
+                        )}
                       </td>
                     </tr>
                   )

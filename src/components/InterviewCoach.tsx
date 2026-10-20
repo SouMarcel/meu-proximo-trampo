@@ -14,11 +14,14 @@ import {
   UserCheck,
   Target,
 } from "lucide-react"
-import { Vaga, HistoriaSTAR, PerguntaEntrevista } from "../types/job"
+import { Vaga as VagaApi, HistoriaSTAR, PerguntaEntrevista } from "../types/job"
+
+// Conteúdo de exemplo do protótipo: sai na História 5 da spec 025 (entrevista com os dados do servidor).
+type Vaga = VagaApi & { perguntas_frequentes?: PerguntaEntrevista[]; historias_star?: HistoriaSTAR[] }
 
 interface InterviewCoachProps {
   vagas: Vaga[]
-  onUpdateVaga: (id: string, updates: Partial<Vaga>) => void
+  onUpdateVaga: (id: string, updates: Partial<VagaApi>) => void
   onSelectVagaModal: (vaga: Vaga) => void
 }
 
@@ -99,7 +102,7 @@ export default function InterviewCoach({
     }
 
     const updated = [...(selectedVaga.historias_star || []), historia]
-    onUpdateVaga(selectedVaga.id, { historias_star: updated })
+    onUpdateVaga(selectedVaga.id, { historias_star: updated } as Partial<VagaApi>)
     setShowAddStar(false)
     setNewStar({
       titulo: "",
@@ -284,7 +287,7 @@ export default function InterviewCoach({
                     dica: "Demonstre que você pesquisou sobre o produto deles, desafios recentes de escala e valores culturais da organização.",
                   },
                 ]
-            ).map((item, idx) => (
+            ).map((item: any, idx: number) => (
               <div
                 key={idx}
                 className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-3"
@@ -441,7 +444,7 @@ export default function InterviewCoach({
           <div className="space-y-3">
             {selectedVaga.historias_star &&
             selectedVaga.historias_star.length > 0 ? (
-              selectedVaga.historias_star.map((hist) => (
+              selectedVaga.historias_star.map((hist: HistoriaSTAR) => (
                 <div
                   key={hist.id}
                   className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-3"

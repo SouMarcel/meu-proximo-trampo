@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import {
   ExternalLink,
   Calendar,
@@ -13,7 +13,8 @@ import {
   MoreVertical,
   Trash2,
 } from "lucide-react"
-import { Vaga, Etapa } from "../types/job"
+import type { Vaga, Etapa } from "../types/api"
+import { useFerramenta } from "../contexto/Ferramenta"
 import {
   getPlataformaStyle,
   getAderenciaBadge,
@@ -21,6 +22,8 @@ import {
   formatarModelo,
   areaDe,
   paisDe,
+  linkSeguro,
+  temNota,
 } from "../utils/formatters"
 
 interface JobCardProps {
@@ -55,6 +58,9 @@ export default function JobCard({
   const platStyle = getPlataformaStyle(vaga.plataforma)
   const aderenciaInfo = getAderenciaBadge(vaga.aderencia)
   const proxima = vaga.etapa ? PROXIMA_ETAPA[vaga.etapa] : null
+  const { podeGravar } = useFerramenta()
+  const [confirmarRemocao, setConfirmarRemocao] = useState(false)
+  const link = linkSeguro(vaga.url_candidatura) || linkSeguro(vaga.url)
 
   return (
     <div
@@ -89,7 +95,7 @@ export default function JobCard({
           </div>
 
           {/* Adherence Score Pill */}
-          {vaga.aderencia !== undefined ? (
+          {temNota(vaga) ? (
             <div
               className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border ${aderenciaInfo.bg} ${aderenciaInfo.text} ${aderenciaInfo.ring}`}
               title={`Aderência de ${vaga.aderencia}% com base nas regras do seu perfil`}
@@ -172,8 +178,9 @@ export default function JobCard({
           onClick={(e) => e.stopPropagation()}
         >
           {/* External Link */}
+          {link && (
           <a
-            href={vaga.url_candidatura || vaga.url}
+            href={link}
             target="_blank"
             rel="noopener noreferrer"
             className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
@@ -181,10 +188,12 @@ export default function JobCard({
           >
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
+          )}
 
           {/* Advance Stage Button */}
           {proxima && onMoveStage && (
             <button
+              disabled={!podeGravar}
               onClick={() => onMoveStage(vaga.id, proxima)}
               className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-400 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
               title={`Avançar vaga para: ${ROTULO_AVANCO[vaga.etapa || "salva"]}`}
@@ -197,11 +206,24 @@ export default function JobCard({
           {/* Delete / Remove */}
           {onDelete && (
             <button
-              onClick={() => onDelete(vaga.id)}
-              className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
-              title="Remover do quadro"
+              disabled={!podeGravar}
+              onClick={() => {
+                if (!confirmarRemocao) {
+                  setConfirmarRemocao(true)
+                  setTimeout(() => setConfirmarRemocao(false), 4000)
+                  return
+                }
+                onDelete(vaga.id)
+              }}
+              className={`flex items-center gap-1 p-1 rounded-md transition disabled:opacity-50 ${
+                confirmarRemocao
+                  ? "px-2 bg-rose-600 text-white text-[11px] font-semibold"
+                  : "text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+              }`}
+              title={confirmarRemocao ? "Clique de novo para remover" : "Remover do quadro"}
             >
               <Trash2 className="w-3.5 h-3.5" />
+              {confirmarRemocao && <span>Confirmar remoção</span>}
             </button>
           )}
         </div>

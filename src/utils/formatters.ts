@@ -1,7 +1,7 @@
-import { Plataforma, Etapa, ModeloTrabalho, Senioridade } from "../types/job"
+import type { Etapa, ModeloTrabalho, Senioridade, Vaga, Versao } from "../types/api"
 
 export function getPlataformaStyle(
-  plataforma: Plataforma,
+  plataforma: string,
 ): {
   bg: string
   text: string
@@ -81,15 +81,11 @@ export function getPlataformaStyle(
 }
 
 /**
- * Classificacao da nota de aderencia calculada pela IA:
- * - >= 85%: Excelente (Verde / Emerald)
- * - >= 65%: Boa (Azul / Sky)
- * - >= 50%: Media (Ambar / Amber)
- * - < 50%: Baixa (Rosa / Rose)
- * - null/undefined: Pendente / Sem nota (Slate)
+ * Faixas da nota de aderência (as mesmas do servidor e do dashboard antigo):
+ * >= 80 forte, >= 65 boa, >= 50 parcial, abaixo baixa; sem número = sem nota.
  */
 export function getAderenciaBadge(
-  score?: number,
+  score?: number | null,
 ): {
   bg: string
   text: string
@@ -104,19 +100,19 @@ export function getAderenciaBadge(
       bg: "bg-slate-100 dark:bg-slate-800",
       text: "text-slate-600 dark:text-slate-400",
       ring: "border-slate-300 dark:border-slate-700",
-      label: "Pendente",
+      label: "Sem nota",
       scoreColor: "text-slate-500",
       boxBorder: "border-slate-800",
       boxGlow: "",
     }
   }
 
-  if (score >= 85) {
+  if (score >= 80) {
     return {
       bg: "bg-emerald-100 dark:bg-emerald-950/60",
       text: "text-emerald-800 dark:text-emerald-300",
       ring: "border-emerald-300 dark:border-emerald-700",
-      label: "Excelente",
+      label: "Forte",
       scoreColor: "text-emerald-400",
       boxBorder: "border-emerald-500/50 dark:border-emerald-500/60",
       boxGlow: "shadow-emerald-500/10",
@@ -138,7 +134,7 @@ export function getAderenciaBadge(
       bg: "bg-amber-100 dark:bg-amber-950/60",
       text: "text-amber-800 dark:text-amber-300",
       ring: "border-amber-300 dark:border-amber-700",
-      label: "Média",
+      label: "Parcial",
       scoreColor: "text-amber-400",
       boxBorder: "border-amber-500/50 dark:border-amber-500/60",
       boxGlow: "shadow-amber-500/10",
@@ -217,7 +213,7 @@ export function getEtapaInfo(
 }
 
 export function formatarDataRelativa(dataString?: string | null): string {
-  if (!dataString) return "Recentemente"
+  if (!dataString) return "Data não informada"
   const partes = dataString.split("T")[0].split("-")
   if (partes.length !== 3) return dataString
 
@@ -244,10 +240,11 @@ export function formatarModelo(
   modelo?: ModeloTrabalho,
   remoto?: boolean,
 ): string {
-  if (remoto) return "100% Remoto"
+  if (modelo === "remoto") return "Remoto"
   if (modelo === "hibrido") return "Híbrido"
   if (modelo === "presencial") return "Presencial"
-  return "Remoto / Flexível"
+  if (remoto) return "Remoto"
+  return "Modelo não informado"
 }
 
 export function formatarSenioridade(sen?: Senioridade[]): string {
@@ -257,7 +254,6 @@ export function formatarSenioridade(sen?: Senioridade[]): string {
       if (s === "junior") return "Júnior"
       if (s === "pleno") return "Pleno"
       if (s === "senior") return "Sênior"
-      if (s === "especialista") return "Especialista / Lead"
       return s
     })
     .join(", ")
@@ -281,4 +277,71 @@ export function paisDe(vaga: Partial<Vaga>): string {
   if (vaga.pais_vaga) return vaga.pais_vaga
   const g = (vaga.grupos || []).filter((x) => /^(internacional|mudanca):/.test(x))[0]
   return g && g !== "internacional:global" ? g.split(":")[1] : ""
+}
+
+/** Modo de trabalho da vaga: o da análise ou da fonte vale mais que a marcação "remoto" do portal. */
+export function modoDe(vaga: Vaga): ModeloTrabalho {
+  if (vaga.modelo_trabalho && vaga.modelo_trabalho !== "nao_informado") return vaga.modelo_trabalho
+  return vaga.remoto ? "remoto" : "nao_informado"
+}
+
+/** No quadro: tem etapa e (foi adicionada direto no quadro ou a pessoa seguiu com ela). */
+export function noQuadro(vaga: Vaga): boolean {
+  return Boolean(vaga.etapa) && (vaga.origem === "manual" || vaga.triagem === "seguir")
+}
+
+/** No Relatório: tudo o que não foi adicionado direto no quadro. */
+export function noRelatorio(vaga: Vaga): boolean {
+  return vaga.origem !== "manual"
+}
+
+export function temNota(vaga: Vaga): boolean {
+  return typeof vaga.aderencia === "number"
+}
+
+export type SituacaoNota =
+  | { tipo: "verificando" }
+  | { tipo: "falha"; motivo: string }
+  | { tipo: "nota"; provisoria: boolean }
+  | { tipo: "pendente" } // aguardando a IA
+  | { tipo: "descricao_pendente" }
+  | { tipo: "sem_nota" }
+
+/** Situação da nota para os selos: verificando → falha → o que a vaga diz (data-model "Estado derivado"). */
+export function situacaoNota(vaga: Vaga, versao?: Pick<Versao, "verificando" | "falhas"> | null): SituacaoNota {
+  if (versao?.verificando?.includes(vaga.id)) return { tipo: "verificando" }
+  const falha = versao?.falhas?.[vaga.id]
+  if (falha && !temNota(vaga)) return { tipo: "falha", motivo: falha.motivo }
+  if (temNota(vaga)) return { tipo: "nota", provisoria: Boolean(vaga.nota_sem_descricao) }
+  if (vaga.descricao_pendente) return { tipo: "descricao_pendente" }
+  if (vaga.analise_status === "pendente") return { tipo: "pendente" }
+  return { tipo: "sem_nota" }
+}
+
+/** Forçar verificar: só para vaga sem nota (ou com nota provisória) em Para decidir ou Fora dos critérios. */
+export function podeForcar(vaga: Vaga): boolean {
+  return (vaga.triagem === "pendente" || vaga.triagem === "fora") && (!temNota(vaga) || Boolean(vaga.nota_sem_descricao))
+}
+
+/** Link só se for http/https (texto da internet é texto). */
+export function linkSeguro(url?: string | null): string | undefined {
+  return url && /^https?:\/\//i.test(url) ? url : undefined
+}
+
+/** Data de hoje no formato AAAA-MM-DD, no fuso do computador. */
+export function hoje(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+/** "HH:MM" de uma data ISO. */
+export function horaDe(iso?: string | null): string {
+  return String(iso || "").slice(11, 16)
+}
+
+/** "DD/MM" de uma data ISO ou AAAA-MM-DD. */
+export function diaMes(iso?: string | null): string {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return m ? `${m[3]}/${m[2]}` : ""
 }
