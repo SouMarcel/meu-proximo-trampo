@@ -12,7 +12,7 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 | Aviso de servidor parado e reconexão sozinha | Faixa no topo; modo demonstração na abertura | 1 | ✅ | [ ] |
 | Tema (sistema → claro → escuro) | Botão no cabeçalho | 1 | ✅ (H1) | [ ] |
 | Meu perfil | Cabeçalho → Meu perfil | 3 | ⚠️ | [ ] |
-| IA (escolher, testar, remover chave) | Cabeçalho → IA | 2 | ⚠️ | [ ] |
+| IA (escolher, testar, remover chave) | Cabeçalho → IA | 2 | ✅ | [ ] |
 | Adicionar vaga | Cabeçalho e quadro | 1 | ✅ | [ ] |
 | Atualizar candidaturas | Cabeçalho → Contas conectadas | 6 | ⚠️ | [ ] |
 | Apoie o projeto (link externo) | Cabeçalho | 1 | ✅ | [ ] |
@@ -74,9 +74,9 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 
 | Função | Na página nova | H | Hoje | Conferido |
 |---|---|---|---|---|
-| Cargos, Localidade, Modo de trabalho, Senioridade, Tipo de emprego, Data de publicação, Idiomas aceitos, Moedas aceitas, Empresas a excluir, Portais | Filtros da busca | 2 | ⚠️ | [ ] |
-| Internacional: países, regiões, salário e fuso, contratação aceita, fontes do exterior, empresas que você acompanha, frases | Filtros internacionais | 2 | ⚠️ | [ ] |
-| Provedor, modelo, chave (4 últimos), Testar conexão, Remover, o que é enviado | IA | 2 | ⚠️ | [ ] |
+| Cargos, Localidade, Modo de trabalho, Senioridade, Tipo de emprego, Data de publicação, Idiomas aceitos, Moedas aceitas, Empresas a excluir, Portais | Filtros da busca | 2 | ✅ | [ ] |
+| Internacional: países, regiões, salário e fuso, contratação aceita, fontes do exterior, empresas que você acompanha, frases | Filtros internacionais | 2 | ✅ | [ ] |
+| Provedor, modelo, chave (4 últimos), Testar conexão, Remover, o que é enviado | IA | 2 | ✅ | [ ] |
 
 ## Meu perfil
 

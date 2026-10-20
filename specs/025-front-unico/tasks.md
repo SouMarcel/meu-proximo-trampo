@@ -175,7 +175,7 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
   - quem deu a nota (`analise_provedor` e `analise_modelo`).
 - [X] T027 [US1] Em todo erro de API das telas desta fase, mostrar `ErroApi.message` (toast de erro) e passar por
   `tratarErro` (`src/App.tsx`, modais da fase)
-- [ ] T028 [US1] Portões do quickstart; build copiado para `dash/front/` na branch pessoal; roteiro H1 com a pessoa;
+- [X] T028 [US1] Portões do quickstart; build copiado para `dash/front/` na branch pessoal; roteiro H1 com a pessoa;
   marcar as linhas da História 1 em `contracts/paridade.md`. Com o OK: busca de dados pessoais, commit na
   `frontend-react` e o fluxo de entrega do quickstart.
 
@@ -212,11 +212,11 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
 
 **Independent Test**: roteiro H2. As mudanças continuam depois de recarregar e aparecem em `/`.
 
-- [ ] T029 [P] [US2] Criar `src/services/api/config.ts` (`ler()` e `gravar(filtros)`, §3.4) e
+- [X] T029 [P] [US2] Criar `src/services/api/config.ts` (`ler()` e `gravar(filtros)`, §3.4) e
   `src/services/api/ia.ts` (`estado()`, `salvar({provedor, modelo?, url_base?, chave?})`, `testar(...)` e
   `removerChave(provedor)`, §3.5), com os tipos `Config`, `Filtros`, `Opcoes`, `EstadoIA` e `Provedor` em
   `src/types/api.ts`
-- [ ] T030 [US2] Reescrever `src/components/modals/SearchFiltersModal.tsx` sobre `ler()`, com prop
+- [X] T030 [US2] Reescrever `src/components/modals/SearchFiltersModal.tsx` sobre `ler()`, com prop
   `modo: "nacional" | "internacional"`.
   - **Opções**: só as de `opcoes` (países, modelos, `tipos_emprego`, senioridades, moedas, `moeda_do_pais`, janelas
     "24","72","168","360","720", raios_km, idiomas, regiões, contratação, `fontes_nac` com `precisa`, `fontes_int`).
@@ -229,7 +229,7 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
     - `empresas` "`[{sistema, id, nome, url}]`", `frases_restricao` e `frases_positivas`.
   - **Salvar**: `gravar(filtros inteiro)`. Erro 400 mostra a regra do servidor ("informe pelo menos um cargo",
     "para híbrido ou presencial, informe a cidade"). Com `existe: false`, aviso de primeira vez.
-- [ ] T031 [US2] Reescrever `src/components/modals/AISettingsModal.tsx` sobre `estado()`. Sai o `setTimeout`.
+- [X] T031 [US2] Reescrever `src/components/modals/AISettingsModal.tsx` sobre `estado()`. Sai o `setTimeout`.
   - **Provedores**: `provedores` do servidor, com nome, `cobranca`, `modelo_padrao`, `url_padrao`,
     `onde_obter_chave` (link http/https) e `dica`. Mostrar `claude_instalado` e `ultimo_erro`.
   - **Chave**: campo `type="password"` sempre vazio na abertura, mostrando "cadastrada, final XXXX" (`final`) e a
@@ -242,9 +242,13 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
   - **Antes de salvar**: o texto "o que é enviado ao provedor".
   - **Só leitura**: `pode_alterar` desliga tudo.
   - **Depois de salvar**: atualizar a `ia` do contexto.
-- [ ] T032 [US2] Em `src/App.tsx`, tirar os estados `filtros` e `configIA` simulados e os `handleSaveFilters` e
+- [X] T032 [US2] Em `src/App.tsx`, tirar os estados `filtros` e `configIA` simulados e os `handleSaveFilters` e
   `handleSaveConfigIA`. Em `src/components/InternationalHub.tsx`, "Filtros da busca internacional" abre o modal com
   `modo="internacional"`. Tirar `FiltrosBusca` e `ConfigIA` de `src/types/job.ts`.
+**Notas da implementação (H2, 2026-10-20)**: `FiltrosBusca` fica em `types/job.ts` só para os primeiros passos de
+exemplo (modo demonstração) e sai na H3. Gravar os filtros vale de outro aparelho (`PUT /api/config` não é só
+local); a IA, não.
+
 - [ ] T033 [US2] Portões, roteiro H2, linhas da História 2 em `contracts/paridade.md` e entrega com o OK
 
 ---
