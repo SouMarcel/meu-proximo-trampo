@@ -49,6 +49,7 @@ interface JobDetailModalProps {
   onForcarVerificar?: (id: string) => Promise<void> | void
   onAviso: (mensagem: string, tipo?: "info" | "erro") => void
   onAbrirPerfil: () => void
+  onPreparar: (id: string) => void
 }
 
 type DetailTab = "descricao" | "analise" | "kit" | "anotacoes"
@@ -71,6 +72,7 @@ export default function JobDetailModal({
   onForcarVerificar,
   onAviso,
   onAbrirPerfil,
+  onPreparar,
 }: JobDetailModalProps) {
   const { podeGravar } = useFerramenta()
   const [activeTab, setActiveTab] = useState<DetailTab>("descricao")
@@ -496,6 +498,15 @@ export default function JobDetailModal({
                   </div>
                 ) : (
                   <span />
+                )}
+                {vaga.etapa && (
+                  <button
+                    type="button"
+                    onClick={() => onPreparar(vaga.id)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800"
+                  >
+                    Preparar entrevista
+                  </button>
                 )}
                 <button
                   onClick={salvar}

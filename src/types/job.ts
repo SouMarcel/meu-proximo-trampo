@@ -13,24 +13,6 @@ export type {
 } from "./api"
 import type { Plataforma, Etapa, Resultado } from "./api"
 
-export interface HistoriaSTAR {
-  id: string
-  titulo: string
-  situacao: string
-  tarefa: string
-  acao: string
-  resultado: string
-  competencias: string[]
-}
-
-export interface PerguntaEntrevista {
-  id: string
-  pergunta: string
-  tipo: "comportamental" | "tecnica" | "situacional"
-  dica: string
-  sugestao_resposta?: string
-}
-
 export interface PortalConectado {
   id: "gupy" | "indeed" | "linkedin"
   nome: string

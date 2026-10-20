@@ -33,6 +33,7 @@ interface JobCardProps {
   onMoveStage?: (id: string, nextStage: Etapa) => void
   onDelete?: (id: string) => void
   onUpdateVaga?: (id: string, campos: CamposEditaveis, sucesso?: string) => Promise<boolean>
+  onPreparar?: (id: string) => void
 }
 
 const PROXIMA_ETAPA: Record<Etapa, Etapa | null> = {
@@ -57,6 +58,7 @@ export default function JobCard({
   onMoveStage,
   onDelete,
   onUpdateVaga,
+  onPreparar,
 }: JobCardProps) {
   const platStyle = getPlataformaStyle(vaga.plataforma)
   const aderenciaInfo = getAderenciaBadge(vaga.aderencia)
@@ -197,6 +199,16 @@ export default function JobCard({
           >
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
+          )}
+
+          {onPreparar && vaga.etapa === "entrevista" && (
+            <button
+              onClick={() => onPreparar(vaga.id)}
+              className="px-2 py-1 rounded-md text-[11px] font-medium bg-violet-50 hover:bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 border border-violet-200 dark:border-violet-800 transition"
+              title="Dossiê, perguntas prováveis, histórias, simulação, salário e anotações"
+            >
+              Preparar entrevista
+            </button>
           )}
 
           {/* Advance Stage Button */}

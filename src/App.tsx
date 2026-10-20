@@ -38,7 +38,7 @@ import InterviewCoach from "./components/InterviewCoach"
 import AndamentoBusca from "./components/AndamentoBusca"
 import UltimaBuscaLinha from "./components/UltimaBusca"
 import CompletarDescricoes from "./components/CompletarDescricoes"
-import { AvisoTelaAntiga, CartaoTelaAntiga, TELAS_ANTIGAS } from "./components/AindaNaPaginaAntiga"
+import { AvisoTelaAntiga, TELAS_ANTIGAS } from "./components/AindaNaPaginaAntiga"
 
 // Modals
 import JobDetailModal from "./components/modals/JobDetailModal"
@@ -118,6 +118,7 @@ function Pagina({
 
   // Modais
   const [detalheId, setDetalheId] = useState<string | null>(null)
+  const [entrevistaVagaId, setEntrevistaVagaId] = useState<string | null>(null)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
   const [filtrosModo, setFiltrosModo] = useState<ModoFiltros | null>(null)
@@ -515,6 +516,10 @@ function Pagina({
             onDeleteVaga={handleDeleteVaga}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onUpdateVaga={handleUpdateVaga}
+            onPreparar={(id) => {
+              setEntrevistaVagaId(id)
+              handleTabChange("entrevistas")
+            }}
           />
         )}
 
@@ -561,16 +566,15 @@ function Pagina({
           <FunnelAnalytics vagas={vagas} onNavigateToTab={(tab) => handleTabChange(tab as ActiveTab)} />
         )}
 
-        {activeTab === "entrevistas" &&
-          (demo ? (
-            <InterviewCoach
-              vagas={vagas.filter(noQuadro)}
-              onUpdateVaga={(id, campos) => handleUpdateVaga(id, campos as CamposEditaveis)}
-              onSelectVagaModal={(v) => setDetalheId(v.id)}
-            />
-          ) : (
-            <CartaoTelaAntiga tela={TELAS_ANTIGAS.entrevista} />
-          ))}
+        {activeTab === "entrevistas" && (
+          <InterviewCoach
+            vagas={vagas.filter(noQuadro)}
+            vagaId={entrevistaVagaId}
+            onEscolherVaga={setEntrevistaVagaId}
+            onAviso={showToast}
+            onAbrirPerfil={() => setPerfilAberto({})}
+          />
+        )}
       </main>
 
       {/* Modais */}
@@ -587,6 +591,11 @@ function Pagina({
           onAbrirPerfil={() => {
             setDetalheId(null)
             setPerfilAberto({})
+          }}
+          onPreparar={(id) => {
+            setDetalheId(null)
+            setEntrevistaVagaId(id)
+            handleTabChange("entrevistas")
           }}
         />
       )}

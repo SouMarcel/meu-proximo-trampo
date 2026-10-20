@@ -36,6 +36,7 @@ interface KanbanBoardProps {
   onDeleteVaga: (id: string) => void
   onOpenAddModal: () => void
   onUpdateVaga: (id: string, campos: CamposEditaveis, sucesso?: string) => Promise<boolean>
+  onPreparar: (id: string) => void
 }
 
 const ETAPAS: {
@@ -92,6 +93,7 @@ export default function KanbanBoard({
   onDeleteVaga,
   onOpenAddModal,
   onUpdateVaga,
+  onPreparar,
 }: KanbanBoardProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterPlataforma, setFilterPlataforma] = useState<string>("")
@@ -324,6 +326,7 @@ export default function KanbanBoard({
                         onMoveStage={onMoveStage}
                         onDelete={onDeleteVaga}
                         onUpdateVaga={onUpdateVaga}
+                        onPreparar={onPreparar}
                       />
                     </div>
                   ))}

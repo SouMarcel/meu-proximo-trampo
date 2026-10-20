@@ -71,5 +71,4 @@ export function CartaoTelaAntiga({ tela }: { tela: TelaAntiga }) {
 
 export const TELAS_ANTIGAS = {
   contas: { titulo: "Atualizar candidaturas", onde: 'botão "Atualizar candidaturas", no topo' },
-  entrevista: { titulo: "Preparar entrevista", onde: 'botão "Preparar entrevista", no cartão da vaga em Entrevista' },
 } satisfies Record<string, TelaAntiga>
