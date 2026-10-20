@@ -512,21 +512,23 @@ export default function TriageReport({
                   )}
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
                     {subTab === "pendente" && (
                       <>
+                        {/* 1. Não Seguir */}
                         <button
                           onClick={() => onNaoSeguirVaga(vaga.id)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition"
+                          className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition w-full sm:w-auto"
                           title="Descartar vaga (não aparecerá nas próximas buscas)"
                         >
                           <X className="w-3.5 h-3.5" />
                           <span>Não Seguir</span>
                         </button>
 
+                        {/* 2. Seguir com a Vaga */}
                         <button
                           onClick={() => onSeguirVaga(vaga.id)}
-                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-xs shadow-indigo-600/30 transition"
+                          className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-xs shadow-indigo-600/30 transition w-full sm:w-auto"
                           title="Mover para a coluna Salva no seu Quadro"
                         >
                           <Check className="w-3.5 h-3.5" />
@@ -535,14 +537,13 @@ export default function TriageReport({
                       </>
                     )}
 
-                    
-                    {/* Forçar verificar (Spec 021) */}
+                    {/* 3. Forçar verificar (Spec 021) */}
                     {vaga.aderencia === undefined && onForcarVerificar && (
-                      <div className="flex flex-col items-start sm:items-end gap-1">
+                      <div className="flex flex-col items-stretch sm:items-end gap-1 w-full sm:w-auto">
                         <button
                           onClick={() => handleForcar(vaga.id)}
                           disabled={verificandoMap[vaga.id] || vaga.analise_status === "verificando"}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 disabled:opacity-60 transition shadow-2xs"
+                          className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 disabled:opacity-60 transition shadow-2xs w-full sm:w-auto"
                           title="Pede a nota desta vaga à IA agora"
                         >
                           <Sparkles
@@ -559,17 +560,17 @@ export default function TriageReport({
                           </span>
                         </button>
                         {(verificandoMap[vaga.id] || vaga.analise_status === "verificando") && (
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 text-center sm:text-right">
                             A nota chega em alguns instantes.
                           </span>
                         )}
                         {vaga.descricao_pendente && !verificandoMap[vaga.id] && vaga.analise_status !== "verificando" && (
-                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium text-center sm:text-right">
                             Lê descrição antes da IA
                           </span>
                         )}
                         {vaga.motivo_falha && !verificandoMap[vaga.id] && (
-                          <span className="text-[10px] text-rose-600 dark:text-rose-400">
+                          <span className="text-[10px] text-rose-600 dark:text-rose-400 text-center sm:text-right">
                             Falha: {vaga.motivo_falha}
                           </span>
                         )}
@@ -579,7 +580,7 @@ export default function TriageReport({
                     {subTab === "fora" && (
                       <button
                         onClick={() => onResgatarVaga(vaga.id)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800 transition"
+                        className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800 transition w-full sm:w-auto"
                         title="Resgatar vaga e mover diretamente para o Quadro"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
@@ -587,23 +588,28 @@ export default function TriageReport({
                       </button>
                     )}
 
-                    <button
-                      onClick={() => onSelectVaga(vaga)}
-                      className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                      title="Ver detalhes completos"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
+                    {/* 4. Ver detalhes completos / Acessar a vaga na plataforma original */}
+                    <div className="flex items-center justify-end gap-1.5 pt-0.5 w-full">
+                      <button
+                        onClick={() => onSelectVaga(vaga)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition border border-transparent hover:border-slate-200 dark:border-slate-700"
+                        title="Ver detalhes completos"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span className="text-[11px] font-medium">Ver detalhes</span>
+                      </button>
 
-                    <a
-                      href={vaga.url_candidatura || vaga.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition"
-                      title="Abrir vaga no portal original"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
+                      <a
+                        href={vaga.url_candidatura || vaga.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition border border-transparent hover:border-indigo-200 dark:border-indigo-800"
+                        title="Abrir vaga no portal original"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span className="text-[11px] font-medium">Acessar vaga</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
