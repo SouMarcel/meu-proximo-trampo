@@ -46,7 +46,8 @@ export interface Vaga {
   outras_plataformas?: string[]
   local: string
   remoto: boolean
-  area: Area
+  area?: Area
+  grupos?: string[]
   pais_vaga?: string
   idioma?: string
   url: string

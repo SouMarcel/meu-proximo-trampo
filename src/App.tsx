@@ -11,6 +11,7 @@ import {
 } from "./types/job"
 import { ApiService, PatchVagaPayload } from "./services/api"
 import { ScreenPreferencesService } from "./services/storage"
+import { areaDe } from "./utils/formatters"
 import {
   MOCK_VAGAS,
   MOCK_FILTROS_BUSCA,
@@ -191,7 +192,7 @@ export default function App() {
   const counts = useMemo(() => {
     const quadro = vagasComStatus.filter((v) => v.etapa !== null).length
     const pendentes = vagasComStatus.filter((v) => v.triagem === "pendente").length
-    const internacional = vagasComStatus.filter((v) => v.area === "internacional").length
+    const internacional = vagasComStatus.filter((v) => areaDe(v) === "internacional").length
     const entrevistas = vagasComStatus.filter(
       (v) => v.etapa === "entrevista" || v.entrevista_em,
     ).length
@@ -332,22 +333,44 @@ export default function App() {
 
   // 5. Excluir vaga (DELETE /api/vagas/{id})
   // Regra: "Ações que gravam, apagam ou chamam a IA pedem confirmação, como hoje."
+  // 5. Remover vaga do quadro (DELETE /api/vagas/{id})
+  // Regra: O DELETE apaga as manuais e move as demais de volta para "visitada"
   const handleDeleteVaga = async (id: string) => {
-    const confirmou = window.confirm("Tem certeza que deseja excluir esta vaga do acompanhamento?")
+    const confirmou = window.confirm("Remover esta vaga do quadro?")
     if (!confirmou) return
 
     if (isDemoMode) {
-      setVagas((prev) => prev.filter((v) => v.id !== id))
-      showToast("Vaga removida com sucesso.")
+      setVagas((prev) =>
+        prev
+          .map((v) =>
+            v.id === id
+              ? v.origem === "manual"
+                ? null
+                : { ...v, triagem: "visitada" as const, etapa: null, resultado: null }
+              : v,
+          )
+          .filter(Boolean) as Vaga[],
+      )
+      showToast("Vaga removida do quadro.")
       return
     }
 
     try {
       await ApiService.deleteVaga(id)
-      setVagas((prev) => prev.filter((v) => v.id !== id))
-      showToast("Vaga removida com sucesso.")
+      setVagas((prev) =>
+        prev
+          .map((v) =>
+            v.id === id
+              ? v.origem === "manual"
+                ? null
+                : { ...v, triagem: "visitada" as const, etapa: null, resultado: null }
+              : v,
+          )
+          .filter(Boolean) as Vaga[],
+      )
+      showToast("Vaga removida do quadro.")
     } catch (err: any) {
-      showToast(err?.message || "Não foi possível excluir a vaga.", "erro")
+      showToast(err?.message || "Não foi possível remover a vaga.", "erro")
     }
   }
 

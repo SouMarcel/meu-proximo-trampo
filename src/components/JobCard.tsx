@@ -19,6 +19,8 @@ import {
   getAderenciaBadge,
   formatarDataRelativa,
   formatarModelo,
+  areaDe,
+  paisDe,
 } from "../utils/formatters"
 
 interface JobCardProps {
@@ -71,10 +73,10 @@ export default function JobCard({
             </span>
 
             {/* International Flag */}
-            {vaga.area === "internacional" && (
+            {areaDe(vaga) === "internacional" && (
               <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                 <Globe className="w-3 h-3" />
-                <span>{vaga.pais_vaga || "Global"}</span>
+                <span>{paisDe(vaga) || "Global"}</span>
               </span>
             )}
 
@@ -197,7 +199,7 @@ export default function JobCard({
             <button
               onClick={() => onDelete(vaga.id)}
               className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
-              title="Remover vaga"
+              title="Remover do quadro"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

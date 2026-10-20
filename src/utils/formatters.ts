@@ -262,3 +262,23 @@ export function formatarSenioridade(sen?: Senioridade[]): string {
     })
     .join(", ")
 }
+
+
+/**
+ * Área da vaga: a gravada; nas vagas antigas, internacional só quando todos os itens
+ * de grupos começam com internacional: ou mudanca:; no resto dos casos, nacional.
+ */
+export function areaDe(vaga: Partial<Vaga>): "nacional" | "internacional" {
+  if (vaga.area === "nacional" || vaga.area === "internacional") {
+    return vaga.area
+  }
+  const g = vaga.grupos || []
+  const fora = g.filter((x) => /^(internacional|mudanca):/.test(x))
+  return fora.length > 0 && fora.length === g.length ? "internacional" : "nacional"
+}
+
+export function paisDe(vaga: Partial<Vaga>): string {
+  if (vaga.pais_vaga) return vaga.pais_vaga
+  const g = (vaga.grupos || []).filter((x) => /^(internacional|mudanca):/.test(x))[0]
+  return g && g !== "internacional:global" ? g.split(":")[1] : ""
+}

@@ -546,7 +546,7 @@ export default function JobDetailModal({
                 <button
                   onClick={() => {
                     if (
-                      confirm("Deseja realmente remover esta vaga do sistema?")
+                      confirm("Remover esta vaga do quadro?")
                     ) {
                       onDeleteVaga(vaga.id)
                       onClose()
@@ -555,7 +555,7 @@ export default function JobDetailModal({
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Excluir Vaga</span>
+                  <span>Remover do quadro</span>
                 </button>
 
                 <button

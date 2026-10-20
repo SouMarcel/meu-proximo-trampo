@@ -22,6 +22,7 @@ import {
   getAderenciaBadge,
   formatarDataRelativa,
   formatarModelo,
+  areaDe,
 } from "../utils/formatters"
 
 interface KanbanBoardProps {
@@ -105,7 +106,8 @@ export default function KanbanBoard({
   // Filtrar apenas vagas que possuem etapa (isto é, estão no funil)
   const pipelineVagas = useMemo(() => {
     return vagas.filter((v) => {
-      if (!v.etapa) return false
+      const noQuadro = Boolean(v.etapa && (v.origem === "manual" || v.triagem === "seguir"))
+      if (!noQuadro) return false
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         const matchTitulo = v.titulo.toLowerCase().includes(q)
@@ -113,10 +115,13 @@ export default function KanbanBoard({
         const matchDesc = v.descricao?.toLowerCase().includes(q)
         if (!matchTitulo && !matchEmpresa && !matchDesc) return false
       }
-      if (filterPlataforma && v.plataforma !== filterPlataforma) {
-        return false
+      if (filterPlataforma) {
+        const plats = [v.plataforma, ...(v.outras_plataformas || [])]
+        if (!plats.includes(filterPlataforma)) {
+          return false
+        }
       }
-      if (filterArea && v.area !== filterArea) {
+      if (filterArea && areaDe(v) !== filterArea) {
         return false
       }
       if (filterModo) {

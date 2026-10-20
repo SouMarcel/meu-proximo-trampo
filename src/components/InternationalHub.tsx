@@ -18,6 +18,8 @@ import {
   getAderenciaBadge,
   formatarDataRelativa,
   formatarModelo,
+  areaDe,
+  paisDe,
 } from "../utils/formatters"
 interface InternationalHubProps {
   vagas: Vaga[]
@@ -39,7 +41,7 @@ export default function InternationalHub({
   // Apenas vagas internacionais
   const vagasInternacionais = useMemo(() => {
     return vagas.filter((v) => {
-      if (v.area !== "internacional") return false
+      if (areaDe(v) !== "internacional") return false
       if (busca) {
         const q = busca.toLowerCase()
         const matchTitulo = v.titulo.toLowerCase().includes(q)
@@ -218,7 +220,7 @@ export default function InternationalHub({
                     </span>
                     <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                       <Globe2 className="w-3 h-3" />
-                      <span>{vaga.pais_vaga || "Global"}</span>
+                      <span>{paisDe(vaga) || "Global"}</span>
                     </span>
                   </div>
 
