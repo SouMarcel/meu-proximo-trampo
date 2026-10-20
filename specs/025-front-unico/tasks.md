@@ -191,6 +191,10 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
   - o título e o idioma da página (`.figma/make/site.json`).
 - O detalhe da vaga deixou de chamar hooks antes do `return` (erro do React ao abrir) e lê a vaga direto da lista,
   então as mudanças aparecem na hora.
+- No teste, a pessoa achou o perfil errado: era o perfil de exemplo do protótipo. Decisão dela: com o servidor no
+  ar, as telas ainda não ligadas não mostram mais exemplo. Meu perfil, Filtros, IA, Contas e Entrevista mostram um
+  aviso com o caminho para a mesma tela na página de sempre (`components/AindaNaPaginaAntiga.tsx`), e o exemplo
+  fica só no modo demonstração. Cada história tira o aviso da sua tela.
 - A sub-aba "Seguidas" do Relatório continua fora: o analista a tirou de propósito (commit `3a7bc44`); as vagas
   seguidas ficam no quadro.
 - Conferido sem a pessoa:
