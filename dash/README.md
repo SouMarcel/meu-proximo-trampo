@@ -52,6 +52,9 @@ só entrega o arquivo.
 todas as funções. Ele é montado na nuvem pelo GitHub Actions, então quem usa continua só com o Python; o
 processo está em `specs/022-front-react/`.
 
+**Tema:** claro, escuro ou o do sistema, pelo botão ao lado de **Meu perfil** (a escolha fica só neste
+navegador). O visual segue o do front novo (spec 023).
+
 A página confere o banco a cada poucos segundos, então uma busca gravada aparece
 sozinha.
 
