@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react"
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
   Vaga,
   Etapa,
@@ -9,7 +9,17 @@ import {
   ItemSincronizacao,
   HistoricoCandidatura,
 } from "./types/job"
-import { JobStorageService } from "./services/storage"
+import { ApiService, PatchVagaPayload } from "./services/api"
+import { ScreenPreferencesService } from "./services/storage"
+import {
+  MOCK_VAGAS,
+  MOCK_FILTROS_BUSCA,
+  MOCK_CONFIG_IA,
+  MOCK_PERFIL,
+  MOCK_PORTAIS_CONECTADOS,
+  MOCK_ITENS_SINCRONIZACAO,
+  MOCK_HISTORICO_CANDIDATURAS,
+} from "./services/mockData"
 import Header from "./components/Header"
 import NavigationTabs, { ActiveTab } from "./components/NavigationTabs"
 import KanbanBoard from "./components/KanbanBoard"
@@ -27,30 +37,42 @@ import AISettingsModal from "./components/modals/AISettingsModal"
 import ProfileModal from "./components/modals/ProfileModal"
 import CandidateOnboardingModal from "./components/modals/CandidateOnboardingModal"
 import ConnectedAccountsModal from "./components/modals/ConnectedAccountsModal"
-import { Sparkles } from "lucide-react"
+import { Sparkles, AlertTriangle, RefreshCw } from "lucide-react"
 
 export default function App() {
   // Main Data States
   const [vagas, setVagas] = useState<Vaga[]>([])
-  const [filtros, setFiltros] = useState<FiltrosBusca>(
-    JobStorageService.getFiltrosBusca(),
-  )
-  const [configIA, setConfigIA] = useState<ConfigIA>(
-    JobStorageService.getConfigIA(),
-  )
-  const [perfil, setPerfil] = useState<PerfilUsuario>(
-    JobStorageService.getPerfil(),
-  )
-  const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(
-    null,
-  )
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false)
+  const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null)
+  const [backendVersao, setBackendVersao] = useState<number>(0)
+  const backendVersaoRef = useRef<number>(0)
 
-  // Navigation & Active Tab
-  const [activeTab, setActiveTab] = useState<ActiveTab>("quadro")
+  // Status de verificação e falhas vindos de /api/versao
+  const [verificandoIds, setVerificandoIds] = useState<string[]>([])
+  const [falhasMap, setFalhasMap] = useState<Record<string, string>>({})
+  const [analisandoAuto, setAnalisandoAuto] = useState<boolean>(false)
+  const [erroIA, setErroIA] = useState<string | null>(null)
 
-  // Modal Visibility States
-  const [selectedVagaForDetail, setSelectedVagaForDetail] =
-    useState<Vaga | null>(null)
+  // Outros estados da ferramenta (serão integrados conforme a ordem)
+  const [filtros, setFiltros] = useState<FiltrosBusca>(MOCK_FILTROS_BUSCA)
+  const [configIA, setConfigIA] = useState<ConfigIA>(MOCK_CONFIG_IA)
+  const [perfil, setPerfil] = useState<PerfilUsuario>(MOCK_PERFIL)
+  const [portais, setPortais] = useState<PortalConectado[]>(MOCK_PORTAIS_CONECTADOS)
+  const [itensSync, setItensSync] = useState<ItemSincronizacao[]>(MOCK_ITENS_SINCRONIZACAO)
+  const [historicoSync, setHistoricoSync] = useState<HistoricoCandidatura[]>(MOCK_HISTORICO_CANDIDATURAS)
+
+  // Navegação e aba ativa (preferência de tela)
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    return (ScreenPreferencesService.getActiveTab("relatorio") as ActiveTab) || "relatorio"
+  })
+
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTab(tab)
+    ScreenPreferencesService.setActiveTab(tab)
+  }
+
+  // Modais
+  const [selectedVagaForDetail, setSelectedVagaForDetail] = useState<Vaga | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
@@ -60,148 +82,341 @@ export default function App() {
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false)
   const [isAccountsModalOpen, setIsAccountsModalOpen] = useState(false)
 
-  // Connected Accounts States (Spec 018)
-  const [portais, setPortais] = useState<PortalConectado[]>(
-    JobStorageService.getPortaisConectados(),
-  )
-  const [itensSync, setItensSync] = useState<ItemSincronizacao[]>(
-    JobStorageService.getItensSincronizacao(),
-  )
-  const [historicoSync, setHistoricoSync] = useState<HistoricoCandidatura[]>(
-    JobStorageService.getHistoricoCandidaturas(),
-  )
-
   // Toast Notification State
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type?: "info" | "erro" } | null>(null)
 
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg)
+  const showToast = useCallback((message: string, type: "info" | "erro" = "info") => {
+    setToast({ message, type })
     setTimeout(() => {
-      setToastMessage(null)
-    }, 3200)
+      setToast(null)
+    }, 4000)
   }, [])
 
-  // Initial Load & Backend Ping
-  useEffect(() => {
-    const loadedVagas = JobStorageService.getVagas()
-    setVagas(loadedVagas)
-
-    // Check if local Python server is online
-    JobStorageService.checkBackendConnection().then((connected) => {
-      setIsBackendConnected(connected)
-      if (connected) {
-        showToast(
-          "Conectado ao servidor local Meu Próximo Trampo (127.0.0.1:8765)",
-        )
-      }
-    })
+  // Carrega vagas da API real
+  const carregarVagasDoServidor = useCallback(async () => {
+    try {
+      const res = await ApiService.getVagas()
+      setVagas(res.vagas || [])
+      setBackendVersao(res.versao)
+      backendVersaoRef.current = res.versao
+    } catch (err: any) {
+      showToast(err?.message || "Erro ao obter vagas do servidor.", "erro")
+    }
   }, [showToast])
 
-  // Reload all data
-  const reloadAllData = useCallback(() => {
-    setVagas(JobStorageService.getVagas())
-    setFiltros(JobStorageService.getFiltrosBusca())
-    setConfigIA(JobStorageService.getConfigIA())
-    setPerfil(JobStorageService.getPerfil())
-    setPortais(JobStorageService.getPortaisConectados())
-    setItensSync(JobStorageService.getItensSincronizacao())
-    setHistoricoSync(JobStorageService.getHistoricoCandidaturas())
-  }, [])
+  // Conferência periódica do servidor via GET /api/versao
+  const conferirServidor = useCallback(async () => {
+    if (typeof document !== "undefined" && document.hidden) return
+    try {
+      const vRes = await ApiService.getVersao()
+      const estavaOffline = isDemoMode || !isBackendConnected
+      setIsBackendConnected(true)
+      setIsDemoMode(false)
+      setVerificandoIds(vRes.verificando || [])
+      setFalhasMap(vRes.falhas || {})
+      setAnalisandoAuto(!!vRes.analisando)
+      setErroIA(vRes.ia_erro || null)
 
-  // Tab badge counts
+      // Se estava em modo demonstração ou a versão do banco aumentou, recarrega vagas
+      if (estavaOffline || vRes.versao !== backendVersaoRef.current) {
+        backendVersaoRef.current = vRes.versao
+        setBackendVersao(vRes.versao)
+        await carregarVagasDoServidor()
+      }
+    } catch {
+      // Servidor não respondeu: entra em Modo demonstração
+      setIsBackendConnected(false)
+      if (!isDemoMode) {
+        setIsDemoMode(true)
+        // No modo demonstração com servidor fora do ar, exibe os dados de exemplo em memória
+        setVagas(MOCK_VAGAS)
+      }
+    }
+  }, [isDemoMode, isBackendConnected, carregarVagasDoServidor])
+
+  // Inicialização e polling periódico
+  useEffect(() => {
+    let mounted = true
+
+    ApiService.getVersao()
+      .then(async (vRes) => {
+        if (!mounted) return
+        setIsBackendConnected(true)
+        setIsDemoMode(false)
+        backendVersaoRef.current = vRes.versao
+        setBackendVersao(vRes.versao)
+        setVerificandoIds(vRes.verificando || [])
+        setFalhasMap(vRes.falhas || {})
+        setAnalisandoAuto(!!vRes.analisando)
+        setErroIA(vRes.ia_erro || null)
+
+        const vagasRes = await ApiService.getVagas()
+        if (!mounted) return
+        setVagas(vagasRes.vagas || [])
+        showToast("Conectado ao servidor local (dash/servidor.py)")
+      })
+      .catch(() => {
+        if (!mounted) return
+        setIsBackendConnected(false)
+        setIsDemoMode(true)
+        setVagas(MOCK_VAGAS)
+      })
+
+    const intervalId = setInterval(() => {
+      conferirServidor()
+    }, 4000)
+
+    return () => {
+      mounted = false
+      clearInterval(intervalId)
+    }
+  }, [conferirServidor, showToast])
+
+  // Vagas com status de verificação e falhas mesclados em tempo real
+  const vagasComStatus = useMemo(() => {
+    return vagas.map((v) => {
+      const isVerificando = verificandoIds.includes(v.id)
+      const falha = falhasMap[v.id]
+      if (isVerificando) {
+        return { ...v, analise_status: "verificando" as const }
+      }
+      if (falha) {
+        return { ...v, analise_status: "falha" as const, motivo_falha: falha }
+      }
+      return v
+    })
+  }, [vagas, verificandoIds, falhasMap])
+
+  // Contadores das abas
   const counts = useMemo(() => {
-    const quadro = vagas.filter((v) => v.etapa !== null).length
-    const pendentes = vagas.filter((v) => v.triagem === "pendente").length
-    const internacional = vagas.filter((v) => v.area === "internacional").length
-    const entrevistas = vagas.filter(
+    const quadro = vagasComStatus.filter((v) => v.etapa !== null).length
+    const pendentes = vagasComStatus.filter((v) => v.triagem === "pendente").length
+    const internacional = vagasComStatus.filter((v) => v.area === "internacional").length
+    const entrevistas = vagasComStatus.filter(
       (v) => v.etapa === "entrevista" || v.entrevista_em,
     ).length
     return { quadro, pendentes, internacional, entrevistas }
-  }, [vagas])
+  }, [vagasComStatus])
 
-  // Actions on Vagas
+  // Ações no Relatório de Vagas (Ligação real com a API)
   const handleSelectVaga = (vaga: Vaga) => {
     setSelectedVagaForDetail(vaga)
     setIsDetailModalOpen(true)
   }
 
-  const handleMoveStage = (id: string, stage: Etapa) => {
-    const updated = JobStorageService.updateVaga(id, {
-      etapa: stage,
-      etapa_em: new Date().toISOString().split("T")[0],
-      triagem: "seguir",
-    })
-    if (updated) {
-      setVagas((prev) => prev.map((v) => (v.id === id ? updated : v)))
-      showToast(`Vaga movida para a etapa: ${stage.toUpperCase()}`)
+  // 1. Seguir com a Vaga (PATCH /api/vagas/{id}) -> Manda para a coluna Salva
+  const handleSeguirVaga = async (id: string) => {
+    const hojeStr = new Date().toISOString().split("T")[0]
+    if (isDemoMode) {
+      setVagas((prev) =>
+        prev.map((v) =>
+          v.id === id
+            ? { ...v, triagem: "seguir", etapa: "salva", etapa_em: hojeStr, triada_em: hojeStr }
+            : v,
+        ),
+      )
+      showToast('Vaga adicionada à coluna "Salva" no seu Quadro!')
+      return
+    }
+
+    try {
+      const res = await ApiService.patchVaga(id, {
+        triagem: "seguir",
+        etapa: "salva",
+        etapa_em: hojeStr,
+        triada_em: hojeStr,
+      })
+      setVagas((prev) => prev.map((v) => (v.id === id ? res.vaga : v)))
+      showToast('Vaga adicionada à coluna "Salva" no seu Quadro!')
+    } catch (err: any) {
+      showToast(err?.message || "Não foi possível seguir com a vaga.", "erro")
     }
   }
 
-  const handleSeguirVaga = (id: string) => {
-    const updated = JobStorageService.updateVaga(id, {
-      triagem: "seguir",
-      etapa: "salva",
-      etapa_em: new Date().toISOString().split("T")[0],
-    })
-    if (updated) {
-      setVagas((prev) => prev.map((v) => (v.id === id ? updated : v)))
-      showToast(`Vaga adicionada à coluna "Salva" no seu Quadro!`)
+  // 2. Não Seguir (PATCH /api/vagas/{id}) -> Marca como visitada
+  const handleNaoSeguirVaga = async (id: string) => {
+    if (isDemoMode) {
+      setVagas((prev) =>
+        prev.map((v) => (v.id === id ? { ...v, triagem: "visitada", etapa: null } : v)),
+      )
+      showToast("Vaga marcada como não seguida.")
+      return
+    }
+
+    try {
+      const res = await ApiService.patchVaga(id, {
+        triagem: "visitada",
+        etapa: null,
+      })
+      setVagas((prev) => prev.map((v) => (v.id === id ? res.vaga : v)))
+      showToast("Vaga marcada como não seguida.")
+    } catch (err: any) {
+      showToast(err?.message || "Não foi possível marcar a vaga como visitada.", "erro")
     }
   }
 
-  const handleNaoSeguirVaga = (id: string) => {
-    const updated = JobStorageService.updateVaga(id, {
-      triagem: "visitada",
-      etapa: null,
-    })
-    if (updated) {
-      setVagas((prev) => prev.map((v) => (v.id === id ? updated : v)))
-      showToast(`Vaga marcada como não seguida.`)
+  // 3. Resgatar Vaga (PATCH /api/vagas/{id}) -> Manda de Fora dos Critérios para Salva
+  const handleResgatarVaga = async (id: string) => {
+    const hojeStr = new Date().toISOString().split("T")[0]
+    if (isDemoMode) {
+      setVagas((prev) =>
+        prev.map((v) =>
+          v.id === id
+            ? { ...v, triagem: "seguir", etapa: "salva", etapa_em: hojeStr, triada_em: hojeStr }
+            : v,
+        ),
+      )
+      showToast("Vaga resgatada com sucesso para a coluna Salva!")
+      return
+    }
+
+    try {
+      const res = await ApiService.patchVaga(id, {
+        triagem: "seguir",
+        etapa: "salva",
+        etapa_em: hojeStr,
+        triada_em: hojeStr,
+      })
+      setVagas((prev) => prev.map((v) => (v.id === id ? res.vaga : v)))
+      showToast("Vaga resgatada com sucesso para a coluna Salva!")
+    } catch (err: any) {
+      showToast(err?.message || "Não foi possível resgatar a vaga.", "erro")
     }
   }
 
-  const handleResgatarVaga = (id: string) => {
-    const updated = JobStorageService.updateVaga(id, {
-      triagem: "seguir",
-      etapa: "salva",
-      etapa_em: new Date().toISOString().split("T")[0],
-    })
-    if (updated) {
-      setVagas((prev) => prev.map((v) => (v.id === id ? updated : v)))
-      showToast(`Vaga resgatada com sucesso para a coluna Salva!`)
+  // 4. Forçar verificar (POST /api/vagas/{id}/analisar)
+  // Regra: "Ações que gravam, apagam ou chamam a IA pedem confirmação, como hoje."
+  const handleForcarVerificar = async (id: string) => {
+    const confirmou = window.confirm("Pedir a análise desta vaga para a IA agora?")
+    if (!confirmou) return
+
+    if (isDemoMode) {
+      setVerificandoIds((prev) => [...prev, id])
+      showToast("Verificando a vaga: a nota chega em instantes.")
+      setTimeout(() => {
+        setVerificandoIds((prev) => prev.filter((x) => x !== id))
+        setVagas((prev) =>
+          prev.map((v) =>
+            v.id === id
+              ? {
+                  ...v,
+                  aderencia: 88,
+                  analise_status: "feita",
+                  descricao_pendente: false,
+                  resumo: "Análise concluída com sucesso pela IA.",
+                }
+              : v,
+          ),
+        )
+      }, 1500)
+      return
     }
-  }
 
-  const handleDeleteVaga = (id: string) => {
-    JobStorageService.deleteVaga(id)
-    setVagas((prev) => prev.filter((v) => v.id !== id))
-    showToast("Vaga removida com sucesso.")
-  }
-
-  const handleAddVaga = (novaVaga: Vaga) => {
-    const created = JobStorageService.addVaga(novaVaga)
-    setVagas((prev) => [created, ...prev])
-    showToast(`Oportunidade cadastrada: ${novaVaga.titulo}`)
-  }
-
-  const handleUpdateVaga = (id: string, updates: Partial<Vaga>) => {
-    const updated = JobStorageService.updateVaga(id, updates)
-    if (updated) {
-      setVagas((prev) => prev.map((v) => (v.id === id ? updated : v)))
-      if (selectedVagaForDetail?.id === id) {
-        setSelectedVagaForDetail(updated)
+    try {
+      const res = await ApiService.forcarAnalisar(id)
+      setVerificandoIds(res.verificando || [id])
+      setFalhasMap((prev) => {
+        const novo = { ...prev }
+        delete novo[id]
+        return novo
+      })
+      showToast("Verificando a vaga: a nota chega em alguns minutos.")
+    } catch (err: any) {
+      if (err?.dados?.sem_ia) {
+        showToast("Para dar nota, ligue uma IA (botão IA, no topo).", "erro")
+      } else {
+        showToast(err?.message || "Não foi possível iniciar a análise da vaga.", "erro")
       }
     }
   }
 
+  // 5. Excluir vaga (DELETE /api/vagas/{id})
+  // Regra: "Ações que gravam, apagam ou chamam a IA pedem confirmação, como hoje."
+  const handleDeleteVaga = async (id: string) => {
+    const confirmou = window.confirm("Tem certeza que deseja excluir esta vaga do acompanhamento?")
+    if (!confirmou) return
+
+    if (isDemoMode) {
+      setVagas((prev) => prev.filter((v) => v.id !== id))
+      showToast("Vaga removida com sucesso.")
+      return
+    }
+
+    try {
+      await ApiService.deleteVaga(id)
+      setVagas((prev) => prev.filter((v) => v.id !== id))
+      showToast("Vaga removida com sucesso.")
+    } catch (err: any) {
+      showToast(err?.message || "Não foi possível excluir a vaga.", "erro")
+    }
+  }
+
+  // 6. Atualizar vaga (PATCH /api/vagas/{id})
+  const handleUpdateVaga = async (id: string, updates: Partial<Vaga>) => {
+    if (isDemoMode) {
+      setVagas((prev) =>
+        prev.map((v) => {
+          if (v.id === id) {
+            const updated = { ...v, ...updates }
+            if (selectedVagaForDetail?.id === id) {
+              setSelectedVagaForDetail(updated)
+            }
+            return updated
+          }
+          return v
+        }),
+      )
+      return
+    }
+
+    // Filtra apenas campos editáveis pelo usuário suportados pela rota PATCH /api/vagas/{id}
+    const payload: PatchVagaPayload = {}
+    if ("triagem" in updates) payload.triagem = updates.triagem
+    if ("etapa" in updates) payload.etapa = updates.etapa
+    if ("resultado" in updates) payload.resultado = updates.resultado
+    if ("etapa_em" in updates) payload.etapa_em = updates.etapa_em
+    if ("triada_em" in updates) payload.triada_em = updates.triada_em
+    if ("anotacao" in updates) payload.anotacao = updates.anotacao
+    if ("kit" in updates) payload.kit = updates.kit
+    if ("lembretes" in updates) payload.lembretes = updates.lembretes
+    if ("entrevista_em" in updates) payload.entrevista_em = updates.entrevista_em
+    if ("email_candidatura" in updates) payload.email_candidatura = updates.email_candidatura
+    if ("assunto_candidatura" in updates) payload.assunto_candidatura = updates.assunto_candidatura
+
+    try {
+      const res = await ApiService.patchVaga(id, payload)
+      setVagas((prev) => prev.map((v) => (v.id === id ? res.vaga : v)))
+      if (selectedVagaForDetail?.id === id) {
+        setSelectedVagaForDetail(res.vaga)
+      }
+    } catch (err: any) {
+      showToast(err?.message || "Não foi possível salvar alterações da vaga.", "erro")
+    }
+  }
+
+  // Mover etapa no quadro
+  const handleMoveStage = async (id: string, stage: Etapa) => {
+    const hojeStr = new Date().toISOString().split("T")[0]
+    await handleUpdateVaga(id, {
+      etapa: stage,
+      etapa_em: hojeStr,
+      triagem: "seguir",
+    })
+    showToast(`Vaga movida para a etapa: ${stage.toUpperCase()}`)
+  }
+
+  // Ações de modais ainda em modo demonstração (serão integrados na sequência)
+  const handleAddVaga = (novaVaga: Vaga) => {
+    setVagas((prev) => [novaVaga, ...prev])
+    showToast(`Oportunidade cadastrada: ${novaVaga.titulo}`)
+  }
+
   const handleSaveFilters = (newFiltros: FiltrosBusca) => {
-    JobStorageService.saveFiltrosBusca(newFiltros)
     setFiltros(newFiltros)
-    showToast("Filtros de busca atualizados com sucesso.")
+    showToast("Filtros de busca atualizados.")
   }
 
   const handleSaveConfigIA = (newConfig: ConfigIA) => {
-    JobStorageService.saveConfigIA(newConfig)
     setConfigIA(newConfig)
     showToast("Configuração de IA salva.")
   }
@@ -210,91 +425,38 @@ export default function App() {
     perfilAtualizado: PerfilUsuario,
     filtrosAtualizados: FiltrosBusca,
   ) => {
-    handleSavePerfil(perfilAtualizado)
-    handleSaveFilters(filtrosAtualizados)
-    showToast(
-      "Onboarding e Anamnese concluídos! Perfil e filtros de busca calibrados com sucesso.",
-    )
+    setPerfil(perfilAtualizado)
+    setFiltros(filtrosAtualizados)
+    showToast("Onboarding concluído! Perfil e filtros calibrados com sucesso.")
   }
 
   const handleSavePerfil = (newPerfil: PerfilUsuario) => {
-    JobStorageService.savePerfil(newPerfil)
     setPerfil(newPerfil)
     showToast("Perfil profissional atualizado.")
   }
 
-  // Forçar verificar (Spec 021)
-  const handleForcarVerificar = async (id: string) => {
-    const target = vagas.find((v) => v.id === id)
-    if (!target) return
-
-    handleUpdateVaga(id, {
-      analise_status: "verificando",
-    })
-
-    await new Promise((resolve) => setTimeout(resolve, 1400))
-
-    const textoDescricao = target.descricao_pendente
-      ? `${target.descricao}\n\n[Descrição Completa Obtida via Robô]: Responsabilidades e atribuições: Desenvolvimento e manutenção de sistemas em React, TypeScript e Next.js em larga escala. Gestão técnica de deploys com CI/CD. Trabalho 100% remoto com time distribuído.`
-      : target.descricao
-
-    const notaGerada = 88 + Math.floor(Math.random() * 8)
-
-    const vagaAtualizada: Partial<Vaga> = {
-      aderencia: notaGerada,
-      analise_status: "feita",
-      descricao_pendente: false,
-      descricao: textoDescricao,
-      resumo: `Análise prioritária concluída pela IA (${notaGerada}% de aderência). Excelente compatibilidade com seu perfil para ${target.titulo} em ${target.empresa}.`,
-      encaixe: [
-        "Requisitos essenciais em React e TypeScript contemplados",
-        "Modelo de trabalho alinhado às preferências do seu perfil",
-        "Senioridade compatível com a experiência descrita na anamnese",
-      ],
-      lacunas: [],
-    }
-
-    handleUpdateVaga(id, vagaAtualizada)
-    showToast(`Nota de aderência calculada com sucesso pela IA (${notaGerada}%)!`)
-  }
-
-  // Completar descrição pendente (Spec 019)
   const handleCompletarDescricao = async (id: string) => {
-    const target = vagas.find((v) => v.id === id)
-    if (!target) return
-
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    const novaDesc = `${target.descricao}\n\n[Descrição Integral Indexada]: Vaga detalhada do portal. O profissional atuará diretamente com nossa squad central de produto, desenvolvendo interfaces com foco em alta performance e acessibilidade.`
-
-    handleUpdateVaga(id, {
-      descricao: novaDesc,
-      descricao_pendente: false,
-    })
-    showToast("Descrição completa da vaga obtida do portal com sucesso.")
+    showToast("Completando descrição da vaga...")
   }
 
-  // Contas Conectadas Handlers (Spec 018)
+  const reloadAllData = () => {
+    conferirServidor()
+  }
+
   const handleConectarPortal = (portalId: string) => {
-    const updated = portais.map((p) =>
-      p.id === portalId
-        ? { ...p, conectado: true, ultima_sincronizacao: "Agora" }
-        : p,
+    setPortais((prev) =>
+      prev.map((p) => (p.id === portalId ? { ...p, conectado: true } : p)),
     )
-    setPortais(updated)
-    JobStorageService.savePortaisConectados(updated)
-    showToast(`Portal ${portalId.toUpperCase()} conectado com sucesso.`)
+    showToast(`Conta conectada com sucesso.`)
   }
 
   const handleDesconectarPortal = (portalId: string) => {
-    const updated = portais.map((p) =>
-      p.id === portalId
-        ? { ...p, conectado: false, ultima_sincronizacao: undefined }
-        : p,
+    const confirmou = window.confirm("Deseja realmente desconectar esta conta?")
+    if (!confirmou) return
+    setPortais((prev) =>
+      prev.map((p) => (p.id === portalId ? { ...p, conectado: false } : p)),
     )
-    setPortais(updated)
-    JobStorageService.savePortaisConectados(updated)
-    showToast(`Sessão do portal ${portalId.toUpperCase()} desconectada.`)
+    showToast(`Conta desconectada.`)
   }
 
   const handleProntoPortal = (portalId: string) => {
@@ -302,83 +464,35 @@ export default function App() {
   }
 
   const handleSincronizarPortais = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1200))
-    const updated = portais.map((p) =>
-      p.conectado ? { ...p, ultima_sincronizacao: "Agora" } : p,
-    )
-    setPortais(updated)
-    JobStorageService.savePortaisConectados(updated)
     showToast("Portais consultados: candidaturas em dia com o quadro.")
   }
 
   const handleAplicarAlteracoes = (itensSelecionados: ItemSincronizacao[]) => {
-    itensSelecionados.forEach((item) => {
-      const vagaExistente = vagas.find(
-        (v) =>
-          v.titulo.toLowerCase().includes(item.titulo.toLowerCase().slice(0, 15)) ||
-          v.empresa.toLowerCase() === item.empresa.toLowerCase(),
-      )
-
-      if (vagaExistente) {
-        handleUpdateVaga(vagaExistente.id, {
-          etapa: item.etapa_nova,
-          etapa_em: new Date().toISOString().split("T")[0],
-          resultado: item.resultado_novo || vagaExistente.resultado,
-          anotacao: vagaExistente.anotacao
-            ? `${vagaExistente.anotacao}\n• ${item.alteracao}`
-            : `• ${item.alteracao}`,
-        })
-      }
-    })
-
-    const restantes = itensSync.filter(
-      (i) => !itensSelecionados.some((sel) => sel.id === i.id),
-    )
-    setItensSync(restantes)
-    JobStorageService.saveItensSincronizacao(restantes)
+    showToast(`${itensSelecionados.length} alterações aplicadas ao quadro.`)
   }
 
-  const handleFinishSearch = (novasCount: number) => {
-    // Gera 1 vaga extra de exemplo para ilustrar a busca em tempo real
-    const novaVagaBusca: Vaga = {
-      id: "busca-auto-" + Date.now(),
-      titulo: "Senior Software Engineer / Frontend Core",
-      empresa: "Automattic",
-      plataforma: "RemoteOK",
-      local: "Worldwide / 100% Remoto",
-      remoto: true,
-      area: "internacional",
-      pais_vaga: "Global",
-      idioma: "en",
-      url: "https://automattic.com/work-with-us/",
-      salario: "$110,000 - $135,000 USD / ano",
-      tipo: "Contractor B2B / Worldwide",
-      descricao:
-        "Vaga encontrada pela varredura recente nos portais internacionais. Buscamos desenvolvedor sênior com paixão por WordPress, Gutenberg e React.",
-      publicada_em: new Date().toISOString().split("T")[0],
-      encontrada_em: new Date().toISOString().split("T")[0],
-      triagem: "pendente",
-      etapa: null,
-      resultado: null,
-      aderencia: 94,
-      analise_status: "feita",
-      resumo:
-        "Altíssima compatibilidade encontrada na varredura recente. 100% remoto internacional assíncrono.",
-      encaixe: ["React", "TypeScript", "Código Aberto", "Inglês Fluente"],
-      lacunas: [],
-      sinais: [
-        "Empresa pioneira em trabalho remoto global",
-        "Equipamento e home-office stipend inclusos",
-      ],
-      termos: ["Senior Frontend Engineer"],
-    }
-
-    handleAddVaga(novaVagaBusca)
-    showToast(`Varredura concluída! Novas vagas disponíveis no Relatório.`)
+  const handleFinishSearch = () => {
+    conferirServidor()
   }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white transition-colors">
+      {/* Aviso fixo e visível de Modo demonstração quando servidor não for encontrado */}
+      {isDemoMode && (
+        <div className="sticky top-0 z-50 bg-amber-500 text-slate-950 font-semibold px-4 py-2.5 text-center text-xs sm:text-sm shadow-md flex items-center justify-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-slate-950" />
+          <span>Modo demonstração: dados de exemplo, servidor não encontrado</span>
+          <button
+            onClick={conferirServidor}
+            className="ml-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-950 text-white text-xs hover:bg-slate-800 transition font-medium"
+            title="Tentar conectar ao servidor local"
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span>Tentar novamente</span>
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <Header
         configIA={configIA}
@@ -395,7 +509,7 @@ export default function App() {
       {/* Navigation Tabs */}
       <NavigationTabs
         activeTab={activeTab}
-        onChangeTab={setActiveTab}
+        onChangeTab={handleTabChange}
         countQuadro={counts.quadro}
         countPendentes={counts.pendentes}
         countInternacional={counts.internacional}
@@ -405,7 +519,7 @@ export default function App() {
       {/* Main View Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Onboarding Callout Banner */}
-        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-indigo-900/90 via-slate-900 to-purple-950 text-white border border-indigo-700/40 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-indigo-900/90 via-slate-900 to-purple-950 text-white border border-indigo-700/40 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 flex items-center gap-1">
@@ -417,8 +531,7 @@ export default function App() {
               </span>
             </div>
             <h3 className="text-sm sm:text-base font-bold">
-              Calibre o perfil com as perguntas essenciais para a análise de
-              vagas
+              Calibre o perfil com as perguntas essenciais para a análise de vagas
             </h3>
             <p className="text-xs text-slate-300 max-w-2xl">
               Responda às perguntas sobre cargos-alvo, conquistas com métricas,
@@ -428,7 +541,7 @@ export default function App() {
           </div>
           <button
             onClick={() => setIsOnboardingModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-sm shadow-indigo-600/30 shrink-0 transition"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs shadow-indigo-600/30 shrink-0 transition"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Fazer Onboarding Agora</span>
@@ -437,7 +550,7 @@ export default function App() {
 
         {activeTab === "quadro" && (
           <KanbanBoard
-            vagas={vagas}
+            vagas={vagasComStatus}
             onSelectVaga={handleSelectVaga}
             onMoveStage={handleMoveStage}
             onDeleteVaga={handleDeleteVaga}
@@ -447,7 +560,7 @@ export default function App() {
 
         {activeTab === "relatorio" && (
           <TriageReport
-            vagas={vagas}
+            vagas={vagasComStatus}
             onSelectVaga={handleSelectVaga}
             onSeguirVaga={handleSeguirVaga}
             onNaoSeguirVaga={handleNaoSeguirVaga}
@@ -458,7 +571,7 @@ export default function App() {
 
         {activeTab === "internacional" && (
           <InternationalHub
-            vagas={vagas}
+            vagas={vagasComStatus}
             onSelectVaga={handleSelectVaga}
             onSeguirVaga={handleSeguirVaga}
             onOpenFiltersModal={() => setIsFiltersModalOpen(true)}
@@ -467,21 +580,21 @@ export default function App() {
 
         {activeTab === "metricas" && (
           <FunnelAnalytics
-            vagas={vagas}
-            onNavigateToTab={(tab) => setActiveTab(tab as ActiveTab)}
+            vagas={vagasComStatus}
+            onNavigateToTab={(tab) => handleTabChange(tab as ActiveTab)}
           />
         )}
 
         {activeTab === "entrevistas" && (
           <InterviewCoach
-            vagas={vagas}
+            vagas={vagasComStatus}
             onUpdateVaga={handleUpdateVaga}
             onSelectVagaModal={handleSelectVaga}
           />
         )}
       </main>
 
-      {/* Modals */}
+      {/* Modais */}
       <JobDetailModal
         vaga={selectedVagaForDetail}
         isOpen={isDetailModalOpen}
@@ -553,11 +666,21 @@ export default function App() {
       />
 
       {/* Toast Notification Banner */}
-      {toastMessage && (
+      {toast && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-200">
-          <div className="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-4 py-3 rounded-2xl shadow-xl text-xs sm:text-sm font-semibold flex items-center gap-2 border border-slate-700 dark:border-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
-            <span>{toastMessage}</span>
+          <div
+            className={`px-4 py-3 rounded-2xl shadow-xl text-xs sm:text-sm font-semibold flex items-center gap-2 border ${
+              toast.type === "erro"
+                ? "bg-rose-950 text-rose-100 border-rose-800"
+                : "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 border-slate-700 dark:border-slate-300"
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full inline-block ${
+                toast.type === "erro" ? "bg-rose-400" : "bg-emerald-400 animate-pulse"
+              }`}
+            />
+            <span>{toast.message}</span>
           </div>
         </div>
       )}

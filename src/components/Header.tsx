@@ -86,7 +86,7 @@ export default function Header({
               title="Apoie o desenvolvedor com um café"
             >
               <Coffee className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Apoiar ☕</span>
+              <span>Apoiar</span>
             </a>
 
             {/* Search Trigger */}
