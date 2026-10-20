@@ -422,7 +422,7 @@ local); a IA, não.
 - Conferido sem a pessoa: `tsc`, build e greps; as abas Dossiê, Perguntas, Salário e Depois abertas pelo
   navegador sem janela, só com leituras, com os dados reais e sem erro de JavaScript.
 
-- [ ] T055 [US5] Portões, roteiro H5, linhas da História 5 em `contracts/paridade.md` e entrega com o OK
+- [X] T055 [US5] Portões, roteiro H5, linhas da História 5 em `contracts/paridade.md` e entrega com o OK
 
 ---
 
