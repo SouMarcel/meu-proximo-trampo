@@ -48,6 +48,10 @@ só entrega o arquivo.
   tipo de emprego, senioridade, moedas aceitas para vagas de fora e empresas a excluir. Grava no `config.json` e vale a
   partir da próxima busca.
 
+**Front novo (em construção):** o redesenho em React fica em `/novo/`, ao lado do dashboard de sempre, até ter
+todas as funções. Ele é montado na nuvem pelo GitHub Actions, então quem usa continua só com o Python; o
+processo está em `specs/022-front-react/`.
+
 A página confere o banco a cada poucos segundos, então uma busca gravada aparece
 sozinha.
 
@@ -61,6 +65,8 @@ sozinha.
 | `gerador.py` | Currículo pela página: no clique, pede o currículo à IA escolhida (`curriculo_ia.py`, na raiz), gera os arquivos e a conferência, uma geração por vez, com andamento e "tentar de novo". |
 | `analise.py` | Análise automática: manda à IA escolhida (`ia.py`, na raiz) o perfil, as regras de nota da skill e as vagas que esperam nota, em lotes de 10, e grava a resposta com o provedor e o modelo usados. Uma análise por vez; a última falha aparece na página. |
 | `dashboard.html` | A página. |
+| `front/` | O front novo (spec 022), em `http://127.0.0.1:8765/novo/`: o build da branch `frontend-react` (React, feito no Figma Make), gerado pelo GitHub Actions (`.github/workflows/front.yml`) com a origem em `ORIGEM.json`. Não se edita à mão. |
+| `API.md` | O contrato das rotas do servidor, para o front novo. |
 | `abrir-dashboard.bat` / `.sh` | Atalhos para iniciar o servidor. |
 | `dados/` | `candidaturas.db` e `backup/` (uma cópia por dia, guarda as 10 últimas). Fora do Git. |
 

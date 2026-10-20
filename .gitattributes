@@ -1,3 +1,5 @@
 *.bat text eol=crlf
 *.sh text eol=lf
 *.py text eol=lf
+# Front novo (spec 022): build gerado pelo GitHub Actions, não se edita à mão
+dash/front/** linguist-generated=true
