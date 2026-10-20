@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-20
 
-**Status**: Em teste
+**Status**: Concluída (2026-10-20): aprovada pela pessoa; a decisão sobre páginas e descrições fica para depois dos registros
 
 **Input**: User description: análise de sugestões para o LinkedIn bloquear menos as buscas; das cinco, a única que
 vale agora é registrar os pedidos de cada execução, para saber o que provoca o bloqueio.
