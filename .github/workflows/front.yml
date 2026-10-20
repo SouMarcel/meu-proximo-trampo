@@ -52,6 +52,7 @@ jobs:
         working-directory: ferramenta
         env:
           FORCAR: ${{ inputs.forcar }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           sha=$(git ls-remote origin "refs/heads/$FONTE" | cut -f1)
           if [ -z "$sha" ]; then echo "::error::A branch $FONTE não existe no GitHub."; exit 1; fi
@@ -59,10 +60,15 @@ jobs:
           na_master=$(git show "HEAD:dash/front/ORIGEM.json" 2>/dev/null | ultimo || true)
           no_pr=""
           if git fetch -q origin "$DESTINO" 2>/dev/null; then no_pr=$(git show "FETCH_HEAD:dash/front/ORIGEM.json" 2>/dev/null | ultimo || true); fi
+          # o build na branch do PR só conta se o PR estiver aberto (senão a Action monta de novo e abre o PR)
+          if [ -n "$no_pr" ] && [ "$(gh pr list --head "$DESTINO" --state open --json number -q length)" = "0" ]; then
+            echo "O build ${no_pr:0:7} está na $DESTINO, mas não há PR aberto: montando de novo para abrir o PR."
+            no_pr=""
+          fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "anterior=$na_master" >> "$GITHUB_OUTPUT"
           if [ "$FORCAR" != "true" ] && { [ "$sha" = "$na_master" ] || [ "$sha" = "$no_pr" ]; }; then
-            echo "Nada novo: ${sha:0:7} já está na master ou no PR."
+            echo "Nada novo: ${sha:0:7} já está na master ou num PR aberto."
             echo "novo=false" >> "$GITHUB_OUTPUT"
           else
             echo "novo=true" >> "$GITHUB_OUTPUT"
