@@ -1,9 +1,20 @@
-import { Vaga, FiltrosBusca, ConfigIA, PerfilUsuario } from "../types/job"
+import {
+  Vaga,
+  FiltrosBusca,
+  ConfigIA,
+  PerfilUsuario,
+  PortalConectado,
+  ItemSincronizacao,
+  HistoricoCandidatura,
+} from "../types/job"
 import {
   MOCK_VAGAS,
   MOCK_FILTROS_BUSCA,
   MOCK_CONFIG_IA,
   MOCK_PERFIL,
+  MOCK_PORTAIS_CONECTADOS,
+  MOCK_ITENS_SINCRONIZACAO,
+  MOCK_HISTORICO_CANDIDATURAS,
 } from "./mockData"
 
 const STORAGE_KEYS = {
@@ -12,6 +23,9 @@ const STORAGE_KEYS = {
   IA: "meu_trampo_ia_v2",
   PERFIL: "meu_trampo_perfil_v2",
   BACKEND_ONLINE: "meu_trampo_backend_online",
+  PORTAIS: "meu_trampo_portais_v2",
+  ITENS_SYNC: "meu_trampo_itens_sync_v2",
+  HISTORICO_SYNC: "meu_trampo_historico_sync_v2",
 }
 
 const BACKEND_URL = "http://127.0.0.1:8765"
@@ -156,6 +170,53 @@ export class JobStorageService {
 
   public static savePerfil(perfil: PerfilUsuario): void {
     localStorage.setItem(STORAGE_KEYS.PERFIL, JSON.stringify(perfil))
+  }
+
+  public static getPortaisConectados(): PortalConectado[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.PORTAIS);
+      if (!raw) {
+        localStorage.setItem(STORAGE_KEYS.PORTAIS, JSON.stringify(MOCK_PORTAIS_CONECTADOS));
+        return MOCK_PORTAIS_CONECTADOS;
+      }
+      return JSON.parse(raw);
+    } catch {
+      return MOCK_PORTAIS_CONECTADOS;
+    }
+  }
+
+  public static savePortaisConectados(portais: PortalConectado[]): void {
+    localStorage.setItem(STORAGE_KEYS.PORTAIS, JSON.stringify(portais));
+  }
+
+  public static getItensSincronizacao(): ItemSincronizacao[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.ITENS_SYNC);
+      if (!raw) {
+        localStorage.setItem(STORAGE_KEYS.ITENS_SYNC, JSON.stringify(MOCK_ITENS_SINCRONIZACAO));
+        return MOCK_ITENS_SINCRONIZACAO;
+      }
+      return JSON.parse(raw);
+    } catch {
+      return MOCK_ITENS_SINCRONIZACAO;
+    }
+  }
+
+  public static saveItensSincronizacao(itens: ItemSincronizacao[]): void {
+    localStorage.setItem(STORAGE_KEYS.ITENS_SYNC, JSON.stringify(itens));
+  }
+
+  public static getHistoricoCandidaturas(): HistoricoCandidatura[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.HISTORICO_SYNC);
+      if (!raw) {
+        localStorage.setItem(STORAGE_KEYS.HISTORICO_SYNC, JSON.stringify(MOCK_HISTORICO_CANDIDATURAS));
+        return MOCK_HISTORICO_CANDIDATURAS;
+      }
+      return JSON.parse(raw);
+    } catch {
+      return MOCK_HISTORICO_CANDIDATURAS;
+    }
   }
 
   public static resetToDefaults(): void {

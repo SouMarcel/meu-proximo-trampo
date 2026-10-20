@@ -333,6 +333,7 @@ export default function SearchFiltersModal({
                 <option value={24}>Últimas 24 horas</option>
                 <option value={72}>Últimos 3 dias (72h)</option>
                 <option value={168}>Últimos 7 dias (1 semana)</option>
+                <option value={360}>Últimos 15 dias (360h)</option>
                 <option value={336}>Últimos 14 dias (2 semanas)</option>
                 <option value={720}>Últimos 30 dias</option>
               </select>

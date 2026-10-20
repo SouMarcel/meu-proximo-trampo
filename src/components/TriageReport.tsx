@@ -33,6 +33,7 @@ interface TriageReportProps {
   onSeguirVaga: (id: string) => void
   onNaoSeguirVaga: (id: string) => void
   onResgatarVaga: (id: string) => void
+  onForcarVerificar?: (id: string) => Promise<void> | void
 }
 
 type SubTab = "pendente" | "seguir" | "visitada" | "fora"
@@ -44,8 +45,20 @@ export default function TriageReport({
   onSeguirVaga,
   onNaoSeguirVaga,
   onResgatarVaga,
+  onForcarVerificar,
 }: TriageReportProps) {
   const [subTab, setSubTab] = useState<SubTab>("pendente")
+  const [verificandoMap, setVerificandoMap] = useState<Record<string, boolean>>({})
+
+  const handleForcar = async (id: string) => {
+    if (!onForcarVerificar) return
+    setVerificandoMap((prev) => ({ ...prev, [id]: true }))
+    try {
+      await onForcarVerificar(id)
+    } finally {
+      setVerificandoMap((prev) => ({ ...prev, [id]: false }))
+    }
+  }
   const [searchQuery, setSearchQuery] = useState("")
   const [ordem, setOrdem] = useState<OrdemFiltro>("aderencia")
   const [filtroSenioridade, setFiltroSenioridade] = useState<Senioridade | "">(
@@ -377,6 +390,11 @@ export default function TriageReport({
                         termo: {vaga.termos[0]}
                       </span>
                     )}
+                    {vaga.descricao_pendente && (
+                      <span className="px-2 py-0.5 rounded-md text-[11px] bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-medium">
+                        Descrição pendente
+                      </span>
+                    )}
                   </div>
 
                   {/* Title & Company */}
@@ -481,9 +499,16 @@ export default function TriageReport({
                       </div>
                     </div>
                   ) : (
-                    <span className="text-xs text-slate-400">
-                      Sem nota de IA
-                    </span>
+                    <div className="text-right">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                        Sem nota de IA
+                      </span>
+                      {(verificandoMap[vaga.id] || vaga.analise_status === "verificando") && (
+                        <div className="text-[11px] text-indigo-500 font-medium mt-1 animate-pulse">
+                          Verificando…
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Action Buttons */}
@@ -508,6 +533,47 @@ export default function TriageReport({
                           <span>Seguir com a Vaga</span>
                         </button>
                       </>
+                    )}
+
+                    
+                    {/* Forçar verificar (Spec 021) */}
+                    {vaga.aderencia === undefined && onForcarVerificar && (
+                      <div className="flex flex-col items-start sm:items-end gap-1">
+                        <button
+                          onClick={() => handleForcar(vaga.id)}
+                          disabled={verificandoMap[vaga.id] || vaga.analise_status === "verificando"}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 disabled:opacity-60 transition shadow-2xs"
+                          title="Pede a nota desta vaga à IA agora"
+                        >
+                          <Sparkles
+                            className={`w-3.5 h-3.5 ${
+                              verificandoMap[vaga.id] || vaga.analise_status === "verificando"
+                                ? "animate-spin text-indigo-500"
+                                : "text-indigo-600 dark:text-indigo-400"
+                            }`}
+                          />
+                          <span>
+                            {verificandoMap[vaga.id] || vaga.analise_status === "verificando"
+                              ? "Verificando…"
+                              : "Forçar verificar"}
+                          </span>
+                        </button>
+                        {(verificandoMap[vaga.id] || vaga.analise_status === "verificando") && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                            A nota chega em alguns instantes.
+                          </span>
+                        )}
+                        {vaga.descricao_pendente && !verificandoMap[vaga.id] && vaga.analise_status !== "verificando" && (
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                            Lê descrição antes da IA
+                          </span>
+                        )}
+                        {vaga.motivo_falha && !verificandoMap[vaga.id] && (
+                          <span className="text-[10px] text-rose-600 dark:text-rose-400">
+                            Falha: {vaga.motivo_falha}
+                          </span>
+                        )}
+                      </div>
                     )}
 
                     {subTab === "fora" && (

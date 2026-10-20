@@ -8,6 +8,7 @@ import {
   Coffee,
   CheckCircle2,
   Briefcase,
+  Link2,
 } from "lucide-react"
 import { ConfigIA } from "../types/job"
 
@@ -20,6 +21,7 @@ interface HeaderProps {
   onOpenProfileModal: () => void
   onOpenOnboardingModal?: () => void
   onOpenAIModal: () => void
+  onOpenAccountsModal?: () => void
 }
 
 export default function Header({
@@ -31,6 +33,7 @@ export default function Header({
   onOpenProfileModal,
   onOpenOnboardingModal,
   onOpenAIModal,
+  onOpenAccountsModal,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
@@ -109,6 +112,20 @@ export default function Header({
             </button>
 
 
+
+                        {/* Connected Accounts Trigger */}
+            {onOpenAccountsModal && (
+              <button
+                onClick={onOpenAccountsModal}
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition"
+                title="Atualizar o quadro com o andamento das suas candidaturas nos portais (Gupy, Indeed, LinkedIn)"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="hidden sm:inline">Contas</span>
+                </div>
+              </button>
+            )}
 
             {/* Profile Trigger */}
             <button

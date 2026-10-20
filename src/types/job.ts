@@ -64,7 +64,9 @@ export interface Vaga {
   anotacao?: string
   entrevista_em?: string | null
   aderencia?: number
-  analise_status?: "feita" | "pendente" | "sem_dados"
+  analise_status?: "feita" | "pendente" | "sem_dados" | "verificando" | "falha"
+  motivo_falha?: string
+  descricao_pendente?: boolean
   resumo?: string
   encaixe?: string[]
   lacunas?: string[]
@@ -175,4 +177,38 @@ export interface EstadoOnboarding {
   conflitos: ConflitoMaterial[]
   contato_confirmado: { email?: string; telefone?: string; linkedin?: string }
   rascunho_md: string
+}
+
+export interface PortalConectado {
+  id: "gupy" | "indeed" | "linkedin"
+  nome: string
+  plataforma: Plataforma
+  conectado: boolean
+  aviso_login: string
+  icone?: string
+  ultima_sincronizacao?: string
+  candidaturas_encontradas?: number
+}
+
+export interface ItemSincronizacao {
+  id: string
+  titulo: string
+  empresa: string
+  plataforma: Plataforma
+  etapa_atual?: Etapa | null
+  etapa_nova: Etapa
+  resultado_novo?: Resultado | null
+  alteracao: string
+  selecionado: boolean
+  data_portal?: string
+}
+
+export interface HistoricoCandidatura {
+  id: string
+  titulo: string
+  empresa: string
+  plataforma: Plataforma
+  data: string
+  etapa: Etapa
+  resultado?: Resultado | null
 }

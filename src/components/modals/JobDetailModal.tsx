@@ -32,6 +32,8 @@ interface JobDetailModalProps {
   onClose: () => void
   onUpdateVaga: (id: string, updates: Partial<Vaga>) => void
   onDeleteVaga: (id: string) => void
+  onForcarVerificar?: (id: string) => Promise<void> | void
+  onCompletarDescricao?: (id: string) => Promise<void> | void
 }
 
 type DetailTab = "descricao" | "analise" | "kit" | "anotacoes"
@@ -42,6 +44,8 @@ export default function JobDetailModal({
   onClose,
   onUpdateVaga,
   onDeleteVaga,
+  onForcarVerificar,
+  onCompletarDescricao,
 }: JobDetailModalProps) {
   if (!isOpen || !vaga) return null
 
@@ -254,6 +258,26 @@ export default function JobDetailModal({
                 </div>
               </div>
 
+                            {/* Aviso de descrição pendente (Spec 019) */}
+              {vaga.descricao_pendente && (
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-800 dark:text-amber-200">
+                      Esta vaga possui apenas o resumo preliminar. A descrição completa pode ser lida agora.
+                    </p>
+                  </div>
+                  {onCompletarDescricao && (
+                    <button
+                      onClick={() => onCompletarDescricao(vaga.id)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white shrink-0 transition"
+                    >
+                      Completar Descrição
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white">
                   Texto Original do Anúncio
@@ -268,6 +292,26 @@ export default function JobDetailModal({
           {/* 2. Análise da IA */}
           {activeTab === "analise" && (
             <div className="space-y-4">
+              {vaga.aderencia === undefined ? (
+                <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 text-center space-y-3">
+                  <Sparkles className="w-8 h-8 text-indigo-500 mx-auto" />
+                  <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                    Nota de aderência ainda não calculada
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Esta vaga ainda não passou pela verificação de IA com base nas competências e requisitos do seu perfil.
+                  </p>
+                  {onForcarVerificar && (
+                    <button
+                      onClick={() => onForcarVerificar(vaga.id)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-xs"
+                    >
+                      Forçar verificar com IA agora
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
               <div className="bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 rounded-2xl p-4 sm:p-5 space-y-2">
                 <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold text-sm">
                   <Sparkles className="w-4 h-4 text-indigo-600" />
@@ -340,6 +384,8 @@ export default function JobDetailModal({
                     ))}
                   </div>
                 </div>
+              )}
+                </>
               )}
             </div>
           )}
