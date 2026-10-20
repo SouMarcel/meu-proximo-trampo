@@ -87,38 +87,53 @@ export function getAderenciaBadge(
   text: string
   ring: string
   label: string
+  scoreColor: string
+  boxBorder: string
+  boxGlow: string
 } {
   if (score === undefined || score === null) {
     return {
       bg: "bg-slate-100 dark:bg-slate-800",
       text: "text-slate-600 dark:text-slate-400",
       ring: "border-slate-300 dark:border-slate-700",
-      label: "Em análise",
+      label: "Pendente",
+      scoreColor: "text-slate-500",
+      boxBorder: "border-slate-800",
+      boxGlow: "",
     }
   }
 
-  if (score >= 88) {
+  if (score >= 85) {
     return {
       bg: "bg-emerald-100 dark:bg-emerald-950/60",
       text: "text-emerald-800 dark:text-emerald-300",
       ring: "border-emerald-300 dark:border-emerald-700",
-      label: "Altíssima",
+      label: "Excelente",
+      scoreColor: "text-emerald-400",
+      boxBorder: "border-emerald-500/50 dark:border-emerald-500/60",
+      boxGlow: "shadow-emerald-500/10",
     }
   }
-  if (score >= 75) {
+  if (score >= 65) {
     return {
       bg: "bg-sky-100 dark:bg-sky-950/60",
       text: "text-sky-800 dark:text-sky-300",
       ring: "border-sky-300 dark:border-sky-700",
-      label: "Alta",
+      label: "Boa",
+      scoreColor: "text-sky-400",
+      boxBorder: "border-sky-500/50 dark:border-sky-500/60",
+      boxGlow: "shadow-sky-500/10",
     }
   }
-  if (score >= 55) {
+  if (score >= 50) {
     return {
       bg: "bg-amber-100 dark:bg-amber-950/60",
       text: "text-amber-800 dark:text-amber-300",
       ring: "border-amber-300 dark:border-amber-700",
       label: "Média",
+      scoreColor: "text-amber-400",
+      boxBorder: "border-amber-500/50 dark:border-amber-500/60",
+      boxGlow: "shadow-amber-500/10",
     }
   }
   return {
@@ -126,6 +141,9 @@ export function getAderenciaBadge(
     text: "text-rose-800 dark:text-rose-300",
     ring: "border-rose-300 dark:border-rose-700",
     label: "Baixa",
+    scoreColor: "text-rose-400",
+    boxBorder: "border-rose-500/50 dark:border-rose-500/60",
+    boxGlow: "shadow-rose-500/10",
   }
 }
 

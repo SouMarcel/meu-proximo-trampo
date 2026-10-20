@@ -354,6 +354,8 @@ export default function TriageReport({
         {filteredVagas.map((vaga) => {
           const platStyle = getPlataformaStyle(vaga.plataforma)
           const aderBadge = getAderenciaBadge(vaga.aderencia)
+          const isVerificando =
+            Boolean(verificandoMap[vaga.id] || vaga.analise_status === "verificando")
 
           return (
             <div
@@ -361,8 +363,60 @@ export default function TriageReport({
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs hover:border-indigo-200 dark:hover:border-indigo-800 transition"
             >
               <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                {/* Main Job Info & Match Analysis */}
-                <div className="space-y-3 flex-1">
+                {/* Left Side: Aderência + Dados da Vaga */}
+                <div className="flex items-start gap-3.5 sm:gap-4 flex-1 min-w-0">
+                  {/* Coluna própria de Aderência e Nível */}
+                  <div className="shrink-0 pt-0.5">
+                    {vaga.aderencia !== undefined ? (
+                      <div
+                        className={`w-[74px] h-[74px] sm:w-[82px] sm:h-[82px] rounded-2xl bg-slate-900 dark:bg-slate-950 border ${aderBadge.boxBorder} ${aderBadge.boxGlow} shadow-xs flex flex-col items-center justify-center p-2 text-center select-none transition-transform hover:scale-105`}
+                        title={`Aderência de ${vaga.aderencia}% (${aderBadge.label})`}
+                      >
+                        <span
+                          className={`text-2xl sm:text-3xl font-extrabold leading-none tracking-tight ${aderBadge.scoreColor}`}
+                        >
+                          {vaga.aderencia}
+                        </span>
+                        <span className="text-[10px] sm:text-[11px] font-bold tracking-wider text-slate-400 uppercase mt-1 leading-none">
+                          {aderBadge.label}
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        className={`w-[74px] h-[74px] sm:w-[82px] sm:h-[82px] rounded-2xl bg-slate-900 dark:bg-slate-950 border ${
+                          isVerificando
+                            ? "border-indigo-500/60 shadow-xs shadow-indigo-500/10"
+                            : "border-slate-800"
+                        } flex flex-col items-center justify-center p-2 text-center select-none shrink-0`}
+                        title={
+                          isVerificando
+                            ? "IA calculando a aderência desta vaga..."
+                            : "Vaga sem nota de aderência calculada"
+                        }
+                      >
+                        {isVerificando ? (
+                          <>
+                            <Sparkles className="w-5 h-5 text-indigo-400 animate-spin" />
+                            <span className="text-[9px] sm:text-[10px] font-bold tracking-wider text-indigo-300 uppercase mt-1 leading-none">
+                              Análise
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xl sm:text-2xl font-bold leading-none text-slate-500">
+                              —
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-1 leading-none">
+                              Sem nota
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Main Job Info & Match Analysis */}
+                  <div className="space-y-3 flex-1 min-w-0">
                   {/* Top tags: Platform, Seniority, Modality, Search term */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span
@@ -482,35 +536,10 @@ export default function TriageReport({
                     </div>
                   )}
                 </div>
+                </div>
 
-                {/* Right Action Column: Score & Triage Buttons */}
-                <div className="flex lg:flex-col items-center lg:items-end justify-between gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
-                  {/* Adherence Score Badge */}
-                  {vaga.aderencia !== undefined ? (
-                    <div className="text-right">
-                      <div
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${aderBadge.bg} ${aderBadge.text} ${aderBadge.ring}`}
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>{vaga.aderencia}% Aderência</span>
-                      </div>
-                      <div className="text-[11px] text-slate-400 mt-1">
-                        Nível: {aderBadge.label}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-right">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                        Sem nota de IA
-                      </span>
-                      {(verificandoMap[vaga.id] || vaga.analise_status === "verificando") && (
-                        <div className="text-[11px] text-indigo-500 font-medium mt-1 animate-pulse">
-                          Verificando…
-                        </div>
-                      )}
-                    </div>
-                  )}
-
+                {/* Right Action Column: Triage Buttons */}
+                <div className="flex flex-col items-stretch sm:items-end gap-2 shrink-0 w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
                   {/* Action Buttons */}
                   <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
                     {subTab === "pendente" && (
@@ -542,34 +571,34 @@ export default function TriageReport({
                       <div className="flex flex-col items-stretch sm:items-end gap-1 w-full sm:w-auto">
                         <button
                           onClick={() => handleForcar(vaga.id)}
-                          disabled={verificandoMap[vaga.id] || vaga.analise_status === "verificando"}
+                          disabled={isVerificando}
                           className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 disabled:opacity-60 transition shadow-2xs w-full sm:w-auto"
                           title="Pede a nota desta vaga à IA agora"
                         >
                           <Sparkles
                             className={`w-3.5 h-3.5 ${
-                              verificandoMap[vaga.id] || vaga.analise_status === "verificando"
+                              isVerificando
                                 ? "animate-spin text-indigo-500"
                                 : "text-indigo-600 dark:text-indigo-400"
                             }`}
                           />
                           <span>
-                            {verificandoMap[vaga.id] || vaga.analise_status === "verificando"
+                            {isVerificando
                               ? "Verificando…"
                               : "Forçar verificar"}
                           </span>
                         </button>
-                        {(verificandoMap[vaga.id] || vaga.analise_status === "verificando") && (
+                        {(isVerificando) && (
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 text-center sm:text-right">
                             A nota chega em alguns instantes.
                           </span>
                         )}
-                        {vaga.descricao_pendente && !verificandoMap[vaga.id] && vaga.analise_status !== "verificando" && (
+                        {vaga.descricao_pendente && !isVerificando && (
                           <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium text-center sm:text-right">
                             Lê descrição antes da IA
                           </span>
                         )}
-                        {vaga.motivo_falha && !verificandoMap[vaga.id] && (
+                        {vaga.motivo_falha && !isVerificando && (
                           <span className="text-[10px] text-rose-600 dark:text-rose-400 text-center sm:text-right">
                             Falha: {vaga.motivo_falha}
                           </span>
