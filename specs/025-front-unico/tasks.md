@@ -314,7 +314,7 @@ local); a IA, não.
 - Conferido sem a pessoa: `tsc`, build e greps; 4 telas abertas por um navegador sem janela, só com leituras, com
   os dados reais e sem erro de JavaScript (Meu perfil, Análises, Filtros, IA e a prontidão pela aba Internacional).
 
-- [ ] T040 [US3] Portões, roteiro H3, linhas da História 3 em `contracts/paridade.md` e entrega com o OK
+- [X] T040 [US3] Portões, roteiro H3, linhas da História 3 em `contracts/paridade.md` e entrega com o OK
 
 ---
 
