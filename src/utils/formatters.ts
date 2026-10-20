@@ -80,6 +80,14 @@ export function getPlataformaStyle(
   }
 }
 
+/**
+ * Classificacao da nota de aderencia calculada pela IA:
+ * - >= 85%: Excelente (Verde / Emerald)
+ * - >= 65%: Boa (Azul / Sky)
+ * - >= 50%: Media (Ambar / Amber)
+ * - < 50%: Baixa (Rosa / Rose)
+ * - null/undefined: Pendente / Sem nota (Slate)
+ */
 export function getAderenciaBadge(
   score?: number,
 ): {

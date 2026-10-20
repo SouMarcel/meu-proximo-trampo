@@ -33,6 +33,7 @@ export default function NavigationTabs({
     count?: number
     countColor?: string
   }[] = [
+    // Aba de Triagem priorizada como primeira opcao para triagem agil de vagas
     {
       id: "relatorio",
       label: "Relatório de Vagas (Triagem)",

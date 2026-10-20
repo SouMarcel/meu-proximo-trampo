@@ -365,7 +365,7 @@ export default function TriageReport({
               <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                 {/* Left Side: Aderência + Dados da Vaga */}
                 <div className="flex items-start gap-3.5 sm:gap-4 flex-1 min-w-0">
-                  {/* Coluna própria de Aderência e Nível */}
+                  {/* Coluna propria de aderencia e nivel na extrema esquerda do card */}
                   <div className="shrink-0 pt-0.5">
                     {vaga.aderencia !== undefined ? (
                       <div
