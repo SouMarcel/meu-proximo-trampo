@@ -11,7 +11,7 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 |---|---|---|---|---|
 | Aviso de servidor parado e reconexão sozinha | Faixa no topo; modo demonstração na abertura | 1 | ✅ | [ ] |
 | Tema (sistema → claro → escuro) | Botão no cabeçalho | 1 | ✅ (H1) | [ ] |
-| Meu perfil | Cabeçalho → Meu perfil | 3 | ⚠️ | [ ] |
+| Meu perfil | Cabeçalho → Meu perfil | 3 | ✅ | [ ] |
 | IA (escolher, testar, remover chave) | Cabeçalho → IA | 2 | ✅ | [ ] |
 | Adicionar vaga | Cabeçalho e quadro | 1 | ✅ | [ ] |
 | Atualizar candidaturas | Cabeçalho → Contas conectadas | 6 | ⚠️ | [ ] |
@@ -33,7 +33,7 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 | Marcar todas como não seguidas (dois cliques) | Relatório | 1 | ✅ | [ ] |
 | Forçar verificar / Verificando… | Relatório | — | ✅ | [ ] |
 | Motivo de "Fora dos critérios" | Relatório | — | ✅ | [ ] |
-| Filtros da busca internacional; Abrir o painel internacional (prontidão) | Internacional | 2, 3 | ⚠️ | [ ] |
+| Filtros da busca internacional; Abrir o painel internacional (prontidão) | Internacional | 2, 3 | ✅ | [ ] |
 
 ## Quadro
 
@@ -82,13 +82,13 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 
 | Função | Na página nova | H | Hoje | Conferido |
 |---|---|---|---|---|
-| Primeiros passos: materiais (arquivo e texto), rascunho com e sem IA, conflitos, anamnese, diagnóstico, revisão (Ver o que muda), Gravar | Meu perfil | 3 | ⚠️ | [ ] |
-| Contato no perfil e link do LinkedIn | Meu perfil | 3 | ⚠️ | [ ] |
-| Filtros propostos (Confirmar e gravar nos filtros, Pular), cargos em inglês com IA | Meu perfil | 3 | ⚠️ | [ ] |
-| Já tenho currículo: currículos da pasta anexos, proposta, Usar este currículo | Meu perfil | 3 | ❌ | [ ] |
-| Seu currículo (pt e en): marcar e trocar | Meu perfil | 3 | ❌ | [ ] |
-| Recomeçar / Atualizar o perfil | Meu perfil | 3 | ⚠️ | [ ] |
-| Análises: lacunas das vagas, prontidão internacional, carreiras e cargos-alvo (levar para os filtros), plano de estudo | Meu perfil → Análises | 3 | ❌ | [ ] |
+| Primeiros passos: materiais (arquivo e texto), rascunho com e sem IA, conflitos, anamnese, diagnóstico, revisão (Ver o que muda), Gravar | Meu perfil | 3 | ✅ | [ ] |
+| Contato no perfil e link do LinkedIn | Meu perfil | 3 | ✅ | [ ] |
+| Filtros propostos (Confirmar e gravar nos filtros, Pular), cargos em inglês com IA | Meu perfil | 3 | ✅ | [ ] |
+| Já tenho currículo: currículos da pasta anexos, proposta, Usar este currículo | Meu perfil | 3 | ✅ | [ ] |
+| Seu currículo (pt e en): marcar e trocar | Meu perfil | 3 | ✅ | [ ] |
+| Recomeçar / Atualizar o perfil | Meu perfil | 3 | ✅ | [ ] |
+| Análises: lacunas das vagas, prontidão internacional, carreiras e cargos-alvo (levar para os filtros), plano de estudo | Meu perfil → Análises | 3 | ✅ | [ ] |
 | Currículo base (gerar e ver) | Meu perfil | 4 | ❌ | [ ] |
 
 ## Preparar entrevista
