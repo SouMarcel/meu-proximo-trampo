@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-20
 
-**Status**: Em teste
+**Status**: Concluída (2026-10-20): testada e aprovada pela pessoa
 
 **Input**: User description: "Aplique o estilo novo à dash antiga para eu testar."
 
