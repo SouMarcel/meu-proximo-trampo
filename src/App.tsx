@@ -43,6 +43,7 @@ import InterviewCoach from "./components/InterviewCoach"
 import AndamentoBusca from "./components/AndamentoBusca"
 import UltimaBuscaLinha from "./components/UltimaBusca"
 import CompletarDescricoes from "./components/CompletarDescricoes"
+import { AvisoTelaAntiga, CartaoTelaAntiga, TELAS_ANTIGAS } from "./components/AindaNaPaginaAntiga"
 
 // Modals
 import JobDetailModal from "./components/modals/JobDetailModal"
@@ -83,6 +84,7 @@ function Pagina({
   const ferramenta = useFerramenta()
   const { servidor, setServidor, podeGravar, podeAlterar, registrarPodeAlterar, tratarErro, recarregarIA } =
     ferramenta
+  const demo = servidor === "demo"
 
   // Dados do servidor
   const [vagas, setVagas] = useState<Vaga[]>([])
@@ -504,7 +506,8 @@ function Pagina({
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Primeiros passos (simulado até a História 3 da spec 025) */}
+        {/* Primeiros passos: só no modo demonstração até a História 3 da spec 025 */}
+        {servidor === "demo" && (
         <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-indigo-900/90 via-slate-900 to-purple-950 text-white border border-indigo-700/40 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -530,6 +533,7 @@ function Pagina({
             <span>Fazer Onboarding Agora</span>
           </button>
         </div>
+        )}
 
         {activeTab === "quadro" && (
           <KanbanBoard
@@ -583,13 +587,16 @@ function Pagina({
           <FunnelAnalytics vagas={vagas} onNavigateToTab={(tab) => handleTabChange(tab as ActiveTab)} />
         )}
 
-        {activeTab === "entrevistas" && (
-          <InterviewCoach
-            vagas={vagas.filter(noQuadro)}
-            onUpdateVaga={(id, campos) => handleUpdateVaga(id, campos as CamposEditaveis)}
-            onSelectVagaModal={(v) => setDetalheId(v.id)}
-          />
-        )}
+        {activeTab === "entrevistas" &&
+          (demo ? (
+            <InterviewCoach
+              vagas={vagas.filter(noQuadro)}
+              onUpdateVaga={(id, campos) => handleUpdateVaga(id, campos as CamposEditaveis)}
+              onSelectVagaModal={(v) => setDetalheId(v.id)}
+            />
+          ) : (
+            <CartaoTelaAntiga tela={TELAS_ANTIGAS.entrevista} />
+          ))}
       </main>
 
       {/* Modais */}
@@ -629,49 +636,70 @@ function Pagina({
         />
       )}
 
-      <SearchFiltersModal
-        isOpen={isFiltersModalOpen}
-        onClose={() => setIsFiltersModalOpen(false)}
-        filtros={filtros}
-        onSaveFiltros={handleSaveFilters}
-      />
-
-      <AISettingsModal
-        isOpen={isAIModalOpen}
-        onClose={() => setIsAIModalOpen(false)}
-        configIA={configIA}
-        onSaveConfig={handleSaveConfigIA}
-      />
-
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        perfil={perfil}
-        onSavePerfil={handleSavePerfil}
-        onReloadAllData={conferirServidor}
-        onOpenOnboarding={() => setIsOnboardingModalOpen(true)}
-      />
-
-      <CandidateOnboardingModal
-        isOpen={isOnboardingModalOpen}
-        onClose={() => setIsOnboardingModalOpen(false)}
-        onCompleteOnboarding={handleCompleteOnboarding}
-        filtrosAtuais={filtros}
-        perfilAtual={perfil}
-      />
-
-      <ConnectedAccountsModal
-        isOpen={isAccountsModalOpen}
-        onClose={() => setIsAccountsModalOpen(false)}
-        portais={portais}
-        itensSincronizacao={itensSync}
-        historico={historicoSync}
-        onConectarPortal={handleConectarPortal}
-        onDesconectarPortal={handleDesconectarPortal}
-        onProntoPortal={handleConectarPortal}
-        onSincronizar={handleSincronizarPortais}
-        onAplicarAlteracoes={handleAplicarAlteracoes}
-      />
+      {/* Telas ainda não ligadas ao servidor (histórias 2 a 6 da spec 025): com o servidor no ar, um aviso com o
+          caminho para a página de sempre; os dados de exemplo só aparecem no modo demonstração. */}
+      {demo ? (
+        <>
+          <SearchFiltersModal
+            isOpen={isFiltersModalOpen}
+            onClose={() => setIsFiltersModalOpen(false)}
+            filtros={filtros}
+            onSaveFiltros={handleSaveFilters}
+          />
+          <AISettingsModal
+            isOpen={isAIModalOpen}
+            onClose={() => setIsAIModalOpen(false)}
+            configIA={configIA}
+            onSaveConfig={handleSaveConfigIA}
+          />
+          <ProfileModal
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+            perfil={perfil}
+            onSavePerfil={handleSavePerfil}
+            onReloadAllData={conferirServidor}
+            onOpenOnboarding={() => setIsOnboardingModalOpen(true)}
+          />
+          <CandidateOnboardingModal
+            isOpen={isOnboardingModalOpen}
+            onClose={() => setIsOnboardingModalOpen(false)}
+            onCompleteOnboarding={handleCompleteOnboarding}
+            filtrosAtuais={filtros}
+            perfilAtual={perfil}
+          />
+          <ConnectedAccountsModal
+            isOpen={isAccountsModalOpen}
+            onClose={() => setIsAccountsModalOpen(false)}
+            portais={portais}
+            itensSincronizacao={itensSync}
+            historico={historicoSync}
+            onConectarPortal={handleConectarPortal}
+            onDesconectarPortal={handleDesconectarPortal}
+            onProntoPortal={handleConectarPortal}
+            onSincronizar={handleSincronizarPortais}
+            onAplicarAlteracoes={handleAplicarAlteracoes}
+          />
+        </>
+      ) : (
+        <>
+          {isFiltersModalOpen && (
+            <AvisoTelaAntiga tela={TELAS_ANTIGAS.filtros} onClose={() => setIsFiltersModalOpen(false)} />
+          )}
+          {isAIModalOpen && <AvisoTelaAntiga tela={TELAS_ANTIGAS.ia} onClose={() => setIsAIModalOpen(false)} />}
+          {(isProfileModalOpen || isOnboardingModalOpen) && (
+            <AvisoTelaAntiga
+              tela={TELAS_ANTIGAS.perfil}
+              onClose={() => {
+                setIsProfileModalOpen(false)
+                setIsOnboardingModalOpen(false)
+              }}
+            />
+          )}
+          {isAccountsModalOpen && (
+            <AvisoTelaAntiga tela={TELAS_ANTIGAS.contas} onClose={() => setIsAccountsModalOpen(false)} />
+          )}
+        </>
+      )}
 
       {/* Aviso flutuante */}
       {toast && (

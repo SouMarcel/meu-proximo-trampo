@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
 } from "lucide-react"
 import type { Vaga, Etapa } from "../types/api"
+import { CONTRATACAO } from "../utils/rotulos"
 import {
   getPlataformaStyle,
   getAderenciaBadge,
@@ -261,7 +262,7 @@ export default function InternationalHub({
                     <span>{vaga.local}</span>
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    Contratação: {vaga.tipo || "Contractor B2B / Worldwide"}
+                    Contratação: {vaga.contratacao?.length ? vaga.contratacao.map((c) => CONTRATACAO[c.valor] || c.valor).join(", ") : "não informada"}
                   </div>
                 </div>
 
