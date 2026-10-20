@@ -5,12 +5,12 @@ Conferido em 2026-10-20 na `frontend-react` (commit `3a7bc44`), na `master` (`92
 ## R1. Onde o código muda e como chega à `master`
 
 - **Decision**: o React é editado numa worktree da `frontend-react` (branch local que segue `origin/frontend-react`).
-  Commits locais, por história. O teste da pessoa é feito com um build local copiado para `dash/front/` na `marcel`,
-  sem commit. Com o OK: `git checkout -- dash/front` na `marcel`, push da `frontend-react`, Action "Front: abrir PR",
-  revisão do PR `front/atualizacao`, merge, `git merge master` na `marcel`.
+  Commits locais, por história. O teste da pessoa é feito com um build local copiado para `dash/front/` na branch pessoal,
+  sem commit. Com o OK: `git checkout -- dash/front` na branch pessoal, push da `frontend-react`, Action "Front: abrir PR",
+  revisão do PR `front/atualizacao`, merge, `git merge master` na branch pessoal.
 - **Rationale**: mantém o caminho da spec 022 (o build só entra na `master` pela Action) e deixa a pessoa testar antes
   de qualquer push. O push da `frontend-react` é público, então só acontece com o OK.
-- **Alternatives considered**: commitar o build na `marcel` (sujaria a branch e entraria em conflito com o PR da
+- **Alternatives considered**: commitar o build na branch pessoal (sujaria a branch e entraria em conflito com o PR da
   Action); testar só pelo PR da Action (exige push antes do teste).
 
 ## R2. Montagem e conferência local

@@ -4,7 +4,7 @@
 
 - Worktree do front: `git worktree add --track -b frontend-react <pasta> origin/frontend-react`.
 - Na pasta do front: `npx -y pnpm@10.34.3 install --frozen-lockfile`.
-- Servidor da ferramenta rodando na `marcel`: `python iniciar.py` (ou `dash/servidor.py --sem-navegador`).
+- Servidor da ferramenta rodando na branch pessoal: `python iniciar.py` (ou `dash/servidor.py --sem-navegador`).
 
 ## Portões de cada entrega (antes de mostrar à pessoa)
 
@@ -18,16 +18,16 @@ Na pasta do front:
 
 Na `master` (worktree da spec): `python -m unittest discover -s tests` → tudo passa.
 
-## Teste da pessoa na `marcel`
+## Teste da pessoa na branch pessoal
 
-1. Copiar o `dist/` do front para `dash/front/` da `marcel`. É só cópia local, sem commit.
+1. Copiar o `dist/` do front para `dash/front/` da branch pessoal. É só cópia local, sem commit.
 2. Reiniciar o servidor e abrir `http://127.0.0.1:8765/novo/`.
 3. Seguir o roteiro da história (abaixo) e marcar as linhas dela na [lista de paridade](contracts/paridade.md).
 4. Com o OK:
-   - `git checkout -- dash/front` na `marcel`;
+   - `git checkout -- dash/front` na branch pessoal;
    - push da `frontend-react`;
    - `gh workflow run front.yml`;
-   - revisar o PR `front/atualizacao`, fazer o merge e rodar `git merge master` na `marcel`.
+   - revisar o PR `front/atualizacao`, fazer o merge e rodar `git merge master` na branch pessoal.
 
 ## Roteiros por história
 

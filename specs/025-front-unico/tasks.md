@@ -175,7 +175,7 @@ roteiro do [quickstart](quickstart.md). Os testes Python só mudam na troca (US7
   - quem deu a nota (`analise_provedor` e `analise_modelo`).
 - [X] T027 [US1] Em todo erro de API das telas desta fase, mostrar `ErroApi.message` (toast de erro) e passar por
   `tratarErro` (`src/App.tsx`, modais da fase)
-- [ ] T028 [US1] Portões do quickstart; build copiado para `dash/front/` na `marcel`; roteiro H1 com a pessoa;
+- [ ] T028 [US1] Portões do quickstart; build copiado para `dash/front/` na branch pessoal; roteiro H1 com a pessoa;
   marcar as linhas da História 1 em `contracts/paridade.md`. Com o OK: busca de dados pessoais, commit na
   `frontend-react` e o fluxo de entrega do quickstart.
 
@@ -449,8 +449,8 @@ pessoa para a troca.
   `python sincronizar_skills.py`, depois `python sincronizar_skills.py --conferir`
 - [ ] T065 [P] [US7] Atualizar `.vscode/settings.json` (Live Server em `dash/front/index.html`) e o texto do PR em
   `.github/workflows/front.yml` (testar em `/`)
-- [ ] T066 [US7] Rodar `python -m unittest discover -s tests`; roteiro H7 na `marcel`; busca de dados pessoais;
-  com o OK, merge na `master`, push e `git merge master` na `marcel`
+- [ ] T066 [US7] Rodar `python -m unittest discover -s tests`; roteiro H7 na branch pessoal; busca de dados pessoais;
+  com o OK, merge na `master`, push e `git merge master` na branch pessoal
 
 ---
 
@@ -501,6 +501,6 @@ T010 utils/filaVaga.ts · T011 components/TextoDaVaga.tsx
 
 1. **MVP**: Setup + Foundational + US1, testados e entregues com o OK. A pessoa já busca e adiciona vagas só pela
    página nova.
-2. **Incremental**: US2 → US3 → US4 → US5 → US6, cada uma com teste na `marcel`, linhas marcadas na paridade e
+2. **Incremental**: US2 → US3 → US4 → US5 → US6, cada uma com teste na branch pessoal, linhas marcadas na paridade e
    entrega pela Action.
 3. **Troca**: US7 só com a paridade completa, uma semana de uso e o OK da pessoa.

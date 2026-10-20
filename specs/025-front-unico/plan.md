@@ -43,10 +43,10 @@ spec 022. O servidor só muda na troca.
 | IV. Só fatos confirmados | Saem os campos inventados do perfil (pretensão salarial, anos de experiência). As perguntas sensíveis ficam com campo para a pessoa. A entrevista mostra só os dados da vaga. |
 | V. A pessoa decide | Confirmações da seção 4 do `dash/API.md`; a IA só preenche ou propõe; contas só aplicam o que foi marcado ([contrato das telas](contracts/telas.md)). |
 | VI. Respeito aos portais | O botão Buscar respeita `proxima_em`, a espera e a busca recente. A leitura das contas só acontece no clique, e o front para no bloqueio que o servidor informa. |
-| Fluxo | A spec já foi aprovada. Cada história é testada na `marcel` e só vai à `master` com o OK. |
+| Fluxo | A spec já foi aprovada. Cada história é testada na branch pessoal e só vai à `master` com o OK. |
 
 **Desvio justificado**: o código do front muda na `frontend-react`, e não na `master` por worktree. É o caminho
-definido na spec 022: o build entra na `master` só pelo PR da Action, revisado e testado na `marcel`.
+definido na spec 022: o build entra na `master` só pelo PR da Action, revisado e testado na branch pessoal.
 
 Reavaliação depois do desenho: nenhum desvio novo.
 
@@ -109,7 +109,7 @@ acrescenta só a camada de API por área, o contexto, o hook de consulta e as te
 6. **História 6**: Contas conectadas.
 7. **História 7**: com a paridade completa e uma semana de uso só na página nova, a troca no servidor
    ([contrato](contracts/servidor-troca.md)), a documentação e os testes. Commit na branch `025-front-unico`, teste
-   na `marcel`, merge na `master`.
+   na branch pessoal, merge na `master`.
 
 Cada entrega passa pelos portões e pelo roteiro do [quickstart](quickstart.md) e marca as suas linhas na lista de
 paridade.
@@ -120,7 +120,7 @@ paridade.
   branch, e o Figma precisa partir deles.
 - **`JobDetailModal` grande (577 linhas) e currículo e kit dentro dele**: currículo e kit viram componentes próprios
   em `components/curriculo/` e `components/kit/`, abertos do detalhe.
-- **Build copiado para `dash/front/` na `marcel` e esquecido**: o `git checkout -- dash/front` é passo fixo antes do
+- **Build copiado para `dash/front/` na branch pessoal e esquecido**: o `git checkout -- dash/front` é passo fixo antes do
   merge do PR.
 
 ## Complexity Tracking
