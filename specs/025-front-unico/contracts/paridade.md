@@ -14,9 +14,9 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 | Meu perfil | Cabeçalho → Meu perfil | 3 | ✅ | [ ] |
 | IA (escolher, testar, remover chave) | Cabeçalho → IA | 2 | ✅ | [ ] |
 | Adicionar vaga | Cabeçalho e quadro | 1 | ✅ | [ ] |
-| Atualizar candidaturas | Cabeçalho → Contas conectadas | 6 | ⚠️ | [ ] |
+| Atualizar candidaturas | Cabeçalho → Contas conectadas | 6 | ✅ | [ ] |
 | Apoie o projeto (link externo) | Cabeçalho | 1 | ✅ | [ ] |
-| Só leitura de outro aparelho (botões desligados) | Todas as telas | 1–6 | ✅ nas telas da H1 | [ ] |
+| Só leitura de outro aparelho (botões desligados) | Todas as telas | 1–6 | ✅ | [ ] |
 
 ## Relatório de Vagas e Internacional
 
@@ -106,6 +106,6 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 
 | Função | Na página nova | H | Hoje | Conferido |
 |---|---|---|---|---|
-| Conectar, Pronto, Desconectar (Gupy, Indeed) | Contas | 6 | ⚠️ | [ ] |
-| Atualizar agora / Ler de novo, andamento | Contas | 6 | ⚠️ | [ ] |
-| Proposta com itens marcados; Aplicar; Importar como histórico | Contas | 6 | ⚠️ | [ ] |
+| Conectar, Pronto, Desconectar (Gupy, Indeed) | Contas | 6 | ✅ | [ ] |
+| Atualizar agora / Ler de novo, andamento | Contas | 6 | ✅ | [ ] |
+| Proposta com itens marcados; Aplicar; Importar como histórico | Contas | 6 | ✅ | [ ] |

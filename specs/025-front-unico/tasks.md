@@ -422,7 +422,7 @@ local); a IA, não.
 - Conferido sem a pessoa: `tsc`, build e greps; as abas Dossiê, Perguntas, Salário e Depois abertas pelo
   navegador sem janela, só com leituras, com os dados reais e sem erro de JavaScript.
 
-- [ ] T055 [US5] Portões, roteiro H5, linhas da História 5 em `contracts/paridade.md` e entrega com o OK
+- [X] T055 [US5] Portões, roteiro H5, linhas da História 5 em `contracts/paridade.md` e entrega com o OK
 
 ---
 
@@ -432,10 +432,10 @@ local); a IA, não.
 
 **Independent Test**: roteiro H6. Só os itens marcados mudam no quadro.
 
-- [ ] T056 [P] [US6] Criar `src/services/api/contas.ts` (§3.11: `contas()`, `estado()`, `conectar(portal)`,
+- [X] T056 [P] [US6] Criar `src/services/api/contas.ts` (§3.11: `contas()`, `estado()`, `conectar(portal)`,
   `pronto(portal)`, `desconectar(portal)`, `ler()`, `aplicar({chaves}|{historico: true})`), com os tipos `Contas`,
   `Portal`, `EstadoCandidaturas` e `ItemCandidatura`
-- [ ] T057 [US6] Reescrever `src/components/modals/ConnectedAccountsModal.tsx`.
+- [X] T057 [US6] Reescrever `src/components/modals/ConnectedAccountsModal.tsx`.
   - **Portais**: os de `contas()`, só Gupy e Indeed. O ícone vira `<img src="data:image/svg+xml,...">`.
   - **Sem navegador**: aviso com `navegador: false`.
   - **Conexão**: Conectar abre a janela da ferramenta, Pronto (com `conectado: false` mostra "login ainda não
@@ -449,9 +449,16 @@ local); a IA, não.
     - "Importar como histórico".
   - **Erros 409**: a mensagem aparece, sem nova tentativa sozinha.
   - **A página**: nenhum campo de senha.
-- [ ] T058 [US6] Em `src/App.tsx`, tirar `portais`, `itensSync` e `historicoSync` simulados e os handlers de
+- [X] T058 [US6] Em `src/App.tsx`, tirar `portais`, `itensSync` e `historicoSync` simulados e os handlers de
   conectar, pronto, sincronizar e aplicar. Tirar `PortalConectado`, `ItemSincronizacao` e `HistoricoCandidatura` de
   `src/types/job.ts`.
+**Notas da implementação (H6, 2026-10-20)**:
+- Com a H6, nenhuma tela usa mais o aviso de página antiga: saíram `components/AindaNaPaginaAntiga.tsx` e
+  `types/job.ts`, que é parte da T067.
+- Os exemplos do protótipo que sobram no `mockData.ts` são só as vagas do modo demonstração.
+- Conferido sem a pessoa: `tsc`, build e greps; o diálogo aberto pelo navegador sem janela, só com leituras, com
+  os portais reais e sem erro de JavaScript.
+
 - [ ] T059 [US6] Portões, roteiro H6, linhas da História 6 em `contracts/paridade.md` e entrega com o OK
 
 ---
