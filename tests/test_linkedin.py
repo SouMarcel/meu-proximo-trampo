@@ -390,7 +390,7 @@ class TestNaBusca(SemRede):
                              "local": "São Paulo", "url": "https://www.linkedin.com/jobs/view/4000000001/", "descricao": "x"})
         self.respostas(lambda url: VAGA if "jobPosting" in url else LISTA)
         cfg = {**CFG, "fontes": ["linkedin"], "internacional": {"ativo": False}, "modelos": {"remoto": True}, "localidade": {"pais": "Brasil"},
-               "tipos_emprego": []}
+               "tipos_emprego": [], "janela_horas": 24 * 3650}  # as vagas de exemplo são de 10/2026: a janela não depende do dia
         r = vagas.executar(cfg, filtros.efetivos(cfg), ["linkedin"], 20, pausa=0)
         ids = [v["id"] for v in r["candidatas"] + r["fora"]]
         self.assertEqual(sorted(ids), ["li-4000000002", "li-4000000003"])  # a do link não volta

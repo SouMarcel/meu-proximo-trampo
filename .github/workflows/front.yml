@@ -1,0 +1,161 @@
+# Front novo (spec 022): monta o front React da branch frontend-react (feito no Figma Make) e abre ou atualiza o
+# PR front/atualizacao -> master com o resultado em dash/front/. O Node fica só aqui: quem usa a ferramenta continua
+# só com o Python. Rodar: aba Actions > "Front: abrir PR" > Run workflow (ou `gh workflow run front.yml`).
+name: "Front: abrir PR"
+
+on:
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Montar de novo mesmo sem mudança na frontend-react"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: front
+  cancel-in-progress: false
+
+env:
+  FONTE: frontend-react
+  DESTINO: front/atualizacao
+  NODE: "22"
+  PNPM: "10.34.3"
+
+jobs:
+  front:
+    # Windows, como quem usa a ferramenta: os testes Python rodam no mesmo sistema
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Preparar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Baixar a master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: ferramenta
+          fetch-depth: 0
+
+      - name: Ver se a frontend-react mudou
+        id: origem
+        working-directory: ferramenta
+        env:
+          FORCAR: ${{ inputs.forcar }}
+        run: |
+          sha=$(git ls-remote origin "refs/heads/$FONTE" | cut -f1)
+          if [ -z "$sha" ]; then echo "::error::A branch $FONTE não existe no GitHub."; exit 1; fi
+          ultimo() { python -c 'import json,sys; print(json.load(sys.stdin).get("commit",""))' 2>/dev/null || true; }
+          na_master=$(git show "HEAD:dash/front/ORIGEM.json" 2>/dev/null | ultimo || true)
+          no_pr=""
+          if git fetch -q origin "$DESTINO" 2>/dev/null; then no_pr=$(git show "FETCH_HEAD:dash/front/ORIGEM.json" 2>/dev/null | ultimo || true); fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "anterior=$na_master" >> "$GITHUB_OUTPUT"
+          if [ "$FORCAR" != "true" ] && { [ "$sha" = "$na_master" ] || [ "$sha" = "$no_pr" ]; }; then
+            echo "Nada novo: ${sha:0:7} já está na master ou no PR."
+            echo "novo=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "novo=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Baixar a frontend-react
+        if: steps.origem.outputs.novo == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.origem.outputs.sha }}
+          path: fonte
+          fetch-depth: 0
+
+      - name: Preparar o Node
+        if: steps.origem.outputs.novo == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE }}
+
+      - name: Montar o front
+        if: steps.origem.outputs.novo == 'true'
+        working-directory: fonte
+        run: |
+          npm install -g "pnpm@$PNPM"
+          pnpm install --frozen-lockfile
+          # base relativa: o servidor entrega o front em /novo/ e o Live Server o abre em dash/front/
+          pnpm exec vite build --base ./
+          test -f dist/index.html
+
+      - name: Copiar para dash/front/
+        if: steps.origem.outputs.novo == 'true'
+        env:
+          SHA: ${{ steps.origem.outputs.sha }}
+        run: |
+          rm -rf ferramenta/dash/front
+          cp -r fonte/dist ferramenta/dash/front
+          python - <<'PY'
+          import json, os, datetime
+          json.dump({"branch": os.environ["FONTE"], "commit": os.environ["SHA"],
+                     "montado_em": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                     "execucao": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"},
+                    open("ferramenta/dash/front/ORIGEM.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          PY
+
+      - name: Testes da ferramenta
+        if: steps.origem.outputs.novo == 'true'
+        working-directory: ferramenta
+        run: |
+          python -m pip install -q -r requirements.txt
+          python -m unittest discover -s tests
+
+      - name: Abrir ou atualizar o PR
+        if: steps.origem.outputs.novo == 'true'
+        working-directory: ferramenta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.origem.outputs.sha }}
+          ANTERIOR: ${{ steps.origem.outputs.anterior }}
+        run: |
+          repo="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          {
+            echo "Front montado pela Action a partir da branch \`$FONTE\` (commit [${SHA:0:7}]($repo/commit/$SHA))."
+            echo
+            echo "O diff deste PR é o build (minificado). **Revise o código-fonte:**"
+            if [ -n "$ANTERIOR" ]; then
+              echo "[comparação ${ANTERIOR:0:7}...${SHA:0:7}]($repo/compare/$ANTERIOR...$SHA)"
+              faixa="$ANTERIOR..$SHA"
+            else
+              echo "primeira montagem: [commits da $FONTE]($repo/commits/$SHA)"
+              faixa="$SHA"
+            fi
+            echo
+            echo "### Commits do Figma Make"
+            git -C ../fonte log --format='- %h %s (%ad)' --date=short -n 40 $faixa || true
+            echo
+            echo "### Arquivos do código-fonte alterados"
+            echo '```'
+            if [ -n "$ANTERIOR" ]; then git -C ../fonte diff --stat "$ANTERIOR" "$SHA" | tail -40 || true; else git -C ../fonte ls-files | head -60 || true; fi
+            echo '```'
+            echo
+            echo "### Antes do merge"
+            echo "- [ ] Rotas e campos conferidos com \`dash/API.md\`"
+            echo "- [ ] Nada de dados pessoais nem chamadas externas (CDN, fontes, análise)"
+            echo "- [ ] Testado na branch pessoal em http://127.0.0.1:8765/novo/"
+          } > ../corpo.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$DESTINO"
+          git add -A dash/front
+          git commit -q -m "Front novo: build da $FONTE ${SHA:0:7}"
+          git push -f origin "$DESTINO"
+          if gh pr view "$DESTINO" --json state -q .state 2>/dev/null | grep -q OPEN; then
+            gh pr edit "$DESTINO" --body-file ../corpo.md
+          else
+            gh pr create --base master --head "$DESTINO" --title "Front novo (build da $FONTE)" --body-file ../corpo.md
+          fi

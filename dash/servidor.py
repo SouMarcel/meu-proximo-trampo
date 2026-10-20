@@ -9,6 +9,7 @@ Feche a janela (ou Ctrl+C) para parar. Os dados ficam em dash/dados/candidaturas
 No VS Code, a tarefa "Dashboard" (.vscode/tasks.json) sobe este servidor ao abrir a pasta, e a
 página também pode ser aberta pelo Live Server (dash/dashboard.html): ela fala com este servidor
 na porta 8765, que aceita páginas abertas neste computador.
+O front novo (spec 022), quando montado em dash/front/ pelo GitHub Actions, fica em /novo/.
 """
 from __future__ import annotations
 
@@ -40,6 +41,11 @@ import segredos  # noqa: E402  (segredos.py, na raiz: chaves no .env)
 from fontes import link, post  # noqa: E402  (lê a vaga a partir do link; o post do LinkedIn com uma vaga)
 
 PAGINA = banco.DASH / "dashboard.html"
+FRONT = banco.DASH / "front"  # o front novo (spec 022), montado pelo GitHub Actions a partir da branch frontend-react
+TIPOS_FRONT = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+               ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2"}
+SEM_FRONT = ("<!doctype html><meta charset='utf-8'><title>Front novo</title><p>O front novo ainda não foi montado "
+             "nesta cópia da ferramenta. O dashboard de sempre está em <a href='/'>/</a>.</p>")
 PORTA_PADRAO = 8765
 LIMITE_CORPO = 1_000_000
 LIMITE_MATERIAL = 15_000_000  # arquivo de até 10 MB em base64
@@ -522,6 +528,23 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(409, {"erro": "Para dar nota, ligue uma IA", "sem_ia": True})
         return self._json(202, {"verificando": analise.FILA.verificando()})
 
+    def _front(self, caminho: str):
+        """O front novo (spec 022) em /novo/: só os arquivos de dash/front/, com os tipos de TIPOS_FRONT."""
+        if caminho == "/novo":  # o build usa caminhos relativos (./assets/...), que pedem a barra no fim
+            self.send_response(308)
+            self.send_header("Location", "/novo/")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        relativo = unquote(caminho[len("/novo/"):]) or "index.html"
+        base = FRONT.resolve()
+        alvo = (base / relativo).resolve()
+        if alvo == base / "index.html" and not alvo.is_file():
+            return self._enviar(404, SEM_FRONT.encode("utf-8"), "text/html; charset=utf-8")
+        if not alvo.is_relative_to(base) or alvo.suffix.lower() not in TIPOS_FRONT or not alvo.is_file():
+            return self._erro(404, "arquivo não encontrado")
+        return self._enviar(200, alvo.read_bytes(), TIPOS_FRONT[alvo.suffix.lower()])
+
     def _id_da_rota(self, caminho: str) -> str | None:
         prefixo = "/api/vagas/"
         if not caminho.startswith(prefixo):
@@ -596,6 +619,8 @@ class Handler(BaseHTTPRequestHandler):
     def _get(self, caminho: str):
         if caminho in ("/", "/index.html"):
             return self._enviar(200, PAGINA.read_bytes(), "text/html; charset=utf-8")
+        if caminho == "/novo" or caminho.startswith("/novo/"):
+            return self._front(caminho)
         if caminho == "/api/versao":
             return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando,
                                     "ia_erro": analise.FILA.erro(), "busca": buscador.BUSCA.resumo(),
@@ -743,6 +768,8 @@ def main() -> int:
     print(f"  Neste computador: {endereco}")
     if ip:
         print(f"  Na rede local:    http://{ip}:{args.porta}/")
+    if (FRONT / "index.html").is_file():
+        print(f"  Front novo:       {endereco}novo/")
     print(f"  Dados: {banco.ARQUIVO}")
     if copia:
         print(f"  Backup do dia: {copia.name}")

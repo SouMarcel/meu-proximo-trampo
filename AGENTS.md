@@ -88,3 +88,6 @@ As skills pedem duas coisas que cada assistente faz de um jeito:
   aprovação da pessoa em cada etapa.
 - Python com biblioteca padrão; dependência nova só com motivo. Testes com
   `python -m unittest discover -s tests`.
+- O front novo (`dash/front/`, em `/novo/`) é gerado pelo GitHub Actions a partir da branch
+  `frontend-react` (Figma Make), que abre o PR `front/atualizacao`; não edite `dash/front/` à mão. O
+  contrato da API está em `dash/API.md` e o processo em `specs/022-front-react/`.
