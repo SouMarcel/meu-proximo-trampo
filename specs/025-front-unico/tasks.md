@@ -314,7 +314,7 @@ local); a IA, não.
 - Conferido sem a pessoa: `tsc`, build e greps; 4 telas abertas por um navegador sem janela, só com leituras, com
   os dados reais e sem erro de JavaScript (Meu perfil, Análises, Filtros, IA e a prontidão pela aba Internacional).
 
-- [ ] T040 [US3] Portões, roteiro H3, linhas da História 3 em `contracts/paridade.md` e entrega com o OK
+- [X] T040 [US3] Portões, roteiro H3, linhas da História 3 em `contracts/paridade.md` e entrega com o OK
 
 ---
 
@@ -324,27 +324,27 @@ local); a IA, não.
 
 **Independent Test**: roteiro H4. Os arquivos abrem, e a pergunta de salário volta sem resposta da IA.
 
-- [ ] T041 [P] [US4] Criar `src/services/api/curriculo.ts` (§3.8: `catalogo(vagaId?)`, `gerar({vaga_id, tecnicas})`,
+- [X] T041 [P] [US4] Criar `src/services/api/curriculo.ts` (§3.8: `catalogo(vagaId?)`, `gerar({vaga_id, tecnicas})`,
   `tentar()`, `estado()`, `lista({vaga}|{base: true})`) e `src/services/api/kit.ts` (§3.9: `lista(vagaId)`,
   `carta(...)`, `respostas(...)`, `salvarRespostas(nome, pessoa)`), com os tipos `Catalogo`, `EstadoGeracao`,
   `MetaCurriculo`, `DocumentoCarta` e `DocumentoRespostas`
-- [ ] T042 [US4] Criar `src/components/curriculo/AndamentoGeracao.tsx`, montado no `App`, porque é uma geração por
+- [X] T042 [US4] Criar `src/components/curriculo/AndamentoGeracao.tsx`, montado no `App`, porque é uma geração por
   vez para currículo, carta e respostas.
   - `useConsulta(estado, 2000)` enquanto `situacao` estiver em `escrevendo, gerando, conferindo`.
   - Mostra `etapa_texto` e o alvo.
   - Em `falha`, mostra "Tentar de novo" (`tentar()`) quando `pode_tentar`.
   - Ao ficar `pronto`, avisa as telas abertas para recarregar a lista.
-- [ ] T043 [US4] Criar `src/components/curriculo/GerarCurriculo.tsx` sobre `catalogo(vagaId)`.
+- [X] T043 [US4] Criar `src/components/curriculo/GerarCurriculo.tsx` sobre `catalogo(vagaId)`.
   - **Técnicas**: `ats, foco, xyz, resultado_primeiro, competencias_primeiro`, com a explicação de cada uma.
   - **Escolhas**: `paginas` 1|2, `formato` br|us|eu e `estilo` padrao|compacto|executivo, com a `sugestao` e o
     `motivo`.
   - **Antes de gerar**: qual IA vai rodar e o aviso de custo; sem perfil (`perfil_ok`), leva a Meu perfil.
   - **Gerar**: `gerar()`; 409 mostra que há outra geração rodando.
-- [ ] T044 [US4] Criar `src/components/curriculo/ListaCurriculos.tsx` (`lista`, mais recentes primeiro).
+- [X] T044 [US4] Criar `src/components/curriculo/ListaCurriculos.tsx` (`lista`, mais recentes primeiro).
   - Links de PDF e DOCX por `urlArquivo("/arquivos/curriculos/" + nome)`.
   - Conferência: `veredito`, `fatos`, `ats`, `requisitos` e `cobertura`.
   - `paginas`, `acima_do_limite` e `sugestoes_corte`.
-- [ ] T045 [US4] Criar `src/components/kit/Checklist.tsx` a partir de `vaga.checklist`
+- [X] T045 [US4] Criar `src/components/kit/Checklist.tsx` a partir de `vaga.checklist`
   (`{item, rotulo, origem, estado, frase, acao, extra?, base?, falta_base?}`).
   - **Estado**: alternar `a_fazer|pronto|nao_se_aplica`, gravando `{kit}`.
   - **Itens**: acrescentar ("até 10 extras") e remover.
@@ -353,30 +353,40 @@ local); a IA, não.
     - `carta` e `respostas` → as abas do kit;
     - `candidatar` → só abre `url_candidatura` ou `url`.
   - **Currículo da pessoa**: link do `base`; aviso de `falta_base`.
-- [ ] T046 [US4] Criar `src/components/kit/Carta.tsx`.
+- [X] T046 [US4] Criar `src/components/kit/Carta.tsx`.
   - **Campos**: `formato` carta|mensagem, `tom` direto|caloroso|formal, `por_que*`.
   - **Só na carta**: `problema` e `primeiro_movimento`, obrigatórios.
   - **Só na mensagem**: `limite` "20-3000, padrão 400".
   - **Idioma**: pt, en, es, fr, de ou it.
   - **Gerar**: passa por `exigirIA`, com aviso de custo.
   - **Lista**: cartas e mensagens da vaga, com conferência, Copiar e o link do arquivo.
-- [ ] T047 [US4] Criar `src/components/kit/Respostas.tsx`.
+- [X] T047 [US4] Criar `src/components/kit/Respostas.tsx`.
   - Perguntas "uma por linha, até 30" → `respostas()`, com aviso de custo.
   - Itens com `sensivel` aparecem sem resposta da IA, com o aviso de que são da pessoa e um campo "Escrever a minha".
   - `salvarRespostas(nome, {"<nº da pergunta, de 1>": texto})`.
   - Copiar tudo.
-- [ ] T048 [US4] Criar `src/components/kit/Lembrete.tsx` para `vaga.lembretes_pendentes` (no máximo um).
+- [X] T048 [US4] Criar `src/components/kit/Lembrete.tsx` para `vaga.lembretes_pendentes` (no máximo um).
   - Feito, Dispensar e Parar lembretes gravam `{lembretes}` (§2).
   - O texto lembra: "a mensagem é você quem escreve e envia".
   - Usar em `src/components/JobCard.tsx` e no detalhe.
-- [ ] T049 [US4] Em `src/components/modals/JobDetailModal.tsx`:
+- [X] T049 [US4] Em `src/components/modals/JobDetailModal.tsx`:
   - a aba `kit` com `Checklist`, `Carta` e `Respostas`;
   - a seção "Currículos para esta vaga", com `GerarCurriculo` e `ListaCurriculos`;
   - "Candidatar no {plataforma}" só abre o portal;
   - "Enviar por e-mail" abre `mailto:` com o assunto;
   - tirar o checklist simulado.
-- [ ] T050 [US4] Em `src/components/modals/ProfileModal.tsx`, a seção "Currículo base", com `GerarCurriculo` sem
+- [X] T050 [US4] Em `src/components/modals/ProfileModal.tsx`, a seção "Currículo base", com `GerarCurriculo` sem
   vaga e `ListaCurriculos` com `base: true`
+**Notas da implementação (H4, 2026-10-20)**:
+- O andamento da geração virou o contexto `contexto/Geracao.tsx`, em vez de um componente solto: uma geração por
+  vez, consulta a cada 2 s, aviso no fim e as listas releem.
+- Currículos ficam em `components/curriculo/Curriculos.tsx` (`GerarCurriculo` e `SecaoCurriculos`).
+- O kit inteiro (checklist, carta, respostas, lembrete) fica em `components/kit/Kit.tsx`.
+- No detalhe, a aba passou a se chamar "Candidatura".
+- No Meu perfil, "Currículo base" é um passo próprio e também aparece no Concluído, como no dashboard antigo.
+- Conferido sem a pessoa: `tsc`, build e greps; aberto pelo navegador sem janela, só com leituras e sem erro de
+  JavaScript: detalhe → Candidatura, o diálogo Gerar currículo (catálogo) e Meu perfil → Currículo base.
+
 - [ ] T051 [US4] Portões, roteiro H4, linhas da História 4 em `contracts/paridade.md` e entrega com o OK
 
 ---
