@@ -387,7 +387,7 @@ local); a IA, não.
 - Conferido sem a pessoa: `tsc`, build e greps; aberto pelo navegador sem janela, só com leituras e sem erro de
   JavaScript: detalhe → Candidatura, o diálogo Gerar currículo (catálogo) e Meu perfil → Currículo base.
 
-- [ ] T051 [US4] Portões, roteiro H4, linhas da História 4 em `contracts/paridade.md` e entrega com o OK
+- [X] T051 [US4] Portões, roteiro H4, linhas da História 4 em `contracts/paridade.md` e entrega com o OK
 
 ---
 
