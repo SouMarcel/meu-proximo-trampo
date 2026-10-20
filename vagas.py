@@ -6,6 +6,7 @@
   python vagas.py ver ID [ID…]      descrição completa de candidatas
   python vagas.py gravar            grava as candidatas avaliadas (.cache/avaliacoes.json)
   python vagas.py gravar --sem-avaliacao   grava as candidatas da última busca sem nota
+  python vagas.py pedidos-linkedin  resumo dos pedidos ao LinkedIn e do que veio antes de cada bloqueio
 
 Configuração em config.json (copie de config.exemplo.json). Dashboard: python dash/servidor.py
 Uma busca por vez no computador: com uma busca rodando pela página do dashboard, buscar sai com código 4.
@@ -15,6 +16,8 @@ terminal interativo, sai com código 5 até receber --confirmar-espera.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import functools
 import json
 import math
 import os
@@ -34,6 +37,18 @@ sys.path.insert(0, str(RAIZ / "dash"))
 import banco  # noqa: E402  (dash/banco.py)
 import filtros  # noqa: E402
 from fontes import FONTES, _comum  # noqa: E402
+
+
+def _origem_linkedin(nome: str):
+    """Decorador: os pedidos ao LinkedIn feitos pela função entram no registro com esta origem (spec 024)."""
+    def decorar(fn):
+        @functools.wraps(fn)
+        def com_origem(*args, **kwargs):
+            li = FONTES.get("linkedin")
+            with li.origem(nome) if hasattr(li, "origem") else contextlib.nullcontext():
+                return fn(*args, **kwargs)
+        return com_origem
+    return decorar
 
 
 def carregar_config() -> dict:
@@ -261,6 +276,7 @@ def aviso_pausa(f: dict, nomes_fontes: list[str]) -> str | None:
     return fonte.aviso_pausa(len(consultas_da_fonte(filtros.consultas(f), fonte)))
 
 
+@_origem_linkedin("busca")
 def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa: float = 2.0,
              incluir_presencial: bool = False, progresso=None, cancelado=None) -> dict:
     """A busca, sem imprimir: consulta os portais, corta, agrupa repetidas e lê as descrições que faltam.
@@ -439,6 +455,7 @@ def contar_pendentes() -> int:
     return sum(len(banco.pendentes_de_descricao(FONTES[n].PLATAFORMA)) for n in fontes_com_pendentes())
 
 
+@_origem_linkedin("completar")
 def completar_pendentes(avisar=None, conferir=None) -> dict:
     """Só as descrições pendentes, sem buscar vagas novas (spec 019): a mesma fila da busca (ler_descricoes), com
     o mesmo limite por portal, a pausa e a parada no bloqueio. Durante a espera do portal, nenhum pedido.
@@ -460,6 +477,7 @@ def completar_pendentes(avisar=None, conferir=None) -> dict:
 _LEITURA = threading.Lock()  # uma leitura de descrições por vez (Completar descrições e Forçar verificar)
 
 
+@_origem_linkedin("forcar")
 def descrever_uma(vid: str) -> dict:
     """A descrição de uma vaga só (spec 021, Forçar verificar): no máximo um pedido ao portal, pela descrever() da
     fonte, fora da espera do portal e fora de uma busca ou de outra leitura. O texto é gravado com
@@ -694,6 +712,16 @@ def cmd_completar(args) -> int:
     return 5 if r["espera"] and not r["completadas"] else 0
 
 
+def cmd_pedidos_linkedin(args) -> int:
+    """O resumo do registro dos pedidos ao LinkedIn (spec 024): rodadas, respostas e o que veio antes de cada bloqueio."""
+    li = FONTES.get("linkedin")
+    if not hasattr(li, "resumo_pedidos"):
+        print("O LinkedIn não está disponível nesta instalação.")
+        return 1
+    print(li.resumo_pedidos(args.horas))
+    return 0
+
+
 def cmd_gravar(args) -> int:
     return gravar(sem_avaliacao=args.sem_avaliacao, arquivo=args.avaliacoes)
 
@@ -867,8 +895,12 @@ def main() -> int:
     sub.add_parser("completar", help="lê só as descrições pendentes (ex.: depois de um bloqueio do LinkedIn), "
                                      "sem buscar vagas novas")
 
+    p5 = sub.add_parser("pedidos-linkedin", help="resumo dos pedidos ao LinkedIn e do que veio antes de cada bloqueio")
+    p5.add_argument("--horas", type=int, default=48, help="período do resumo (padrão: 48 horas)")
+
     args = ap.parse_args()
-    return {"buscar": cmd_buscar, "ver": cmd_ver, "gravar": cmd_gravar, "completar": cmd_completar}[args.cmd](args)
+    return {"buscar": cmd_buscar, "ver": cmd_ver, "gravar": cmd_gravar, "completar": cmd_completar,
+            "pedidos-linkedin": cmd_pedidos_linkedin}[args.cmd](args)
 
 
 if __name__ == "__main__":

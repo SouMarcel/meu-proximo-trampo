@@ -34,7 +34,8 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   `python iniciar.py` (pergunta antes de instalar).
 - Rode sempre a partir da raiz do projeto.
 - Principais comandos: `PY vagas.py buscar` (busca), `PY vagas.py completar` (só as descrições
-  pendentes do LinkedIn, sem buscar vagas novas), `PY dash/banco.py pendentes` (vagas que esperam
+  pendentes do LinkedIn, sem buscar vagas novas), `PY vagas.py pedidos-linkedin` (resumo dos pedidos ao
+  LinkedIn e do que veio antes de cada bloqueio), `PY dash/banco.py pendentes` (vagas que esperam
   nota), `PY curriculo.py <arquivo.json>` (gera o currículo; `--tecnicas` mostra as técnicas),
   `PY conferir.py <arquivo.json> [--vaga-id ID]` (conferência do currículo sem IA; `--carta
   carta.txt` confere uma carta), `PY candidatura_ia.py sensiveis perguntas.txt` (perguntas de
