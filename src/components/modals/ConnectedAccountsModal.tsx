@@ -1,389 +1,372 @@
-import React, { useState } from "react"
-import {
-  X,
-  Link2,
-  RefreshCw,
-  CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-  Check,
-  Clock,
-  ArrowRight,
-  ShieldCheck,
-  Globe,
-} from "lucide-react"
-import {
-  PortalConectado,
-  ItemSincronizacao,
-  HistoricoCandidatura,
-  Etapa,
-} from "../../types/job"
-import { getPlataformaStyle, getEtapaInfo } from "../../utils/formatters"
+/**
+ * Atualizar candidaturas (dash/API.md §3.11; constituição VI, "Conta conectada"): a ferramenta lê a área logada da
+ * Gupy e do Indeed numa janela do navegador dela, com o login feito pela pessoa. A página nunca pede nem mostra
+ * senha; a leitura só propõe, e só os itens marcados vão para o quadro. Bloqueio ou novo login param a leitura.
+ */
+import React, { useCallback, useEffect, useRef, useState } from "react"
+import { X, Link2, Loader2, AlertTriangle } from "lucide-react"
+import * as contasApi from "../../services/api/contas"
+import type { Contas, EstadoCandidaturas, ItemCandidatura } from "../../services/api/contas"
+import { mensagemDeErro, ehErroApi } from "../../services/api"
+import { useFerramenta } from "../../contexto/Ferramenta"
+import { useConsulta } from "../../hooks/useConsulta"
+import { ETAPAS, RESULTADOS } from "../../utils/rotulos"
+import { linkSeguro } from "../../utils/formatters"
+import { BTN_MINI } from "../curriculo/Curriculos"
 
-interface ConnectedAccountsModalProps {
-  isOpen: boolean
+interface Props {
   onClose: () => void
-  portais: PortalConectado[]
-  itensSincronizacao: ItemSincronizacao[]
-  historico: HistoricoCandidatura[]
-  onConectarPortal: (portalId: string) => void
-  onDesconectarPortal: (portalId: string) => void
-  onProntoPortal: (portalId: string) => void
-  onSincronizar: () => Promise<void> | void
-  onAplicarAlteracoes: (itensSelecionados: ItemSincronizacao[]) => void
+  onAviso: (m: string, t?: "info" | "erro") => void
+  /** O quadro mudou (aplicadas ou importadas): relê as vagas. */
+  onQuadroMudou: () => void
 }
 
-export default function ConnectedAccountsModal({
-  isOpen,
-  onClose,
-  portais,
-  itensSincronizacao,
-  historico,
-  onConectarPortal,
-  onDesconectarPortal,
-  onProntoPortal,
-  onSincronizar,
-  onAplicarAlteracoes,
-}: ConnectedAccountsModalProps) {
-  if (!isOpen) return null
+const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
 
-  const [itens, setItens] = useState<ItemSincronizacao[]>(itensSincronizacao)
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [portalEmConexao, setPortalEmConexao] = useState<string | null>(null)
-  const [sucessoMsg, setSucessoMsg] = useState<string | null>(null)
+function etapaTexto(x: ItemCandidatura["para"] | null): string {
+  if (!x || !x.etapa) return "Relatório"
+  const e = ETAPAS.find((y) => y.valor === x.etapa)
+  return (e ? e.rotulo : x.etapa) + (x.resultado ? ` · ${RESULTADOS[x.resultado] || x.resultado}` : "")
+}
 
-  const handleToggleItem = (id: string) => {
-    setItens((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, selecionado: !item.selecionado } : item,
-      ),
-    )
-  }
+function mudanca(i: ItemCandidatura): string {
+  if (i.tipo === "mudar") return `${etapaTexto(i.de)} → ${etapaTexto(i.para)}`
+  if (i.tipo === "quadro") return `Relatório → ${etapaTexto(i.para)}`
+  return `Nova no quadro · ${etapaTexto(i.para)}`
+}
 
-  const handleSelectAll = (selecionar: boolean) => {
-    setItens((prev) => prev.map((item) => ({ ...item, selecionado: selecionar })))
-  }
+/** O ícone do portal vem do código do servidor; como <img>, um SVG não executa script. */
+function Icone({ svg }: { svg: string }) {
+  if (!svg || !svg.trim().startsWith("<svg")) return null
+  return <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`} alt="" className="w-5 h-5" aria-hidden="true" />
+}
 
-  const handleSyncClick = async () => {
-    setIsSyncing(true)
-    setSucessoMsg(null)
+export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou }: Props) {
+  const { podeGravar, tratarErro } = useFerramenta()
+  const [c, setC] = useState<Contas | null>(null)
+  const [e, setE] = useState<EstadoCandidaturas | null>(null)
+  const [conectando, setConectando] = useState<string | null>(null)
+  const [marcadas, setMarcadas] = useState<Record<string, boolean>>({})
+  const [erro, setErro] = useState("")
+  const [ocupado, setOcupado] = useState("")
+  const antes = useRef<string | undefined>(undefined)
+  const fechar = useRef(onClose)
+  fechar.current = onClose
+  const aviso = useRef(onAviso)
+  aviso.current = onAviso
+
+  const carregar = useCallback(async () => {
     try {
-      await onSincronizar()
-      setSucessoMsg("Portais sincronizados com sucesso!")
+      const [cc, ee] = await Promise.all([contasApi.contas(), contasApi.estado()])
+      const anterior = antes.current
+      antes.current = ee.situacao
+      setC(cc)
+      setE(ee)
+      const r = ee.resultado
+      if (r && (anterior === undefined || contasApi.ATIVAS.includes(anterior || ""))) {
+        // marcas sugeridas pelo servidor, na primeira vez que a proposta aparece
+        const m: Record<string, boolean> = {}
+        r.itens.forEach((i) => (m[i.chave] = i.marcado))
+        setMarcadas(m)
+      }
+      const acabou = anterior !== undefined && contasApi.ATIVAS.includes(anterior) && ee.situacao === "pronta"
+      if (acabou && r && !r.itens.length && !r.historico.length && !Object.keys(r.erros || {}).length) {
+        aviso.current(`Tudo certo: o quadro já está em dia com os portais (${r.sem_mudanca || 0} candidatura(s) conferida(s)).`)
+        fechar.current()
+      }
+    } catch (err) {
+      setErro(
+        ehErroApi(err) && err.status === 403
+          ? "Contas conectadas só funcionam no computador onde a ferramenta roda."
+          : mensagemDeErro(err, "Não deu para ler as contas."),
+      )
+    }
+  }, [])
+
+  useEffect(() => {
+    carregar()
+  }, [carregar])
+
+  const lendo = Boolean(e && contasApi.ATIVAS.includes(e.situacao))
+  useConsulta(carregar, 1500, lendo)
+
+  const acao = async (chave: string, fn: () => Promise<unknown>) => {
+    setOcupado(chave)
+    setErro("")
+    try {
+      await fn()
+    } catch (err) {
+      tratarErro(err)
+      setErro(mensagemDeErro(err))
     } finally {
-      setIsSyncing(false)
+      setOcupado("")
     }
   }
 
-  const handleAplicar = () => {
-    const selecionados = itens.filter((i) => i.selecionado)
-    if (selecionados.length === 0) return
-    onAplicarAlteracoes(selecionados)
-    setItens((prev) => prev.filter((i) => !i.selecionado))
-    setSucessoMsg(
-      `${selecionados.length} alteração(ões) aplicada(s) ao Quadro Kanban!`,
-    )
-  }
+  const r = e?.resultado
+  const algum = (c?.portais || []).some((p) => p.conectado)
+  const itens = r && !lendo ? r.itens : []
+  const nMarcadas = itens.filter((i) => marcadas[i.chave]).length
+  const grupos: Record<string, ItemCandidatura[]> = {}
+  itens.forEach((i) => (grupos[i.plataforma] = grupos[i.plataforma] || []).push(i))
 
-  const itensSelecionadosCount = itens.filter((i) => i.selecionado).length
+  const aplicar = () =>
+    acao("aplicar", async () => {
+      const chaves = itens.filter((i) => marcadas[i.chave]).map((i) => i.chave)
+      if (!chaves.length) return setErro("Marque pelo menos uma candidatura.")
+      const feitas = itens.filter((i) => chaves.includes(i.chave))
+      const j = await contasApi.aplicar({ chaves })
+      const lista =
+        feitas.slice(0, 3).map((i) => `${i.titulo} → ${etapaTexto(i.para)}`).join("; ") + (feitas.length > 3 ? `; e mais ${feitas.length - 3}` : "")
+      onQuadroMudou()
+      if (j.erros?.length) {
+        setErro("Não deu para gravar: " + j.erros.join(" · "))
+        onAviso(`Quadro atualizado (${j.aplicados}): ${lista}. Com erro: ${j.erros.length}.`, "erro")
+        await carregar()
+      } else {
+        onAviso(`Quadro atualizado (${j.aplicados}): ${lista}.`)
+        onClose()
+      }
+    })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={onClose}>
       <div
-        className="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-contas"
+        className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+        onClick={(ev) => ev.stopPropagation()}
       >
-        {/* Top Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
-          <div className="flex items-center gap-3">
+        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+          <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
               <Link2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
-                Contas Conectadas & Sincronização
+              <h3 id="titulo-contas" className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
+                Atualizar candidaturas
               </h3>
               <p className="text-xs text-slate-500">
-                Atualize o quadro Kanban com o andamento das suas candidaturas nos
-                portais (Gupy, Indeed, LinkedIn)
+                Lê o andamento das suas candidaturas na Gupy e no Indeed, numa janela do navegador só da ferramenta, com o
+                login feito por você. Só leitura: nada é clicado nem enviado nos portais, e só o que você marcar vai para o
+                quadro.
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <X className="w-5 h-5 hover:text-slate-900 [button:hover_&]:text-slate-900 dark:hover:text-slate-900 dark:[button:hover_&]:text-slate-900 transition-colors" />
+          <button type="button" onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" aria-label="Fechar">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
-          {sucessoMsg && (
-            <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{sucessoMsg}</span>
-            </div>
+        <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+          {!c && !erro && (
+            <p className="flex items-center gap-2 text-slate-500">
+              <Loader2 className="w-4 h-4 animate-spin" /> Carregando…
+            </p>
           )}
 
-          {/* 1. Portais Conectados */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                <span>Portais e Sessões</span>
-                <span className="text-xs font-normal text-slate-500">
-                  (Princípio VI da Constituição)
-                </span>
-              </h4>
-              <button
-                onClick={handleSyncClick}
-                disabled={isSyncing}
-                className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50"
-              >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
-                />
-                <span>{isSyncing ? "Lendo portais…" : "Ler portais agora"}</span>
-              </button>
-            </div>
+          {c && !c.navegador && <p className="text-rose-600 dark:text-rose-400">Precisa do Edge ou do Chrome neste computador.</p>}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {portais.map((portal) => {
-                const isConnecting = portalEmConexao === portal.id
-                const platStyle = getPlataformaStyle(portal.plataforma)
+          {itens.length > 0 && (
+            <p role="status" className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900">
+              <b>Encontrei {itens.length} mudança(s) nos portais.</b> Confira e clique em Aplicar: só o que estiver marcado é
+              gravado no quadro.
+            </p>
+          )}
 
-                return (
-                  <div
-                    key={portal.id}
-                    className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col justify-between gap-3"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-xs font-bold border ${platStyle.bg} ${platStyle.text} ${platStyle.border}`}
-                        >
-                          {portal.nome}
-                        </span>
-                        <span
-                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                            portal.conectado
-                              ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300"
-                              : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                          }`}
-                        >
-                          {portal.conectado ? "Conectado" : "Desconectado"}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 leading-relaxed mt-2">
-                        {portal.aviso_login}
-                      </p>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
-                      {portal.conectado ? (
+          {c && (
+            <section className="space-y-2">
+              <h4 className="font-bold text-sm text-slate-900 dark:text-white">Portais</h4>
+              {c.portais.map((p) => (
+                <div key={p.nome} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Icone svg={p.icone} />
+                    <b>{p.plataforma}</b>
+                    <span className="ml-auto flex items-center gap-2">
+                      {p.conectado ? (
                         <>
-                          <span className="text-[10px] text-slate-400">
-                            {portal.candidaturas_encontradas || 0} candidaturas
-                          </span>
+                          <span className="text-emerald-700 dark:text-emerald-400 text-xs font-semibold">Conectado</span>
                           <button
                             type="button"
-                            onClick={() => onDesconectarPortal(portal.id)}
-                            className="text-xs text-rose-600 hover:text-rose-500 font-medium"
+                            disabled={lendo || !podeGravar || Boolean(ocupado)}
+                            onClick={() =>
+                              acao("desc", async () => {
+                                await contasApi.desconectar(p.nome)
+                                onAviso("Desconectado: a sessão desse portal foi apagada da janela da ferramenta.")
+                                await carregar()
+                              })
+                            }
+                            className={BTN_MINI}
                           >
                             Desconectar
                           </button>
                         </>
-                      ) : isConnecting ? (
-                        <div className="w-full flex items-center justify-between gap-2">
-                          <span className="text-[10px] text-amber-600 animate-pulse">
-                            Faça login na janela
-                          </span>
+                      ) : conectando === p.nome ? (
+                        <>
+                          <span className={DICA}>Faça o login na janela que abriu e clique em Pronto.</span>
                           <button
                             type="button"
-                            onClick={() => {
-                              setPortalEmConexao(null)
-                              onProntoPortal(portal.id)
-                            }}
-                            className="px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500"
+                            disabled={Boolean(ocupado)}
+                            onClick={() =>
+                              acao("pronto", async () => {
+                                const j = await contasApi.pronto(p.nome)
+                                if (j.conectado) {
+                                  setConectando(null)
+                                  onAviso("Conectado.")
+                                  await carregar()
+                                } else {
+                                  setErro("O login ainda não foi concluído na janela. Termine o login e clique em Pronto de novo.")
+                                }
+                              })
+                            }
+                            className="px-3 py-1 rounded-lg text-[11px] font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
                           >
                             Pronto
                           </button>
-                        </div>
+                        </>
                       ) : (
                         <button
                           type="button"
-                          onClick={() => {
-                            setPortalEmConexao(portal.id)
-                            onConectarPortal(portal.id)
-                          }}
-                          className="w-full py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition shadow-2xs"
+                          disabled={lendo || !c.navegador || !podeGravar || Boolean(ocupado)}
+                          onClick={() =>
+                            acao("con", async () => {
+                              await contasApi.conectar(p.nome)
+                              setConectando(p.nome)
+                            })
+                          }
+                          className={BTN_MINI}
                         >
                           Conectar
                         </button>
                       )}
-                    </div>
+                    </span>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* 2. Alterações Detectadas Prontas para Atualizar o Quadro */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Mudanças Reais no Quadro Kanban
-                </h4>
-                <p className="text-xs text-slate-500">
-                  Selecione as alterações detectadas nos portais que deseja aplicar às
-                  suas vagas
-                </p>
-              </div>
-              {itens.length > 0 && (
-                <div className="flex items-center gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectAll(true)}
-                    className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-                  >
-                    Todas
-                  </button>
-                  <span className="text-slate-300 dark:text-slate-700">·</span>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectAll(false)}
-                    className="text-slate-500 hover:underline font-medium"
-                  >
-                    Nenhuma
-                  </button>
+                  {p.aviso_login && <p className={DICA}>{p.aviso_login}</p>}
                 </div>
-              )}
-            </div>
+              ))}
+            </section>
+          )}
 
-            {itens.length > 0 ? (
-              <div className="space-y-2">
-                {itens.map((item) => {
-                  const platStyle = getPlataformaStyle(item.plataforma)
-                  const etapaNovaInfo = getEtapaInfo(item.etapa_nova)
+          {e?.situacao === "lendo" && (
+            <p role="status" className="flex items-center gap-2 p-3 rounded-xl bg-slate-100 dark:bg-slate-800">
+              <Loader2 className="w-4 h-4 animate-spin" /> Lendo suas candidaturas{e.portal ? ` (${e.portal})` : ""}, aguarde…
+            </p>
+          )}
+          {e?.situacao === "aguardando_login" && (
+            <p role="status" className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900">
+              A {e.portal} pediu login: faça o login na janela que abriu (ela veio para a frente). A leitura segue sozinha.
+            </p>
+          )}
 
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => handleToggleItem(item.id)}
-                      className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                        item.selecionado
-                          ? "border-indigo-300 dark:border-indigo-700 bg-indigo-50/40 dark:bg-indigo-950/20"
-                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70 hover:opacity-100"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
+          {r && !lendo && (
+            <>
+              {Object.entries(r.erros || {}).map(([pl, msg]) => (
+                <p key={pl} className="text-rose-600 dark:text-rose-400">
+                  {pl}: {msg}
+                </p>
+              ))}
+              {Object.entries(grupos).map(([pl, lista]) => (
+                <section key={pl} className="space-y-2">
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">{pl}</h4>
+                  {lista.map((i) => {
+                    const extra = [i.nota, ...(i.avisos || [])].filter(Boolean).join(" · ")
+                    const link = linkSeguro(i.url)
+                    return (
+                      <label key={i.chave} className="flex items-start gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={item.selecionado}
-                          onChange={() => handleToggleItem(item.id)}
-                          className="w-4 h-4 rounded-md accent-indigo-600 cursor-pointer"
-                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5"
+                          checked={Boolean(marcadas[i.chave])}
+                          onChange={(ev) => setMarcadas((m) => ({ ...m, [i.chave]: ev.target.checked }))}
+                          aria-label={`Aplicar: ${i.titulo}`}
                         />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${platStyle.bg} ${platStyle.text} ${platStyle.border}`}
-                            >
-                              {item.plataforma}
-                            </span>
-                            <h5 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-                              {item.titulo}
-                            </h5>
-                            <span className="text-xs text-slate-500">
-                              · {item.empresa}
-                            </span>
-                          </div>
-                          <p className="text-xs text-indigo-700 dark:text-indigo-300 font-medium mt-1 flex items-center gap-1.5">
-                            <ArrowRight className="w-3 h-3 text-indigo-500" />
-                            <span>{item.alteracao}</span>
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <span
-                          className={`px-2.5 py-1 rounded-xl text-xs font-semibold ${etapaNovaInfo.badgeBg} ${etapaNovaInfo.badgeText}`}
-                        >
-                          → {etapaNovaInfo.label}
+                        <span className="space-y-0.5">
+                          <span className="block">
+                            <b>{i.titulo}</b> — {i.empresa}
+                            {link && (
+                              <>
+                                {" · "}
+                                <a href={link} target="_blank" rel="noopener noreferrer" className="underline" onClick={(ev) => ev.stopPropagation()}>
+                                  abrir
+                                </a>
+                              </>
+                            )}
+                          </span>
+                          <span className="block font-semibold text-indigo-700 dark:text-indigo-300">{mudanca(i)}</span>
+                          {extra && <span className={`block ${DICA}`}>{extra}</span>}
                         </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="p-6 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto" />
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Quadro em dia com os portais
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Nenhuma mudança de etapa pendente encontrada nas contas conectadas.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* 3. Histórico de Candidaturas nos Portais */}
-          {historico.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-                Histórico nos Portais
-              </h4>
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-2">
-                {historico.map((h) => (
-                  <div
-                    key={h.id}
-                    className="flex items-center justify-between text-xs py-1 border-b border-slate-200/50 dark:border-slate-700/50 last:border-0"
+                      </label>
+                    )
+                  })}
+                </section>
+              ))}
+              {!r.itens.length && <p className={DICA}>Nada a mudar: o quadro já está em dia com os portais.</p>}
+              {r.sem_mudanca > 0 && <p className={DICA}>{r.sem_mudanca} candidatura(s) já estavam em dia.</p>}
+              {r.historico.length > 0 && (
+                <p className="flex items-center gap-2 flex-wrap">
+                  <span className={DICA}>{r.historico.length} candidatura(s) já encerradas nos portais não estão no dashboard.</span>
+                  <button
+                    type="button"
+                    disabled={!podeGravar || Boolean(ocupado)}
+                    onClick={() =>
+                      acao("hist", async () => {
+                        const j = await contasApi.aplicar({ historico: true })
+                        onAviso(`${j.aplicados} candidatura(s) importada(s) como Encerrada.`)
+                        onQuadroMudou()
+                        await carregar()
+                      })
+                    }
+                    className={BTN_MINI}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
-                        {h.titulo}
-                      </span>
-                      <span>· {h.empresa}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        ({h.plataforma})
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-                      <span>{h.data}</span>
-                      <span className="capitalize">({h.etapa})</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                    Importar como histórico
+                  </button>
+                </p>
+              )}
+            </>
+          )}
+
+          {erro && (
+            <p role="alert" className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200 text-xs">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              {erro}
+            </p>
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition"
-          >
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 flex-wrap">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
             Fechar
           </button>
-
-          <div className="flex items-center gap-2">
-            {itens.length > 0 && (
+          {itens.length > 0 ? (
+            <>
               <button
                 type="button"
-                onClick={handleAplicar}
-                disabled={itensSelecionadosCount === 0}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition shadow-xs"
+                disabled={!podeGravar || Boolean(ocupado)}
+                onClick={() => acao("ler", async () => { await contasApi.ler(); antes.current = "lendo"; await carregar() })}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50"
               >
-                Aplicar no Quadro ({itensSelecionadosCount})
+                Ler de novo
               </button>
-            )}
-          </div>
+              <button
+                type="button"
+                disabled={!nMarcadas || !podeGravar || Boolean(ocupado)}
+                onClick={aplicar}
+                className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {ocupado === "aplicar" ? "Aplicando…" : nMarcadas ? `Aplicar ${nMarcadas} ${nMarcadas === 1 ? "mudança" : "mudanças"}` : "Nada marcado"}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={lendo || !algum || !podeGravar || Boolean(ocupado)}
+              onClick={() => acao("ler", async () => { await contasApi.ler(); antes.current = "lendo"; await carregar() })}
+              className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+            >
+              {lendo ? "Lendo…" : "Atualizar agora"}
+            </button>
+          )}
         </div>
       </div>
     </div>

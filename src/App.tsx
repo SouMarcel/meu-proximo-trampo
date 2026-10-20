@@ -8,11 +8,6 @@ import type {
   Vaga,
   Versao,
 } from "./types/api"
-import {
-  PortalConectado,
-  ItemSincronizacao,
-  HistoricoCandidatura,
-} from "./types/job"
 import { mensagemDeErro, ehErroApi } from "./services/api"
 import * as vagasApi from "./services/api/vagas"
 import * as buscaApi from "./services/api/busca"
@@ -24,9 +19,6 @@ import { FerramentaProvider, useFerramenta, motivoSemGravar } from "./contexto/F
 import { GeracaoProvider } from "./contexto/Geracao"
 import {
   MOCK_VAGAS,
-  MOCK_PORTAIS_CONECTADOS,
-  MOCK_ITENS_SINCRONIZACAO,
-  MOCK_HISTORICO_CANDIDATURAS,
 } from "./services/mockData"
 import Header from "./components/Header"
 import NavigationTabs, { ActiveTab } from "./components/NavigationTabs"
@@ -38,7 +30,6 @@ import InterviewCoach from "./components/InterviewCoach"
 import AndamentoBusca from "./components/AndamentoBusca"
 import UltimaBuscaLinha from "./components/UltimaBusca"
 import CompletarDescricoes from "./components/CompletarDescricoes"
-import { AvisoTelaAntiga, TELAS_ANTIGAS } from "./components/AindaNaPaginaAntiga"
 
 // Modals
 import JobDetailModal from "./components/modals/JobDetailModal"
@@ -80,7 +71,6 @@ function Pagina({
   const ferramenta = useFerramenta()
   const { servidor, setServidor, podeGravar, podeAlterar, registrarPodeAlterar, tratarErro, recarregarIA } =
     ferramenta
-  const demo = servidor === "demo"
 
   // Dados do servidor
   const [vagas, setVagas] = useState<Vaga[]>([])
@@ -103,9 +93,6 @@ function Pagina({
   const [pendentesVersao, setPendentesVersao] = useState(0) // pede ao "Completar descrições" para reler
 
   // Telas ainda simuladas (passam a usar o servidor nas próximas histórias da spec 025)
-  const [portais, setPortais] = useState<PortalConectado[]>(MOCK_PORTAIS_CONECTADOS)
-  const [itensSync] = useState<ItemSincronizacao[]>(MOCK_ITENS_SINCRONIZACAO)
-  const [historicoSync] = useState<HistoricoCandidatura[]>(MOCK_HISTORICO_CANDIDATURAS)
 
   // Navegação e aba ativa (preferência de tela)
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
@@ -425,22 +412,6 @@ function Pagina({
     buscaApi.plano().then(setPlanoBusca).catch(() => undefined)
     if (depois) depois()
   }
-  const handleConectarPortal = (portalId: string) => {
-    setPortais((prev) => prev.map((p) => (p.id === portalId ? { ...p, conectado: true } : p)))
-    showToast(`Conta conectada com sucesso.`)
-  }
-  const handleDesconectarPortal = (portalId: string) => {
-    const confirmou = window.confirm("Deseja realmente desconectar esta conta?")
-    if (!confirmou) return
-    setPortais((prev) => prev.map((p) => (p.id === portalId ? { ...p, conectado: false } : p)))
-    showToast(`Conta desconectada.`)
-  }
-  const handleSincronizarPortais = async () => {
-    showToast("Portais consultados: candidaturas em dia com o quadro.")
-  }
-  const handleAplicarAlteracoes = (itensSelecionados: ItemSincronizacao[]) => {
-    showToast(`${itensSelecionados.length} alterações aplicadas ao quadro.`)
-  }
 
   const painelBusca =
     estadoBusca &&
@@ -670,29 +641,12 @@ function Pagina({
         />
       )}
 
-      {/* Telas ainda não ligadas ao servidor (histórias 2 a 6 da spec 025): com o servidor no ar, um aviso com o
-          caminho para a página de sempre; os dados de exemplo só aparecem no modo demonstração. */}
-      {demo ? (
-        <>
-          <ConnectedAccountsModal
-            isOpen={isAccountsModalOpen}
-            onClose={() => setIsAccountsModalOpen(false)}
-            portais={portais}
-            itensSincronizacao={itensSync}
-            historico={historicoSync}
-            onConectarPortal={handleConectarPortal}
-            onDesconectarPortal={handleDesconectarPortal}
-            onProntoPortal={handleConectarPortal}
-            onSincronizar={handleSincronizarPortais}
-            onAplicarAlteracoes={handleAplicarAlteracoes}
-          />
-        </>
-      ) : (
-        <>
-          {isAccountsModalOpen && (
-            <AvisoTelaAntiga tela={TELAS_ANTIGAS.contas} onClose={() => setIsAccountsModalOpen(false)} />
-          )}
-        </>
+      {isAccountsModalOpen && (
+        <ConnectedAccountsModal
+          onClose={() => setIsAccountsModalOpen(false)}
+          onAviso={showToast}
+          onQuadroMudou={() => carregarVagas().catch(() => undefined)}
+        />
       )}
 
       {/* Aviso flutuante */}
