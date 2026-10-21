@@ -507,21 +507,21 @@ pessoa para a troca.
 - A rota de página atende qualquer caminho fora de `/api/` e `/arquivos/` com os arquivos de `dash/front/`; uma
   API desconhecida continua 404 em JSON.
 
-- [ ] T066 [US7] Rodar `python -m unittest discover -s tests`; roteiro H7 na branch pessoal; busca de dados pessoais;
+- [X] T066 [US7] Rodar `python -m unittest discover -s tests`; roteiro H7 na branch pessoal; busca de dados pessoais;
   com o OK, merge na `master`, push e `git merge master` na branch pessoal
 
 ---
 
 ## Phase 10: Polish
 
-- [ ] T067 Apagar `src/types/job.ts` e o que sobrar de `ApiService`, `JobStorageService`, `MOCK_*` fora do modo
+- [X] T067 Apagar `src/types/job.ts` e o que sobrar de `ApiService`, `JobStorageService`, `MOCK_*` fora do modo
   demonstração. O `grep` do quickstart fica limpo.
-- [ ] T068 [P] Conferir `src/components/FunnelAnalytics.tsx` e `src/components/InternationalHub.tsx`: nenhum número ou
+- [X] T068 [P] Conferir `src/components/FunnelAnalytics.tsx` e `src/components/InternationalHub.tsx`: nenhum número ou
   texto fixo de exemplo, só valores calculados das vagas e das análises (FR-016)
 - [ ] T069 [P] Conferir as telas novas na largura de notebook e de celular e nos temas claro e escuro (FR-006)
-- [ ] T070 [P] Conferir o tamanho do JS montado (meta: abaixo de 700 kB) e que a página não faz nenhum pedido para
+- [X] T070 [P] Conferir o tamanho do JS montado (meta: abaixo de 700 kB) e que a página não faz nenhum pedido para
   fora de `127.0.0.1` (aba Rede do navegador)
-- [ ] T071 Marcar a spec como Concluída em `specs/025-front-unico/spec.md`, rodar `graphify update .` e atualizar a
+- [X] T071 Marcar a spec como Concluída em `specs/025-front-unico/spec.md`, rodar `graphify update .` e atualizar a
   memória do projeto
 
 ---
@@ -562,3 +562,15 @@ T010 utils/filaVaga.ts · T011 components/TextoDaVaga.tsx
 2. **Incremental**: US2 → US3 → US4 → US5 → US6, cada uma com teste na branch pessoal, linhas marcadas na paridade e
    entrega pela Action.
 3. **Troca**: US7 só com a paridade completa, uma semana de uso e o OK da pessoa.
+
+## Fechamento (2026-10-21)
+
+- Entregue na `master` em sete PRs do front (#2 a #9, com o ajuste do OpenRouter e do cartão do Relatório no #8) e
+  nos merges da spec; a troca da página saiu no merge `947fad0`.
+- T067: saíram `types/job.ts`, o `ApiService`, o `JobStorageService`, o aviso de página antiga e os exemplos fora do
+  modo demonstração.
+- T068: o Funil e a aba Internacional só calculam a partir das vagas e das análises.
+- T070: o JS montado tem 504 kB (meta: abaixo de 700 kB). O único `fetch` é o de `src/services/api.ts`, para o
+  servidor local; os outros endereços no JS são links que a pessoa clica.
+- T069 (telas na largura de celular e nos dois temas) fica para a pessoa conferir no uso.
+

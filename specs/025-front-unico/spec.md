@@ -5,7 +5,7 @@ testada na branch pessoal antes da `master`)
 
 **Created**: 2026-10-20
 
-**Status**: Aprovada (2026-10-20)
+**Status**: Concluída (2026-10-21): a página nova em `/` e o dashboard antigo fora; a conferência visual no celular e nos dois temas (T069) fica com a pessoa
 
 **Input**: User description: "Temos atualmente 2 páginas, a antiga e a /novo, e quero apenas uma delas: analise o que
 precisamos para que a /novo integre e use as APIs corretamente e passe a ser a única página da nossa ferramenta. Por
