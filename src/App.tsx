@@ -341,7 +341,7 @@ function Pagina({
     }
   }
 
-  // Remover do quadro (a confirmação, com segundo clique, fica no botão): a manual some; as outras saem do quadro.
+  // Remover do quadro (a confirmação fica no próprio card ou no detalhe da vaga): a manual some; as outras saem do quadro.
   const handleDeleteVaga = async (id: string) => {
     if (!podeGravar) {
       showToast(motivoSemGravar(servidor, podeAlterar), "erro")

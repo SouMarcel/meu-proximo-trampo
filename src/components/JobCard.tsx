@@ -228,27 +228,49 @@ export default function JobCard({
           {onDelete && (
             <button
               disabled={!podeGravar}
-              onClick={() => {
-                if (!confirmarRemocao) {
-                  setConfirmarRemocao(true)
-                  setTimeout(() => setConfirmarRemocao(false), 4000)
-                  return
-                }
-                onDelete(vaga.id)
-              }}
-              className={`flex items-center gap-1 p-1 rounded-md transition disabled:opacity-50 ${
-                confirmarRemocao
-                  ? "px-2 bg-rose-600 text-white text-[11px] font-semibold"
-                  : "text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-              }`}
-              title={confirmarRemocao ? "Clique de novo para remover" : "Remover do quadro"}
+              onClick={() => setConfirmarRemocao(true)}
+              className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition disabled:opacity-50"
+              title="Remover do quadro"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              {confirmarRemocao && <span>Confirmar remoção</span>}
             </button>
           )}
         </div>
       </div>
+
+      {/* Confirmação da remoção: o card escurece e o botão fica no meio dele */}
+      {onDelete && confirmarRemocao && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation()
+            setConfirmarRemocao(false)
+          }}
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl bg-slate-900/75 dark:bg-slate-950/80 backdrop-blur-[2px] p-4 cursor-default"
+        >
+          <span className="text-xs font-medium text-white">Remover do quadro?</span>
+          <button
+            autoFocus
+            disabled={!podeGravar}
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(vaga.id)
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-md transition disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Confirmar remoção</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setConfirmarRemocao(false)
+            }}
+            className="text-[11px] text-slate-300 hover:text-white hover:underline"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
     </div>
   )
 }
