@@ -11,6 +11,7 @@ import type {
 import { mensagemDeErro, ehErroApi } from "./services/api"
 import * as vagasApi from "./services/api/vagas"
 import * as buscaApi from "./services/api/busca"
+import * as configApi from "./services/api/config"
 import { ScreenPreferencesService } from "./services/storage"
 import { areaDe, noRelatorio, noQuadro, hoje, horaDe } from "./utils/formatters"
 import { naFila } from "./utils/filaVaga"
@@ -90,7 +91,15 @@ function Pagina({
   const buscaAteRef = useRef(0) // segue consultando por 20 s depois de uma ação
   const [painelBuscaFechado, setPainelBuscaFechado] = useState("")
   const [semIA, setSemIA] = useState<Record<string, boolean>>({})
-  const [pendentesVersao, setPendentesVersao] = useState(0) // pede ao "Completar descrições" para reler
+  const [pendentesVersao, setPendentesVersao] = useState(0)
+  // filtros gravados: a primeira vez (sem cargos) e a busca internacional desligada viram avisos, como no antigo
+  const [configResumo, setConfigResumo] = useState<{ existe: boolean; internacional: boolean } | null>(null)
+  const lerConfig = useCallback(() => {
+    configApi
+      .ler()
+      .then((c) => setConfigResumo({ existe: c.existe !== false, internacional: Boolean(c.filtros.internacional?.ativo) }))
+      .catch(() => undefined)
+  }, []) // pede ao "Completar descrições" para reler
 
   // Telas ainda simuladas (passam a usar o servidor nas próximas histórias da spec 025)
 
@@ -169,10 +178,11 @@ function Pagina({
       })
       .catch(() => undefined)
     await carregarVagas()
+    lerConfig()
     recarregarIA()
     consultarBusca()
     buscaApi.plano().then(setPlanoBusca).catch(() => undefined)
-  }, [carregarVagas, recarregarIA, consultarBusca])
+  }, [carregarVagas, lerConfig, recarregarIA, consultarBusca])
 
   // Abertura: sem resposta do servidor, modo demonstração (dados de exemplo e nada é gravado).
   useEffect(() => {
@@ -410,6 +420,7 @@ function Pagina({
     fecharFiltros()
     showToast("Filtros salvos. Valem a partir da próxima busca.")
     buscaApi.plano().then(setPlanoBusca).catch(() => undefined)
+    lerConfig()
     if (depois) depois()
   }
 
@@ -498,6 +509,14 @@ function Pagina({
           <div className="space-y-4">
             {painelBusca}
             <UltimaBuscaLinha busca={ultimaBusca} analisando={Boolean(versaoInfo?.analisando)} />
+            {configResumo && !configResumo.existe && (
+              <p className="p-3 rounded-2xl border text-xs sm:text-sm flex items-center gap-2 flex-wrap bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200">
+                Antes da primeira busca, escolha os cargos e o local em
+                <button type="button" onClick={() => setFiltrosModo("nacional")} className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/70 dark:bg-slate-900 border border-amber-300 dark:border-amber-800">
+                  Filtros da busca
+                </button>
+              </p>
+            )}
             {servidor === "no_ar" && (
               <CompletarDescricoes
                 gatilho={pendentesVersao}
@@ -523,6 +542,15 @@ function Pagina({
         {activeTab === "internacional" && (
           <div className="space-y-4">
             {painelBusca}
+            {configResumo && !configResumo.internacional && (
+              <p className="p-3 rounded-2xl border text-xs sm:text-sm flex items-center gap-2 flex-wrap bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200">
+                A busca internacional está desligada: hoje só aparecem aqui as vagas de fora que chegaram por outro caminho
+                (link, startup.jobs). Ligue e escolha os países e os cargos em inglês em
+                <button type="button" onClick={() => setFiltrosModo("internacional")} className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/70 dark:bg-slate-900 border border-amber-300 dark:border-amber-800">
+                  Filtros da busca internacional
+                </button>
+              </p>
+            )}
             <InternationalHub
               vagas={vagasInternacional}
               onSelectVaga={(v) => setDetalheId(v.id)}

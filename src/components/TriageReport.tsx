@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import {
   Check,
   X,
@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import type { Vaga, Senioridade, Versao } from "../types/api"
 import { useFerramenta, AvisoSoLeitura } from "../contexto/Ferramenta"
+import { ScreenPreferencesService } from "../services/storage"
 import {
   getPlataformaStyle,
   getAderenciaBadge,
@@ -32,6 +33,7 @@ import {
   linkSeguro,
   temNota,
   diaMes,
+  semAcento,
 } from "../utils/formatters"
 
 interface TriageReportProps {
@@ -49,6 +51,83 @@ interface TriageReportProps {
 }
 
 type SubTab = "pendente" | "seguir" | "visitada" | "fora"
+
+/** Níveis da vaga: os da análise; sem análise, os que o título diz (a mesma leitura do dashboard antigo). */
+function niveisDa(v: Vaga): string[] {
+  if (Array.isArray(v.senioridade)) return v.senioridade
+  let t = " " + semAcento(v.titulo || "").replace(/[^a-z0-9]+/g, " ") + " "
+  t = t.replace(/ semi ?(senior|sr) /g, " ssr ") // "Semi Senior" (espanhol) é pleno
+  const r: string[] = []
+  if (/ (jr|junior|entry level) /.test(t)) r.push("junior")
+  if (/ (pl(?! sql )|pleno|mid|intermediate|intermediario|intermediaria|ssr|ii) /.test(t)) r.push("pleno")
+  if (/ (sr|snr|senior|iii|principal) /.test(t)) r.push("senior")
+  return r
+}
+
+/** Modo para o filtro: o da análise; sem ele, a marcação do portal; senão "ni" (não informado). */
+function modoFiltro(v: Vaga): string {
+  if (v.modelo_trabalho === "remoto" || v.modelo_trabalho === "hibrido" || v.modelo_trabalho === "presencial") return v.modelo_trabalho
+  if (v.modelo_trabalho === "nao_informado") return "ni"
+  return v.remoto === true ? "remoto" : "ni"
+}
+
+/** Dias desde a publicação, ou null sem data. */
+function diasDesde(iso?: string | null): number | null {
+  if (!iso) return null
+  const t = Date.parse(String(iso).slice(0, 10) + "T12:00:00")
+  return isNaN(t) ? null : Math.max(0, Math.round((Date.now() - t) / 86400000))
+}
+
+/** "Marcar todas como não seguidas", com o segundo clique para confirmar. */
+function BotaoMarcarTodas({
+  ids,
+  rotulo,
+  podeGravar,
+  onMarcar,
+}: {
+  ids: string[]
+  rotulo: string
+  podeGravar: boolean
+  onMarcar: (ids: string[]) => Promise<void>
+}) {
+  const [confirmar, setConfirmar] = useState(false)
+  const [marcando, setMarcando] = useState(false)
+  return (
+    <span className="flex items-center gap-2">
+      {confirmar && (
+        <button
+          type="button"
+          onClick={() => setConfirmar(false)}
+          className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          Cancelar
+        </button>
+      )}
+      <button
+        type="button"
+        disabled={!podeGravar || marcando || !ids.length}
+        onClick={async () => {
+          if (!confirmar) return setConfirmar(true)
+          setMarcando(true)
+          try {
+            await onMarcar(ids)
+          } finally {
+            setMarcando(false)
+            setConfirmar(false)
+          }
+        }}
+        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition disabled:opacity-50 ${
+          confirmar
+            ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-600"
+            : "text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+        }`}
+        title="Marca estas vagas como não seguidas"
+      >
+        {marcando ? "Marcando…" : confirmar ? `Confirmar: marcar todas (${ids.length})` : rotulo}
+      </button>
+    </span>
+  )
+}
 type OrdemFiltro = "aderencia" | "publicacao" | "plataforma" | "modo"
 
 export default function TriageReport({
@@ -65,8 +144,6 @@ export default function TriageReport({
 }: TriageReportProps) {
   const { podeGravar } = useFerramenta()
   const [subTab, setSubTab] = useState<SubTab>("pendente")
-  const [confirmarTodas, setConfirmarTodas] = useState(false)
-  const [marcandoTodas, setMarcandoTodas] = useState(false)
   const [verificandoMap, setVerificandoMap] = useState<Record<string, boolean>>({})
 
   const handleForcar = async (id: string) => {
@@ -79,13 +156,31 @@ export default function TriageReport({
     }
   }
   const [searchQuery, setSearchQuery] = useState("")
-  const [ordem, setOrdem] = useState<OrdemFiltro>("aderencia")
-  const [filtroSenioridade, setFiltroSenioridade] = useState<Senioridade | "">(
-    "",
+  const prefs = useMemo(() => ScreenPreferencesService.getTriagePreferences(), [])
+  const [ordem, setOrdem] = useState<OrdemFiltro>(
+    (["aderencia", "publicacao", "plataforma", "modo"] as string[]).includes(String(prefs.triageOrdem))
+      ? (prefs.triageOrdem as OrdemFiltro)
+      : "aderencia",
   )
-  const [filtroModo, setFiltroModo] = useState<string>("")
-  const [aderenciaMinima, setAderenciaMinima] = useState<number>(0)
-  const [maxDias, setMaxDias] = useState<number>(30)
+  const [niveis, setNiveis] = useState<string[]>(Array.isArray(prefs.niveis) ? prefs.niveis : [])
+  const [modos, setModos] = useState<string[]>(Array.isArray(prefs.modos) ? prefs.modos : [])
+  const [aderMin, setAderMin] = useState<number | null>(typeof prefs.ader === "number" ? prefs.ader : null)
+  const [diasMax, setDiasMax] = useState<number | null>(typeof prefs.dias === "number" ? prefs.dias : null)
+  const [baixasAbertas, setBaixasAbertas] = useState(false)
+
+  useEffect(() => {
+    ScreenPreferencesService.saveTriagePreferences({ triageOrdem: ordem, niveis, modos, ader: aderMin, dias: diasMax })
+  }, [ordem, niveis, modos, aderMin, diasMax])
+
+  const filtrando = niveis.length > 0 || modos.length > 0 || aderMin != null || diasMax != null || Boolean(searchQuery)
+  const limparFiltros = () => {
+    setNiveis([])
+    setModos([])
+    setAderMin(null)
+    setDiasMax(null)
+    setSearchQuery("")
+  }
+  const alternar = (lista: string[], k: string) => (lista.includes(k) ? lista.filter((x) => x !== k) : [...lista, k])
 
   // Contagens por aba de triagem
   const counts = useMemo(() => {
@@ -98,290 +193,53 @@ export default function TriageReport({
     return res
   }, [vagas])
 
-  // Filtragem e ordenação das vagas da aba ativa
-  const filteredVagas = useMemo(() => {
-    return vagas
+  // Filtragem e ordem da aba ativa (as regras do dashboard antigo; "ni" = não informado)
+  const daTriagem = useMemo(() => vagas.filter((v) => v.triagem === subTab), [vagas, subTab])
+  const lista = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    const nota = (v: Vaga) => (temNota(v) ? (v.aderencia as number) : -1)
+    const recente = (a: Vaga, b: Vaga) => String(b.publicada_em || "").localeCompare(String(a.publicada_em || ""))
+    const ordemModo = ["remoto", "hibrido", "presencial", "ni"]
+    const criterio: Record<OrdemFiltro, (a: Vaga, b: Vaga) => number> = {
+      aderencia: () => 0,
+      publicacao: recente,
+      plataforma: (a, b) => {
+        const pa = a.plataforma || "Outra"
+        const pb = b.plataforma || "Outra"
+        return Number(pa === "Outra") - Number(pb === "Outra") || pa.localeCompare(pb, "pt-BR")
+      },
+      modo: (a, b) => ordemModo.indexOf(modoFiltro(a)) - ordemModo.indexOf(modoFiltro(b)),
+    }
+    return daTriagem
       .filter((v) => {
-        // Aba atual
-        if (v.triagem !== subTab) return false
-
-        // Busca textual
-        if (searchQuery) {
-          const q = searchQuery.toLowerCase()
-          const matchTitulo = v.titulo.toLowerCase().includes(q)
-          const matchEmpresa = v.empresa.toLowerCase().includes(q)
-          const matchDesc = v.descricao?.toLowerCase().includes(q)
-          const matchTermos = v.termos?.some((t) => t.toLowerCase().includes(q))
-          if (!matchTitulo && !matchEmpresa && !matchDesc && !matchTermos)
-            return false
+        if (q) {
+          const achou =
+            v.titulo.toLowerCase().includes(q) ||
+            v.empresa.toLowerCase().includes(q) ||
+            Boolean(v.descricao?.toLowerCase().includes(q)) ||
+            Boolean(v.termos?.some((t) => t.toLowerCase().includes(q)))
+          if (!achou) return false
         }
-
-        // Senioridade
-        if (
-          filtroSenioridade &&
-          v.senioridade &&
-          !v.senioridade.includes(filtroSenioridade)
-        ) {
-          return false
+        if (niveis.length) {
+          const nv = niveisDa(v)
+          if (!(nv.length ? nv.some((x) => niveis.includes(x)) : niveis.includes("ni"))) return false
         }
-
-        // Modo
-        if (filtroModo && modoDe(v) !== filtroModo) return false
-
-        // Aderência mínima
-        if (aderenciaMinima > 0) {
-          if ((v.aderencia || 0) < aderenciaMinima) return false
+        if (modos.length && !modos.includes(modoFiltro(v))) return false
+        if (aderMin != null && !(temNota(v) && (v.aderencia as number) >= aderMin)) return false
+        if (diasMax != null) {
+          const d = diasDesde(v.publicada_em)
+          if (d == null || d > diasMax) return false
         }
-
         return true
       })
-      .sort((a, b) => {
-        if (ordem === "aderencia") {
-          return (b.aderencia || 0) - (a.aderencia || 0)
-        }
-        if (ordem === "publicacao") {
-          return String(b.publicada_em || "").localeCompare(String(a.publicada_em || ""))
-        }
-        if (ordem === "plataforma") {
-          return a.plataforma.localeCompare(b.plataforma)
-        }
-        if (ordem === "modo") {
-          return modoDe(a).localeCompare(modoDe(b))
-        }
-        return 0
-      })
-  }, [
-    vagas,
-    subTab,
-    searchQuery,
-    filtroSenioridade,
-    filtroModo,
-    aderenciaMinima,
-    ordem,
-  ])
+      .sort((a, b) => criterio[ordem](a, b) || nota(b) - nota(a) || recente(a, b))
+  }, [daTriagem, searchQuery, niveis, modos, aderMin, diasMax, ordem])
 
-  return (
-    <div className="space-y-4">
-      {/* Sub-tabs header */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-2 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-          <button
-            onClick={() => setSubTab("pendente")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
-              subTab === "pendente"
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-            }`}
-          >
-            <span>Para decidir</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                subTab === "pendente"
-                  ? "bg-indigo-700 text-white"
-                  : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-              }`}
-            >
-              {counts.pendente}
-            </span>
-          </button>
+  // Em Para decidir, as de nota abaixo de 50 ficam recolhidas, como no dashboard antigo
+  const baixas = subTab === "pendente" ? lista.filter((v) => temNota(v) && (v.aderencia as number) < 50) : []
+  const principais = subTab === "pendente" ? lista.filter((v) => !(temNota(v) && (v.aderencia as number) < 50)) : lista
 
-
-          <button
-            onClick={() => setSubTab("visitada")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
-              subTab === "visitada"
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-            }`}
-          >
-            <span>Não seguidas</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                subTab === "visitada"
-                  ? "bg-indigo-700 text-white"
-                  : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-              }`}
-            >
-              {counts.visitada}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setSubTab("fora")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
-              subTab === "fora"
-                ? "bg-rose-600 text-white shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-            }`}
-          >
-            <div className="flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Fora dos critérios</span>
-            </div>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                subTab === "fora"
-                  ? "bg-rose-700 text-white"
-                  : "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-              }`}
-            >
-              {counts.fora}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter and Sorting Options Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          {/* Search bar */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filtrar nesta lista por termo, empresa ou habilidades..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-
-          {/* Sort selection */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0">
-              <ArrowUpDown className="w-3.5 h-3.5" />
-              Ordenar:
-            </span>
-            <select
-              value={ordem}
-              onChange={(e) => setOrdem(e.target.value as OrdemFiltro)}
-              className="px-3 py-2 rounded-xl text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none"
-            >
-              <option value="aderencia">Maior Aderência</option>
-              <option value="publicacao">Mais Recentes</option>
-              <option value="plataforma">Por Plataforma</option>
-              <option value="modo">Modo de Trabalho</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Secondary filters row */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          {/* Seniority buttons */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-semibold text-slate-500">Senioridade:</span>
-            {(["", "junior", "pleno", "senior"] as const).map(
-              (sen) => (
-                <button
-                  key={sen}
-                  onClick={() => setFiltroSenioridade(sen)}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition ${
-                    filtroSenioridade === sen
-                      ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
-                  }`}
-                >
-                  {sen === ""
-                    ? "Todas"
-                    : sen === "junior"
-                      ? "Jr"
-                      : sen === "pleno"
-                        ? "Pl"
-                        : "Sr"}
-                </button>
-              ),
-            )}
-          </div>
-
-          {/* Modality buttons */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-semibold text-slate-500">Modo:</span>
-            {(["", "remoto", "hibrido", "presencial"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setFiltroModo(m)}
-                className={`px-2.5 py-1 rounded-lg font-medium transition ${
-                  filtroModo === m
-                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
-                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
-                }`}
-              >
-                {m === ""
-                  ? "Todos"
-                  : m === "remoto"
-                    ? "Remoto"
-                    : m === "hibrido"
-                      ? "Híbrido"
-                      : "Presencial"}
-              </button>
-            ))}
-          </div>
-
-          {/* Minimum adherence slider */}
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-500">Nota Mínima:</span>
-            <input
-              type="range"
-              min="0"
-              max="90"
-              step="5"
-              value={aderenciaMinima}
-              onChange={(e) => setAderenciaMinima(Number(e.target.value))}
-              className="w-24 accent-indigo-600"
-            />
-            <span className="font-bold text-indigo-600 dark:text-indigo-400 w-7">
-              {aderenciaMinima}%
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Marcar todas como não seguidas (dois cliques) */}
-      {subTab === "pendente" && counts.pendente > 0 && (
-        <div className="flex items-center justify-end gap-2 flex-wrap">
-          <AvisoSoLeitura />
-          {confirmarTodas && (
-            <button
-              onClick={() => setConfirmarTodas(false)}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              Cancelar
-            </button>
-          )}
-          <button
-            disabled={!podeGravar || marcandoTodas}
-            onClick={async () => {
-              if (!confirmarTodas) {
-                setConfirmarTodas(true)
-                return
-              }
-              setMarcandoTodas(true)
-              try {
-                await onMarcarTodasNaoSeguidas(vagas.filter((v) => v.triagem === "pendente").map((v) => v.id))
-              } finally {
-                setMarcandoTodas(false)
-                setConfirmarTodas(false)
-              }
-            }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition disabled:opacity-50 ${
-              confirmarTodas
-                ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-600"
-                : "text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
-            }`}
-            title="Marca todas as vagas de Para decidir como não seguidas"
-          >
-            {marcandoTodas
-              ? "Marcando…"
-              : confirmarTodas
-                ? `Confirmar: marcar todas (${counts.pendente})`
-                : "Marcar todas como não seguidas"}
-          </button>
-        </div>
-      )}
-
-      {/* Job Cards List */}
-      <div className="space-y-3">
-        {filteredVagas.map((vaga) => {
+  const cartao = (vaga: Vaga) => {
           const platStyle = getPlataformaStyle(vaga.plataforma)
           const aderBadge = getAderenciaBadge(vaga.aderencia)
           const nota = situacaoNota(vaga, versao)
@@ -724,9 +582,261 @@ export default function TriageReport({
               </div>
             </div>
           )
-        })}
+        }
 
-        {filteredVagas.length === 0 && (
+  return (
+    <div className="space-y-4">
+      {/* Sub-tabs header */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-2 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+          <button
+            onClick={() => setSubTab("pendente")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              subTab === "pendente"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+          >
+            <span>Para decidir</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                subTab === "pendente"
+                  ? "bg-indigo-700 text-white"
+                  : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+              }`}
+            >
+              {counts.pendente}
+            </span>
+          </button>
+
+
+          <button
+            onClick={() => setSubTab("visitada")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              subTab === "visitada"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+          >
+            <span>Não seguidas</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                subTab === "visitada"
+                  ? "bg-indigo-700 text-white"
+                  : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+              }`}
+            >
+              {counts.visitada}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setSubTab("fora")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+              subTab === "fora"
+                ? "bg-rose-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Fora dos critérios</span>
+            </div>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                subTab === "fora"
+                  ? "bg-rose-700 text-white"
+                  : "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+              }`}
+            >
+              {counts.fora}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filter and Sorting Options Bar */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Search bar */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filtrar nesta lista por termo, empresa ou habilidades..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            />
+          </div>
+
+          {/* Sort selection */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0">
+              <ArrowUpDown className="w-3.5 h-3.5" />
+              Ordenar:
+            </span>
+            <select
+              value={ordem}
+              onChange={(e) => setOrdem(e.target.value as OrdemFiltro)}
+              className="px-3 py-2 rounded-xl text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none"
+            >
+              <option value="aderencia">Maior Aderência</option>
+              <option value="publicacao">Mais Recentes</option>
+              <option value="plataforma">Por Plataforma</option>
+              <option value="modo">Modo de Trabalho</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Secondary filters row */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          {/* Senioridade (várias) */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-semibold text-slate-500">Senioridade:</span>
+            {(
+              [
+                ["junior", "Jr", "Júnior"],
+                ["pleno", "Pl", "Pleno"],
+                ["senior", "Sr", "Sênior"],
+                ["ni", "Não informada", "Vagas que não dizem o nível"],
+              ] as const
+            ).map(([k, rotulo, dica]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={niveis.includes(k)}
+                title={dica}
+                onClick={() => setNiveis((l) => alternar(l, k))}
+                className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                  niveis.includes(k)
+                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                }`}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
+
+          {/* Modo (vários) */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-semibold text-slate-500">Modo:</span>
+            {(
+              [
+                ["remoto", "Remoto"],
+                ["hibrido", "Híbrido"],
+                ["presencial", "Presencial"],
+                ["ni", "Não informado"],
+              ] as const
+            ).map(([k, rotulo]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={modos.includes(k)}
+                onClick={() => setModos((l) => alternar(l, k))}
+                className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                  modos.includes(k)
+                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                }`}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
+
+          {/* Nota mínima e dias desde a publicação */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="flex items-center gap-1.5">
+              <span className="font-semibold text-slate-500">Nota mínima:</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={100}
+                step={5}
+                placeholder="0"
+                value={aderMin ?? ""}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10)
+                  setAderMin(isNaN(n) || n < 1 ? null : Math.min(100, n))
+                }}
+                className="w-16 px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </label>
+            <label className="flex items-center gap-1.5">
+              <span className="font-semibold text-slate-500">Publicada há até:</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={365}
+                placeholder="todas"
+                value={diasMax ?? ""}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10)
+                  setDiasMax(isNaN(n) || n < 0 ? null : Math.min(365, n))
+                }}
+                className="w-16 px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+              <span className="text-slate-500">dias</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Marcar todas como não seguidas (dois cliques) */}
+      {subTab === "pendente" && counts.pendente > 0 && (
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <AvisoSoLeitura />
+          <BotaoMarcarTodas
+            ids={vagas.filter((v) => v.triagem === "pendente").map((v) => v.id)}
+            rotulo="Marcar todas como não seguidas"
+            podeGravar={podeGravar}
+            onMarcar={onMarcarTodasNaoSeguidas}
+          />
+        </div>
+      )}
+
+      {/* Job Cards List */}
+      <div className="space-y-3">
+        {filtrando && daTriagem.length > 0 && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
+            Mostrando {lista.length} de {daTriagem.length} {daTriagem.length === 1 ? "vaga" : "vagas"}.{" "}
+            <button type="button" onClick={limparFiltros} className="underline font-semibold text-indigo-600 dark:text-indigo-400">
+              Limpar filtros
+            </button>
+          </p>
+        )}
+
+        {principais.map(cartao)}
+
+        {subTab === "pendente" && baixas.length > 0 && (
+          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-3 sm:p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setBaixasAbertas((x) => !x)}
+                aria-expanded={baixasAbertas}
+                className="font-bold text-sm text-slate-500 dark:text-slate-400"
+              >
+                {baixasAbertas ? "▾" : "▸"} Baixa aderência ({baixas.length})
+              </button>
+              {baixasAbertas && (
+                <BotaoMarcarTodas
+                  ids={baixas.map((v) => v.id)}
+                  rotulo="Marcar todas como não seguidas"
+                  podeGravar={podeGravar}
+                  onMarcar={onMarcarTodasNaoSeguidas}
+                />
+              )}
+            </div>
+            {baixasAbertas && <div className="space-y-3">{baixas.map(cartao)}</div>}
+          </div>
+        )}
+
+        {lista.length === 0 && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mx-auto">
               <CheckCircle2 className="w-6 h-6" />
@@ -735,9 +845,13 @@ export default function TriageReport({
               Nenhuma vaga nesta seção
             </h4>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              {subTab === "pendente"
-                ? "Tudo em dia! Você já tomou decisão sobre todas as vagas encontradas pela busca."
-                : "Não há registros com estes filtros no momento."}
+              {daTriagem.length && filtrando
+                ? "Nenhuma vaga passa nos filtros."
+                : subTab === "pendente"
+                  ? "Nenhuma vaga esperando decisão. Clique em Buscar vagas, no topo, ou peça a busca no chat do seu assistente."
+                  : subTab === "fora"
+                    ? "Nenhuma vaga fora dos critérios. Quando uma busca trouxer vagas que furam os seus filtros, elas aparecem aqui com o motivo."
+                    : "Nada por aqui ainda."}
             </p>
           </div>
         )}

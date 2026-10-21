@@ -19,6 +19,11 @@ export interface ScreenPreferences {
   triageSenioridade?: string
   triageModo?: string
   triageAderenciaMinima?: number
+  /** Filtros do Relatório ("ni" = não informado), lembrados neste navegador como no dashboard antigo. */
+  niveis?: string[]
+  modos?: string[]
+  ader?: number | null
+  dias?: number | null
 }
 
 export class ScreenPreferencesService {
