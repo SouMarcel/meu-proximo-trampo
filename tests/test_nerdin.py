@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 import urllib.error
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -288,7 +288,13 @@ class TestNaBusca(SemRede):
     def test_descricoes_no_limite(self):
         self.respostas(lambda url: VAGA if "vaga_emprego" in url else paginas(url))
         cfg = {**CFG, "localidade": {"pais": "Brasil"}, "modelos": {"remoto": True}}
-        with mock.patch.object(nerdin, "MAX_DESCRICOES", 2):
+
+        class Hoje(date):  # a janela de publicação do vagas.py conta a partir de hoje: fica o mesmo HOJE do teste
+            @classmethod
+            def today(cls):
+                return cls(HOJE.year, HOJE.month, HOJE.day)
+
+        with mock.patch.object(nerdin, "MAX_DESCRICOES", 2), mock.patch.object(vagas, "date", Hoje):
             r = vagas.executar(cfg, filtros.efetivos(cfg), ["nerdin"], 20, pausa=0)
         achadas = r["candidatas"] + r["fora"]
         self.assertEqual(sorted(numeros(achadas)), [90002, 90005, 90008, 90015, 90019])
