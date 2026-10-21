@@ -1,5 +1,5 @@
 {
-  // Live Server: abrir dash/dashboard.html funciona com o servidor da tarefa "Dashboard" rodando.
+  // Live Server: abrir dash/front/index.html funciona com o servidor da tarefa "Dashboard" rodando.
   // O banco e os arquivos de trabalho mudam a cada gravação; sem ignorá-los, a página recarregaria toda hora.
   "liveServer.settings.ignoreFiles": [
     ".vscode/**", "**/*.scss", "**/*.sass", "**/*.ts",

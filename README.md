@@ -182,7 +182,7 @@ pip install -r requirements.txt
 
 Depois, abra o dashboard com `python dash/servidor.py`. Também continuam funcionando: a
 tarefa **Dashboard** do VS Code (`.vscode/tasks.json`), que sobe o servidor ao abrir a pasta;
-a página aberta pela extensão Live Server (`dash/dashboard.html`); e o
+a página aberta pela extensão Live Server (`dash/front/index.html`); e o
 `dash\abrir-dashboard.bat`, que abre o servidor numa janela minimizada.
 
 ## Uso sem IA
@@ -209,7 +209,7 @@ a página aberta pela extensão Live Server (`dash/dashboard.html`); e o
    No VS Code, a tarefa **Dashboard** (`.vscode/tasks.json`) sobe o servidor sozinha
    ao abrir a pasta; na primeira vez, o VS Code pergunta se permite tarefas
    automáticas. Com o servidor no ar, dá para abrir http://127.0.0.1:8765 ou o
-   `dash/dashboard.html` pela extensão Live Server.
+   `dash/front/index.html` pela extensão Live Server.
 
 3. Na aba **Relatório de Vagas**, decida vaga por vaga. As que você seguir aparecem
    no **Quadro**; arraste os cartões conforme o processo anda.

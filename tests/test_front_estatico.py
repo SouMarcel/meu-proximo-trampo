@@ -1,5 +1,6 @@
-"""Front novo (spec 022): o servidor entrega os arquivos de dash/front/ em /novo/, só os da pasta e só os tipos
-conhecidos, e avisa quando o front ainda não foi montado. Sem rede: uma pasta temporária faz o papel de dash/front/."""
+"""A página (specs 022 e 025): o servidor entrega os arquivos de dash/front/ em /, só os da pasta e só os tipos
+conhecidos, leva o endereço antigo /novo/ para a raiz e avisa quando a página ainda não foi montada. Sem rede: uma
+pasta temporária faz o papel de dash/front/."""
 import http.client
 import shutil
 import sys
@@ -22,6 +23,7 @@ class TestFrontEstatico(unittest.TestCase):
         (self.front / "assets").mkdir(parents=True)
         (self.front / "index.html").write_text("<!doctype html><div id='root'></div>", encoding="utf-8")
         (self.front / "assets" / "app.js").write_text("console.log(1)", encoding="utf-8")
+        (self.front / "favicon.svg").write_text("<svg/>", encoding="utf-8")
         (self.front / "ORIGEM.json").write_text("{}", encoding="utf-8")
         (self.tmp / "segredo.html").write_text("fora da pasta", encoding="utf-8")
         for p in (mock.patch.object(servidor, "FRONT", self.front),
@@ -40,33 +42,37 @@ class TestFrontEstatico(unittest.TestCase):
         r = con.getresponse()
         return r.status, r.getheader("Content-Type"), r.getheader("Location"), r.read()
 
-    def test_entrega_index_e_arquivos(self):
-        status, tipo, _, corpo = self.pedir("/novo/")
-        self.assertEqual((status, tipo), (200, "text/html; charset=utf-8"))
-        self.assertIn(b"root", corpo)
-        status, tipo, _, corpo = self.pedir("/novo/assets/app.js")
+    def test_entrega_index_e_arquivos_na_raiz(self):
+        for caminho in ("/", "/index.html"):
+            with self.subTest(caminho=caminho):
+                status, tipo, _, corpo = self.pedir(caminho)
+                self.assertEqual((status, tipo), (200, "text/html; charset=utf-8"))
+                self.assertIn(b"root", corpo)
+        status, tipo, _, corpo = self.pedir("/assets/app.js")
         self.assertEqual((status, tipo, corpo), (200, "text/javascript; charset=utf-8", b"console.log(1)"))
+        self.assertEqual(self.pedir("/favicon.svg")[:2], (200, "image/svg+xml"))
 
-    def test_sem_barra_redireciona(self):
-        status, _, local, _ = self.pedir("/novo")
-        self.assertEqual((status, local), (308, "/novo/"))
+    def test_endereco_antigo_leva_para_a_raiz(self):
+        for caminho, destino in (("/novo", "/"), ("/novo/", "/"), ("/novo/assets/app.js", "/assets/app.js")):
+            with self.subTest(caminho=caminho):
+                status, _, local, _ = self.pedir(caminho)
+                self.assertEqual((status, local), (308, destino))
 
     def test_recusa_fora_da_pasta_e_tipo_desconhecido(self):
-        for caminho in ("/novo/../segredo.html", "/novo/%2e%2e/segredo.html", "/novo/..%5csegredo.html",
-                        "/novo/ORIGEM.json", "/novo/assets/nao-existe.js"):
+        for caminho in ("/../segredo.html", "/%2e%2e/segredo.html", "/..%5csegredo.html",
+                        "/ORIGEM.json", "/assets/nao-existe.js", "/dashboard.html"):
             with self.subTest(caminho=caminho):
                 self.assertEqual(self.pedir(caminho)[0], 404)
 
+    def test_api_desconhecida_continua_json(self):
+        status, tipo, _, _ = self.pedir("/api/nao-existe")
+        self.assertEqual((status, tipo), (404, "application/json; charset=utf-8"))
+
     def test_front_nao_montado(self):
         shutil.rmtree(self.front)
-        status, tipo, _, corpo = self.pedir("/novo/")
-        self.assertEqual((status, tipo), (404, "text/html; charset=utf-8"))
-        self.assertIn("ainda não foi montado", corpo.decode("utf-8"))
-
-    def test_dashboard_atual_continua_em_raiz(self):
         status, tipo, _, corpo = self.pedir("/")
-        self.assertEqual((status, tipo), (200, "text/html; charset=utf-8"))
-        self.assertEqual(corpo, servidor.PAGINA.read_bytes())
+        self.assertEqual((status, tipo), (404, "text/html; charset=utf-8"))
+        self.assertIn("ainda não foi montada", corpo.decode("utf-8"))
 
 
 if __name__ == "__main__":

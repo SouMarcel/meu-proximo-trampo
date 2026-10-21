@@ -23,7 +23,7 @@ Situação hoje: ✅ funciona com dados reais na página nova · ⚠️ existe, 
 | Função | Na página nova | H | Hoje | Conferido |
 |---|---|---|---|---|
 | Sub-abas Para decidir / Não seguidas / Fora dos critérios (Seguidas ficou fora de propósito: as seguidas estão no quadro) | Relatório | — | ✅ | [ ] |
-| Ordenar por; filtros de senioridade, modelo, plataforma, aderência; Limpar filtros | Relatório | — | ✅ | [ ] |
+| Ordenar por; filtros de senioridade e modo (vários, com não informado), aderência, dias; Limpar filtros; lembrar os filtros; Baixa aderência recolhida (o filtro de plataforma é só do quadro) | Relatório | 7 | ✅ (completado antes da troca) | [ ] |
 | Linha da última busca | Topo do Relatório | 1 | ✅ | [ ] |
 | Buscar vagas (diálogo com plano, avisos de busca recente e espera, confirmação) | Cabeçalho | 1 | ✅ | [ ] |
 | Andamento da busca, Cancelar | Relatório | 1 | ✅ | [ ] |

@@ -473,25 +473,40 @@ os testes passam.
 **Pré-condição**: `contracts/paridade.md` todo marcado e uma semana de uso só na página nova (SC-005), com o OK da
 pessoa para a troca.
 
-- [ ] T060 [US7] Em `dash/servidor.py`, conforme `contracts/servidor-troca.md`:
+- [X] T060 [US7] Em `dash/servidor.py`, conforme `contracts/servidor-troca.md`:
   - `/` e `/index.html` entregam `dash/front/index.html`;
   - os arquivos do front saem da raiz, com a mesma checagem de pasta e de `TIPOS_FRONT`;
   - `/novo`, `/novo/` e `/novo/<arquivo>` respondem 308 para o equivalente na raiz;
   - sem build, aviso em HTML;
   - tirar `PAGINA` e atualizar o docstring do topo e o texto de `SEM_FRONT`.
-- [ ] T061 [US7] Atualizar `tests/test_front_estatico.py` conforme a seção "Testes" de `contracts/servidor-troca.md`
+- [X] T061 [US7] Atualizar `tests/test_front_estatico.py` conforme a seção "Testes" de `contracts/servidor-troca.md`
   (sai `test_dashboard_atual_continua_em_raiz`)
-- [ ] T062 [P] [US7] Apagar `dash/dashboard.html`
-- [ ] T063 [P] [US7] Atualizar a documentação:
+- [X] T062 [P] [US7] Apagar `dash/dashboard.html`
+- [X] T063 [P] [US7] Atualizar a documentação:
   - `README.md` (linhas sobre o Live Server e o `dash/dashboard.html`);
   - `dash/README.md` (Live Server e a linha `dashboard.html` da tabela);
   - `dash/API.md` (§1 Endereço com a regra do `getApiBaseUrl`; "O front atual" passa a citar `src/services/api.ts`;
     §3.12 com as rotas novas de página);
   - `AGENTS.md` (o item do front novo em `/novo/` passa a dizer que a página da ferramenta é o front em `/`).
-- [ ] T064 [P] [US7] Atualizar `.agents/skills/buscar-vagas/SKILL.md` (linha 38, `dashboard.html`) e rodar
+- [X] T064 [P] [US7] Atualizar `.agents/skills/buscar-vagas/SKILL.md` (linha 38, `dashboard.html`) e rodar
   `python sincronizar_skills.py`, depois `python sincronizar_skills.py --conferir`
-- [ ] T065 [P] [US7] Atualizar `.vscode/settings.json` (Live Server em `dash/front/index.html`) e o texto do PR em
+- [X] T065 [P] [US7] Atualizar `.vscode/settings.json` (Live Server em `dash/front/index.html`) e o texto do PR em
   `.github/workflows/front.yml` (testar em `/`)
+**Notas da implementação (H7, 2026-10-21)**:
+- A pessoa liberou a troca sem esperar a semana de uso (SC-005).
+- Antes, a revisão do `dash/README.md` mostrou que a linha "Ordenar e filtros" da paridade tinha sido marcada como
+  pronta sem estar. Entraram no Relatório:
+  - senioridade e modo com várias escolhas e "não informado";
+  - nota mínima e dias desde a publicação;
+  - a lembrança dos filtros e da ordem;
+  - "Mostrando X de Y" com "Limpar filtros";
+  - a seção "Baixa aderência" (nota abaixo de 50, recolhida);
+  - o desempate da ordem;
+  - os avisos de primeira vez e de busca internacional desligada.
+- O filtro por plataforma do antigo era só do quadro, que já o tinha.
+- A rota de página atende qualquer caminho fora de `/api/` e `/arquivos/` com os arquivos de `dash/front/`; uma
+  API desconhecida continua 404 em JSON.
+
 - [ ] T066 [US7] Rodar `python -m unittest discover -s tests`; roteiro H7 na branch pessoal; busca de dados pessoais;
   com o OK, merge na `master`, push e `git merge master` na branch pessoal
 
