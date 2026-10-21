@@ -459,7 +459,7 @@ local); a IA, não.
 - Conferido sem a pessoa: `tsc`, build e greps; o diálogo aberto pelo navegador sem janela, só com leituras, com
   os portais reais e sem erro de JavaScript.
 
-- [ ] T059 [US6] Portões, roteiro H6, linhas da História 6 em `contracts/paridade.md` e entrega com o OK
+- [X] T059 [US6] Portões, roteiro H6, linhas da História 6 em `contracts/paridade.md` e entrega com o OK
 
 ---
 
