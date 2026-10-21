@@ -9,13 +9,13 @@ python dash/servidor.py --rede     # também acessível de outros aparelhos da s
 
 No Windows dá para dar dois cliques em `abrir-dashboard.bat`; no macOS/Linux, `./dash/abrir-dashboard.sh`.
 No VS Code, a tarefa **Dashboard** sobe o servidor ao abrir a pasta, e a página também abre pela
-extensão Live Server (`dash/dashboard.html`): aberta assim, ela fala com o servidor em
+extensão Live Server (`dash/front/index.html`): aberta assim, ela fala com o servidor em
 `127.0.0.1:8765`, que aceita páginas abertas neste computador (`127.0.0.1`/`localhost` em outra
 porta) e continua recusando outros sites. O servidor precisa estar no ar: sozinho, o Live Server
 só entrega o arquivo.
 
 - **Quadro:** kanban Salva → Aplicação Enviada → Entrevista → Proposta Recebida →
-  Encerrada (arraste os cartões ou use o menu ⋯), com anotações, resultado (não
+  Encerrada (arraste os cartões, use Avançar ou a etapa no detalhe), com anotações, resultado (não
   aprovado, desisti, vaga cancelada, contratado), filtro por plataforma e visão em
   lista.
 - **Adicionar Vaga:** cole o link. O servidor lê a vaga (Indeed e LinkedIn pelas APIs
@@ -34,8 +34,8 @@ só entrega o arquivo.
   dela antes (um pedido ao portal, fora da espera depois de um bloqueio e fora de uma busca); sem o texto, a nota
   sai marcada **nota sem a descrição** (provisória) e é refeita quando a descrição chegar. Sem IA ligada, o botão
   só avisa.
-- **Relatório de Vagas:** o que as buscas trouxeram, em quatro abas: Para decidir,
-  Seguidas, Não seguidas e **Fora dos critérios** (vagas que furaram os filtros da
+- **Relatório de Vagas:** o que as buscas trouxeram, em três abas: Para decidir,
+  Não seguidas e **Fora dos critérios** (as seguidas ficam no quadro; Fora dos critérios são as vagas que furaram os filtros da
   busca, com o motivo). "Seguir com a vaga" manda para a coluna Salva, inclusive a
   partir de Fora dos critérios; "Não seguir" marca como visitada e a vaga não volta nas
   próximas buscas. Vagas com nota abaixo de 50 ficam recolhidas. Ordem por aderência
@@ -48,12 +48,11 @@ só entrega o arquivo.
   tipo de emprego, senioridade, moedas aceitas para vagas de fora e empresas a excluir. Grava no `config.json` e vale a
   partir da próxima busca.
 
-**Front novo (em construção):** o redesenho em React fica em `/novo/`, ao lado do dashboard de sempre, até ter
-todas as funções. Ele é montado na nuvem pelo GitHub Actions, então quem usa continua só com o Python; o
-processo está em `specs/022-front-react/`.
+**A página:** é feita em React (branch `frontend-react`) e montada na nuvem pelo GitHub Actions, que grava o
+resultado pronto em `dash/front/`; quem usa continua só com o Python. O processo está em `specs/022-front-react/`
+e `specs/025-front-unico/`. O endereço antigo `/novo/` leva para a página em `/`.
 
-**Tema:** claro, escuro ou o do sistema, pelo botão ao lado de **Meu perfil** (a escolha fica só neste
-navegador). O visual segue o do front novo (spec 023).
+**Tema:** claro, escuro ou o do sistema, pelo botão no topo (a escolha fica só neste navegador).
 
 A página confere o banco a cada poucos segundos, então uma busca gravada aparece
 sozinha.
@@ -67,9 +66,8 @@ sozinha.
 | `buscador.py` | Busca de vagas pela página: roda a mesma busca do `vagas.py` em segundo plano, com andamento, cancelamento entre consultas, uma busca por vez no computador (trava em `.cache/busca.trava`, compartilhada com o terminal) e intervalo mínimo de 30 minutos entre buscas. Com IA e perfil, as vagas novas ficam para a análise automática. |
 | `gerador.py` | Currículo pela página: no clique, pede o currículo à IA escolhida (`curriculo_ia.py`, na raiz), gera os arquivos e a conferência, uma geração por vez, com andamento e "tentar de novo". |
 | `analise.py` | Análise automática: manda à IA escolhida (`ia.py`, na raiz) o perfil, as regras de nota da skill e as vagas que esperam nota, em lotes de 10, e grava a resposta com o provedor e o modelo usados. Uma análise por vez; a última falha aparece na página. |
-| `dashboard.html` | A página. |
-| `front/` | O front novo (spec 022), em `http://127.0.0.1:8765/novo/`: o build da branch `frontend-react` (React, feito no Figma Make), gerado pelo GitHub Actions (`.github/workflows/front.yml`) com a origem em `ORIGEM.json`. Não se edita à mão. |
-| `API.md` | O contrato das rotas do servidor, para o front novo. |
+| `front/` | A página, em `http://127.0.0.1:8765`: o build da branch `frontend-react` (React), gerado pelo GitHub Actions (`.github/workflows/front.yml`) com a origem em `ORIGEM.json`. Não se edita à mão: o código-fonte fica na `frontend-react`. |
+| `API.md` | O contrato das rotas do servidor, que a página usa. |
 | `abrir-dashboard.bat` / `.sh` | Atalhos para iniciar o servidor. |
 | `dados/` | `candidaturas.db` e `backup/` (uma cópia por dia, guarda as 10 últimas). Fora do Git. |
 

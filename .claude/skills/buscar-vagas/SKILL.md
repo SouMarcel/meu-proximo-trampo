@@ -36,7 +36,7 @@ volta nas próximas buscas.
   (`indeed.py`, `gupy.py`, `nerdin.py`, `linkedin.py`, `startupjobs.py`); os portais usados vêm de
   `fontes` no `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais (sem a chave,
   valem `indeed`, `gupy` e `nerdin`; o `linkedin` e o `startupjobs` só entram se estiverem lá).
-- `dash/`: o dashboard. `servidor.py` (porta 8765), `dashboard.html`, `banco.py` (dados
+- `dash/`: o dashboard. `servidor.py` (porta 8765), `front/` (a página), `banco.py` (dados
   em `dash/dados/candidaturas.db`, com comandos `quadro`, `pendentes` e `analisar`) e
   `README.md` (campos e valores).
 - `.cache/`: arquivos de trabalho da busca.

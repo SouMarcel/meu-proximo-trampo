@@ -1,17 +1,16 @@
 # API do servidor local (dash/servidor.py)
 
-Contrato HTTP que o dashboard usa hoje (`dash/dashboard.html`), para um front novo trocar os dados de
-exemplo pelas rotas reais. Tudo aqui foi conferido no código; onde o formato completo mora em outro
-arquivo, a referência está indicada (`arquivo.py:linha`).
+Contrato HTTP que a página da ferramenta (`dash/front/`, o React da branch `frontend-react`; specs 022 e 025)
+usa. Tudo aqui foi conferido no código; onde o formato completo mora em outro arquivo, a referência está indicada
+(`arquivo.py:linha` no servidor, `src/...` na branch `frontend-react`).
 
 ## 1. Regras gerais
 
 **Endereço.** O servidor roda em `http://127.0.0.1:8765` (porta padrão; `--porta` muda). Quando a página
-é servida pelo próprio servidor (rota `/` ou o front novo em `/novo/`), use caminhos que começam na raiz
-(`/api/...`). Quando a página vem de
-outro servidor deste computador (Live Server, Vite etc.), use o endereço absoluto
-`http://127.0.0.1:8765`. O front atual faz assim (dashboard.html:772):
-`var BASE = /dashboard\.html$/.test(location.pathname) ? "http://127.0.0.1:8765" : "";`
+é servida pelo próprio servidor (rota `/`), use caminhos que começam na raiz (`/api/...`). Quando a página vem
+de outro servidor deste computador (Live Server em `dash/front/index.html`, Vite etc.), use o endereço absoluto
+`http://127.0.0.1:8765`. A página faz assim em `src/services/api.ts` (`getApiBaseUrl`): caminho relativo com a
+origem `http://127.0.0.1:8765` ou `http://localhost:8765`, e o endereço absoluto nas outras.
 
 **Origem (CORS).** O servidor só responde a páginas abertas neste computador: origem exatamente
 `http://127.0.0.1:<porta>` ou `http://localhost:<porta>` (qualquer porta, só `http`). Para essas origens
@@ -20,9 +19,8 @@ PATCH, DELETE; cabeçalho `Content-Type`). Página em outro domínio (ex.: a pr�
 Make, `https://...`) é recusada: o navegador não deixa ler as respostas, e as escritas voltam 403.
 O cabeçalho `Host` também precisa ser `127.0.0.1` ou `localhost` (senão 421 "host não permitido").
 
-**Formato.** Corpo e resposta em JSON UTF-8 (`application/json; charset=utf-8`). Exceções: `GET /`
-devolve o HTML do dashboard atual, `/novo/...` os arquivos do front novo e `/arquivos/...` arquivos (PDF,
-DOCX, TXT).
+**Formato.** Corpo e resposta em JSON UTF-8 (`application/json; charset=utf-8`). Exceções: `GET /` devolve a
+página (`dash/front/index.html`) e os arquivos dela (`/assets/...`), e `/arquivos/...` arquivos (PDF, DOCX, TXT).
 
 **Escritas (POST, PUT, PATCH, DELETE).** Exigem `Content-Type: application/json`, **mesmo sem corpo e
 mesmo em DELETE**; sem ele, 403 "pedido recusado". Corpo vazio vale como `{}`. O corpo precisa ser um
@@ -41,7 +39,7 @@ pessoa. Algumas rotas acrescentam campos (indicados em cada rota). Gerais:
 | 421 | "host não permitido" |
 | 500 | "erro interno no servidor do dashboard" (detalhe só na janela do servidor) |
 
-O front atual trata assim (dashboard.html:773-784, 933-937): resposta não-ok vira erro com `status`,
+A página trata assim (`src/services/api.ts`, `pedir`): resposta não-ok vira erro com `status`,
 `message` = `erro` e `dados` = o JSON inteiro; sem resposta (servidor parado) mostra um aviso fixo e tenta
 reconectar sozinho.
 
@@ -101,7 +99,7 @@ Fontes: banco.py:498-604, vagas.py:719-739, kit.py.
 | `remoto` | boolean | marcação do portal |
 | `modelo_trabalho` | `remoto` \| `hibrido` \| `presencial` \| `nao_informado` | da análise ou da fonte (vale mais que `remoto`) |
 | `tipo_emprego` | string[] de `tempo_integral, pj, meio_periodo, estagio, temporario` | |
-| `area` | `"nacional"` \| `"internacional"` | aba onde a vaga aparece (sem o campo: o front deduz por `grupos`, dashboard.html:820) |
+| `area` | `"nacional"` \| `"internacional"` | aba onde a vaga aparece (sem o campo: o front deduz por `grupos`, `src/utils/formatters.ts` `areaDe`) |
 | `pais_vaga` | string | país da vaga internacional |
 | `restricao_local` | string | onde a vaga aceita, informado pelo portal |
 | `sinais` | string[] | sinais positivos lidos no anúncio (patrocínio de visto, relocation, frases da pessoa) |
@@ -147,7 +145,7 @@ Regras do front: a vaga está **no quadro** quando `etapa` não é nula e (`orig
 | `pede` | `[{item: curriculo_ingles\|carta\|formulario\|portfolio\|teste\|video, frase}]` | |
 | `sistema_candidatura` | string | |
 
-Rótulos desses códigos: kit.py:14-24 e dashboard.html:2933-2941.
+Rótulos desses códigos: kit.py:14-24 e `src/utils/rotulos.ts`.
 
 **Calculados**
 
@@ -468,11 +466,11 @@ Erros de navegador ou portal: 409 com a mensagem.
 |---|---|
 | `GET /arquivos/curriculos/{nome}` | arquivo de `curriculos/`: `nome` = `[a-z0-9-]{1,90}.(pdf\|docx\|txt)`; PDF abre no navegador, DOCX e TXT baixam; 404 se não existe |
 | `GET /arquivos/curriculo-base/{pt\|en}` **[local]** | o currículo marcado da pessoa naquele idioma (PDF ou DOCX); 404 sem marcação |
-| `GET /` ou `/index.html` | o HTML do dashboard atual |
-| `GET /novo/` e `/novo/{arquivo}` | o front novo, servido de `dash/front/` (só `.html .js .css .svg .png .woff2`); `/novo` redireciona (308) para `/novo/`, então o build deve usar caminhos relativos (`./assets/...`); sem build, `/novo/` mostra uma página avisando |
+| `GET /`, `/index.html` e `/{arquivo}` | a página, servida de `dash/front/` (só `.html .js .css .svg .png .woff2`, só os arquivos da pasta); sem build, `/` mostra uma página avisando. O build usa caminhos relativos (`./assets/...`), que valem também no Live Server |
+| `GET /novo`, `/novo/` e `/novo/{arquivo}` | 308 para o mesmo endereço na raiz (o front novo ficava ali enquanto o dashboard antigo existia) |
 | `GET /favicon.ico` | 204 vazio |
 
-No front atual, são links `<a target="_blank">` com o endereço da API na frente (`BASE + "/arquivos/..."`).
+Na página, são links `<a target="_blank">` com o endereço da API na frente (`urlArquivo("/arquivos/...")`).
 
 ### 3.13 Versão
 
@@ -482,9 +480,9 @@ falhou), busca: {situacao, origem} (inclui `externa` para busca do terminal/chat
 Forçar verificar na fila), falhas: {id: {motivo, em}} (Forçar verificar que não deu nota)}`. Também serve para saber
 se o servidor está no ar.
 
-## 4. Comportamentos que o front novo deve manter
+## 4. Comportamentos que a página mantém
 
-Conferidos no front atual; a maior parte também é garantida pelo servidor.
+Conferidos na página; a maior parte também é garantida pelo servidor.
 
 1. **Confirmar antes de gravar ou apagar.**
    - Remover do quadro e "Marcar todas como não seguidas" pedem um segundo clique ("Confirmar remoção",
@@ -507,7 +505,8 @@ Conferidos no front atual; a maior parte também é garantida pelo servidor.
    na janela da ferramenta. Chaves de API: campo de senha, e só os 4 últimos caracteres voltam.
 6. **Texto da internet é texto.** Descrição, título, empresa, posts, mensagens dos portais e respostas da IA
    passam por escape de HTML; a descrição usa um markdown mínimo aplicado **depois** do escape
-   (dashboard.html:912-925); links só `http`/`https`, abertos com `target="_blank" rel="noopener"`.
+   (`src/components/TextoDaVaga.tsx`, que monta elementos, sem HTML); links só `http`/`https`, abertos com
+   `target="_blank" rel="noopener"`.
 7. **Respeito aos portais.** O botão Buscar vagas fica desligado durante uma busca, até `proxima_em` e com
    portal em espera; o front repete o pedido com `confirmar_recente`/`confirmar_espera` só depois de mostrar
    o aviso na confirmação.

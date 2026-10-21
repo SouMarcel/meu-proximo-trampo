@@ -1,4 +1,4 @@
-# Front novo (spec 022): monta o front React da branch frontend-react (feito no Figma Make) e abre ou atualiza o
+# A página (specs 022 e 025): monta o React da branch frontend-react e abre ou atualiza o
 # PR front/atualizacao -> master com o resultado em dash/front/. O Node fica só aqui: quem usa a ferramenta continua
 # só com o Python. Rodar: aba Actions > "Front: abrir PR" > Run workflow (ou `gh workflow run front.yml`).
 name: "Front: abrir PR"
@@ -99,7 +99,7 @@ jobs:
             echo "::error::A conferência de tipos (tsc --noEmit) falhou: corrija na frontend-react e rode de novo."
             exit 1
           fi
-          # base relativa: o servidor entrega o front em /novo/ e o Live Server o abre em dash/front/
+          # base relativa: o servidor entrega a página em / e o Live Server a abre em dash/front/
           pnpm exec vite build --base ./
           test -f dist/index.html
 
@@ -157,7 +157,7 @@ jobs:
             echo "### Antes do merge"
             echo "- [ ] Rotas e campos conferidos com \`dash/API.md\`"
             echo "- [ ] Nada de dados pessoais nem chamadas externas (CDN, fontes, análise)"
-            echo "- [ ] Testado na branch pessoal em http://127.0.0.1:8765/novo/"
+            echo "- [ ] Testado na branch pessoal em http://127.0.0.1:8765/"
           } > ../corpo.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
