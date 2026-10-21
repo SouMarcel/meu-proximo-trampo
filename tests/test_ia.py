@@ -90,6 +90,27 @@ class Escolha(Base):
         ok = ia.validar_escolha({"provedor": "compativel", "url_base": "http://127.0.0.1:9/v1/", "modelo": "m"})
         self.assertEqual(ok["url_base"], "http://127.0.0.1:9/v1")
 
+    def test_cobranca_openrouter_gratuito(self):
+        # sem modelo, o padrão do OpenRouter é o roteador gratuito
+        self.assertEqual(ia.modelo_efetivo({"provedor": "openrouter", "modelo": ""}), "openrouter/free")
+        self.assertEqual(ia.cobranca_efetiva({"provedor": "openrouter", "modelo": ""}), "gratuito")
+        self.assertEqual(ia.cobranca_efetiva({"provedor": "openrouter", "modelo": "algum/modelo:free"}), "gratuito")
+        self.assertEqual(ia.cobranca_efetiva({"provedor": "openrouter", "modelo": "openrouter/auto"}), "uso")
+        self.assertEqual(ia.cobranca_efetiva({"provedor": "openrouter", "modelo": "google/gemini-3.8-flash"}), "uso")
+        # ":free" só vale no OpenRouter; os outros seguem a cobrança do provedor
+        self.assertEqual(ia.cobranca_efetiva({"provedor": "groq", "modelo": "x:free"}), "uso")
+        self.assertEqual(ia.cobranca_efetiva({"provedor": "claude_code", "modelo": ""}), "assinatura")
+        self.assertEqual(ia.cobranca_efetiva({"provedor": "nenhum", "modelo": ""}), "")
+
+    def test_dica_openrouter_no_painel(self):
+        e = ia.estado_para_pagina(True)
+        dicas = {p["id"]: p["dica"] for p in e["provedores"]}
+        self.assertIn("openrouter/free", dicas["openrouter"])
+        self.assertIn("openrouter/auto", dicas["openrouter"])
+        self.assertTrue(dicas["anthropic"])
+        self.assertEqual(dicas["groq"], "")
+        self.assertIn("cobranca_efetiva", e)
+
 
 class Pedidos(Base):
     def test_anthropic(self):

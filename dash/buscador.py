@@ -161,7 +161,7 @@ class Busca:
             "janela_horas": f["janela_horas"], "resumo": fm.resumo(f) if f["termos"] else "",
             "estimativa_min": max(1, round(consultas * SEGUNDOS_POR_CONSULTA / 60)) if consultas else 0,
             "ia": {"ligada": ia.disponivel(cfg), "nome": prov["nome"], "modelo": ia.modelo_efetivo(escolha),
-                   "cobranca": prov["cobranca"]},
+                   "cobranca": ia.cobranca_efetiva(escolha)},
             "ultima": ult, "proxima_em": proxima, "recente": recente,
             "espera": [{k: e[k] for k in ("portal", "ate", "motivo")} for e in espera],
             "so_espera": bool(nomes) and len(espera) == len(nomes),

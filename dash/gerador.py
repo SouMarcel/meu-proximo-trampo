@@ -79,7 +79,7 @@ class Geracao:
         prov = ia.PROVEDORES[escolha["provedor"]]
         return {**cia.curriculo.catalogo(vaga),
                 "ia": {"ligada": ia.disponivel(cfg), "nome": prov["nome"], "modelo": ia.modelo_efetivo(escolha),
-                       "cobranca": prov["cobranca"]},
+                       "cobranca": ia.cobranca_efetiva(escolha)},
                 "perfil_ok": bool(cia.perfil_texto())}
 
     def iniciar(self, vaga_id: str | None, tecnicas) -> dict:
