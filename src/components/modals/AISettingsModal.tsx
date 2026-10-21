@@ -24,14 +24,22 @@ const CAMPO =
 const ROTULO = "text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1"
 
 /** O que a pessoa precisa saber antes de salvar (o mesmo texto do dashboard antigo). */
-function avisos(p: Provedor | undefined): string[] {
+/** Modelo gratuito do OpenRouter (o roteador openrouter/free ou um modelo :free): sem custo, com limite de pedidos. */
+function ehGratuito(p: Provedor | undefined, modelo: string): boolean {
+  const m = (modelo || p?.modelo_padrao || "").trim().toLowerCase()
+  return p?.id === "openrouter" && (m === "openrouter/free" || m.endsWith(":free"))
+}
+
+function avisos(p: Provedor | undefined, modelo: string): string[] {
   if (!p || p.id === "nenhum") {
     return ["Nada é enviado a provedores de IA. Busca, relatório e quadro funcionam normalmente; as vagas ficam sem nota."]
   }
   const l = [
-    p.cobranca === "assinatura"
-      ? "Usa a sua assinatura do Claude: não há cobrança por chamada além do plano."
-      : "Cobrado por uso, na sua conta do provedor: cada análise de vaga consome créditos.",
+    ehGratuito(p, modelo)
+      ? "Modelo gratuito: sem custo, com limite de pedidos por dia no OpenRouter (veja a dica abaixo)."
+      : p.cobranca === "assinatura"
+        ? "Usa a sua assinatura do Claude: não há cobrança por chamada além do plano."
+        : "Cobrado por uso, na sua conta do provedor: cada análise de vaga consome créditos.",
     "Notas de modelos diferentes podem variar para a mesma vaga.",
     `O seu perfil e o texto das vagas vão para ${p.nome} a cada análise.`,
   ]
@@ -283,7 +291,7 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
               <section className={SEC}>
                 <h4 className={H}>Antes de salvar</h4>
                 <ul className="list-disc pl-5 space-y-1 text-slate-700 dark:text-slate-300">
-                  {avisos(p).map((a) => (
+                  {avisos(p, modelo).map((a) => (
                     <li key={a}>{a}</li>
                   ))}
                 </ul>

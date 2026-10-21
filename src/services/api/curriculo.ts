@@ -5,7 +5,7 @@ export interface Catalogo {
   tecnicas: Record<string, { nome: string; padrao: boolean; explicacao: string }>
   escolhas: Record<string, { nome: string; padrao: string | number; opcoes: Record<string, string> }>
   sugestao: Record<string, unknown> & { motivo?: string }
-  ia: { ligada: boolean; nome: string; modelo: string; cobranca: "uso" | "assinatura" | "" }
+  ia: { ligada: boolean; nome: string; modelo: string; cobranca: "uso" | "assinatura" | "gratuito" | "" }
   perfil_ok: boolean
   pode_alterar: boolean
 }

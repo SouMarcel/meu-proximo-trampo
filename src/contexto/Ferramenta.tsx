@@ -13,7 +13,7 @@ export interface ResumoIA {
   disponivel: boolean
   nome: string
   modelo: string
-  cobranca: "uso" | "assinatura" | ""
+  cobranca: "uso" | "assinatura" | "gratuito" | ""
 }
 
 interface ValorFerramenta {
@@ -65,7 +65,7 @@ export function FerramentaProvider({
         disponivel: e.disponivel,
         nome: p?.nome || "",
         modelo: e.modelo_efetivo || "",
-        cobranca: p?.cobranca || "",
+        cobranca: e.cobranca_efetiva ?? p?.cobranca ?? "",
       })
       setPodeAlterar(e.pode_alterar)
     } catch {
@@ -129,7 +129,7 @@ export function AvisoSoLeitura({ className = "" }: { className?: string }) {
 export function textoCustoIA(ia: { nome: string; modelo: string; cobranca: string } | null): string {
   if (!ia || !ia.nome) return "Nenhuma IA escolhida."
   const quem = ia.nome + (ia.modelo ? " · " + ia.modelo : "")
-  return ia.cobranca === "uso"
-    ? `Vai rodar: ${quem}. Cobrado por uso na sua conta do provedor: consome créditos.`
-    : `Vai rodar: ${quem}.`
+  if (ia.cobranca === "uso") return `Vai rodar: ${quem}. Cobrado por uso na sua conta do provedor: consome créditos.`
+  if (ia.cobranca === "gratuito") return `Vai rodar: ${quem}. Modelo gratuito: sem custo, com limite de pedidos por dia no provedor.`
+  return `Vai rodar: ${quem}.`
 }

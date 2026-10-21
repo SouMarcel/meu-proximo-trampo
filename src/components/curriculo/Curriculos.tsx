@@ -148,6 +148,7 @@ export function GerarCurriculo({
             {ia.modelo ? ` · ${ia.modelo}` : ""}, só com os fatos do seu perfil; depois a ferramenta confere sem IA.
           </li>
           {ia.cobranca === "uso" && <li>Cobrado por uso na sua conta do provedor (uma chamada por currículo).</li>}
+          {ia.cobranca === "gratuito" && <li>Modelo gratuito: sem custo, com limite de pedidos por dia no provedor.</li>}
           <li>Nada é enviado antes de você confirmar. Os arquivos ficam na pasta curriculos, sem apagar versões anteriores.</li>
         </ul>
         {c.pode_alterar === false && <p className="text-rose-600 text-xs">Só dá para gerar no computador onde a ferramenta roda.</p>}

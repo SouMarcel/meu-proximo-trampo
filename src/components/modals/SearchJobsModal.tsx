@@ -141,6 +141,8 @@ export default function SearchJobsModal({ onClose, onIniciada, onPlano, onAbrirF
                     .
                     {ia.cobranca === "uso" &&
                       " Cobrado por uso na sua conta do provedor: cada vaga analisada consome créditos."}
+                    {ia.cobranca === "gratuito" &&
+                      " Modelo gratuito: sem custo, mas com limite de pedidos por dia no provedor; se o limite acabar, a nota para e dá para tentar de novo depois."}
                   </li>
                 )}
                 {!ia?.ligada && <li>Sem IA: as vagas ficam sem nota (dá para escolher uma IA no botão IA).</li>}

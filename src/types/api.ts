@@ -322,7 +322,7 @@ export interface CobrancaIA {
   ligada: boolean
   nome: string
   modelo: string
-  cobranca: "uso" | "assinatura" | ""
+  cobranca: "uso" | "assinatura" | "gratuito" | ""
 }
 
 export interface PlanoBusca {

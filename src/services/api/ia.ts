@@ -6,7 +6,7 @@ export interface Provedor {
   nome: string
   precisa_chave: boolean
   aceita_chave: boolean
-  cobranca: "uso" | "assinatura" | ""
+  cobranca: "uso" | "assinatura" | "gratuito" | ""
   modelo_padrao: string
   url_padrao: string
   onde_obter_chave: string
@@ -17,6 +17,8 @@ export interface EstadoIA {
   escolha: { provedor: string; modelo: string; url_base: string } | null
   efetiva: string
   modelo_efetivo: string
+  /** A da escolha: "gratuito" = openrouter/free ou um modelo :free do OpenRouter. */
+  cobranca_efetiva?: "uso" | "assinatura" | "gratuito" | ""
   url_efetiva: string
   provedores: Provedor[]
   chaves: Record<string, { cadastrada: boolean; final: string; origem: "arquivo" | "ambiente" | null }>
