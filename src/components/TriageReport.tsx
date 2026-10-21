@@ -501,12 +501,27 @@ export default function TriageReport({
 
                   {/* Title & Company */}
                   <div>
-                    <h3
-                      onClick={() => onSelectVaga(vaga)}
-                      className="text-base sm:text-lg font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition"
-                    >
-                      {vaga.titulo}
-                    </h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3
+                        onClick={() => onSelectVaga(vaga)}
+                        className="text-base sm:text-lg font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition"
+                        title="Ver descrição, análise e anotações"
+                      >
+                        {vaga.titulo}
+                      </h3>
+                      {linkVaga && (
+                        <a
+                          href={linkVaga}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800 transition shrink-0"
+                          title="Abrir vaga no portal original"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Abrir a vaga</span>
+                        </a>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                       <span className="font-semibold text-slate-800 dark:text-slate-200">
                         {vaga.empresa}
@@ -589,7 +604,7 @@ export default function TriageReport({
                 </div>
 
                 {/* Right Action Column: Triage Buttons */}
-                <div className="flex flex-col items-stretch sm:items-end gap-2 shrink-0 w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+                <div className="flex flex-col items-stretch sm:items-end justify-center gap-2 shrink-0 w-full lg:w-auto lg:self-center pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
                   {/* Action Buttons */}
                   <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
                     {subTab === "pendente" && (
@@ -704,29 +719,6 @@ export default function TriageReport({
                       </>
                     )}
 
-                    {/* 4. Ver detalhes completos / Acessar a vaga na plataforma original */}
-                    <div className="flex items-center justify-end gap-1.5 pt-0.5 w-full">
-                      <button
-                        onClick={() => onSelectVaga(vaga)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition"
-                        title="Ver descrição, análise e anotações"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span className="text-[11px] font-medium">Detalhes</span>
-                      </button>
-                      {linkVaga && (
-                      <a
-                        href={linkVaga}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition border border-transparent hover:border-indigo-200 dark:border-indigo-800"
-                        title="Abrir vaga no portal original"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span className="text-[11px] font-medium">Abrir a vaga</span>
-                      </a>
-                      )}
-                    </div>
                   </div>
                 </div>
               </div>
