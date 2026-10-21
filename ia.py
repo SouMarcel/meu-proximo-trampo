@@ -52,7 +52,7 @@ PROVEDORES = {
                "chave_em": "https://platform.openai.com/settings/organization/api-keys", "modelo": "gpt-6-luna"},
     "openrouter": {"nome": "OpenRouter", "adaptador": "openai", "url": "https://openrouter.ai/api/v1",
                    "variavel": "OPENROUTER_API_KEY", "cobranca": "uso",
-                   "chave_em": "https://openrouter.ai/settings/keys", "modelo": "google/gemini-3.8-flash"},
+                   "chave_em": "https://openrouter.ai/settings/keys", "modelo": "openrouter/free"},
     "groq": {"nome": "Groq", "adaptador": "openai", "url": "https://api.groq.com/openai/v1",
              "variavel": "GROQ_API_KEY", "cobranca": "uso", "chave_em": "https://console.groq.com/keys", "modelo": "openai/gpt-oss-120b"},
     "deepseek": {"nome": "DeepSeek", "adaptador": "openai", "url": "https://api.deepseek.com/v1",
@@ -68,6 +68,13 @@ PROVEDORES = {
                "modelo": ""},
 }
 DICA_ANTHROPIC = "claude-sonnet-5-5 e claude-haiku-4-5-20251001 custam menos que o Opus."
+# Roteadores do OpenRouter (conferido em openrouter.ai/docs em 2026-10-20): o modelo é escolhido a cada pedido.
+DICA_OPENROUTER = ("Para gastar menos, escreva no campo Modelo um roteador do OpenRouter, que escolhe o modelo sozinho. "
+                   "openrouter/free (o padrão): só modelos gratuitos, sem custo; até 20 pedidos por minuto e 50 por dia "
+                   "(1.000 por dia depois de comprar 10 créditos), e os provedores gratuitos podem usar os dados para "
+                   "treino. openrouter/auto: o modelo pago mais barato que dá conta de cada pedido, cobrado pela tarifa "
+                   "dele. Um modelo fixo (ex.: google/gemini-3.8-flash) dá notas mais estáveis entre as vagas.")
+DICAS = {"anthropic": DICA_ANTHROPIC, "openrouter": DICA_OPENROUTER}
 PADROES_CHAVE = re.compile(r"(sk-ant-[A-Za-z0-9_\-]{8,}|sk-[A-Za-z0-9_\-]{8,}|AIza[0-9A-Za-z_\-]{20,}"
                            r"|gsk_[A-Za-z0-9]{10,}|sj_[A-Za-z0-9]{10,})")
 URL_VALIDA = re.compile(r"^(https://[^\s/]+|http://(127\.0\.0\.1|localhost)(:\d+)?)(/\S*)?$")
@@ -99,6 +106,19 @@ def escolha_efetiva(cfg: dict | None = None) -> dict:
 
 def modelo_efetivo(escolha: dict) -> str:
     return escolha.get("modelo") or PROVEDORES.get(escolha.get("provedor"), {}).get("modelo", "")
+
+
+def gratuito(escolha: dict) -> bool:
+    """Modelo gratuito do OpenRouter: o roteador openrouter/free ou um modelo com o sufixo :free."""
+    m = modelo_efetivo(escolha).strip().lower()
+    return escolha.get("provedor") == "openrouter" and (m == "openrouter/free" or m.endswith(":free"))
+
+
+def cobranca_efetiva(escolha: dict) -> str:
+    """Como a escolha é cobrada: "assinatura", "uso", "gratuito" (sem custo, com limite de pedidos) ou "" (sem IA)."""
+    if gratuito(escolha):
+        return "gratuito"
+    return PROVEDORES.get(escolha.get("provedor"), {}).get("cobranca", "")
 
 
 def disponivel(cfg: dict | None = None) -> bool:
@@ -307,11 +327,12 @@ def estado_para_pagina(pode_alterar: bool, ultimo_erro=None) -> dict:
     provedores = [{"id": pid, "nome": p["nome"], "precisa_chave": bool(p["variavel"]) and pid != "compativel",
                    "aceita_chave": bool(p["variavel"]), "cobranca": p["cobranca"], "modelo_padrao": p["modelo"],
                    "url_padrao": p["url"], "onde_obter_chave": p["chave_em"],
-                   "dica": DICA_ANTHROPIC if pid == "anthropic" else ""} for pid, p in PROVEDORES.items()]
+                   "dica": DICAS.get(pid, "")} for pid, p in PROVEDORES.items()]
     chaves = {pid: {"cadastrada": bool(segredos.ler(p["variavel"])), "final": segredos.final(p["variavel"]),
                     "origem": segredos.origem(p["variavel"])}
               for pid, p in PROVEDORES.items() if p["variavel"]}
     return {"escolha": gravada, "efetiva": efetiva["provedor"], "modelo_efetivo": modelo_efetivo(efetiva),
+            "cobranca_efetiva": cobranca_efetiva(efetiva),
             "url_efetiva": efetiva.get("url_base", ""), "provedores": provedores, "chaves": chaves,
             "claude_instalado": shutil.which("claude") is not None, "pode_alterar": bool(pode_alterar),
             "disponivel": disponivel(cfg), "ultimo_erro": ultimo_erro}

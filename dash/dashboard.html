@@ -1944,7 +1944,10 @@ dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(3px); }
   }
   function avisosIA(p) {
     if (!p || p.id === "nenhum") return ["Nada é enviado a provedores de IA. Busca, relatório e quadro funcionam normalmente; as vagas ficam sem nota."];
-    var l = [p.cobranca === "assinatura" ? "Usa a sua assinatura do Claude: não há cobrança por chamada além do plano." :
+    var m = String((IA.f && IA.f.modelo) || p.modelo_padrao || "").toLowerCase();
+    var gratis = p.id === "openrouter" && (m === "openrouter/free" || /:free$/.test(m));  // sem custo, com limite de pedidos
+    var l = [gratis ? "Modelo gratuito: sem custo, com limite de pedidos por dia no OpenRouter (veja a dica abaixo)." :
+      p.cobranca === "assinatura" ? "Usa a sua assinatura do Claude: não há cobrança por chamada além do plano." :
       "Cobrado por uso, na sua conta do provedor: cada análise de vaga consome créditos.",
       "Notas de modelos diferentes podem variar para a mesma vaga.",
       "O seu perfil e o texto das vagas vão para " + p.nome + " a cada análise."];

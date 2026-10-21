@@ -242,7 +242,7 @@ repetida: devolve a que já existe). A vaga pode cair direto em `triagem: fora` 
 
 **`GET /api/busca/plano`** — o que o diálogo de confirmação da busca mostra.
 `{filtros_ok, perfil_ok, consultas, portais: string[], cargos: string[], janela_horas, resumo, estimativa_min,
-ia: {ligada, nome, modelo, cobranca: "uso"|"assinatura"|""}, ultima: {origem, situacao, inicio, fim}|null,
+ia: {ligada, nome, modelo, cobranca: "uso"|"assinatura"|"gratuito"|""}, ultima: {origem, situacao, inicio, fim}|null,
 proxima_em: ISO|null (antes disso não dá para buscar), recente: bool (última há menos de 6 h),
 espera: [{portal, ate, motivo}] (portal em espera depois de bloqueio), so_espera: bool, aviso_cargos, aviso_pausa}`.
 
@@ -292,6 +292,7 @@ informe a cidade"; filtros.py:355-433). Também usado por "Gravar filtros" nos p
 A chave nunca volta para a página: só se existe, os 4 últimos caracteres e a origem.
 
 **`GET /api/ia`** — `{escolha: {provedor, modelo, url_base}|null, efetiva: string (id do provedor), modelo_efetivo,
+cobranca_efetiva: "uso"|"assinatura"|"gratuito"|"" (a da escolha; "gratuito" = openrouter/free ou modelo :free do OpenRouter),
 url_efetiva, provedores: [{id, nome, precisa_chave, aceita_chave, cobranca: "uso"|"assinatura"|"", modelo_padrao,
 url_padrao, onde_obter_chave, dica}], chaves: {id: {cadastrada, final (4 últimos ou ""), origem: "arquivo"|"ambiente"|null}},
 claude_instalado, pode_alterar, disponivel: bool (IA pronta para uso), ultimo_erro}` (ia.py:302-317).
@@ -365,7 +366,7 @@ Uma geração por vez no servidor (currículo, carta ou respostas dividem a mesm
 **`GET /api/curriculo/catalogo?vaga={id}`** (sem `vaga` = currículo base) — o diálogo "Gerar currículo".
 `{tecnicas: {ats|foco|xyz|resultado_primeiro|competencias_primeiro: {nome, padrao, explicacao}}, escolhas:
 {paginas|formato|estilo: {nome, padrao, opcoes: {valor: rótulo}}}, sugestao: {<técnica>: bool, paginas, formato,
-estilo, motivo}, ia: {ligada, nome, modelo, cobranca}, perfil_ok, pode_alterar}`. Erro 404 vaga não encontrada.
+estilo, motivo}, ia: {ligada, nome, modelo, cobranca: "uso"|"assinatura"|"gratuito"|""}, perfil_ok, pode_alterar}`. Erro 404 vaga não encontrada.
 Opções: `paginas` 1|2; `formato` br|us|eu; `estilo` padrao|compacto|executivo (curriculo.py:62-86).
 
 **`POST /api/curriculo`** **[local]** — "Gerar". Corpo `{vaga_id: string|null, tecnicas: {ats, foco, xyz,
