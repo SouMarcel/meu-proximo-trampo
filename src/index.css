@@ -10,3 +10,13 @@ body {
 .dark body {
   background-color: var(--color-slate-950);
 }
+
+/* Barra de rolagem fina das colunas do quadro, nos dois temas. */
+.rolagem-fina {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-slate-300) transparent;
+}
+
+.dark .rolagem-fina {
+  scrollbar-color: var(--color-slate-700) transparent;
+}

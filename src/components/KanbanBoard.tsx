@@ -285,7 +285,9 @@ export default function KanbanBoard({
                 key={etapa.key}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, etapa.key)}
-                className="flex flex-col bg-slate-100/70 dark:bg-slate-900/50 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-3 min-h-[580px] transition"
+                // Coluna com a altura da janela (menos o cabeçalho fixo); os cards que não cabem rolam dentro dela.
+                // No celular, as colunas empilhadas encolhem até o que têm.
+                className="flex flex-col bg-slate-100/70 dark:bg-slate-900/50 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-3 max-h-[calc(100dvh-6rem)] md:h-[calc(100dvh-6rem)] md:min-h-[420px] transition"
               >
                 {/* Column Header */}
                 <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-800">
@@ -312,7 +314,7 @@ export default function KanbanBoard({
                 </div>
 
                 {/* Cards Container */}
-                <div className="space-y-3 flex-1">
+                <div className="space-y-3 flex-1 min-h-0 overflow-y-auto rolagem-fina -mx-1 px-1 pb-1">
                   {cards.map((vaga) => (
                     <div
                       key={vaga.id}
