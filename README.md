@@ -1,7 +1,7 @@
 # meu-proximo-trampo
 
-Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, na Gupy e na Nerdin
-(vagas de tecnologia; e, se você quiser, no startup.jobs), monta um relatório para você decidir o que vale a pena e
+Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com e na
+Nerdin (vagas de tecnologia; e, se você quiser, no startup.jobs), monta um relatório para você decidir o que vale a pena e
 acompanha suas candidaturas num quadro kanban. Com IA (opcional), cada vaga recebe uma
 nota de aderência ao seu perfil, com o que bate, o que falta e o que o anúncio esconde.
 
@@ -11,7 +11,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ## O que ela faz
 
-- **Busca** vagas no Indeed, na Gupy e na Nerdin, de tecnologia (e no LinkedIn, no startup.jobs, de
+- **Busca** vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com e na Nerdin, de tecnologia (e no LinkedIn, no
+  startup.jobs, de
   startups, e em portais de vagas remotas do exterior, se você ligar) com
   os seus cargos e filtros, que você ajusta no painel **Filtros da busca** do dashboard:
   remoto no seu país (e, se quiser, em outros países), híbrido e presencial só na sua
@@ -28,7 +29,7 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 - **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
   Recebida → Encerrada, com anotações, resultado e filtro por plataforma.
 - **Adicionar Vaga pelo link:** cole o link de uma vaga que você achou em outro lugar
-  (Indeed, LinkedIn, Gupy, Nerdin, startup.jobs, site da empresa…). O dashboard lê os dados, põe
+  (Indeed, LinkedIn, Gupy, InfoJobs, Vagas.com, Nerdin, startup.jobs, site da empresa…). O dashboard lê os dados, põe
   a vaga no relatório como as da busca e, com o Claude Code instalado, ela recebe a nota
   sozinha em cerca de 1 minuto. Se o site não deixar ler, o formulário pede o resto.
 - **Vaga publicada num post:** cole o link de um post do LinkedIn com uma vaga, ou use
@@ -93,7 +94,7 @@ skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`anal
 
 ```mermaid
 flowchart LR
-  A[Indeed, Gupy, Nerdin, LinkedIn, startup.jobs<br/>e fontes do exterior] --> B[vagas.py buscar]
+  A[Indeed, Gupy, InfoJobs, Vagas.com, Nerdin,<br/>LinkedIn, startup.jobs e fontes do exterior] --> B[vagas.py buscar]
   B -->|sem IA| D[(banco local)]
   B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
   C --> D
@@ -407,7 +408,7 @@ funcionar, abra uma issue.
 | Campo | O que é |
 |---|---|
 | `perfil` | Arquivo do seu perfil de carreira (usado pela IA; montado nos primeiros passos). Padrão: `perfil.md` |
-| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `linkedin` e `startupjobs` (padrão, quando o campo não existe: `indeed`, `gupy` e `nerdin`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos |
+| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `linkedin` e `startupjobs` (padrão, quando o campo não existe: `indeed`, `gupy`, `nerdin`, `infojobs` e `vagascom`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `infojobs` e o `vagascom` trazem vagas de todas as áreas, muitas presenciais; veja os Avisos. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos |
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
@@ -543,6 +544,36 @@ Para instalar à mão, no Claude Code:
   por busca; as outras ficam com descrição pendente). Se a Nerdin recusar ou limitar as consultas,
   ela fica de fora até o fim daquela busca, sem nova tentativa, e os outros portais seguem. A
   candidatura é sempre na própria Nerdin.
+- A busca no InfoJobs (`infojobs.com.br`, vagas de todas as áreas no Brasil, muitas presenciais) é uma
+  consulta não oficial à busca pública do site, sem login e sem cookies. **Os termos de uso do InfoJobs
+  não autorizam robôs**: ele entra na busca como o LinkedIn, por escolha de quem usa a ferramenta, que
+  pode desligá-lo no painel. Para ler o mínimo:
+  - cada cargo faz um pedido da lista do país (já filtrada pela data, no próprio site) e, na busca na
+    cidade, um da lista da cidade, que traz também as cidades vizinhas;
+  - só a primeira página de cada lista (20 vagas), porque a seguinte não tem endereço próprio;
+  - ficam só as vagas cujo título bate com o cargo;
+  - a descrição vem da página da vaga, só para as que vão para o relatório (até 30 por busca);
+  - pausa sorteada de 3 a 7 segundos entre os pedidos;
+  - se o InfoJobs recusar, limitar ou pedir login, ele sai daquela busca sem nova tentativa e fica
+    **24 horas em espera**: nesse período nenhum pedido vai a ele, e a página, o terminal e o chat
+    perguntam antes de buscar só com os outros portais.
+
+  A candidatura é sempre no próprio InfoJobs.
+- A busca no Vagas.com (`vagas.com.br`, vagas de todas as áreas no Brasil) é uma consulta não oficial
+  à busca pública do site, sem login e sem cookies:
+  - a lista de cada cargo é lida uma vez por busca, das vagas mais novas para as mais antigas (até 3
+    páginas de 40, parando na janela de tempo);
+  - ficam só as vagas cujo título bate com o cargo;
+  - a lista só diz quando a vaga é 100% home office; o modelo das outras fica para a análise com IA;
+  - a descrição vem da página da vaga (até 30 por busca);
+  - a pausa e a espera de 24 horas depois de um bloqueio são as mesmas do InfoJobs.
+
+  A candidatura é sempre no próprio Vagas.com.
+- **Pausa por portal:** cada portal que lê páginas (LinkedIn, Nerdin, InfoJobs, Vagas.com) tem a sua
+  pausa, ajustável no arquivo `.env` da raiz com `<PORTAL>_PAUSA=N` (`LINKEDIN_PAUSA`, `NERDIN_PAUSA`,
+  `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`), em segundos, de 3 a 60. O `.env.exemplo` traz uma linha comentada
+  para cada um, com o padrão e o mínimo: copie a linha e tire o `#` do começo. Aumente só a do portal
+  que estiver bloqueando; vale a partir da busca seguinte, e o começo da busca mostra a pausa em uso.
 - A busca no startup.jobs usa o MCP público do próprio site (`https://api.startup.jobs/mcp`),
   sem login e só de leitura. Sem conta, ele mostra só as vagas dos últimos 14 dias e
   aceita 20 consultas por minuto; a ferramenta espaça as consultas sozinha. Ele filtra
@@ -582,6 +613,7 @@ O link e o QR code também ficam no canto de cima do dashboard.
 - [x] Gupy
 - [x] startup.jobs (vagas de startups; opcional)
 - [x] Nerdin (vagas de tecnologia no Brasil, busca pública; ligada por padrão)
+- [x] InfoJobs e Vagas.com (vagas de todas as áreas no Brasil, busca pública; ligados por padrão)
 - [x] Fontes do exterior (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board)
   e empresas acompanhadas no Greenhouse, Lever e Ashby; opcionais
 - [x] LinkedIn (busca pública, sem login; opcional)

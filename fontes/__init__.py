@@ -57,11 +57,11 @@ fonte (ex.: "gupy-12345") para não colidir com outros portais.
 Para adicionar um portal: crie fontes/<nome>.py seguindo esse contrato e registre
 abaixo em FONTES.
 """
-from . import (ats, getonboard, gupy, himalayas, indeed, jobicy, linkedin, nerdin, remoteok, remotive, startupjobs,
-               weworkremotely)
+from . import (ats, getonboard, gupy, himalayas, indeed, infojobs, jobicy, linkedin, nerdin, remoteok, remotive,
+               startupjobs, vagascom, weworkremotely)
 
-FONTES = {indeed.NOME: indeed, gupy.NOME: gupy, nerdin.NOME: nerdin, linkedin.NOME: linkedin,
-          startupjobs.NOME: startupjobs,
+FONTES = {indeed.NOME: indeed, gupy.NOME: gupy, nerdin.NOME: nerdin, infojobs.NOME: infojobs, vagascom.NOME: vagascom,
+          linkedin.NOME: linkedin, startupjobs.NOME: startupjobs,
           # do exterior, sem filtro de país: ligadas no painel da busca internacional
           remotive.NOME: remotive, himalayas.NOME: himalayas, remoteok.NOME: remoteok, jobicy.NOME: jobicy,
           weworkremotely.NOME: weworkremotely, getonboard.NOME: getonboard, ats.NOME: ats}

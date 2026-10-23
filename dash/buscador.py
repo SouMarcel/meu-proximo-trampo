@@ -185,7 +185,8 @@ class Busca:
                 raise BuscaRecusada(f"Para os portais não bloquearem a busca, espere um pouco: dá para buscar de novo "
                                     f"a partir das {_hora(pl['proxima_em'])}.")
             if pl["espera"]:
-                aviso = "; ".join(f"O {e['portal']} está em espera até {_hora(e['ate'])} ({e['motivo']})"
+                ate = _vagas()._comum.ate_quando  # com a data quando a espera passa de hoje (spec 026: 24 horas)
+                aviso = "; ".join(f"O {e['portal']} está em espera até {ate(e['ate'])} ({e['motivo']})"
                                   for e in pl["espera"])
                 if pl["so_espera"]:
                     raise BuscaRecusada(f"{aviso} e é o único portal ligado: não há o que buscar agora.")

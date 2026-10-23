@@ -79,7 +79,7 @@ Fontes: banco.py:498-604, vagas.py:719-739, kit.py.
 |---|---|---|
 | `id` | string | `^[A-Za-z0-9_.:-]{1,64}$`; vaga manual começa com `m-`, post do LinkedIn com `lip-` |
 | `origem` | `"busca"` \| `"link"` \| `"manual"` | busca automática; adicionada pelo link ou com "Relatório (decidir depois)"; adicionada direto no quadro |
-| `plataforma` | string | uma de: Indeed, LinkedIn, Gupy, InHire, Catho, Startup Jobs, Nerdin, Remotive, Himalayas, RemoteOK, Jobicy, We Work Remotely, Get on Board, Greenhouse, Lever, Ashby, Outra |
+| `plataforma` | string | uma de: Indeed, LinkedIn, Gupy, InHire, Catho, Startup Jobs, Nerdin, InfoJobs, Vagas.com, Remotive, Himalayas, RemoteOK, Jobicy, We Work Remotely, Get on Board, Greenhouse, Lever, Ashby, Outra |
 | `outras_plataformas` | string[] | outros portais onde o mesmo anúncio apareceu |
 | `formato` | `"post"` | vaga tirada de um post ou texto colado (etiqueta "Post") |
 | `busca_id`, `termos`, `grupos` | string, string[], string[] | busca que achou a vaga e os cargos/grupos que a acharam (`grupos` tipo `remoto`, `internacional:<país>`) |
@@ -275,7 +275,8 @@ cargos; o front mostra o aviso de primeira vez).
   modelos: {remoto, hibrido, presencial: bool}, internacional: {ativo, paises, termos, regioes, salario_min_anual_usd,
   fuso_horas, contratacao, aceita_mudar, paises_mudanca, passaporte, autorizacao_trabalho, precisa_sponsor, fontes,
   empresas: [{sistema, id, nome, url}], frases_restricao, frases_positivas}, idiomas_aceitos, janela_horas,
-  tipos_emprego, senioridades, moedas_aceitas, empresas_excluir, fontes: string[] (indeed, gupy, nerdin, linkedin,
+  tipos_emprego, senioridades, moedas_aceitas, empresas_excluir, fontes: string[] (indeed, gupy, nerdin, infojobs,
+  vagascom, linkedin,
   startupjobs)}` (filtros.py:231-273).
 - `opcoes`: `{paises, modelos, tipos_emprego, senioridades, moedas, moeda_do_pais, janelas (chaves "24","72","168",
   "360","720"), raios_km, idiomas, regioes, contratacao, fontes_int: [{nome, rotulo, termos}], fontes_nac:

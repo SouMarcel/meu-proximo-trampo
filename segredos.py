@@ -41,7 +41,8 @@ def _do_arquivo(nome: str) -> str:
     valor = ""
     for linha in _linhas():
         if not linha.lstrip().startswith("#") and _nome_da_linha(linha) == nome:
-            valor = linha.partition("=")[2].strip().strip("'\"")
+            bruto = re.sub(r"\s+#.*$", "", linha.partition("=")[2])  # comentário no fim da linha (.env.exemplo)
+            valor = bruto.strip().strip("'\"")
     return valor
 
 

@@ -418,9 +418,10 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(filtros.validar({**self.BASE, "fontes": ["linkedin", "orkut"]})["fontes"], ["linkedin"])
 
     def test_padrao_e_opcoes(self):
-        self.assertEqual(filtros.efetivos({})["fontes"], ["indeed", "gupy", "nerdin"])
+        self.assertEqual(filtros.efetivos({})["fontes"], ["indeed", "gupy", "nerdin", "infojobs", "vagascom"])
         nomes = {o["nome"]: o for o in filtros.opcoes()["fontes_nac"]}
-        self.assertEqual(list(nomes), ["indeed", "gupy", "nerdin", "linkedin", "startupjobs"])
+        self.assertEqual(list(nomes), ["indeed", "gupy", "nerdin", "infojobs", "vagascom", "linkedin",
+                                       "startupjobs"])
         self.assertTrue(nomes["linkedin"]["termos"])
         self.assertIn("MCP_STARTUP_JOBS", nomes["startupjobs"]["precisa"])
 

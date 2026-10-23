@@ -16,9 +16,8 @@ Cada pedido ao LinkedIn (busca, descrição, link e post colados) entra no regis
 from __future__ import annotations
 
 import json
-import math
 import os
-import random
+import random  # o sorteio da pausa (_comum.pausar); os testes o trocam por este módulo
 import re
 import threading
 import time
@@ -47,7 +46,7 @@ BUSCA = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 VAGA = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{}"
 PAUSA = (3.0, 7.0)  # padrão, sem LINKEDIN_PAUSA
 VAR_PAUSA = "LINKEDIN_PAUSA"  # no .env ou no ambiente: segundos de pausa mínima (spec 017)
-PAUSA_MIN, PAUSA_MAX, PAUSA_FAIXA = 3.0, 60.0, 4.0  # N fica entre 3 e 60; a pausa é sorteada de N a N + 4
+PAUSA_MIN, PAUSA_MAX, PAUSA_FAIXA = 3.0, _comum.PAUSA_MAX, 4.0  # N fica entre 3 e 60; a pausa é sorteada de N a N + 4
 POR_PAGINA = 10  # o que a busca pública devolve por página
 MAX_PAGINAS = 1  # uma página por consulta: poucas consultas, menos risco de bloqueio
 MAX_PAGINAS_AGRUPADA = 3  # a consulta com os cargos juntos (AGRUPAR) lê até 3 páginas
@@ -86,43 +85,17 @@ def _esquecer() -> None:
 _comum.AO_ESQUECER.append(_esquecer)
 
 
-def _num(n: float) -> str:
-    return f"{n:g}".replace(".", ",")
-
-
 def pausa() -> dict:
     """{"faixa": (mín, máx) em segundos, "definida": LINKEDIN_PAUSA está no .env ou no ambiente, "ajuste": motivo
     quando o valor foi trocado pelo limite ou ignorado, ou ""}. Sem a variável, vale PAUSA."""
-    bruto = segredos.ler(VAR_PAUSA)
-    if not bruto:
-        return {"faixa": PAUSA, "definida": False, "ajuste": ""}
-    try:
-        n = float(bruto.replace(",", "."))
-        if not math.isfinite(n):
-            raise ValueError
-    except ValueError:
-        return {"faixa": PAUSA, "definida": True,
-                "ajuste": f"o valor de {VAR_PAUSA} ({bruto[:20]}) não é um número e foi ignorado"}
-    ajuste = ""
-    if n < PAUSA_MIN:
-        n, ajuste = PAUSA_MIN, f"{VAR_PAUSA} abaixo do mínimo de {_num(PAUSA_MIN)} segundos; vale o mínimo"
-    elif n > PAUSA_MAX:
-        n, ajuste = PAUSA_MAX, f"{VAR_PAUSA} acima do máximo de {_num(PAUSA_MAX)} segundos; vale o máximo"
-    return {"faixa": (n, n + PAUSA_FAIXA), "definida": True, "ajuste": ajuste}
+    return _comum.pausa_do_env(VAR_PAUSA, PAUSA, PAUSA_MIN, PAUSA_MAX, PAUSA_FAIXA)
 
 
 def aviso_pausa(consultas: int) -> str | None:
     """Aviso do começo da busca quando LINKEDIN_PAUSA está definida: a pausa em uso e o tempo de pausa estimado
     (consultas do LinkedIn × páginas + descrições, no máximo)."""
-    p = pausa()
-    if not p["definida"] or not consultas:
-        return None
-    mn, mx = p["faixa"]
-    pedidos = consultas * (MAX_PAGINAS_AGRUPADA if AGRUPAR else MAX_PAGINAS) + MAX_DESCRICOES
-    minutos = max(1, round(pedidos * (mn + mx) / 2 / 60))
-    texto = (f"LinkedIn: pausa de {_num(mn)} a {_num(mx)} s entre os pedidos ({VAR_PAUSA}), "
-             f"até cerca de {minutos} min só de pausa no LinkedIn.")
-    return f"{texto} Atenção: {p['ajuste']}." if p["ajuste"] else texto
+    pedidos = consultas * (MAX_PAGINAS_AGRUPADA if AGRUPAR else MAX_PAGINAS) + MAX_DESCRICOES if consultas else 0
+    return _comum.aviso_pausa(PLATAFORMA, "no LinkedIn", VAR_PAUSA, pausa(), pedidos)
 
 
 class _SemRedirecionar(urllib.request.HTTPRedirectHandler):
@@ -134,15 +107,11 @@ class _SemRedirecionar(urllib.request.HTTPRedirectHandler):
 def _pausar() -> None:
     if _estado["pausa"] is None:
         _estado["pausa"] = pausa()["faixa"]
-    if _estado["ultimo"] is not None:
-        espera = _estado["ultimo"] + random.uniform(*_estado["pausa"]) - time.monotonic()
-        if espera > 0:
-            time.sleep(espera)
-    _estado["ultimo"] = time.monotonic()
+    _comum.pausar(_estado, _estado["pausa"])
 
 
 def _hora(iso: str) -> str:
-    return str(iso)[11:16]
+    return _comum.ate_quando(iso)
 
 
 def _motivo(codigo: int) -> str:
@@ -156,29 +125,13 @@ def _motivo(codigo: int) -> str:
 def _bloquear(motivo: str) -> _comum.FonteErro:
     """Para o LinkedIn nesta busca e grava a espera para as próximas (se não der para gravar, segue sem ela)."""
     _estado["bloqueado"] = True
-    agora = datetime.now()
-    try:
-        ARQ_ESPERA.parent.mkdir(parents=True, exist_ok=True)
-        ARQ_ESPERA.write_text(json.dumps({"desde": agora.isoformat(timespec="seconds"), "motivo": motivo},
-                                         ensure_ascii=False), encoding="utf-8")
-    except OSError:
-        pass
-    ate = (agora + ESPERA).isoformat(timespec="minutes")
+    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + ESPERA).isoformat(timespec="minutes")
     return _comum.FonteErro(f"{BLOQUEIO} ({motivo}); em espera até {_hora(ate)}")
 
 
 def espera(agora: datetime | None = None) -> dict | None:
     """{"ate", "motivo"} nas ESPERA horas depois do último bloqueio; None fora delas ou sem arquivo legível."""
-    agora = agora or datetime.now()
-    try:
-        dados = json.loads(ARQ_ESPERA.read_text(encoding="utf-8"))
-        desde = datetime.fromisoformat(str(dados["desde"]))
-    except (OSError, ValueError, TypeError, KeyError):
-        return None
-    ate = min(desde, agora) + ESPERA  # hora gravada no futuro (relógio mudou) vale como agora
-    if agora >= ate:
-        return None
-    return {"ate": ate.isoformat(timespec="minutes"), "motivo": str(dados.get("motivo") or "bloqueio")}
+    return _comum.ler_espera(ARQ_ESPERA, ESPERA, agora)
 
 
 def parada() -> bool:

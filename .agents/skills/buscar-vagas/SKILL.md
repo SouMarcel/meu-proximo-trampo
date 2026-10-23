@@ -1,6 +1,6 @@
 ---
 name: buscar-vagas
-description: Busca vagas de emprego (Indeed, Gupy e Nerdin; LinkedIn e startup.jobs se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir uma busca no Indeed, na Gupy, na Nerdin ou no startup.jobs, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
+description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com e Nerdin; LinkedIn e startup.jobs se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
 
 # Buscar vagas
@@ -32,9 +32,10 @@ volta nas próximas buscas.
 - O arquivo de perfil apontado em `config.json` (padrão `perfil.md`): a única fonte
   sobre o usuário. Não complete lacunas com suposições.
 - `vagas.py`: `buscar`, `ver` e `gravar`. As buscas de cada portal ficam em `fontes/`
-  (`indeed.py`, `gupy.py`, `nerdin.py`, `linkedin.py`, `startupjobs.py`); os portais usados vêm de
-  `fontes` no `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais (sem a chave,
-  valem `indeed`, `gupy` e `nerdin`; o `linkedin` e o `startupjobs` só entram se estiverem lá).
+  (`indeed.py`, `gupy.py`, `nerdin.py`, `infojobs.py`, `vagascom.py`, `linkedin.py`, `startupjobs.py`); os
+  portais usados vêm de `fontes` no `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais
+  (sem a chave, valem `indeed`, `gupy`, `nerdin`, `infojobs` e `vagascom`; o `linkedin` e o `startupjobs` só
+  entram se estiverem lá).
 - `dash/`: o dashboard. `servidor.py` (porta 8765), `front/` (a página), `banco.py` (dados
   em `dash/dados/candidaturas.db`, com comandos `quadro`, `pendentes` e `analisar`) e
   `README.md` (campos e valores).
@@ -81,7 +82,8 @@ servidor; ele só serve para ver e mexer no quadro.
    `--termos '"product owner"'`; "pode ser presencial em qualquer lugar" →
    `--incluir-presencial`; "só na Gupy" → `--fontes gupy`; "procura também no
    startup.jobs" → `--fontes indeed gupy nerdin startupjobs`; "inclui o LinkedIn" →
-   `--fontes indeed gupy nerdin linkedin`; "só vagas de TI da Nerdin" → `--fontes nerdin`. Pedido pontual não altera
+   `--fontes indeed gupy nerdin linkedin`; "só vagas de TI da Nerdin" → `--fontes nerdin`; "só no InfoJobs" →
+   `--fontes infojobs`; "só no Vagas.com" → `--fontes vagascom`. Pedido pontual não altera
    o `config.json`; para mudar o padrão, sugira o painel Filtros da busca (ou edite o
    arquivo, se ele pedir).
 
@@ -153,7 +155,10 @@ servidor; ele só serve para ver e mexer no quadro.
    inscrição, se aceita PCD); a Gupy não informa a cidade da vaga, então o local das
    vagas da busca na cidade é a cidade do usuário. Nas do startup.jobs, a linha "No
    startup.jobs:" traz o modelo e o tipo de contrato que o site informa. Nas da Nerdin, o `tipo`
-   traz a linha do anúncio (ex.: "PJ • Senior • Home Office").
+   traz a linha do anúncio (ex.: "PJ • Senior • Home Office"); nas do InfoJobs, a experiência e a
+   escolaridade pedidas (ex.: "Entre 3 e 5 anos • Ensino Superior"); nas do Vagas.com, o nível e, quando
+   for o caso, "Exclusiva para PCD". O Vagas.com só informa o modelo quando a vaga é 100% home office: nas
+   outras, tire o modelo da descrição.
    `senioridade`: os níveis que a vaga aceita, entre `junior`, `pleno` e `senior`
    (pode ser mais de um, como em "PL/SR"), com `senioridade_origem`:
    - `declarada`: o título ou a descrição dizem o nível.
@@ -342,6 +347,20 @@ cada cargo é lida uma vez por busca e ficam só as vagas cujo título bate com 
 máximo 30 descrições da Nerdin são lidas (as outras ficam com **descrição pendente**, como no
 LinkedIn). Se ela recusar ou limitar as consultas, fica de fora até o fim da busca, sem nova
 tentativa, e os outros portais seguem; não tente contornar.
+
+O InfoJobs e o Vagas.com (vagas de todas as áreas no Brasil, muitas presenciais) são consultados pela
+busca pública de cada site (`fontes/infojobs.py`, `fontes/vagascom.py`), sem login nem cookies:
+- pausa sorteada de 3 a 7 segundos entre os pedidos;
+- ficam só as vagas cujo título bate com o cargo;
+- no máximo 30 descrições de cada portal por busca (as outras ficam com **descrição pendente**);
+- os termos do InfoJobs não autorizam robôs: ele está na busca por escolha da pessoa, que pode
+  desligá-lo no painel; não leia páginas do InfoJobs por conta própria fora dos scripts;
+- no primeiro bloqueio, o portal sai da busca e fica **24 horas em espera**, com a mesma pergunta do
+  LinkedIn (código 5).
+
+**Pausa por portal:** `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA` e `VAGASCOM_PAUSA` no `.env`
+(de 3 a 60 segundos; o `.env.exemplo` traz uma linha comentada para cada uma, com o padrão e o
+mínimo). Sugira aumentar só a do portal que estiver bloqueando e deixe a pessoa editar o arquivo.
 
 O startup.jobs é consultado pelo MCP público do site (`fontes/startupjobs.py`), sem
 login. Sem conta, ele aceita 20 consultas por minuto e mostra só as vagas dos últimos
