@@ -15,6 +15,7 @@ import { areaDe, diaMes, horaDe, linkSeguro, mailtoDe, plataformaDoLink, semAcen
 import { AUTORIZACAO, CONTRATACAO, INGLES, RISCOS } from "../../utils/rotulos"
 import { BTN_MINI, LinkArquivo } from "../curriculo/Curriculos"
 import TextoDaVaga from "../TextoDaVaga"
+import CandidaturaAssistida from "./CandidaturaAssistida"
 
 const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
 const H = "font-bold text-sm text-slate-900 dark:text-white"
@@ -232,6 +233,8 @@ export function KitDaVaga({
           </p>
         )}
       </section>
+
+      <CandidaturaAssistida vaga={vaga} onAviso={onAviso} />
 
       <section className="space-y-2">
         <h4 className={H}>O que esta candidatura pede</h4>

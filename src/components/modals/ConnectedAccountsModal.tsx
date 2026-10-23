@@ -13,6 +13,7 @@ import { useConsulta } from "../../hooks/useConsulta"
 import { ETAPAS, RESULTADOS } from "../../utils/rotulos"
 import { linkSeguro } from "../../utils/formatters"
 import { BTN_MINI } from "../curriculo/Curriculos"
+import ConfigCandidatura from "./ConfigCandidatura"
 
 interface Props {
   onClose: () => void
@@ -247,6 +248,8 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
               ))}
             </section>
           )}
+
+          {c && <ConfigCandidatura onAviso={onAviso} />}
 
           {e?.situacao === "lendo" && (
             <p role="status" className="flex items-center gap-2 p-3 rounded-xl bg-slate-100 dark:bg-slate-800">
