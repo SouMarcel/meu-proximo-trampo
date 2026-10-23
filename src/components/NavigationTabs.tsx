@@ -75,7 +75,7 @@ export default function NavigationTabs({
 
   return (
     <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
         <nav
           className="flex space-x-1 sm:space-x-2 overflow-x-auto py-2 scrollbar-none"
           aria-label="Tabs"
