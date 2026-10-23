@@ -331,7 +331,8 @@ export default function AddJobModal({ onClose, onVagaAdicionada, onAviso }: AddJ
           {passo === "inicio" && (
             <div className="space-y-3 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
               <label htmlFor="add-link" className={ROTULO}>
-                Link do anúncio (Indeed, Gupy, LinkedIn, Greenhouse, Lever, Ashby, Nerdin…) ou de um post do LinkedIn
+                Link do anúncio (Indeed, Gupy, LinkedIn, InfoJobs, Vagas.com, Greenhouse, Lever, Ashby, Nerdin…) ou de um
+                post do LinkedIn
               </label>
               <div className="flex gap-2 flex-col sm:flex-row">
                 <input

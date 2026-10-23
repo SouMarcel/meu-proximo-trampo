@@ -13,6 +13,8 @@ export type Plataforma =
   | "Catho"
   | "Startup Jobs"
   | "Nerdin"
+  | "InfoJobs"
+  | "Vagas.com"
   | "Remotive"
   | "Himalayas"
   | "RemoteOK"
@@ -32,6 +34,8 @@ export const PLATAFORMAS: Plataforma[] = [
   "Catho",
   "Startup Jobs",
   "Nerdin",
+  "InfoJobs",
+  "Vagas.com",
   "Remotive",
   "Himalayas",
   "RemoteOK",
