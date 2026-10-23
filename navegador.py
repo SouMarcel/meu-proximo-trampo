@@ -4,12 +4,15 @@ conectadas (spec 018; constituição, princípio VI, "Conta conectada").
 A pessoa faz o login nos portais nessa janela; a ferramenta nunca vê nem guarda senha e não copia cookies para fora
 do navegador. A conversa com a janela é pelo protocolo de depuração do navegador (DevTools Protocol), por WebSocket,
 só com a biblioteca padrão: abrir uma página, esperar carregar e ler o que ela mostra (Runtime.evaluate). Nada de
-clicar em botões do portal.
+clicar em botões do portal. A candidatura assistida (spec 027) também digita em campos já focados (digitar,
+espaco), nunca em botões: quem chama confere antes qual é o elemento ativo.
 
   achar()                   caminho do Edge ou do Chrome, ou None
   aberto()                  a janela da ferramenta está aberta (porta de depuração respondendo)
   abrir(url, minimizado)    abre a janela (ou uma aba nela) na URL; devolve a Aba
-  Aba.ir(url) / .avaliar(js) / .url() / .fechar()
+  aba_atual()                a aba que a pessoa está vendo, sem navegar (candidatura assistida)
+  Aba.ir(url) / .avaliar(js) / .url() / .origem() / .fechar()
+  Aba.digitar(texto) / .espaco()   digitação no elemento focado (spec 027)
   fechar()                  fecha a janela da ferramenta
   desconectar()             fecha a janela e apaga o perfil (as sessões dos portais)
 
@@ -222,6 +225,20 @@ class Aba:
     def url(self) -> str:
         return self.avaliar("location.href") or ""
 
+    def origem(self) -> str:
+        return self.avaliar("location.origin") or ""
+
+    def digitar(self, texto: str) -> None:
+        """Digita no elemento focado, como um teclado (a página recebe os eventos de entrada normais). Quem chama
+        confere antes que o foco está no campo certo; nunca é usado com foco num botão."""
+        self.sessao.pedir("Input.insertText", text=texto)
+
+    def espaco(self) -> None:
+        """A tecla espaço no elemento focado: marca uma opção (radio) ou caixa. Mesma regra de digitar()."""
+        for tipo in ("keyDown", "keyUp"):
+            self.sessao.pedir("Input.dispatchKeyEvent", type=tipo, key=" ", code="Space", windowsVirtualKeyCode=32,
+                              nativeVirtualKeyCode=32, **({"text": " "} if tipo == "keyDown" else {}))
+
     def esperar_carregar(self, tempo: float = TEMPO_PEDIDO, calma: float = 1.5) -> None:
         """Espera o documento carregar e mais um pouco para a página montar a lista (páginas feitas em JavaScript)."""
         limite = time.monotonic() + tempo
@@ -300,6 +317,17 @@ def abrir(url: str, minimizado: bool = False) -> Aba:
     aba = Aba(alvo)
     aba.esperar_carregar()
     return aba
+
+
+def aba_atual() -> Aba:
+    """A aba que a pessoa está vendo na janela da ferramenta (a mais recente), sem navegar."""
+    if not aberto():
+        raise NavegadorErro("a janela da ferramenta não está aberta")
+    paginas = [a for a in _http("/json/list") if a.get("type") == "page" and a.get("webSocketDebuggerUrl")
+               and not str(a.get("url", "")).startswith(("devtools:", "chrome-extension:", "edge:", "chrome:"))]
+    if not paginas:
+        raise NavegadorErro("a janela da ferramenta não tem nenhuma página aberta")
+    return Aba(paginas[0])
 
 
 def fechar() -> None:

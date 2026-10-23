@@ -1,0 +1,18 @@
+# Tarefas: candidatura assistida
+
+- [x] T001 Pesquisa: termos de uso e decisão por portal (research.md §1)
+- [x] T002 Emenda da constituição para 4.0.0 (VI "Candidatura assistida"; I e V esclarecidos)
+- [x] T003 `navegador.py`: `Aba.digitar`, `Aba.espaco`, `Aba.origem`, `aba_atual()`
+- [x] T004 `candidatura/__init__.py`: estado do recurso no `config.json`, aviso de risco, trava
+- [x] T005 `candidatura/dominios.py`: conhecidos, bloqueados, liberar e revogar, comparação por host exato ou subdomínio
+- [x] T006 `candidatura/formulario.py`: `JS_LER`, classificação da página e dos campos, assinatura, `preencher`
+- [x] T007 `candidatura/login.py`: credenciais no `.env` e `preencher_login` preso ao host de login
+- [x] T008 `candidatura_ia.py`: `propor_respostas` (opções, limite, sensíveis, sem base) e `gravar_preenchidas`
+- [x] T009 `dash/servidor.py`: rotas `/api/candidatura…`, só deste computador
+- [x] T010 `dash/API.md`: contrato das rotas
+- [x] T011 Testes: domínios, classificação, preencher com aba falsa (nada de botão, sensível, senha, arquivo), login (host exato, senha fora de todo retorno), propostas, rotas
+- [x] T012 Prova com o Edge sem janela numa página de formulário de teste (React e HTML puro): digitação, seleção, radio, nada clicado
+- [x] T013 Front (`frontend-react`): painel "Candidatar com ajuda" no kit e configuração (ligar, domínios, credenciais)
+- [x] T014 Documentação: AGENTS.md, README.md, skills (buscar-vagas, gerar-curriculo) mais `sincronizar_skills.py`, lista de desejos (Gerenciador de Credenciais)
+- [ ] T015 Suíte completa, `graphify update .`, commit na branch, merge na branch pessoal para o teste do usuário
+- [ ] T016 (usuário) Conferir os termos de candidato da Gupy; prova real na Gupy e num ATS externo; OK para `master` e push
