@@ -56,6 +56,12 @@ class Segredos(unittest.TestCase):
             segredos.gravar("nome errado", "abc")
         self.assertFalse(self.env.exists())
 
+    def test_comentario_no_fim_da_linha(self):  # spec 026: as linhas do .env.exemplo, sem o "#" do começo
+        self.env.write_text("TESTE_PAUSA=3   # padrão 3 a 7 s (sorteado); mínimo 3 s\n"
+                            "TESTE_CHAVE=abc #123\n", encoding="utf-8")
+        self.assertEqual(segredos.ler("TESTE_PAUSA"), "3")
+        self.assertEqual(segredos.ler("TESTE_CHAVE"), "abc #123")  # chave ou senha com " #" fica inteira
+
     def test_sem_arquivo(self):
         self.assertEqual(segredos.ler("TESTE_CHAVE"), "")
         self.assertIsNone(segredos.origem("TESTE_CHAVE"))

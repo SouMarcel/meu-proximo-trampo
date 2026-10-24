@@ -239,7 +239,7 @@ def fontes_em_espera(nomes_fontes: list[str]) -> list[dict]:
 
 
 def aviso_espera(esperas: list[dict]) -> str:
-    return "; ".join(f"{e['portal']} em espera até {str(e['ate'])[11:16]} ({e['motivo']})" for e in esperas)
+    return "; ".join(f"{e['portal']} em espera até {_comum.ate_quando(e['ate'])} ({e['motivo']})" for e in esperas)
 
 
 def consultas_da_fonte(plano: list[dict], fonte) -> list[dict]:
@@ -266,14 +266,21 @@ def contar_consultas(plano: list[dict], nomes_fontes: list[str]) -> int:
 
 
 def aviso_pausa(f: dict, nomes_fontes: list[str]) -> str | None:
-    """A pausa do LinkedIn quando LINKEDIN_PAUSA está definida (spec 017): no começo da busca, na página e no terminal.
-    Sem o LinkedIn na busca, ou em espera depois de um bloqueio, não há pedidos e não há aviso."""
-    if "linkedin" not in nomes_fontes or "linkedin" not in FONTES or not f.get("termos"):
+    """A pausa de cada portal com <NOME>_PAUSA definida (specs 017 e 026): no começo da busca, na página e no
+    terminal. Portal fora da busca, ou em espera depois de um bloqueio, não faz pedidos e não tem aviso."""
+    if not f.get("termos"):
         return None
-    fonte = FONTES["linkedin"]
-    if getattr(fonte, "espera", None) and fonte.espera():
-        return None
-    return fonte.aviso_pausa(len(consultas_da_fonte(filtros.consultas(f), fonte)))
+    plano = None
+    avisos = []
+    for nome in nomes_fontes:
+        fonte = FONTES.get(nome)
+        if not getattr(fonte, "aviso_pausa", None) or (getattr(fonte, "espera", None) and fonte.espera()):
+            continue
+        plano = plano if plano is not None else filtros.consultas(f)
+        aviso = fonte.aviso_pausa(len(consultas_da_fonte(plano, fonte)))
+        if aviso:
+            avisos.append(aviso)
+    return " ".join(avisos) or None
 
 
 @_origem_linkedin("busca")
@@ -702,7 +709,8 @@ def cmd_completar(args) -> int:
         return 0
     r = completar_pendentes(avisar=lambda e: print(f"  descrição {e['lidas']} de {e['total']}", end="\r"))
     for e in r["espera"]:
-        print(f"O {e['portal']} está em espera até {e['ate'][11:16]} ({e['motivo']}): nenhum pedido feito agora.")
+        print(f"O {e['portal']} está em espera até {_comum.ate_quando(e['ate'])} ({e['motivo']}): "
+              "nenhum pedido feito agora.")
     print(f"Descrições completadas: {r['completadas']} de {antes}; continuam pendentes: {r['restantes']}.")
     for e in r["erros"][:5]:
         print(f"  aviso: {e}")

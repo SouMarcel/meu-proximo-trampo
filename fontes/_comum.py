@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import random
 import re
 import time
 import unicodedata
@@ -18,6 +19,8 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
+
+import segredos  # segredos.py, na raiz: o .env (<NOME>_PAUSA)
 
 from .link import texto_de_html
 
@@ -139,6 +142,140 @@ def esquecer() -> None:
     _memoria.clear()
     for fn in AO_ESQUECER:
         fn()
+
+
+# ---------------------------------------------------------------- portais que leem páginas (spec 026)
+# Pausa ajustável por <NOME>_PAUSA no .env, pedido de página com parada no bloqueio e espera depois dele. Cada fonte
+# chama estas funções com os próprios atributos (VAR_PAUSA, PAUSA, ARQ_ESPERA, ESPERA…).
+
+PAUSA_MAX = 60.0  # o teto de qualquer <NOME>_PAUSA
+BLOQUEIOS = (403, 429, 503)
+
+
+def num(n: float) -> str:
+    return f"{n:g}".replace(".", ",")
+
+
+def pausa_do_env(var: str, padrao: tuple[float, float], minimo: float, maximo: float = PAUSA_MAX,
+                 faixa: float = 0.0) -> dict:
+    """{"faixa": (mín, máx) em segundos, "definida": a variável está no .env ou no ambiente, "ajuste": motivo quando o
+    valor foi trocado pelo limite ou ignorado, ou ""}. Sem a variável, vale o padrão do portal; com ela (N, entre
+    `minimo` e `maximo`), a pausa vai de N a N + `faixa`."""
+    bruto = segredos.ler(var)
+    if not bruto:
+        return {"faixa": padrao, "definida": False, "ajuste": ""}
+    try:
+        n = float(bruto.replace(",", "."))
+        if not math.isfinite(n):
+            raise ValueError
+    except ValueError:
+        return {"faixa": padrao, "definida": True,
+                "ajuste": f"o valor de {var} ({bruto[:20]}) não é um número e foi ignorado"}
+    ajuste = ""
+    if n < minimo:
+        n, ajuste = minimo, f"{var} abaixo do mínimo de {num(minimo)} segundos; vale o mínimo"
+    elif n > maximo:
+        n, ajuste = maximo, f"{var} acima do máximo de {num(maximo)} segundos; vale o máximo"
+    return {"faixa": (n, n + faixa), "definida": True, "ajuste": ajuste}
+
+
+def aviso_pausa(portal: str, no_portal: str, var: str, p: dict, pedidos: int) -> str | None:
+    """Aviso do começo da busca quando a variável de pausa do portal está definida: a pausa em uso e o tempo de pausa
+    estimado para `pedidos` pedidos, no máximo. `no_portal`: "no LinkedIn", "na Nerdin"…"""
+    if not p["definida"] or not pedidos:
+        return None
+    mn, mx = p["faixa"]
+    minutos = max(1, round(pedidos * (mn + mx) / 2 / 60))
+    faixa = f"{num(mn)} s" if mn == mx else f"{num(mn)} a {num(mx)} s"
+    texto = f"{portal}: pausa de {faixa} entre os pedidos ({var}), até cerca de {minutos} min só de pausa {no_portal}."
+    return f"{texto} Atenção: {p['ajuste']}." if p["ajuste"] else texto
+
+
+def pausar(estado: dict, faixa: tuple[float, float]) -> None:
+    """Espera um intervalo sorteado em `faixa` desde o último pedido ao portal (estado["ultimo"])."""
+    if estado["ultimo"] is not None:
+        espera = estado["ultimo"] + random.uniform(*faixa) - time.monotonic()
+        if espera > 0:
+            time.sleep(espera)
+    estado["ultimo"] = time.monotonic()
+
+
+def gravar_espera(arq: Path, motivo: str, agora: datetime | None = None) -> datetime:
+    """Grava o começo da espera do portal (fora do Git, em .cache/); se não der para gravar, segue sem ela."""
+    agora = agora or datetime.now()
+    try:
+        arq.parent.mkdir(parents=True, exist_ok=True)
+        arq.write_text(json.dumps({"desde": agora.isoformat(timespec="seconds"), "motivo": motivo},
+                                  ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+    return agora
+
+
+def ler_espera(arq: Path, duracao: timedelta, agora: datetime | None = None) -> dict | None:
+    """{"ate", "motivo"} durante `duracao` depois do último bloqueio gravado; None fora dela ou sem arquivo legível."""
+    agora = agora or datetime.now()
+    try:
+        dados = json.loads(arq.read_text(encoding="utf-8"))
+        desde = datetime.fromisoformat(str(dados["desde"]))
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
+    ate = min(desde, agora) + duracao  # hora gravada no futuro (relógio mudou) vale como agora
+    if agora >= ate:
+        return None
+    return {"ate": ate.isoformat(timespec="minutes"), "motivo": str(dados.get("motivo") or "bloqueio")}
+
+
+def ate_quando(iso, hoje=None) -> str:
+    """O fim da espera para os avisos: "17:00" hoje (ou já passado), "24/10 17:00" num dia seguinte."""
+    s = str(iso or "")
+    hoje = hoje or datetime.now().date()
+    try:
+        dia = datetime.fromisoformat(s[:16]).date()
+    except ValueError:
+        return s[11:16]
+    return f"{dia:%d/%m} {s[11:16]}" if dia > hoje else s[11:16]
+
+
+def baixar_pagina(url: str, o_portal: str, antes, bloquear, sinais_login: tuple[str, ...] = ("login",),
+                  tempo: int = 20, limite: int = 3_000_000) -> str:
+    """Um pedido HTML ao portal, sem cookies e sem nova tentativa. antes() faz a pausa; bloquear(motivo) devolve o
+    FonteErro do bloqueio (recusa, limite de consultas ou redirecionamento para o login). `o_portal`: "o InfoJobs"…"""
+    antes()
+    req = urllib.request.Request(url, headers={"User-Agent": AGENTE, "Accept": "text/html",
+                                               "Accept-Language": "pt-BR,pt;q=0.9"})
+    try:
+        with urllib.request.urlopen(req, timeout=tempo) as r:
+            corpo = r.read(limite + 1)
+            charset = r.headers.get_content_charset() or "utf-8"
+            final = r.geturl() or url
+    except urllib.error.HTTPError as e:
+        if e.code in BLOQUEIOS:
+            raise bloquear(f"código {e.code}") from None
+        raise FonteErro(f"{o_portal} respondeu {e.code}") from None
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise FonteErro(f"não consegui falar com {o_portal} ({getattr(e, 'reason', e)})") from None
+    if any(s in urlsplit(final).path.lower() for s in sinais_login):
+        raise bloquear("pediu login")
+    if len(corpo) > limite:
+        raise FonteErro(f"resposta grande demais d{o_portal}")
+    return corpo.decode(charset, errors="replace")
+
+
+UFS = {"AC": "acre", "AL": "alagoas", "AP": "amapa", "AM": "amazonas", "BA": "bahia", "CE": "ceara",
+       "DF": "distrito federal", "ES": "espirito santo", "GO": "goias", "MA": "maranhao", "MT": "mato grosso",
+       "MS": "mato grosso do sul", "MG": "minas gerais", "PA": "para", "PB": "paraiba", "PR": "parana",
+       "PE": "pernambuco", "PI": "piaui", "RJ": "rio de janeiro", "RN": "rio grande do norte",
+       "RS": "rio grande do sul", "RO": "rondonia", "RR": "roraima", "SC": "santa catarina", "SP": "sao paulo",
+       "SE": "sergipe", "TO": "tocantins"}
+
+
+def na_regiao(cidade: str, uf: str, consulta: dict) -> bool:
+    """A vaga (cidade e sigla do estado) é da cidade ou do estado da consulta (sigla ou nome do estado)."""
+    if consulta.get("cidade") and cidade and _norm(cidade) == _norm(consulta["cidade"]):
+        return True
+    estado, uf = _norm(consulta.get("estado")), str(uf or "").strip().upper()
+    return bool(estado and uf) and (estado.upper() == uf if len(estado) == 2 else UFS.get(uf) == estado)
 
 
 def buscar_lista(chave: str, baixar_lista, normalizar, consulta: dict, horas: int, por_termo: int,

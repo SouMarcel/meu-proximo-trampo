@@ -311,9 +311,10 @@ class TestNaBusca(SemRede):
 class TestPadrao(unittest.TestCase):
     def test_ligada_por_padrao(self):  # SC-001
         self.assertIn("nerdin", FONTES)
-        self.assertEqual(filtros.efetivos({})["fontes"], ["indeed", "gupy", "nerdin"])
+        self.assertEqual(filtros.efetivos({})["fontes"], ["indeed", "gupy", "nerdin", "infojobs", "vagascom"])
         cfg = {"termos": ["analista"]}
-        self.assertEqual(vagas.fontes_da_busca(cfg, filtros.efetivos(cfg)), ["indeed", "gupy", "nerdin"])
+        self.assertEqual(vagas.fontes_da_busca(cfg, filtros.efetivos(cfg)), ["indeed", "gupy", "nerdin", "infojobs",
+                                                                         "vagascom"])
         cfg = {"termos": ["analista"], "fontes": ["indeed", "gupy"]}  # a lista escolhida pela pessoa não muda
         self.assertEqual(vagas.fontes_da_busca(cfg, filtros.efetivos(cfg)), ["indeed", "gupy"])
         nomes = {o["nome"]: o for o in filtros.opcoes()["fontes_nac"]}

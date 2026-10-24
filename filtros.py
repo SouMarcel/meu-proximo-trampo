@@ -79,9 +79,9 @@ FONTES_INT = {"remotive": "Remotive", "himalayas": "Himalayas", "remoteok": "Rem
               "weworkremotely": "We Work Remotely", "getonboard": "Get on Board"}
 GLOBAL = "internacional:global"
 # Portais da busca (config.json -> "fontes"), ligados no painel "Filtros da busca"; precisa = o que o portal exige
-FONTES_NAC = {"indeed": "Indeed", "gupy": "Gupy", "nerdin": "Nerdin", "linkedin": "LinkedIn",
-              "startupjobs": "startup.jobs"}
-FONTES_PADRAO = ["indeed", "gupy", "nerdin"]
+FONTES_NAC = {"indeed": "Indeed", "gupy": "Gupy", "nerdin": "Nerdin", "infojobs": "InfoJobs", "vagascom": "Vagas.com",
+              "linkedin": "LinkedIn", "startupjobs": "startup.jobs"}
+FONTES_PADRAO = ["indeed", "gupy", "nerdin", "infojobs", "vagascom"]
 PRECISA = {"startupjobs": "da chave MCP_STARTUP_JOBS no arquivo .env"}
 MAX_EMPRESAS, MAX_FRASES, TAMANHO_FRASE = 50, 30, 120
 # palavras comuns que distinguem cada idioma (sem acento); o que aparece em mais de um idioma ficou de fora

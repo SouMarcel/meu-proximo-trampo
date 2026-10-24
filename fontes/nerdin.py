@@ -6,13 +6,13 @@ MAX_PAGINAS páginas ou a primeira vaga fora da janela, e serve às consultas do
 que filtram pelo título, pelo modelo de trabalho e pela cidade ou estado. A busca do site é ampla (traz vagas que só
 citam o cargo no texto), então fica só a vaga cujo título bate com o cargo. A descrição vem da página da vaga (os
 dados estruturados JobPosting), só das vagas que vão para o relatório, no máximo MAX_DESCRICOES por busca. Pausa de
-PAUSA segundos entre os pedidos e, no primeiro bloqueio, a Nerdin fica de fora pelo resto da busca, sem nova
-tentativa (constituição, princípio VI).
+PAUSA segundos entre os pedidos (NERDIN_PAUSA=N no .env muda para N, com N de 3 a 60; spec 026) e, no primeiro
+bloqueio, a Nerdin fica de fora pelo resto da busca, sem nova tentativa (constituição, princípio VI).
 """
 from __future__ import annotations
 
 import re
-import time
+import time  # a pausa (_comum.pausar); os testes trocam o relógio por este módulo
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -33,7 +33,9 @@ LISTA = SITE + "vagas.php"
 POR_PAGINA = 20  # o que a lista mostra por página
 MAX_PAGINAS = 5  # por cargo; a janela de tempo costuma parar antes
 MAX_DESCRICOES = 30  # páginas de vaga lidas por busca; as outras ficam pendentes para a próxima
-PAUSA = 3.0  # segundos entre os pedidos à Nerdin
+PAUSA = 3.0  # segundos entre os pedidos à Nerdin, sem NERDIN_PAUSA
+VAR_PAUSA = "NERDIN_PAUSA"  # no .env ou no ambiente: segundos de pausa (spec 026)
+PAUSA_MIN = 3.0
 TEMPO = 20
 LIMITE_BYTES = 3_000_000
 LIMITE_DESCRICAO = 12000
@@ -44,18 +46,13 @@ VAGA = re.compile(r"^(?:https?://(?:www\.)?nerdin\.com\.br/)?vaga_emprego/vaga-[
 MODELOS = (("home office", "remoto"), ("remoto", "remoto"), ("hibrido", "hibrido"), ("presencial", "presencial"))
 TIPOS = (("clt", "tempo_integral"), ("pj", "pj"), ("freelancer", "pj"), ("estagio", "estagio"),
          ("temporario", "temporario"))
-UFS = {"AC": "acre", "AL": "alagoas", "AP": "amapa", "AM": "amazonas", "BA": "bahia", "CE": "ceara",
-       "DF": "distrito federal", "ES": "espirito santo", "GO": "goias", "MA": "maranhao", "MT": "mato grosso",
-       "MS": "mato grosso do sul", "MG": "minas gerais", "PA": "para", "PB": "paraiba", "PR": "parana",
-       "PE": "pernambuco", "PI": "piaui", "RJ": "rio de janeiro", "RN": "rio grande do norte",
-       "RS": "rio grande do sul", "RO": "rondonia", "RR": "roraima", "SC": "santa catarina", "SP": "sao paulo",
-       "SE": "sergipe", "TO": "tocantins"}
+UFS = _comum.UFS
 
-_estado = {"bloqueado": False, "ultimo": None, "listas": {}}
+_estado = {"bloqueado": False, "ultimo": None, "listas": {}, "pausa": None}
 
 
 def _esquecer() -> None:
-    _estado.update(bloqueado=False, listas={})
+    _estado.update(bloqueado=False, listas={}, pausa=None)  # a pausa é lida de novo a cada busca
 
 
 _comum.AO_ESQUECER.append(_esquecer)
@@ -65,12 +62,21 @@ def _agora() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def pausa() -> dict:
+    """A pausa entre os pedidos à Nerdin: PAUSA, ou NERDIN_PAUSA do .env (ver _comum.pausa_do_env)."""
+    return _comum.pausa_do_env(VAR_PAUSA, (PAUSA, PAUSA), PAUSA_MIN)
+
+
+def aviso_pausa(consultas: int) -> str | None:
+    """Aviso do começo da busca com NERDIN_PAUSA definida (páginas de lista por cargo + descrições, no máximo)."""
+    pedidos = consultas * MAX_PAGINAS + MAX_DESCRICOES if consultas else 0
+    return _comum.aviso_pausa(PLATAFORMA, "na Nerdin", VAR_PAUSA, pausa(), pedidos)
+
+
 def _pausar() -> None:
-    if _estado["ultimo"] is not None:
-        espera = _estado["ultimo"] + PAUSA - time.monotonic()
-        if espera > 0:
-            time.sleep(espera)
-    _estado["ultimo"] = time.monotonic()
+    if _estado["pausa"] is None:
+        _estado["pausa"] = pausa()["faixa"]
+    _comum.pausar(_estado, _estado["pausa"])
 
 
 def parada() -> bool:

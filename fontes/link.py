@@ -11,6 +11,8 @@
 - Greenhouse, Lever e Ashby: a API pública de vagas da empresa (fontes/ats.py), pelo
   número da vaga, com o link de candidatura e a restrição de local; se ela falhar, os
   dados estruturados da página.
+- InfoJobs e Vagas.com: os dados estruturados da página da vaga, com o mesmo id da busca;
+  durante a espera do portal depois de um bloqueio, nenhum pedido.
 - Outros sites (InHire, Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on
   Board, páginas de empresa): os dados estruturados de vaga da página (schema.org
   JobPosting, o formato que o Google usa).
@@ -53,7 +55,8 @@ def plataforma(host: str) -> str:
     host = (host or "").lower()
     for chave, nome in (("indeed.", "Indeed"), ("linkedin.", "LinkedIn"), ("gupy.io", "Gupy"),
                         ("inhire", "InHire"), ("catho.", "Catho"), ("startup.jobs", "Startup Jobs"),
-                        ("nerdin.", "Nerdin"), ("remotive.", "Remotive"), ("himalayas.app", "Himalayas"),
+                        ("nerdin.", "Nerdin"), ("infojobs.com.br", "InfoJobs"), ("vagas.com.br", "Vagas.com"),
+                        ("remotive.", "Remotive"), ("himalayas.app", "Himalayas"),
                         ("remoteok.", "RemoteOK"), ("jobicy.", "Jobicy"), ("weworkremotely.", "We Work Remotely"), ("getonbrd.", "Get on Board"),
                         ("getonboard.", "Get on Board"), ("greenhouse.io", "Greenhouse"), ("lever.co", "Lever"),
                         ("ashbyhq.com", "Ashby")):
@@ -311,6 +314,22 @@ def _id_nerdin(url: str) -> str | None:
     return nerdin.id_do_link(url)
 
 
+def _portal_paginas(plat: str):
+    """A fonte de um portal que lê páginas e tem espera (InfoJobs, Vagas.com; spec 026); None para os outros."""
+    from . import infojobs, vagascom  # importam este módulo
+
+    return {infojobs.PLATAFORMA: infojobs, vagascom.PLATAFORMA: vagascom}.get(plat)
+
+
+def _ler_portal_paginas(fonte, url: str) -> dict:
+    """A vaga pela página pública, com o mesmo id da busca; durante a espera do portal, nenhum pedido."""
+    e = fonte.espera()
+    if e:
+        raise LinkErro(f"o {fonte.PLATAFORMA} está em espera até {_comum.ate_quando(e['ate'])} ({e['motivo']}); "
+                       "tente depois ou preencha os dados à mão")
+    return {**extrair_jobposting(_baixar(url), fonte.PLATAFORMA), "id": fonte.id_do_link(url), "url": url}
+
+
 def _ler_ats(url: str, plat: str) -> dict:
     try:
         vaga = ats.ler(url)
@@ -399,6 +418,8 @@ def ler(url: str) -> dict:
         vaga = _ler_startupjobs(url, startupjobs.id_do_link(url))
     elif plat == "Nerdin" and _id_nerdin(url):
         vaga = {**extrair_jobposting(_baixar(url), plat), "id": _id_nerdin(url), "url": url}
+    elif _portal_paginas(plat) and _portal_paginas(plat).id_do_link(url):
+        vaga = _ler_portal_paginas(_portal_paginas(plat), url)
     elif plat in ("Greenhouse", "Lever", "Ashby") and ats.vaga_do_link(url):
         vaga = _ler_ats(url, plat)
     else:
