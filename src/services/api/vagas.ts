@@ -33,3 +33,29 @@ export const extrair = (texto: string, autor?: string, autor_tipo?: string) =>
   pedir<CamposExtraidos>("POST", "/api/vagas/extrair", { texto, autor, autor_tipo })
 
 export const criar = (campos: NovaVaga) => pedir<RespostaNovaVaga>("POST", "/api/vagas", campos)
+
+/** Faixa salarial (dash/API.md §3.1b; spec 028): só números com fonte e links para a pessoa pesquisar. */
+export interface ValorSalario {
+  min: number
+  max: number
+  moeda: string | null
+  periodo: "mes" | "ano" | "hora" | "dia" | "semana"
+  mensal_min: number
+  mensal_max: number
+}
+
+export interface FaixaSalarial {
+  vaga: { id: string; titulo: string; empresa: string; salario: string; valor: ValorSalario | null }
+  moeda: string | null
+  parecidas: (ValorSalario & { id: string; titulo: string; empresa: string; plataforma: string; salario: string; url: string; semelhanca: number })[]
+  resumo: { n: number; moeda: string | null; minimo: number; maximo: number; mediana: number | null } | null
+  pesquisas: { texto: string; fonte: string; em: string }[]
+  links: { rotulo: string; url: string }[]
+  conversao: string
+}
+
+export const salario = (vagaId: string) => pedir<FaixaSalarial>("GET", `/api/vagas/${id(vagaId)}/salario`)
+export const anotarSalario = (vagaId: string, texto: string, fonte: string) =>
+  pedir<FaixaSalarial>("POST", `/api/vagas/${id(vagaId)}/salario`, { texto, fonte })
+export const apagarSalario = (vagaId: string, indice: number) =>
+  pedir<FaixaSalarial>("DELETE", `/api/vagas/${id(vagaId)}/salario/${indice}`, {})

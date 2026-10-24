@@ -13,12 +13,14 @@ import {
   MoreVertical,
   Trash2,
   Wand2,
+  Banknote,
 } from "lucide-react"
 import type { CamposEditaveis, Vaga, Etapa } from "../types/api"
 import { Lembrete } from "./kit/Kit"
 import { useFerramenta } from "../contexto/Ferramenta"
 import { useCandidatura } from "../hooks/useCandidatura"
 import CandidaturaModal from "./modals/CandidaturaModal"
+import SalarioModal from "./modals/SalarioModal"
 import {
   getPlataformaStyle,
   getAderenciaBadge,
@@ -72,6 +74,7 @@ export default function JobCard({
   const { podeGravar } = useFerramenta()
   const [confirmarRemocao, setConfirmarRemocao] = useState(false)
   const [candidatar, setCandidatar] = useState(false)
+  const [salario, setSalario] = useState(false)
   const assistida = useCandidatura(podeGravar)
   // no funil e antes de enviar a candidatura: o botão abre a ajuda para preencher o formulário (quem envia é a pessoa)
   const mostrarCandidatar = Boolean(onAviso && assistida?.ligado && vaga.etapa === "salva")
@@ -211,6 +214,17 @@ export default function JobCard({
           </a>
           )}
 
+          {vaga.etapa && vaga.etapa !== "encerrada" && (
+            <button
+              onClick={() => setSalario(true)}
+              className="p-1 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition"
+              title="Faixa salarial: o que a vaga informa, vagas parecidas e pesquisa no Glassdoor"
+              aria-label="Faixa salarial"
+            >
+              <Banknote className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           {mostrarCandidatar && (
             <button
               onClick={() => setCandidatar(true)}
@@ -259,6 +273,7 @@ export default function JobCard({
         </div>
       </div>
 
+      {salario && <SalarioModal vaga={vaga} onClose={() => setSalario(false)} />}
       {candidatar && onAviso && <CandidaturaModal vaga={vaga} onAviso={onAviso} onClose={() => setCandidatar(false)} />}
 
       {/* Confirmação da remoção: o card escurece e o botão fica no meio dele */}
