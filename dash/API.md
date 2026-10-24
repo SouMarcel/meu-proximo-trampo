@@ -460,6 +460,57 @@ marcado: bool}` (sincronia.py:32-86).
 
 Erros de navegador ou portal: 409 com a mensagem.
 
+### 3.11b Candidatura assistida (detalhe da vaga → Candidatar com ajuda; Contas conectadas → Candidatura assistida)
+
+Spec 027. Todas **[local]**. A ferramenta **preenche campos** da página aberta na janela dela (a mesma das contas
+conectadas). Ela **nunca clica** em botão ou link, nunca aperta Enter e nunca envia: quem avança e envia é a pessoa.
+O recurso vem desligado. Com ele desligado, as rotas de vaga e o login respondem 409.
+
+**`GET /api/candidatura`** devolve:
+
+```text
+{ligado, aviso_aceito: "AAAA-MM-DD"|null, aviso: texto do aviso de risco, navegador: bool,
+ dominios: {conhecidos: [{portal, rotulo, dominios, tem_login}], bloqueados: [{dominio, motivo}],
+            liberados: [{dominio, em}]},
+ credenciais: [{portal, rotulo, login: [host], guardada, usuario, final (4 últimos caracteres), no_ambiente}]}
+```
+
+A senha nunca volta.
+
+Item de `itens`, devolvido por `ler`:
+
+```text
+{chave, tipo: "texto"|"area"|"selecao"|"unica"|"multipla"|"caixa"|"arquivo"|"senha"|"data"|"outro",
+ tipo_html, rotulo, obrigatorio, limite (0 = sem limite),
+ opcoes: [{valor (índice em texto), texto, vazia}], valor (atual),
+ marca: "comum"|"sensivel"|"cadastro"|"consentimento"|"arquivo"|"senha"|"outro",
+ motivo (por que fica com a pessoa), proposta, conferir: string[]}
+```
+
+Formato da `proposta`, por tipo:
+- **texto:** o texto;
+- **selecao e unica:** o índice da opção;
+- **multipla:** os índices separados por vírgula;
+- **caixa:** `"sim"` ou `"nao"`;
+- **vazia:** sem proposta (a pessoa escreve).
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `PUT /api/candidatura` | `{ligado: bool, aceitar_aviso?: bool}` | o estado; 409 ao ligar pela primeira vez sem `aceitar_aviso` |
+| `POST /api/candidatura/dominios` | `{dominio: "host", acao: "liberar"\|"revogar"}` | `{dominios}`; 409 para domínio bloqueado ou inválido |
+| `PUT /api/candidatura/credenciais/{portal}` | `{usuario, senha}` | `{credenciais}` (grava no `.env`); 409 para portal sem login central |
+| `DELETE /api/candidatura/credenciais/{portal}` | — | `{credenciais}` |
+| `POST /api/candidatura/login` | — | `{portal, rotulo, preenchidos: ["usuario","senha"], aviso}`; 409 fora do host exato de login, sem credencial ou com mais de um campo de senha |
+| `POST /api/candidatura/vaga/{id}/abrir` | — | `{ok, url, dominio}`; abre o link da vaga na janela e a traz para a frente |
+| `POST /api/candidatura/vaga/{id}/ler` | — | `{pagina: {url, dominio: {host, permitido, portal, origem, bloqueado, pode_liberar}, etapa: "perguntas"\|"login"\|"teste"\|"bloqueio"\|"desconhecida", aviso, assinatura}, itens, aviso_ia, ia}`. Os `itens` (com a proposta da IA) só vêm com `etapa: "perguntas"` e domínio permitido. Nada vai à IA antes disso |
+| `POST /api/candidatura/vaga/{id}/preencher` | `{assinatura, respostas: [{chave, valor, trocar?}]}` | `{preenchidos: [{chave, rotulo, valor, texto}], ficaram: [{chave, rotulo, motivo}], aviso, documento}`; 409 se a página mudou ("leia de novo"), se o domínio não está liberado ou se há bloqueio |
+
+Regras do servidor:
+1. Só preenche campos `comum`, sem pisar em valor que já existe (salvo `trocar`).
+2. Perguntas sensíveis e credenciais nunca vão à IA.
+3. As respostas preenchidas viram um documento `respostas` no kit da vaga (`origem: "candidatura_assistida"`).
+4. Domínios bloqueados (LinkedIn, Indeed, Nerdin) não podem ser liberados.
+
 ### 3.12 Arquivos
 
 | Rota | Resposta |
@@ -496,13 +547,19 @@ Conferidos na página; a maior parte também é garantida pelo servidor.
    um diálogo (ou botão explícito) que diz qual IA vai rodar e, se a cobrança é por uso, que consome créditos.
    O painel IA lista o que é enviado ao provedor antes de salvar. A nota automática das vagas novas roda
    sozinha só quando a pessoa já escolheu uma IA. Sem IA, os botões levam ao painel IA em vez de chamar.
-3. **Nada é enviado em nome da pessoa.** "Candidatar no …" só abre a página do portal; "Enviar por e-mail"
-   só abre o programa de e-mail (`mailto:`); cartas e respostas são para copiar e colar; lembretes de
-   follow-up só lembram ("a mensagem é você quem escreve e envia"). Não há rota de envio de candidatura.
+3. **Nada é enviado em nome da pessoa.**
+   - "Candidatar no …" só abre a página do portal, e "Enviar por e-mail" só abre o programa de e-mail (`mailto:`).
+   - Cartas e respostas são para copiar e colar.
+   - Os lembretes de follow-up só lembram ("a mensagem é você quem escreve e envia").
+   - A candidatura assistida (3.11b) só preenche campos. Ela sempre termina com "Confira na janela e clique você
+     em Continuar ou Enviar".
+   - Não há rota de envio de candidatura.
 4. **Perguntas sensíveis são da pessoa.** Autorização de trabalho, visto, cidadania, salário, deficiência,
    relocação e diversidade não vão para a IA (servidor) e o front deixa o campo para ela escrever.
-5. **Contas conectadas só leitura.** A página nunca pede, guarda ou mostra senha; o login é feito pela pessoa
-   na janela da ferramenta. Chaves de API: campo de senha, e só os 4 últimos caracteres voltam.
+5. **Contas conectadas só leitura.**
+   - A leitura não muda nada no portal, e o login é feito pela pessoa na janela da ferramenta.
+   - A única senha que a página recebe é a da credencial da candidatura assistida, que a pessoa guarda no campo de
+     senha. Ela vai para o `.env` e nunca volta: a página só recebe os 4 últimos caracteres. Chaves de API: campo de senha, e só os 4 últimos caracteres voltam.
 6. **Texto da internet é texto.** Descrição, título, empresa, posts, mensagens dos portais e respostas da IA
    passam por escape de HTML; a descrição usa um markdown mínimo aplicado **depois** do escape
    (`src/components/TextoDaVaga.tsx`, que monta elementos, sem HTML); links só `http`/`https`, abertos com
