@@ -41,7 +41,9 @@ def _do_arquivo(nome: str) -> str:
     valor = ""
     for linha in _linhas():
         if not linha.lstrip().startswith("#") and _nome_da_linha(linha) == nome:
-            bruto = re.sub(r"\s+#.*$", "", linha.partition("=")[2])  # comentário no fim da linha (.env.exemplo)
+            bruto = linha.partition("=")[2]
+            if nome.endswith("_PAUSA"):  # comentário no fim da linha (.env.exemplo); chave e senha são lidas inteiras
+                bruto = re.sub(r"\s+#.*$", "", bruto)
             valor = bruto.strip().strip("'\"")
     return valor
 

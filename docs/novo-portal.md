@@ -70,7 +70,7 @@ fonte em maiúsculas: `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA`, `VAGAS
 - Um valor abaixo do mínimo dele vira o mínimo; acima de 60, vira 60.
 - Um valor que não é número é ignorado, com aviso no começo da busca.
 
-No `.env.exemplo`, cada portal ganha uma linha comentada assim (o `segredos.py` aceita o comentário no fim da linha):
+No `.env.exemplo`, cada portal ganha uma linha comentada assim (o `segredos.py` aceita o comentário no fim da linha só nas variáveis `*_PAUSA`):
 
 ```ini
 # INFOJOBS_PAUSA=3   # padrão 3 a 7 s (sorteado); mínimo 3 s para este portal

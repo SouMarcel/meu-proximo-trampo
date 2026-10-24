@@ -51,6 +51,20 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   - A janela fica aberta e minimizada enquanto o dashboard roda, porque a Gupy esquece o login
     quando ela fecha. Ela fecha quando o dashboard para ou no "Desconectar". Se um portal pedir
     login, a janela vem para a frente e a leitura segue sozinha depois que você entra.
+- **Candidatar com ajuda (candidatura assistida, desligada por padrão):** pelo botão do card da
+  vaga em Salva, no quadro (ou no detalhe da vaga, aba Candidatura), a ferramenta abre a vaga na mesma janela, lê as perguntas do formulário e
+  propõe respostas com os fatos do seu perfil. Você confere e edita; ela preenche os campos. **Quem
+  clica em Entrar, Continuar e Enviar é sempre você.** Liga em "Atualizar candidaturas" →
+  Candidatura assistida, depois de um aviso de risco.
+  - Fica com você: perguntas sensíveis (salário, visto, autorização de trabalho, deficiência,
+    relocação, diversidade), dados cadastrais, aceite de termos, anexos e testes do portal.
+  - Preenche só em sites de candidatura conhecidos (Gupy, Greenhouse, Lever, Workday) ou nos que
+    você liberar. Indeed e Nerdin ficam de fora porque os termos deles proíbem automação na
+    candidatura, e o LinkedIn também.
+  - Login opcional: usuário e senha da Gupy ou do Greenhouse podem ficar no `.env` (em texto,
+    fora do Git). A ferramenta só os digita na página de login do próprio portal, e a senha nunca
+    volta para a página.
+  - Os portais podem restringir contas que considerem automatizadas: use com moderação.
   - "Desconectar" apaga a sessão daquele portal na janela da ferramenta.
   - O LinkedIn está pronto no código, mas desativado: ele restringe contas que considera
     automatizadas.
@@ -329,6 +343,22 @@ No quadro, a vaga em **Aplicação Enviada** ganha um lembrete de follow-up aos 
 há terceiro), e a vaga em **Entrevista**, um lembrete de agradecimento no dia seguinte (com a data da
 entrevista, se você informar no detalhe). Você marca "feito", "dispensar" ou "parar lembretes". A
 ferramenta só lembra: a mensagem é você quem escreve e envia.
+
+### Faixa salarial
+
+No card de uma vaga do quadro, o ícone de nota abre a **Faixa salarial**. A mesma seção fica na aba
+Candidatura do detalhe da vaga. Ela mostra:
+
+- **o que a própria vaga informa**;
+- **vagas parecidas do seu banco que informam salário**, com a faixa por mês, a mediana (com 3 ou
+  mais) e o link de cada uma. Benefícios como VR e VA não contam. No Brasil, poucas vagas publicam
+  o salário, então muitas vezes essa parte vem vazia;
+- **links de pesquisa** no Glassdoor (cargo e empresa) e nos salários do Indeed, que abrem no seu
+  navegador. A ferramenta não lê essas páginas, porque o Glassdoor bloqueia acesso automatizado;
+- **o que você viu**: cole a faixa que encontrou, com a fonte. Ela fica guardada na vaga e aparece
+  na parte de salário do Preparar entrevista.
+
+Nenhum valor é estimado pela IA. Pelo terminal: `PY salarios.py <ID>`.
 
 ### Preparar entrevista
 

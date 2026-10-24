@@ -195,6 +195,83 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, r)
         return self._erro(404, "rota não encontrada")
 
+    def _candidatura(self, metodo: str, caminho: str):
+        """Candidatura assistida (spec 027): só deste computador e só no clique. Preenche campos na janela da
+        ferramenta; nunca clica em botão nem envia. A senha guardada nunca sai nas respostas."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        import candidatura
+        from candidatura import dominios, formulario, login
+        nav = sincronia.navegador
+        partes = [unquote(x) for x in caminho.strip("/").split("/")[2:]]  # api / candidatura / ...
+        try:
+            if not partes:
+                if metodo == "PUT":
+                    corpo = self._corpo()
+                    candidatura.ligar(corpo.get("ligado") is True, aceitar_aviso=corpo.get("aceitar_aviso") is True)
+                elif metodo != "GET":
+                    return self._erro(405, "método não permitido")
+                return self._json(200, {**candidatura.estado(), "aviso": candidatura.AVISO, "navegador": bool(nav.achar()),
+                                        "dominios": dominios.para_pagina(), "credenciais": login.para_pagina()})
+            if partes == ["dominios"] and metodo == "POST":
+                corpo = self._corpo()
+                acao = dominios.liberar if corpo.get("acao") == "liberar" else dominios.revogar if corpo.get("acao") == "revogar" else None
+                if acao is None:
+                    raise ValueError("acao deve ser liberar ou revogar")
+                acao(str(corpo.get("dominio") or ""))
+                return self._json(200, {"dominios": dominios.para_pagina()})
+            if len(partes) == 2 and partes[0] == "credenciais" and metodo in ("PUT", "DELETE"):
+                if metodo == "PUT":
+                    corpo = self._corpo()
+                    login.gravar(partes[1], corpo.get("usuario"), corpo.get("senha"))
+                else:
+                    login.apagar(partes[1])
+                return self._json(200, {"credenciais": login.para_pagina()})
+            if partes == ["login"] and metodo == "POST":
+                aba = nav.aba_atual()
+                try:
+                    return self._json(200, login.preencher_login(aba))
+                finally:
+                    aba.fechar()
+            if len(partes) == 3 and partes[0] == "vaga" and metodo == "POST" and banco.ID_VALIDO.match(partes[1]):
+                vaga = banco.obter(partes[1])
+                if vaga is None:
+                    return self._erro(404, "vaga não encontrada")
+                candidatura.exigir_ligado()
+                acao = partes[2]
+                if acao == "abrir":
+                    url = vaga.get("url_candidatura") or vaga.get("url") or ""
+                    if not url.startswith("https://"):
+                        return self._erro(409, "esta vaga não tem um link https para abrir")
+                    aba = nav.abrir(url)
+                    aba.frente()
+                    aba.fechar()
+                    return self._json(200, {"ok": True, "url": url, "dominio": dominios.situacao(url)})
+                if acao in ("ler", "preencher"):
+                    corpo = self._corpo()
+                    aba = nav.aba_atual()
+                    try:
+                        if acao == "preencher":
+                            r = formulario.preencher(aba, str(corpo.get("assinatura") or ""), corpo.get("respostas"))
+                            import candidatura_ia
+                            meta = candidatura_ia.gravar_preenchidas(vaga, r["preenchidos"]) if r["preenchidos"] else {}
+                            return self._json(200, {**r, "documento": meta.get("nome")})
+                        pagina = formulario.ler(aba)
+                    finally:
+                        aba.fechar()
+                    resposta = {"pagina": {k: pagina[k] for k in ("url", "dominio", "etapa", "aviso", "assinatura")},
+                                "itens": [], "aviso_ia": None, "ia": None}
+                    if pagina["etapa"] == "perguntas" and pagina["dominio"]["permitido"]:
+                        import candidatura_ia
+                        proposta = candidatura_ia.propor_respostas(vaga, pagina["campos"])
+                        resposta.update(itens=proposta["itens"], aviso_ia=proposta["aviso"], ia=proposta["ia"])
+                    return self._json(200, resposta)
+            return self._erro(404, "rota não encontrada")
+        except candidatura.CandidaturaErro as e:
+            return self._erro(409, str(e))
+        except nav.NavegadorErro as e:
+            return self._erro(409, str(e))
+
     def _ler_post(self, url: str):
         """Link de post do LinkedIn (spec 016): um pedido à versão pública do post e os dados para o formulário do
         Adicionar Vaga, sem gravar nada. O mesmo post já no banco não gera pedido."""
@@ -529,6 +606,28 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(409, {"erro": "Para dar nota, ligue uma IA", "sem_ia": True})
         return self._json(202, {"verificando": analise.FILA.verificando()})
 
+    def _salario(self, metodo: str, caminho: str):
+        """Faixa salarial (spec 028): só números com fonte (vaga, vagas parecidas do banco, anotações da pessoa) e
+        links de pesquisa para ela abrir; nada é buscado na internet nem estimado pela IA."""
+        import salarios
+        partes = [unquote(x) for x in caminho[len("/api/vagas/"):].split("/")]
+        if len(partes) < 2 or partes[1] != "salario" or not banco.ID_VALIDO.match(partes[0]):
+            return self._erro(404, "rota não encontrada")
+        vid = partes[0]
+        try:
+            if metodo == "GET" and len(partes) == 2:
+                return self._json(200, salarios.faixa(vid))
+            if metodo == "POST" and len(partes) == 2:
+                corpo = self._corpo()
+                salarios.anotar(vid, corpo.get("texto"), corpo.get("fonte"))
+                return self._json(200, salarios.faixa(vid))
+            if metodo == "DELETE" and len(partes) == 3 and partes[2].isdigit():
+                salarios.remover(vid, int(partes[2]))
+                return self._json(200, salarios.faixa(vid))
+        except salarios.SalarioErro as e:
+            return self._erro(400, str(e))
+        return self._erro(404, "rota não encontrada")
+
     def _redirecionar(self, destino: str):
         self.send_response(308)
         self.send_header("Location", destino)
@@ -591,6 +690,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._perfil(metodo, caminho)
             if caminho.startswith(("/api/contas", "/api/candidaturas")):
                 return self._contas(metodo, caminho)
+            if caminho == "/api/candidatura" or caminho.startswith("/api/candidatura/"):
+                return self._candidatura(metodo, caminho)
             if caminho == "/api/busca" or caminho.startswith("/api/busca/"):
                 return self._busca(metodo, caminho)
             if caminho == "/api/curriculo" or caminho.startswith(("/api/curriculo/", "/api/kit/")):
@@ -603,6 +704,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             if metodo == "POST" and caminho.startswith("/api/vagas/") and caminho.endswith("/analisar"):
                 return self._forcar(unquote(caminho[len("/api/vagas/"):-len("/analisar")]))
+            if caminho.startswith("/api/vagas/") and "/salario" in caminho:
+                return self._salario(metodo, caminho)
             vid = self._id_da_rota(caminho)
             if vid is None:
                 return self._erro(404, "rota não encontrada")
@@ -631,6 +734,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
         if caminho.startswith(("/api/contas", "/api/candidaturas")):
             return self._contas("GET", caminho)
+        if caminho == "/api/candidatura":
+            return self._candidatura("GET", caminho)
         if caminho.startswith("/arquivos/curriculo-base/"):
             return self._arquivo_curriculo_base(caminho.rsplit("/", 1)[1])
         if caminho.startswith("/arquivos/curriculos/"):
@@ -675,6 +780,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, pp.estado_para_pagina(self._local()))
         if caminho == "/api/perfil/filtros-propostos":
             return self._json(200, pp.propor_filtros(pp.carregar()["respostas"]))
+        if caminho.startswith("/api/vagas/") and caminho.endswith("/salario"):
+            return self._salario("GET", caminho)
         if caminho == "/api/vagas":
             base = banco.curriculos_base()
             return self._json(200, {"versao": banco.versao(), "vagas": [banco.com_kit(v, base) for v in banco.listar_vagas()]})

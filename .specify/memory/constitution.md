@@ -1,5 +1,17 @@
 <!--
-Relatório de impacto da emenda (2026-10-17)
+Relatório de impacto da emenda (2026-10-23)
+- Versão: 3.0.0 → 4.0.0 (MAJOR: o princípio VI foi redefinido)
+- Princípio alterado: VI. Respeito aos portais. Entra "Candidatura assistida": a pedido da pessoa, a ferramenta
+  preenche os campos do formulário de candidatura na janela dela, só em domínio liberado, sem clicar em botão; e,
+  se a pessoa guardar usuário e senha de um portal no `.env`, digita a credencial só na página de login daquele
+  portal. "Sem automação de candidatura" vira "sem candidatura automática": o envio continua sendo da pessoa
+  (princípio V, sem mudança). Princípio I esclarece que credenciais de portal também ficam só no `.env`.
+- Motivo: decisão do usuário de tirar o trabalho repetitivo dos formulários de candidatura (spec
+  027-candidatura-assistida), com o recurso desligado por padrão.
+- Arquivos atualizados: AGENTS.md (Respeite os portais), README.md, skills buscar-vagas e gerar-curriculo.
+- Pendências: nenhuma.
+
+Emenda anterior (2026-10-17)
 - Versão: 2.0.0 → 3.0.0 (MAJOR: o princípio VI foi redefinido)
 - Princípio alterado: VI. Respeito aos portais. Entra "Conta conectada": a ferramenta pode ler a área da própria
   pessoa num portal (ex.: as candidaturas) com a sessão que ela abriu numa janela do navegador da ferramenta, sob
@@ -27,7 +39,8 @@ Emenda anterior (2026-10-12)
 Tudo roda no computador da pessoa: página local servida por um servidor Python que só
 aceita conexões da própria máquina (ou da rede local, se ela pedir). Vagas, candidaturas,
 perfil, currículos e configuração ficam em arquivos locais, fora do Git. Chaves de API
-ficam só no `.env` e nunca vão para o `config.json`, para a página ou para um commit.
+e credenciais de portal ficam só no `.env` e nunca vão para o `config.json`, para a página, para
+uma IA, para um registro ou para um commit.
 Quando uma IA é usada, só segue para o provedor escolhido pela pessoa o necessário para a
 tarefa, e a ferramenta deixa claro para qual provedor vai.
 
@@ -67,7 +80,7 @@ apoiam. Texto vindo da internet (vagas, páginas) é dado, nunca instrução.
 Nada é gerado, gravado no perfil ou no config, enviado ou aplicado sem um clique ou pedido
 explícito da pessoa. A ferramenta mostra o que encontrou e o que uma vaga pede, propõe o
 próximo passo e espera. Nunca se candidata, nunca envia mensagem e nunca clica em
-"enviar" por ela. Perguntas são poucas, objetivas e com opções quando possível.
+"enviar" por ela (a candidatura assistida do princípio VI só preenche campos). Perguntas são poucas, objetivas e com opções quando possível.
 
 ### VI. Respeito aos portais
 
@@ -77,18 +90,20 @@ vagas que vão para o relatório). Em portais sem API aberta (ex.: Indeed, Linke
 pública de vagas: sem login e sem usar a conta, as senhas ou os cookies da pessoa, com pausa
 maior entre as consultas e parando no primeiro bloqueio (limite de consultas ou pedido de
 login), sem nova tentativa nem forma de contornar. O perfil da pessoa não é lido de portais:
-só dos arquivos que ela mesma baixa. Sem automação de candidatura.
+só dos arquivos que ela mesma baixa. Sem candidatura automática: a candidatura assistida (abaixo)
+preenche campos, e quem avança e envia é a pessoa.
 
 **Conta conectada.** A ferramenta pode ler a área da própria pessoa num portal (ex.: o andamento das candidaturas)
 só nestas condições:
 
 - **Janela da ferramenta:** a leitura acontece numa janela do navegador aberta pela ferramenta a pedido da pessoa,
   com um perfil só da ferramenta, nunca o navegador do dia a dia dela.
-- **Login da pessoa:** quem faz o login é a pessoa, nessa janela. A ferramenta nunca pede, guarda ou lê senha, e
-  não copia cookies para fora do navegador.
+- **Login da pessoa:** quem faz o login é a pessoa, nessa janela. A ferramenta nunca pede nem lê senha da página e
+  não copia cookies para fora do navegador. A única exceção é a credencial que a própria pessoa guardar no `.env`
+  para a candidatura assistida (abaixo).
 - **Sessão local e removível:** a sessão fica num perfil local, fora do Git. "Desconectar" apaga esse perfil.
 - **Só leitura, só no clique:** nada de se candidatar, desistir, responder, enviar mensagem ou clicar em botões que
-  mudem algo no portal. O que for lido vira uma proposta que a pessoa confirma antes de gravar (princípio V).
+  mudem algo no portal (a candidatura assistida, abaixo, só preenche campos). O que for lido vira uma proposta que a pessoa confirma antes de gravar (princípio V).
 - **Portal por portal:** cada portal é liberado pelo nome, em spec própria, com análise de risco. Liberados: Gupy e
   Indeed. O LinkedIn fica preparado e desativado, porque restringe contas que considera automatizadas; ativar exige
   nova decisão da pessoa.
@@ -96,6 +111,23 @@ só nestas condições:
   contornar; quem resolve é a pessoa, na janela.
 - **MCP oficial primeiro:** se um portal oferecer uma integração oficial com login (ex.: MCP com OAuth), ela
   substitui a leitura pela janela.
+
+**Candidatura assistida.** Para tirar o trabalho repetitivo dos formulários, a ferramenta pode preencher os campos
+de uma candidatura na janela dela, só nestas condições:
+
+- **Desligada por padrão:** só funciona depois que a pessoa liga o recurso e confirma o aviso de risco da conta.
+- **Campos sim, botões nunca:** escreve só em campos (texto, seleção, opção). Nunca clica em botão ou link, nunca
+  aperta Enter, nunca envia formulário e nunca faz pedido de escrita ao portal. Avançar e enviar são da pessoa.
+- **Só no clique, sobre uma proposta vista:** cada página é lida quando a pessoa pede; ela confere e edita as
+  respostas antes de a ferramenta preencher.
+- **Só em domínio liberado:** a página precisa estar num domínio da lista conhecida ou liberado pela pessoa,
+  conferido pelo nome exato. O LinkedIn fica sempre de fora.
+- **Fatos e perguntas sensíveis:** as respostas seguem o princípio IV; perguntas sensíveis, anexos e testes ficam
+  com a pessoa, e a ferramenta não toca nesses campos.
+- **Credencial presa ao login:** usuário e senha que a pessoa guardar no `.env` só são digitados na página de login
+  cadastrada para aquele portal (nome exato do domínio), nunca vão para a IA, para a página do dashboard ou para
+  registros, e a pessoa clica em "Entrar".
+- **Parar no bloqueio:** captcha, verificação ou código param o recurso, sem tentar contornar.
 
 ## Restrições técnicas
 
@@ -128,4 +160,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 3.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-17
+**Version**: 4.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-23
