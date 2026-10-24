@@ -606,6 +606,28 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(409, {"erro": "Para dar nota, ligue uma IA", "sem_ia": True})
         return self._json(202, {"verificando": analise.FILA.verificando()})
 
+    def _salario(self, metodo: str, caminho: str):
+        """Faixa salarial (spec 028): só números com fonte (vaga, vagas parecidas do banco, anotações da pessoa) e
+        links de pesquisa para ela abrir; nada é buscado na internet nem estimado pela IA."""
+        import salarios
+        partes = [unquote(x) for x in caminho[len("/api/vagas/"):].split("/")]
+        if len(partes) < 2 or partes[1] != "salario" or not banco.ID_VALIDO.match(partes[0]):
+            return self._erro(404, "rota não encontrada")
+        vid = partes[0]
+        try:
+            if metodo == "GET" and len(partes) == 2:
+                return self._json(200, salarios.faixa(vid))
+            if metodo == "POST" and len(partes) == 2:
+                corpo = self._corpo()
+                salarios.anotar(vid, corpo.get("texto"), corpo.get("fonte"))
+                return self._json(200, salarios.faixa(vid))
+            if metodo == "DELETE" and len(partes) == 3 and partes[2].isdigit():
+                salarios.remover(vid, int(partes[2]))
+                return self._json(200, salarios.faixa(vid))
+        except salarios.SalarioErro as e:
+            return self._erro(400, str(e))
+        return self._erro(404, "rota não encontrada")
+
     def _redirecionar(self, destino: str):
         self.send_response(308)
         self.send_header("Location", destino)
@@ -682,6 +704,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             if metodo == "POST" and caminho.startswith("/api/vagas/") and caminho.endswith("/analisar"):
                 return self._forcar(unquote(caminho[len("/api/vagas/"):-len("/analisar")]))
+            if caminho.startswith("/api/vagas/") and "/salario" in caminho:
+                return self._salario(metodo, caminho)
             vid = self._id_da_rota(caminho)
             if vid is None:
                 return self._erro(404, "rota não encontrada")
@@ -756,6 +780,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, pp.estado_para_pagina(self._local()))
         if caminho == "/api/perfil/filtros-propostos":
             return self._json(200, pp.propor_filtros(pp.carregar()["respostas"]))
+        if caminho.startswith("/api/vagas/") and caminho.endswith("/salario"):
+            return self._salario("GET", caminho)
         if caminho == "/api/vagas":
             base = banco.curriculos_base()
             return self._json(200, {"versao": banco.versao(), "vagas": [banco.com_kit(v, base) for v in banco.listar_vagas()]})

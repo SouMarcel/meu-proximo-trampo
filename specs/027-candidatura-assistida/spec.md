@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-23
 
-**Status**: Em implementação
+**Status**: Entregue em 2026-10-24 (prova real num portal e termos da Gupy pendentes)
 
 **Input**: User description: "Analise a possibilidade de a própria IA que estamos colocando no sistema via API
 fazer a aplicação na plataforma que homologamos. Ex.: quando clico em seguir com a vaga no Gupy, ela segue com o

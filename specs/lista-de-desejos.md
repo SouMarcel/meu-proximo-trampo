@@ -44,6 +44,13 @@ priorizado.
 - **"Atualizar candidaturas" no meio de uma candidatura** navega a aba da janela para a área do portal: abrir a
   leitura numa aba própria.
 
+## Faixa salarial (spec 028)
+
+- **Novo CAGED** (dado oficial: salário de admissão por ocupação e estado): os microdados são arquivos mensais
+  grandes em 7z, o que exige uma dependência (py7zr) e uma tabela de cargo → CBO. Fica como spec própria.
+- **Glassdoor**: em 2026-10-23 o site recusou acesso automatizado (403) e a API pública de parceiros não está
+  disponível. Se houver uma integração oficial, ela pode entrar como fonte.
+
 ## Divulgação
 
 - **Site do projeto no GitHub Pages** (`soumarcel.github.io/meu-proximo-trampo`, pasta `docs/` na master): página de

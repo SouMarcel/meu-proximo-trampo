@@ -50,7 +50,8 @@ COMPORTAMENTAIS = [
 ]
 PONTOS_SALARIO = [
     "Se puder, deixe a empresa dizer a faixa primeiro; muitas já têm uma definida para a vaga.",
-    "Se pedirem um número, responda com a sua pretensão (se ela estiver no seu perfil) ou com a faixa que a vaga informou.",
+    "Se pedirem um número, responda com a sua pretensão (se ela estiver no seu perfil), com a faixa que a vaga informou "
+    "ou com a que você pesquisou (botão Faixa salarial).",
     "Pergunte o que entra além do salário: benefícios, bônus, forma de contratação e, em vaga de fora, a moeda e quem paga os impostos.",
     "Não precisa fechar na hora: pedir um dia para pensar é normal.",
 ]
@@ -211,7 +212,8 @@ def salario(v: dict, perfil: str) -> dict:
         if m and re.search(r"\d", m.group(3)):
             pretensao = m.group(3).strip()[:120]
             break
-    return {"faixa": v.get("salario") or "", "moeda": v.get("moeda") or "", "pretensao": pretensao, "pontos": PONTOS_SALARIO}
+    return {"faixa": v.get("salario") or "", "moeda": v.get("moeda") or "", "pretensao": pretensao, "pontos": PONTOS_SALARIO,
+            "pesquisas": v.get("salario_pesquisa") or []}
 
 
 def preparacao(vid: str) -> dict:
@@ -451,6 +453,8 @@ def main(argv: list[str] | None = None) -> int:
         s = r["salario"]
         print(f"\n## Salário\nFaixa da vaga: {s['faixa'] or 'não informada'}" + (f" ({s['moeda']})" if s["moeda"] else "")
               + f"\nSua pretensão (perfil): {s['pretensao'] or 'não está no perfil'}")
+        for a in s.get("pesquisas") or []:
+            print(f"Você anotou ({a['fonte']}, {a['em']}): {a['texto']}")
         for ponto in s["pontos"]:
             print(f"- {ponto}")
         return 0
