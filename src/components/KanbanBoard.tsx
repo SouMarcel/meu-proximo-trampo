@@ -327,7 +327,6 @@ export default function KanbanBoard({
                       <JobCard
                         vaga={vaga}
                         onSelect={onSelectVaga}
-                        onMoveStage={onMoveStage}
                         onDelete={onDeleteVaga}
                         onUpdateVaga={onUpdateVaga}
                         onPreparar={onPreparar}
