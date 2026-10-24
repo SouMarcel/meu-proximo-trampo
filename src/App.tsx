@@ -502,6 +502,7 @@ function Pagina({
               setEntrevistaVagaId(id)
               handleTabChange("entrevistas")
             }}
+            onAviso={showToast}
           />
         )}
 

@@ -3,11 +3,12 @@
  * e, página por página, propõe respostas que a pessoa confere antes de a ferramenta preencher os campos. Nunca clica
  * em botão nem envia: quem avança e envia é a pessoa. Só aparece com o recurso ligado (Contas conectadas).
  */
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { Loader2, AlertTriangle, Wand2 } from "lucide-react"
 import type { Vaga } from "../../types/api"
 import * as api from "../../services/api/candidatura"
-import type { Campo, EstadoCandidatura, Leitura, Preenchimento } from "../../services/api/candidatura"
+import type { Campo, Leitura, Preenchimento } from "../../services/api/candidatura"
+import { useCandidatura } from "../../hooks/useCandidatura"
 import { mensagemDeErro } from "../../services/api"
 import { useFerramenta, textoCustoIA } from "../../contexto/Ferramenta"
 import { BTN_MINI } from "../curriculo/Curriculos"
@@ -91,21 +92,40 @@ function valorAtual(c: Campo): string {
   return c.valor
 }
 
-export default function CandidaturaAssistida({ vaga, onAviso }: { vaga: Vaga; onAviso: (m: string, t?: "info" | "erro") => void }) {
+/** Vaga no funil e ainda sem candidatura enviada (ou enviada há pouco, com etapas do formulário pela frente). */
+export const podeCandidatar = (v: Vaga) => v.etapa === "salva" || v.etapa === "aplicada" || (!v.etapa && v.triagem === "seguir")
+
+export default function CandidaturaAssistida({
+  vaga,
+  onAviso,
+  abrirAoMontar = false,
+  semMoldura = false,
+}: {
+  vaga: Vaga
+  onAviso: (m: string, t?: "info" | "erro") => void
+  /** Vindo do botão do card: já abre a vaga na janela da ferramenta (o clique da pessoa foi esse). */
+  abrirAoMontar?: boolean
+  semMoldura?: boolean
+}) {
   const { podeGravar, ia } = useFerramenta()
-  const [estado, setEstado] = useState<EstadoCandidatura | null>(null)
+  const estado = useCandidatura(podeGravar)
+  const abriu = useRef(false)
   const [leitura, setLeitura] = useState<Leitura | null>(null)
   const [respostas, setRespostas] = useState<Record<string, Resposta>>({})
   const [resultado, setResultado] = useState<Preenchimento | null>(null)
   const [ocupado, setOcupado] = useState("")
   const [erro, setErro] = useState("")
 
+  const pronto = Boolean(podeGravar && estado?.ligado && podeCandidatar(vaga))
   useEffect(() => {
-    if (!podeGravar) return
-    api.estado().then(setEstado).catch(() => setEstado(null))
-  }, [podeGravar])
+    if (pronto && abrirAoMontar && !abriu.current) {
+      abriu.current = true
+      abrirVaga()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pronto, abrirAoMontar])
 
-  if (!podeGravar || !estado?.ligado || vaga.triagem !== "seguir") return null
+  if (!pronto || !estado) return null
 
   const acao = async (chave: string, fn: () => Promise<void>) => {
     setOcupado(chave)
@@ -129,6 +149,19 @@ export default function CandidaturaAssistida({ vaga, onAviso }: { vaga: Vaga; on
       setRespostas(r)
     })
 
+  function abrirVaga() {
+    acao("abrir", async () => {
+      const j = await api.abrir(vaga.id)
+      if (!j.dominio.permitido)
+        onAviso(
+          j.dominio.bloqueado
+            ? `Aberta, mas aqui a ferramenta não preenche: ${j.dominio.bloqueado}.`
+            : `Aberta. ${j.dominio.host} ainda não está liberado: a ferramenta pergunta quando você pedir o preenchimento.`,
+        )
+      else onAviso("Vaga aberta na janela da ferramenta.")
+    })
+  }
+
   const comLogin = estado.credenciais.some((c) => c.guardada)
   const pag = leitura?.pagina
   const comuns = (leitura?.itens || []).filter((c) => c.marca === "comum")
@@ -136,10 +169,12 @@ export default function CandidaturaAssistida({ vaga, onAviso }: { vaga: Vaga; on
   const aPreencher = comuns.filter((c) => respostas[c.chave]?.valor && (!c.valor || respostas[c.chave]?.trocar))
 
   return (
-    <section className="space-y-2 p-3 rounded-2xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/40 dark:bg-indigo-950/20">
-      <h4 className={`${H} flex items-center gap-2`}>
-        <Wand2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Candidatar com ajuda
-      </h4>
+    <section className={semMoldura ? "space-y-2" : "space-y-2 p-3 rounded-2xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/40 dark:bg-indigo-950/20"}>
+      {!semMoldura && (
+        <h4 className={`${H} flex items-center gap-2`}>
+          <Wand2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Candidatar com ajuda
+        </h4>
+      )}
       <p className={DICA}>
         Abra a vaga na janela da ferramenta, avance no portal até as perguntas e clique em <b>Preencher esta página</b>. Você
         confere as respostas antes; depois, confere na janela e clica você em Continuar ou Enviar.
@@ -149,18 +184,7 @@ export default function CandidaturaAssistida({ vaga, onAviso }: { vaga: Vaga; on
           type="button"
           className={BTN_MINI}
           disabled={Boolean(ocupado) || !estado.navegador}
-          onClick={() =>
-            acao("abrir", async () => {
-              const j = await api.abrir(vaga.id)
-              if (!j.dominio.permitido)
-                onAviso(
-                  j.dominio.bloqueado
-                    ? `Aberta, mas aqui a ferramenta não preenche: ${j.dominio.bloqueado}.`
-                    : `Aberta. ${j.dominio.host} ainda não está liberado: a ferramenta pergunta quando você pedir o preenchimento.`,
-                )
-              else onAviso("Vaga aberta na janela da ferramenta.")
-            })
-          }
+          onClick={abrirVaga}
         >
           {ocupado === "abrir" ? "Abrindo…" : "Abrir a vaga na janela"}
         </button>

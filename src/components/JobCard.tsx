@@ -12,10 +12,13 @@ import {
   CheckCircle2,
   MoreVertical,
   Trash2,
+  Wand2,
 } from "lucide-react"
 import type { CamposEditaveis, Vaga, Etapa } from "../types/api"
 import { Lembrete } from "./kit/Kit"
 import { useFerramenta } from "../contexto/Ferramenta"
+import { useCandidatura } from "../hooks/useCandidatura"
+import CandidaturaModal from "./modals/CandidaturaModal"
 import {
   getPlataformaStyle,
   getAderenciaBadge,
@@ -34,6 +37,8 @@ interface JobCardProps {
   onDelete?: (id: string) => void
   onUpdateVaga?: (id: string, campos: CamposEditaveis, sucesso?: string) => Promise<boolean>
   onPreparar?: (id: string) => void
+  /** Avisos da candidatura assistida (spec 027). */
+  onAviso?: (m: string, t?: "info" | "erro") => void
 }
 
 const PROXIMA_ETAPA: Record<Etapa, Etapa | null> = {
@@ -59,12 +64,17 @@ export default function JobCard({
   onDelete,
   onUpdateVaga,
   onPreparar,
+  onAviso,
 }: JobCardProps) {
   const platStyle = getPlataformaStyle(vaga.plataforma)
   const aderenciaInfo = getAderenciaBadge(vaga.aderencia)
   const proxima = vaga.etapa ? PROXIMA_ETAPA[vaga.etapa] : null
   const { podeGravar } = useFerramenta()
   const [confirmarRemocao, setConfirmarRemocao] = useState(false)
+  const [candidatar, setCandidatar] = useState(false)
+  const assistida = useCandidatura(podeGravar)
+  // no funil e antes de enviar a candidatura: o botão abre a ajuda para preencher o formulário (quem envia é a pessoa)
+  const mostrarCandidatar = Boolean(onAviso && assistida?.ligado && vaga.etapa === "salva")
   const link = linkSeguro(vaga.url_candidatura) || linkSeguro(vaga.url)
 
   return (
@@ -201,6 +211,17 @@ export default function JobCard({
           </a>
           )}
 
+          {mostrarCandidatar && (
+            <button
+              onClick={() => setCandidatar(true)}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition"
+              title="Abre a vaga na janela da ferramenta e preenche os campos do formulário com respostas que você confere; quem envia é você"
+            >
+              <Wand2 className="w-3 h-3" />
+              <span>Candidatar com ajuda</span>
+            </button>
+          )}
+
           {onPreparar && vaga.etapa === "entrevista" && (
             <button
               onClick={() => onPreparar(vaga.id)}
@@ -237,6 +258,8 @@ export default function JobCard({
           )}
         </div>
       </div>
+
+      {candidatar && onAviso && <CandidaturaModal vaga={vaga} onAviso={onAviso} onClose={() => setCandidatar(false)} />}
 
       {/* Confirmação da remoção: o card escurece e o botão fica no meio dele */}
       {onDelete && confirmarRemocao && (

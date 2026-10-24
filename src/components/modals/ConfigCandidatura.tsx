@@ -10,6 +10,7 @@ import type { EstadoCandidatura } from "../../services/api/candidatura"
 import { mensagemDeErro } from "../../services/api"
 import { useFerramenta } from "../../contexto/Ferramenta"
 import { BTN_MINI } from "../curriculo/Curriculos"
+import { recarregarCandidatura } from "../../hooks/useCandidatura"
 
 const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
 const CAMPO =
@@ -35,7 +36,7 @@ export default function ConfigCandidatura({ onAviso }: { onAviso: (m: string, t?
     setErro("")
     try {
       await fn()
-      await carregar()
+      await Promise.all([carregar(), recarregarCandidatura()])
     } catch (err) {
       setErro(mensagemDeErro(err))
     } finally {
