@@ -1,4 +1,4 @@
-"""Vagas.com na busca (fontes/vagascom.py), com HTML fictício e sem rede (spec 028): leitura dos cards, datas
+"""Vagas.com na busca (fontes/vagascom.py), com HTML fictício e sem rede (spec 029): leitura dos cards, datas
 relativas, filtro por cargo, janela, grupo e cidade, paginação sem repetir, uma leitura por cargo, descrição pela
 página da vaga, bloqueio com espera de 24 horas, link no Adicionar Vaga e o portal ligado por padrão."""
 import shutil

@@ -1,5 +1,5 @@
 """Fonte Vagas.com: a busca pública do portal brasileiro generalista de vagas (vagas.com.br), sem login e sem a conta,
-as senhas ou os cookies da pessoa (spec 028).
+as senhas ou os cookies da pessoa (spec 029).
 
 A lista de cada cargo (vagas-de-<cargo>?ordenar_por=mais_recentes&pagina=N) é lida uma vez por busca, da vaga mais
 nova para a mais antiga, até MAX_PAGINAS páginas ou a primeira vaga fora da janela, e serve às consultas do mesmo
@@ -34,7 +34,7 @@ POR_PAGINA = 40  # o que a lista mostra por página
 MAX_PAGINAS = 3  # por cargo; a janela de tempo costuma parar antes
 MAX_DESCRICOES = 30  # páginas de vaga lidas por busca; as outras ficam pendentes para a próxima
 PAUSA = (3.0, 7.0)  # padrão, sem VAGASCOM_PAUSA
-VAR_PAUSA = "VAGASCOM_PAUSA"  # no .env ou no ambiente: segundos de pausa mínima (spec 028)
+VAR_PAUSA = "VAGASCOM_PAUSA"  # no .env ou no ambiente: segundos de pausa mínima (spec 029)
 PAUSA_MIN, PAUSA_FAIXA = 3.0, 4.0  # N de 3 a 60; a pausa é sorteada de N a N + 4
 ESPERA = timedelta(hours=24)  # depois de um bloqueio, o Vagas.com fica de fora das buscas
 ARQ_ESPERA = Path(__file__).resolve().parent.parent / ".cache" / "vagascom-espera.json"
