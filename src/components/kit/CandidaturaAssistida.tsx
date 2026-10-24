@@ -1,13 +1,13 @@
 /**
  * Candidatar com ajuda (dash/API.md §3.11b; spec 027): abre a vaga na janela da ferramenta, preenche o login guardado
- * e, página por página, propõe respostas que a pessoa confere antes de a ferramenta preencher os campos. Nunca clica
- * em botão nem envia: quem avança e envia é a pessoa. A chave é por vaga: a pessoa liga nesta vaga, com o aviso de risco.
+ * e, página por página, preenche o que sabe (respostas que a pessoa já deu e o perfil) e pergunta o resto. Nunca clica
+ * em botão nem envia: quem confere na janela, avança e envia é a pessoa. A chave é por vaga: a pessoa liga nesta vaga, com o aviso de risco.
  */
 import React, { useEffect, useRef, useState } from "react"
 import { Loader2, AlertTriangle, Wand2 } from "lucide-react"
 import type { Vaga } from "../../types/api"
 import * as api from "../../services/api/candidatura"
-import type { Campo, Leitura, Preenchimento } from "../../services/api/candidatura"
+import type { AutoPreenchimento, Campo, Preenchimento } from "../../services/api/candidatura"
 import { useCandidatura } from "../../hooks/useCandidatura"
 import { mensagemDeErro } from "../../services/api"
 import { useFerramenta, textoCustoIA } from "../../contexto/Ferramenta"
@@ -85,13 +85,6 @@ function Controle({ c, r, onChange, disabled }: { c: Campo; r: Resposta; onChang
   return null
 }
 
-function valorAtual(c: Campo): string {
-  if (!c.valor) return ""
-  if (c.opcoes.length) return c.valor.split(",").map((v) => c.opcoes.find((o) => o.valor === v)?.texto || v).join("; ")
-  if (c.tipo === "caixa") return c.valor === "sim" ? "marcada" : ""
-  return c.valor
-}
-
 /** Vaga no funil e ainda sem candidatura enviada (ou enviada há pouco, com etapas do formulário pela frente). */
 export const podeCandidatar = (v: Vaga) => v.etapa === "salva" || v.etapa === "aplicada" || (!v.etapa && v.triagem === "seguir")
 
@@ -110,12 +103,12 @@ export default function CandidaturaAssistida({
   const { podeGravar, ia } = useFerramenta()
   const estado = useCandidatura(podeGravar)
   const abriu = useRef(false)
-  const [leitura, setLeitura] = useState<Leitura | null>(null)
+  const [auto, setAuto] = useState<AutoPreenchimento | null>(null)
   const [respostas, setRespostas] = useState<Record<string, Resposta>>({})
+  const [lembrar, setLembrar] = useState(true)
   const [resultado, setResultado] = useState<Preenchimento | null>(null)
   const [ocupado, setOcupado] = useState("")
   const [erro, setErro] = useState("")
-
   const [ligada, setLigada] = useState(Boolean(vaga.candidatura_assistida?.ligada))
   const [aceitar, setAceitar] = useState(false)
   useEffect(() => setLigada(Boolean(vaga.candidatura_assistida?.ligada)), [vaga.candidatura_assistida?.ligada])
@@ -146,7 +139,7 @@ export default function CandidaturaAssistida({
       const j = await api.ligarVaga(vaga.id, ligar, ligar && aceitar)
       setLigada(Boolean(j.vaga.candidatura_assistida?.ligada))
       setAceitar(false)
-      setLeitura(null)
+      setAuto(null)
       setResultado(null)
       onAviso(ligar ? "Candidatura assistida ligada nesta vaga." : "Candidatura assistida desligada nesta vaga.")
     })
@@ -162,8 +155,8 @@ export default function CandidaturaAssistida({
           </h4>
         )}
         <p className={DICA}>
-          A ferramenta abre esta vaga numa janela dela e preenche os campos do formulário com respostas que você confere. Quem
-          clica em Continuar e Enviar é você. Vale só para esta vaga.
+          A ferramenta abre esta vaga numa janela dela, preenche o formulário com o que sabe de você (perfil e respostas que
+          você já deu) e pergunta o que não souber. Quem clica em Continuar e Enviar é você. Vale só para esta vaga.
         </p>
         <p className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs">{estado.aviso}</p>
         <label className="flex items-center gap-2 text-xs">
@@ -182,14 +175,15 @@ export default function CandidaturaAssistida({
       </section>
     )
 
-  const lerPagina = () =>
-    acao("ler", async () => {
+  const preencherPagina = () =>
+    acao("auto", async () => {
       setResultado(null)
-      const l = await api.ler(vaga.id)
-      setLeitura(l)
+      const j = await api.auto(vaga.id)
+      setAuto(j)
       const r: Record<string, Resposta> = {}
-      l.itens.filter((c) => c.marca === "comum").forEach((c) => (r[c.chave] = { valor: c.proposta || "", trocar: false }))
+      j.perguntas.forEach((c) => (r[c.chave] = { valor: "", trocar: false }))
       setRespostas(r)
+      if (j.preenchidos.length) onAviso(`${j.preenchidos.length} campo(s) preenchido(s). Confira na janela.`)
     })
 
   function abrirVaga() {
@@ -206,10 +200,8 @@ export default function CandidaturaAssistida({
   }
 
   const comLogin = estado.credenciais.some((c) => c.guardada)
-  const pag = leitura?.pagina
-  const comuns = (leitura?.itens || []).filter((c) => c.marca === "comum")
-  const daPessoa = (leitura?.itens || []).filter((c) => c.marca !== "comum")
-  const aPreencher = comuns.filter((c) => respostas[c.chave]?.valor && (!c.valor || respostas[c.chave]?.trocar))
+  const pag = auto?.pagina
+  const aResponder = (auto?.perguntas || []).filter((c) => respostas[c.chave]?.valor)
 
   return (
     <section className={semMoldura ? "space-y-2" : "space-y-2 p-3 rounded-2xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/40 dark:bg-indigo-950/20"}>
@@ -219,16 +211,11 @@ export default function CandidaturaAssistida({
         </h4>
       )}
       <p className={DICA}>
-        Abra a vaga na janela da ferramenta, avance no portal até as perguntas e clique em <b>Preencher esta página</b>. Você
-        confere as respostas antes; depois, confere na janela e clica você em Continuar ou Enviar.
+        Abra a vaga na janela da ferramenta, avance no portal até as perguntas e clique em <b>Preencher esta página</b>. A
+        ferramenta preenche o que sabe e pergunta aqui o que não souber.
       </p>
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={BTN_MINI}
-          disabled={Boolean(ocupado) || !estado.navegador}
-          onClick={abrirVaga}
-        >
+        <button type="button" className={BTN_MINI} disabled={Boolean(ocupado) || !estado.navegador} onClick={abrirVaga}>
           {ocupado === "abrir" ? "Abrindo…" : "Abrir a vaga na janela"}
         </button>
         {comLogin && (
@@ -251,17 +238,17 @@ export default function CandidaturaAssistida({
           type="button"
           className="px-3 py-1 rounded-lg text-[11px] font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
           disabled={Boolean(ocupado) || !estado.navegador}
-          title={ia?.disponivel ? textoCustoIA(ia) : "Sem IA: você escreve as respostas e a ferramenta preenche igual"}
-          onClick={lerPagina}
+          title={ia?.disponivel ? textoCustoIA(ia) : "Sem IA: a ferramenta usa só as respostas que você já deu e pergunta o resto"}
+          onClick={preencherPagina}
         >
-          {ocupado === "ler" ? "Lendo a página…" : "Preencher esta página"}
+          {ocupado === "auto" ? "Preenchendo…" : "Preencher esta página"}
         </button>
       </div>
       {!estado.navegador && <p className="text-rose-600 dark:text-rose-400 text-xs">Precisa do Edge ou do Chrome neste computador.</p>}
 
-      {ocupado === "ler" && (
+      {ocupado === "auto" && (
         <p role="status" className="flex items-center gap-2 text-xs text-slate-500">
-          <Loader2 className="w-4 h-4 animate-spin" /> Lendo a página e escrevendo as propostas com o seu perfil…
+          <Loader2 className="w-4 h-4 animate-spin" /> Lendo a página e preenchendo com o que a ferramenta sabe de você…
         </p>
       )}
 
@@ -285,57 +272,86 @@ export default function CandidaturaAssistida({
                   acao("liberar", async () => {
                     await api.dominio(pag.dominio.host, "liberar")
                     onAviso(`${pag.dominio.host} liberado.`)
-                  }).then(lerPagina)
+                  }).then(preencherPagina)
                 }
               >
                 Liberar {pag.dominio.host}
               </button>
             </div>
           )}
-          {pag.dominio.permitido && pag.aviso && (
-            <p className={`p-2 rounded-xl ${pag.etapa === "perguntas" ? "bg-slate-100 dark:bg-slate-800" : "bg-amber-50 dark:bg-amber-950/40"}`}>
-              {pag.aviso}
-            </p>
+          {pag.dominio.permitido && pag.etapa !== "perguntas" && pag.aviso && (
+            <p className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40">{pag.aviso}</p>
           )}
-          {leitura?.aviso_ia && <p className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40">{leitura.aviso_ia}</p>}
+          {auto?.aviso_ia && <p className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40">{auto.aviso_ia}</p>}
 
-          {comuns.length > 0 && (
-            <ul className="space-y-3">
-              {comuns.map((c) => {
-                const r = respostas[c.chave] || { valor: "", trocar: false }
-                const atual = valorAtual(c)
-                return (
-                  <li key={c.chave} className="space-y-1">
-                    <span className="block font-semibold text-slate-800 dark:text-slate-200">
-                      {c.rotulo}
-                      {c.obrigatorio && <span className="text-rose-600"> *</span>}
-                    </span>
-                    <Controle c={c} r={r} disabled={!podeGravar} onChange={(n) => setRespostas((x) => ({ ...x, [c.chave]: n }))} />
-                    {!c.proposta && !r.valor && <span className={DICA}>Sem base no perfil: escreva você, se quiser.</span>}
-                    {c.conferir.length > 0 && (
-                      <span className="block text-[11px] text-amber-700 dark:text-amber-300">Conferir: {c.conferir.join(" · ")}</span>
-                    )}
-                    {atual && (
-                      <label className={`flex items-center gap-1.5 ${DICA}`}>
-                        <input
-                          type="checkbox"
-                          checked={r.trocar}
-                          onChange={(e) => setRespostas((x) => ({ ...x, [c.chave]: { ...r, trocar: e.target.checked } }))}
-                        />
-                        Já está preenchido na página ({atual.slice(0, 80)}). Trocar pelo que está aqui
-                      </label>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-
-          {daPessoa.length > 0 && (
+          {auto && auto.preenchidos.length > 0 && (
             <div className="space-y-1">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Ficam com você, na janela:</span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">Preenchi {auto.preenchidos.length} campo(s):</span>
+              <ul className="space-y-0.5">
+                {auto.preenchidos.map((x) => (
+                  <li key={x.chave}>
+                    {x.rotulo}: <b>{x.texto.length > 120 ? x.texto.slice(0, 120) + "…" : x.texto}</b>{" "}
+                    <span className={DICA}>({x.fonte})</span>
+                    {x.conferir.length > 0 && <span className="block text-[11px] text-amber-700 dark:text-amber-300">Conferir: {x.conferir.join(" · ")}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {auto && auto.perguntas.length > 0 && (
+            <div className="space-y-3">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">Preciso da sua resposta ({auto.perguntas.length}):</span>
+              <ul className="space-y-3">
+                {auto.perguntas.map((c) => {
+                  const r = respostas[c.chave] || { valor: "", trocar: false }
+                  return (
+                    <li key={c.chave} className="space-y-1">
+                      <span className="block font-semibold text-slate-800 dark:text-slate-200">
+                        {c.rotulo || "(pergunta sem texto)"}
+                        {c.obrigatorio && <span className="text-rose-600"> *</span>}
+                      </span>
+                      <Controle c={c} r={r} disabled={!podeGravar} onChange={(n) => setRespostas((x) => ({ ...x, [c.chave]: n }))} />
+                      <span className={DICA}>
+                        {c.motivo}
+                        {!c.lembrar && " · esta resposta não fica guardada: muda de vaga para vaga"}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+              <label className={`flex items-center gap-1.5 ${DICA}`}>
+                <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} />
+                Lembrar estas respostas para as próximas vagas (salário e relocação nunca ficam guardados)
+              </label>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+                disabled={Boolean(ocupado) || !aResponder.length}
+                onClick={() =>
+                  acao("preencher", async () => {
+                    const j = await api.preencher(
+                      vaga.id,
+                      pag.assinatura,
+                      aResponder.map((c) => ({ chave: c.chave, valor: respostas[c.chave].valor })),
+                      lembrar,
+                    )
+                    setResultado(j)
+                    setAuto((a) => (a ? { ...a, perguntas: a.perguntas.filter((c) => !j.preenchidos.some((p) => p.chave === c.chave)) } : a))
+                    onAviso(`${j.preenchidos.length} resposta(s) sua(s) preenchida(s). ${j.aviso}`)
+                  })
+                }
+              >
+                {aResponder.length ? `Preencher minhas ${aResponder.length} resposta(s)` : "Responda acima para preencher"}
+              </button>
+            </div>
+          )}
+
+          {auto && auto.na_janela.length > 0 && (
+            <div className="space-y-1">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Na janela, com você:</span>
               <ul className="list-disc pl-5 space-y-0.5">
-                {daPessoa.map((c) => (
+                {auto.na_janela.map((c) => (
                   <li key={c.chave}>
                     {c.rotulo || "(campo sem rótulo)"} <span className={DICA}>— {c.motivo}</span>
                   </li>
@@ -344,45 +360,19 @@ export default function CandidaturaAssistida({
             </div>
           )}
 
-          {comuns.length > 0 && pag.dominio.permitido && (
-            <button
-              type="button"
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
-              disabled={Boolean(ocupado) || !aPreencher.length}
-              onClick={() =>
-                acao("preencher", async () => {
-                  const j = await api.preencher(
-                    vaga.id,
-                    pag.assinatura,
-                    aPreencher.map((c) => ({ chave: c.chave, valor: respostas[c.chave].valor, trocar: respostas[c.chave].trocar })),
-                  )
-                  setResultado(j)
-                  setLeitura(null)
-                  onAviso(`${j.preenchidos.length} campo(s) preenchido(s). ${j.aviso}`)
-                })
-              }
-            >
-              {aPreencher.length ? `Preencher ${aPreencher.length} campo(s) no formulário` : "Nada para preencher"}
-            </button>
+          {auto && pag.etapa === "perguntas" && pag.dominio.permitido && (
+            <p className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
+              {auto.aviso} Na próxima etapa do formulário, clique em Preencher esta página de novo.
+            </p>
           )}
         </div>
       )}
 
-      {resultado && !ocupado && (
-        <div role="status" className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-xs space-y-1">
-          <b>{resultado.preenchidos.length} campo(s) preenchido(s).</b> {resultado.aviso}
-          {resultado.ficaram.length > 0 && (
-            <ul className="list-disc pl-5">
-              {resultado.ficaram.map((f) => (
-                <li key={f.chave}>
-                  {f.rotulo || "(campo sem rótulo)"} <span className={DICA}>— {f.motivo}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {resultado.documento && <span className={`block ${DICA}`}>As respostas ficaram guardadas no kit desta vaga.</span>}
-          <span className={`block ${DICA}`}>Na próxima etapa do formulário, clique em Preencher esta página de novo.</span>
-        </div>
+      {resultado && resultado.ficaram.some((f) => f.motivo.startsWith("não consegui")) && !ocupado && (
+        <p className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-xs">
+          Não consegui preencher: {resultado.ficaram.filter((f) => f.motivo.startsWith("não consegui")).map((f) => f.rotulo).join("; ")}. Preencha
+          você na janela.
+        </p>
       )}
 
       {erro && (

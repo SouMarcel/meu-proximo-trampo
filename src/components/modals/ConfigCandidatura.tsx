@@ -125,6 +125,36 @@ export default function ConfigCandidatura({ onAviso }: { onAviso: (m: string, t?
           </div>
 
           <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1 text-xs">
+            <b>Respostas que você já deu</b>
+            <p className={DICA}>
+              A ferramenta reaproveita estas respostas nas próximas vagas, sem perguntar de novo. Salário e relocação nunca ficam
+              guardados. Apague a que estiver errada ou desatualizada.
+            </p>
+            {e.memoria.length ? (
+              <ul className="space-y-1">
+                {e.memoria.map((m) => (
+                  <li key={m.chave} className="flex items-start gap-2">
+                    <span>
+                      {m.pergunta} <b>→ {m.resposta.length > 80 ? m.resposta.slice(0, 80) + "…" : m.resposta}</b>
+                      <span className={DICA}> ({m.em.split("-").reverse().join("/")})</span>
+                    </span>
+                    <button
+                      type="button"
+                      className={`${BTN_MINI} ml-auto`}
+                      disabled={!podeGravar || ocupado}
+                      onClick={() => acao(async () => { await api.apagarMemoria(m.chave); onAviso("Resposta apagada.") })}
+                    >
+                      Apagar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={DICA}>Nenhuma ainda.</p>
+            )}
+          </div>
+
+          <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1 text-xs">
             <b>Onde a ferramenta preenche</b>
             <p className={DICA}>Sites de candidatura conhecidos: {e.dominios.conhecidos.map((d) => d.rotulo).join(", ")}.</p>
             {e.dominios.liberados.length > 0 && (

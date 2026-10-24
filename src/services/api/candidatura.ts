@@ -27,6 +27,8 @@ export interface EstadoCandidatura {
   navegador: boolean
   dominios: Dominios
   credenciais: Credencial[]
+  /** As respostas que a pessoa já deu, reaproveitadas nas próximas vagas (salvo salário e relocação). */
+  memoria: { chave: string; pergunta: string; resposta: string; categoria: string | null; em: string }[]
 }
 
 export interface Situacao {
@@ -69,11 +71,23 @@ export interface Leitura {
   ia: { provedor: string; modelo: string } | null
 }
 
+/** Preencher esta página: o que a ferramenta preencheu sozinha e o que ela pergunta. */
+export interface AutoPreenchimento {
+  pagina: Leitura["pagina"]
+  preenchidos: { chave: string; rotulo: string; texto: string; fonte: string; conferir: string[] }[]
+  perguntas: (Campo & { lembrar: boolean })[]
+  na_janela: { chave: string; rotulo: string; motivo: string }[]
+  aviso_ia: string | null
+  aviso: string
+  documento?: string
+}
+
 export interface Preenchimento {
   preenchidos: { chave: string; rotulo: string; valor: string; texto: string }[]
   ficaram: { chave: string; rotulo: string; motivo: string }[]
   aviso: string
   documento?: string
+  lembradas?: number
 }
 
 const p = (s: string) => encodeURIComponent(s)
@@ -94,5 +108,12 @@ export const preencherLogin = (vagaId: string) =>
 export const abrir = (vagaId: string) =>
   pedir<{ ok: boolean; url: string; dominio: Situacao }>("POST", `/api/candidatura/vaga/${p(vagaId)}/abrir`, {})
 export const ler = (vagaId: string) => pedir<Leitura>("POST", `/api/candidatura/vaga/${p(vagaId)}/ler`, {}, LONGO)
-export const preencher = (vagaId: string, assinatura: string, respostas: { chave: string; valor: string; trocar?: boolean }[]) =>
-  pedir<Preenchimento>("POST", `/api/candidatura/vaga/${p(vagaId)}/preencher`, { assinatura, respostas }, LONGO)
+export const auto = (vagaId: string) => pedir<AutoPreenchimento>("POST", `/api/candidatura/vaga/${p(vagaId)}/auto`, {}, LONGO)
+export const preencher = (
+  vagaId: string,
+  assinatura: string,
+  respostas: { chave: string; valor: string; trocar?: boolean }[],
+  lembrar = true,
+) => pedir<Preenchimento>("POST", `/api/candidatura/vaga/${p(vagaId)}/preencher`, { assinatura, respostas, lembrar }, LONGO)
+export const apagarMemoria = (chave: string) =>
+  pedir<{ memoria: EstadoCandidatura["memoria"] }>("DELETE", `/api/candidatura/memoria/${p(chave)}`, {})
