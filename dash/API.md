@@ -492,16 +492,18 @@ marcado: bool}` (sincronia.py:32-86).
 
 Erros de navegador ou portal: 409 com a mensagem.
 
-### 3.11b Candidatura assistida (detalhe da vaga → Candidatar com ajuda; Contas conectadas → Candidatura assistida)
+### 3.11b Candidatura assistida (detalhe da vaga → Candidatura; card → Candidatar com ajuda; Contas conectadas → logins e sites)
 
 Spec 027. Todas **[local]**. A ferramenta **preenche campos** da página aberta na janela dela (a mesma das contas
 conectadas). Ela **nunca clica** em botão ou link, nunca aperta Enter e nunca envia: quem avança e envia é a pessoa.
-O recurso vem desligado. Com ele desligado, as rotas de vaga e o login respondem 409.
+O recurso é ligado **vaga a vaga**, com o aviso de risco aceito a cada vez. A chave fica na vaga:
+`candidatura_assistida: {ligada: bool, em: "AAAA-MM-DD"}`, que vem em `/api/vagas`. Numa vaga sem a chave ligada,
+as rotas `vaga/{id}/abrir|ler|preencher|login` respondem 409.
 
 **`GET /api/candidatura`** devolve:
 
 ```text
-{ligado, aviso_aceito: "AAAA-MM-DD"|null, aviso: texto do aviso de risco, navegador: bool,
+{aviso: texto do aviso de risco, navegador: bool,
  dominios: {conhecidos: [{portal, rotulo, dominios, tem_login}], bloqueados: [{dominio, motivo}],
             liberados: [{dominio, em}]},
  credenciais: [{portal, rotulo, login: [host], guardada, usuario, final (4 últimos caracteres), no_ambiente}]}
@@ -528,11 +530,11 @@ Formato da `proposta`, por tipo:
 
 | Rota | Corpo | Resposta |
 |---|---|---|
-| `PUT /api/candidatura` | `{ligado: bool, aceitar_aviso?: bool}` | o estado; 409 ao ligar pela primeira vez sem `aceitar_aviso` |
+| `PUT /api/candidatura/vaga/{id}` | `{ligada: bool, aceitar_aviso?: bool}` | `{vaga}` (com o kit); 409 ao ligar sem `aceitar_aviso`; 404 vaga inexistente |
 | `POST /api/candidatura/dominios` | `{dominio: "host", acao: "liberar"\|"revogar"}` | `{dominios}`; 409 para domínio bloqueado ou inválido |
 | `PUT /api/candidatura/credenciais/{portal}` | `{usuario, senha}` | `{credenciais}` (grava no `.env`); 409 para portal sem login central |
 | `DELETE /api/candidatura/credenciais/{portal}` | — | `{credenciais}` |
-| `POST /api/candidatura/login` | — | `{portal, rotulo, preenchidos: ["usuario","senha"], aviso}`; 409 fora do host exato de login, sem credencial ou com mais de um campo de senha |
+| `POST /api/candidatura/vaga/{id}/login` | — | `{portal, rotulo, preenchidos: ["usuario","senha"], aviso}`; 409 fora do host exato de login, sem credencial ou com mais de um campo de senha |
 | `POST /api/candidatura/vaga/{id}/abrir` | — | `{ok, url, dominio}`; abre o link da vaga na janela e a traz para a frente |
 | `POST /api/candidatura/vaga/{id}/ler` | — | `{pagina: {url, dominio: {host, permitido, portal, origem, bloqueado, pode_liberar}, etapa: "perguntas"\|"login"\|"teste"\|"bloqueio"\|"desconhecida", aviso, assinatura}, itens, aviso_ia, ia}`. Os `itens` (com a proposta da IA) só vêm com `etapa: "perguntas"` e domínio permitido. Nada vai à IA antes disso |
 | `POST /api/candidatura/vaga/{id}/preencher` | `{assinatura, respostas: [{chave, valor, trocar?}]}` | `{preenchidos: [{chave, rotulo, valor, texto}], ficaram: [{chave, rotulo, motivo}], aviso, documento}`; 409 se a página mudou ("leia de novo"), se o domínio não está liberado ou se há bloqueio |

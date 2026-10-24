@@ -16,7 +16,7 @@ import json
 import re
 import unicodedata
 
-from . import TRAVA, CandidaturaErro, exigir_ligado
+from . import TRAVA, CandidaturaErro, exigir_ligada
 from . import dominios
 
 MAX_CAMPOS, MAX_OPCOES, MAX_RESPOSTA = 80, 60, 5000
@@ -357,10 +357,10 @@ def texto_do_valor(c: dict, valor: str) -> str:
     return _cortar(valor, c["limite"])
 
 
-def preencher(aba, assinatura_lida: str, respostas: list) -> dict:
-    """Preenche os campos comuns com as respostas confirmadas ([{chave, valor, trocar}]). Confere o recurso ligado, o
+def preencher(aba, assinatura_lida: str, respostas: list, vaga: dict | None) -> dict:
+    """Preenche os campos comuns com as respostas confirmadas ([{chave, valor, trocar}]). Confere o recurso ligado na vaga, o
     domínio e se a página ainda é a lida; nunca toca em campo sensível, cadastro, consentimento, arquivo ou senha."""
-    exigir_ligado()
+    exigir_ligada(vaga)
     if not isinstance(respostas, list):
         raise CandidaturaErro("respostas inválidas")
     if not TRAVA.acquire(blocking=False):

@@ -50,11 +50,12 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   - A janela fica aberta e minimizada enquanto o dashboard roda, porque a Gupy esquece o login
     quando ela fecha. Ela fecha quando o dashboard para ou no "Desconectar". Se um portal pedir
     login, a janela vem para a frente e a leitura segue sozinha depois que você entra.
-- **Candidatar com ajuda (candidatura assistida, desligada por padrão):** pelo botão do card da
-  vaga em Salva, no quadro (ou no detalhe da vaga, aba Candidatura), a ferramenta abre a vaga na mesma janela, lê as perguntas do formulário e
+- **Candidatar com ajuda (candidatura assistida, ligada vaga a vaga):** no detalhe da vaga, aba
+  Candidatura, marque "usar a candidatura assistida nesta vaga" (com um aviso de risco) e clique em
+  **Ligar nesta vaga**; a partir daí o card dela, em Salva, ganha o botão. A ferramenta abre a vaga na mesma janela, lê as perguntas do formulário e
   propõe respostas com os fatos do seu perfil. Você confere e edita; ela preenche os campos. **Quem
-  clica em Entrar, Continuar e Enviar é sempre você.** Liga em "Atualizar candidaturas" →
-  Candidatura assistida, depois de um aviso de risco.
+  clica em Entrar, Continuar e Enviar é sempre você.** Os logins guardados e os sites liberados
+  ficam em "Atualizar candidaturas" → Candidatura assistida: logins e sites.
   - Fica com você: perguntas sensíveis (salário, visto, autorização de trabalho, deficiência,
     relocação, diversidade), dados cadastrais, aceite de termos, anexos e testes do portal.
   - Preenche só em sites de candidatura conhecidos (Gupy, Greenhouse, Lever, Workday) ou nos que

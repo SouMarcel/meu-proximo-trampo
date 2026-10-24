@@ -1,5 +1,12 @@
 <!--
-Relatório de impacto da emenda (2026-10-23)
+Relatório de impacto da emenda (2026-10-24)
+- Versão: 4.0.0 → 4.0.1 (PATCH: esclarecimento)
+- Princípio VI, "Candidatura assistida": "desligada por padrão" passa a valer vaga a vaga (a pessoa liga em cada vaga,
+  com o aviso de risco), por decisão do usuário. Sem mudança nas outras regras.
+- Arquivos atualizados: AGENTS.md, README.md, dash/API.md, skills buscar-vagas e gerar-curriculo.
+- Pendências: nenhuma.
+
+Emenda anterior (2026-10-23)
 - Versão: 3.0.0 → 4.0.0 (MAJOR: o princípio VI foi redefinido)
 - Princípio alterado: VI. Respeito aos portais. Entra "Candidatura assistida": a pedido da pessoa, a ferramenta
   preenche os campos do formulário de candidatura na janela dela, só em domínio liberado, sem clicar em botão; e,
@@ -115,7 +122,8 @@ só nestas condições:
 **Candidatura assistida.** Para tirar o trabalho repetitivo dos formulários, a ferramenta pode preencher os campos
 de uma candidatura na janela dela, só nestas condições:
 
-- **Desligada por padrão:** só funciona depois que a pessoa liga o recurso e confirma o aviso de risco da conta.
+- **Desligada por padrão, vaga a vaga:** só funciona numa vaga depois que a pessoa a liga nela e confirma o aviso de
+  risco da conta.
 - **Campos sim, botões nunca:** escreve só em campos (texto, seleção, opção). Nunca clica em botão ou link, nunca
   aperta Enter, nunca envia formulário e nunca faz pedido de escrita ao portal. Avançar e enviar são da pessoa.
 - **Só no clique, sobre uma proposta vista:** cada página é lida quando a pessoa pede; ela confere e edita as
@@ -160,4 +168,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 4.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-23
+**Version**: 4.0.1 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-24

@@ -16,4 +16,5 @@
 - [x] T014 Documentação: AGENTS.md, README.md, skills (buscar-vagas, gerar-curriculo) mais `sincronizar_skills.py`, lista de desejos (Gerenciador de Credenciais)
 - [x] T013b Botão "Candidatar com ajuda" no card do quadro (etapa Salva), em janela própria que já abre a vaga
 - [x] T015 Suíte completa, `graphify update .`, commit na branch, merge na branch pessoal para o teste do usuário
+- [x] T017 Chave por vaga (2026-10-24): ligar em cada vaga com o aviso; botão do card só nas ligadas; sem chave geral
 - [ ] T016 (usuário) Conferir os termos de candidato da Gupy e fazer a prova real na Gupy e num ATS externo. Entregue na `master` em 2026-10-24 com o OK do usuário, antes dessa prova (decisão dele); os dois pontos seguem pendentes
