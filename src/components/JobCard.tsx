@@ -5,7 +5,6 @@ import {
   MapPin,
   DollarSign,
   Sparkles,
-  ChevronRight,
   ShieldCheck,
   FileText,
   Globe,
@@ -15,7 +14,7 @@ import {
   Wand2,
   Banknote,
 } from "lucide-react"
-import type { CamposEditaveis, Vaga, Etapa } from "../types/api"
+import type { CamposEditaveis, Vaga } from "../types/api"
 import { Lembrete } from "./kit/Kit"
 import { useFerramenta } from "../contexto/Ferramenta"
 import CandidaturaModal from "./modals/CandidaturaModal"
@@ -34,7 +33,6 @@ import {
 interface JobCardProps {
   vaga: Vaga
   onSelect: (vaga: Vaga) => void
-  onMoveStage?: (id: string, nextStage: Etapa) => void
   onDelete?: (id: string) => void
   onUpdateVaga?: (id: string, campos: CamposEditaveis, sucesso?: string) => Promise<boolean>
   onPreparar?: (id: string) => void
@@ -42,26 +40,9 @@ interface JobCardProps {
   onAviso?: (m: string, t?: "info" | "erro") => void
 }
 
-const PROXIMA_ETAPA: Record<Etapa, Etapa | null> = {
-  salva: "aplicada",
-  aplicada: "entrevista",
-  entrevista: "proposta",
-  proposta: "encerrada",
-  encerrada: null,
-}
-
-const ROTULO_AVANCO: Record<Etapa, string> = {
-  salva: "Marcar Aplicada",
-  aplicada: "Marcar Entrevista",
-  entrevista: "Recebeu Proposta?",
-  proposta: "Concluir Processo",
-  encerrada: "",
-}
-
 export default function JobCard({
   vaga,
   onSelect,
-  onMoveStage,
   onDelete,
   onUpdateVaga,
   onPreparar,
@@ -69,7 +50,6 @@ export default function JobCard({
 }: JobCardProps) {
   const platStyle = getPlataformaStyle(vaga.plataforma)
   const aderenciaInfo = getAderenciaBadge(vaga.aderencia)
-  const proxima = vaga.etapa ? PROXIMA_ETAPA[vaga.etapa] : null
   const { podeGravar } = useFerramenta()
   const [confirmarRemocao, setConfirmarRemocao] = useState(false)
   const [candidatar, setCandidatar] = useState(false)
@@ -196,7 +176,7 @@ export default function JobCard({
         </span>
 
         <div
-          className="flex items-center gap-1.5"
+          className="flex flex-wrap items-center justify-end gap-1.5"
           onClick={(e) => e.stopPropagation()}
         >
           {/* External Link */}
@@ -241,19 +221,6 @@ export default function JobCard({
               title="Dossiê, perguntas prováveis, histórias, simulação, salário e anotações"
             >
               Preparar entrevista
-            </button>
-          )}
-
-          {/* Advance Stage Button */}
-          {proxima && onMoveStage && (
-            <button
-              disabled={!podeGravar}
-              onClick={() => onMoveStage(vaga.id, proxima)}
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-400 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
-              title={`Avançar vaga para: ${ROTULO_AVANCO[vaga.etapa || "salva"]}`}
-            >
-              <span>Avançar</span>
-              <ChevronRight className="w-3 h-3" />
             </button>
           )}
 
