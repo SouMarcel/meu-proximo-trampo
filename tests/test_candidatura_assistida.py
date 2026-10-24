@@ -257,6 +257,9 @@ class TestClassificacao(Base):
         self.assertEqual(unico(rotulo="Pergunta", tipo="senha"), "senha")
         self.assertEqual(unico(rotulo="Início", tipo="data"), "outro")
         self.assertEqual(unico(rotulo=""), "outro")
+        aceite = {"tipo": "multipla", "rotulo": "Quais ferramentas você usa?", "opcoes": [{"valor": "0", "texto": "Excel"},
+                  {"valor": "1", "texto": "Li e aceito os termos de uso"}]}
+        self.assertEqual(formulario.classificar_campo(aceite)[0], "consentimento")
 
     def test_paginas(self):
         etapa = lambda **k: formulario.ler(PaginaFalsa(**k))["etapa"]
@@ -509,6 +512,95 @@ class TestPropostas(Base):
         self.assertEqual(candidatura_ia.listar("v1")[0]["nome"], meta["nome"])
 
 
+class TestMemoriaEAuto(Base):
+    """Preencher esta página (decisão de 2026-10-24): preenche o que sabe e pergunta o resto."""
+
+    def setUp(self):
+        super().setUp()
+        from candidatura import auto, memoria
+        self.auto, self.memoria = auto, memoria
+        self.propostas = []
+
+    def pagina(self):
+        campos = campos_exemplo() + [
+            {"chave": "grp:30", "tipo": "multipla", "tipo_html": "checkbox", "rotulo": "Você possui permissão para trabalhar no Brasil?",
+             "valor": "", "opcoes": [{"valor": "0", "texto": "Sim"}, {"valor": "1", "texto": "Não"}]},
+            {"chave": "#mudar", "tipo": "unica", "tipo_html": "radio", "rotulo": "Você aceita se mudar para São Paulo (relocation)?",
+             "valor": "", "opcoes": [{"valor": "0", "texto": "Sim"}, {"valor": "1", "texto": "Não"}]},
+        ]
+        return PaginaFalsa(campos=campos)
+
+    def propor(self, vaga, campos):
+        self.propostas.append([c["rotulo"] for c in campos])
+        respostas = {"Conte sua experiência com SQL": "Escrevo SQL avançado.", "Nível de inglês": "3", "Já trabalhou remoto?": "0"}
+        return {"itens": [{**c, "proposta": respostas.get(c["rotulo"], ""), "conferir": []} for c in campos], "aviso": None, "ia": None}
+
+    def test_memoria(self):
+        m = self.memoria
+        campo = {"rotulo": "1. Você possui permissão para trabalhar no Brasil? *", "tipo": "multipla",
+                 "opcoes": [{"valor": "0", "texto": "Sim"}, {"valor": "1", "texto": "Não"}]}
+        self.assertTrue(m.lembrar(campo, "Sim"))
+        self.assertEqual(m.valor_para({**campo, "rotulo": "Você possui permissão para trabalhar no Brasil?"}), "0")
+        self.assertIsNone(m.valor_para({**campo, "opcoes": [{"valor": "0", "texto": "Talvez"}]}))  # opção que não existe aqui
+        self.assertFalse(m.lembrar({"rotulo": "Qual sua pretensão salarial?", "tipo": "texto"}, "R$ 10 mil"))
+        self.assertFalse(m.lembrar({"rotulo": "Topa relocation para outra cidade?", "tipo": "texto"}, "Sim"))
+        self.assertTrue(m.lembrar({"rotulo": "Possui CNH?", "tipo": "caixa"}, "sim"))
+        self.assertEqual(m.valor_para({"rotulo": "Possui CNH?", "tipo": "caixa"}), "sim")
+        self.assertTrue(m.lembrar({"rotulo": "Link do portfólio", "tipo": "texto"}, "https://exemplo.com/p"))
+        self.assertIsNone(m.valor_para({"rotulo": "Link do portfólio", "tipo": "texto", "limite": 5}))  # não cabe
+        chaves = [x["chave"] for x in m.listar()]
+        self.assertEqual(len(chaves), 3)
+        self.assertTrue(m.apagar(chaves[0]))
+        self.assertEqual(len(m.listar()), 2)
+
+    def test_preenche_o_que_sabe_e_pergunta_o_resto(self):
+        self.memoria.lembrar({"rotulo": "Você possui permissão para trabalhar no Brasil?", "tipo": "multipla"}, "Sim")
+        self.memoria.lembrar({"rotulo": "Você aceita se mudar para São Paulo (relocation)?", "tipo": "unica"}, "Sim")  # não guarda
+        aba = self.pagina()
+        r = self.auto.preencher_pagina(aba, self.VAGA, propor=self.propor)
+        fontes = {p["rotulo"]: p["fonte"] for p in r["preenchidos"]}
+        self.assertEqual(fontes, {"Você possui permissão para trabalhar no Brasil?": "sua resposta anterior",
+                                  "Conte sua experiência com SQL": "seu perfil", "Nível de inglês": "seu perfil",
+                                  "Já trabalhou remoto?": "seu perfil"})
+        self.assertEqual(aba._c("grp:30")["valor"], "0")  # sensível, com a resposta da própria pessoa
+        self.assertEqual(aba._c("#salario")["valor"], "")
+        perguntas = {q["rotulo"]: q for q in r["perguntas"]}
+        self.assertIn("Qual sua pretensão salarial?", perguntas)
+        self.assertFalse(perguntas["Qual sua pretensão salarial?"]["lembrar"])
+        self.assertIn("Você aceita se mudar para São Paulo (relocation)?", perguntas)
+        self.assertIn("Quantos anos de experiência com Power BI?", perguntas)  # a IA não tinha base
+        self.assertNotIn("Nome completo", perguntas)  # já preenchido na página
+        self.assertEqual({j["rotulo"] for j in r["na_janela"]}, {"Anexe seu currículo", "Li e aceito os termos de uso"})
+        enviados = [x for lote in self.propostas for x in lote]
+        for sensivel in ("Qual sua pretensão salarial?", "Você possui permissão para trabalhar no Brasil?",
+                         "Você aceita se mudar para São Paulo (relocation)?", "Nome completo"):
+            self.assertNotIn(sensivel, enviados)  # nada disso vai à IA
+        self.assertEqual(aba.teclas, 2)  # a caixa "Sim" da permissão e o radio de remoto: nenhum botão
+
+    def test_responder_preenche_e_guarda(self):
+        aba = self.pagina()
+        a = formulario.ler(aba)["assinatura"]
+        r = self.auto.responder(aba, self.VAGA, a, [{"chave": "#salario", "valor": "R$ 9 mil"}, {"chave": "grp:30", "valor": "0"},
+                                                    {"chave": "#termos", "valor": "sim"}, {"chave": "#cv", "valor": "x"}])
+        self.assertEqual({p["chave"] for p in r["preenchidos"]}, {"#salario", "grp:30"})
+        self.assertEqual(aba._c("#termos")["valor"], "nao")  # aceite de termos fica na janela
+        self.assertEqual(r["lembradas"], 1)  # salário não fica guardado
+        self.assertEqual([x["pergunta"] for x in self.memoria.listar()], ["Você possui permissão para trabalhar no Brasil?"])
+        aba = self.pagina()
+        r = self.auto.responder(aba, self.VAGA, formulario.ler(aba)["assinatura"], [{"chave": "#anos", "valor": "4"}], lembrar=False)
+        self.assertEqual((r["lembradas"], len(self.memoria.listar())), (0, 1))
+
+    def test_ia_nunca_preenche_sensivel(self):
+        aba = self.pagina()
+        r = formulario.preencher(aba, formulario.ler(aba)["assinatura"], [{"chave": "#salario", "valor": "R$ 1"}], self.VAGA)
+        self.assertEqual((r["preenchidos"], aba._c("#salario")["valor"]), ([], ""))
+
+    def test_desligada(self):
+        with self.assertRaises(candidatura.CandidaturaErro):
+            self.auto.preencher_pagina(self.pagina(), self.DESLIGADA, propor=self.propor)
+        self.assertEqual(self.propostas, [])
+
+
 class TestRotas(Base):
     def setUp(self):
         super().setUp()
@@ -572,6 +664,16 @@ class TestRotas(Base):
         self.assertEqual(len(j["preenchidos"]), 2)
         self.assertTrue(j["documento"])
         self.assertEqual(aba._c("n:ingles")["valor"], "3")
+        st, j, _ = self.pedir("GET", "/api/candidatura")
+        self.assertEqual(sorted(m["pergunta"] for m in j["memoria"]), ["Conte sua experiência com SQL", "Nível de inglês"])
+        self.assertEqual(self.pedir("DELETE", "/api/candidatura/memoria/" + j["memoria"][0]["chave"].replace(" ", "%20"), {})[0], 200)
+        self.assertEqual(self.pedir("DELETE", "/api/candidatura/memoria/nao%20existe", {})[0], 404)
+        aba = PaginaFalsa()
+        with mock.patch.object(self.nav, "aba_atual", return_value=aba),                 mock.patch.object(ia, "disponivel", return_value=False),                 mock.patch.object(curriculo_ia, "perfil_texto", return_value=PERFIL):
+            st, j, bruto = self.pedir("POST", "/api/candidatura/vaga/v1/auto", {})
+        self.assertEqual(st, 200, bruto)
+        self.assertIn("Sem IA", j["aviso_ia"])
+        self.assertTrue(any(q["rotulo"] == "Qual sua pretensão salarial?" for q in j["perguntas"]))
 
     def test_dominio_nao_liberado_e_rede(self):
         self.pedir("PUT", "/api/candidatura/vaga/v1", {"ligada": True, "aceitar_aviso": True})

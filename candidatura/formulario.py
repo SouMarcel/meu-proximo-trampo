@@ -37,17 +37,65 @@ const rotuloFor = el => el.id ? document.querySelector('label[for="' + CSS.escap
 const opcaoVisivel = el => visivel(el) || visivel(el.closest("label")) || visivel(rotuloFor(el));
 const textoDe = el => el ? limpo(el.innerText || el.textContent) : "";
 const unico = (sel) => document.querySelectorAll(sel).length === 1;
+const ehOpcao = e => !!e && (e.type === "radio" || e.type === "checkbox");
+// textos que não são pergunta: numeração, asterisco, contadores e avisos de tamanho
+const AJUDA = /^(\*|\d+|[.)\-–:]|obrigat[oó]ri[oa]|opcional|optional|required|selecione|select)$|^(m[aá]x|m[ií]n|maximum|minimum|at[eé])\b.{0,25}caracter|^\d+\s*(\/|de|of)\s*\d+/i;
+const deOpcao = n => { const l = n.parentElement && n.parentElement.closest("label");
+  return !!(l && l.querySelector('input[type=radio],input[type=checkbox]')); };
+// os textos visíveis entre o campo a (ou o começo da página) e o campo b, sem os rótulos das opções
+const textosEntre = (a, b) => {
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const saida = [];
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (a && !(a.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING)) continue;
+    if (!(n.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
+    const p = n.parentElement;
+    if (!p || p.closest("script,style,noscript,option,template,select,textarea,button")) continue;
+    const t = limpo(n.textContent);
+    if (!t || AJUDA.test(t) || deOpcao(n) || !visivel(p)) continue;
+    saida.push({n, t});
+  }
+  return saida;
+};
+const anterior = el => { let ant = null; for (const e of todos()) { if (e === el) break; if (e.type !== "hidden") ant = e; } return ant; };
+// a pergunta de um campo: o bloco do último texto com "?" entre o campo anterior e ele (ou os últimos textos)
+const perguntaDe = el => {
+  const segs = textosEntre(anterior(el), el);
+  if (!segs.length) return "";
+  let t = "";
+  for (let k = segs.length - 1; k >= 0 && !t; k--) {
+    if (segs[k].t.includes("?")) {
+      const bloco = segs[k].n.parentElement.closest("h1,h2,h3,h4,h5,h6,legend,label,p,span,div") || segs[k].n.parentElement;
+      t = textoDe(bloco);
+      if (t.length > 400) t = segs[k].t;
+    }
+  }
+  if (!t) t = segs.slice(-2).map(s => s.t).join(" ");
+  return limpo(t.replace(/^\s*\d+\s*[.)\-–:]\s*/, "").replace(/\s*\*\s*$/, "")).slice(0, 500);
+};
+// grupos de opções: o mesmo name, ou names que só mudam no número do fim (ex.: Gupy, "checkbox-6405922-0" e "-1"),
+// seguidos e sem pergunta entre eles. Caixas soltas (ex.: aceite de termos) nunca entram no grupo de outra pergunta.
+const raiz = n => { const r = String(n || "").replace(/[-_]?\[?\d+\]?$/, ""); return r && r !== n ? r : null; };
+const grupos = () => {
+  const ops = todos().filter(e => ehOpcao(e) && !e.disabled && opcaoVisivel(e));
+  const gs = [];
+  let g = null;
+  for (const e of ops) {
+    const mesmaRaiz = g && raiz(e.name) && raiz(e.name) === g.raiz && !textosEntre(g.els[g.els.length - 1], e).length;
+    const continua = g && e.type === g.tipo && ((e.name && e.name === g.nome) || mesmaRaiz);
+    if (continua) { g.els.push(e); if (g.nome !== e.name) g.nome = null; }
+    else { g = {tipo: e.type, nome: e.name || null, raiz: raiz(e.name), els: [e]}; gs.push(g); }
+  }
+  const lista = todos();
+  return gs.map(x => ({els: x.els, tipo: x.tipo,
+    chave: x.nome && x.els.length > 1 && document.getElementsByName(x.nome).length === x.els.length
+      ? (x.tipo === "radio" ? "radio:" : "check:") + x.nome : "grp:" + lista.indexOf(x.els[0])}));
+};
+const grupoDe = chave => (grupos().find(g => g.chave === chave) || {els: []}).els;
 const chaveDe = (el, i) => {
-  if (el.type === "radio" && el.name) return "radio:" + el.name;
-  if (el.type === "checkbox" && el.name && document.getElementsByName(el.name).length > 1) return "check:" + el.name;
   if (el.id && unico('[id="' + CSS.escape(el.id) + '"]')) return "#" + el.id;
   if (el.name && unico('[name="' + CSS.escape(el.name) + '"]')) return "n:" + el.name;
   return "pos:" + i;
-};
-const grupo = (chave) => {
-  const nome = chave.slice(chave.indexOf(":") + 1);
-  const tipo = chave.startsWith("radio:") ? "radio" : "checkbox";
-  return Array.from(document.getElementsByName(nome)).filter(e => e.type === tipo);
 };
 const achar = (chave) => {
   if (chave.startsWith("#")) return document.getElementById(chave.slice(1));
@@ -65,58 +113,45 @@ const rotuloDe = el => {
   if (!t) t = textoDe(rotuloFor(el));
   if (!t) t = textoDe(el.closest("label"));
   if (!t) t = limpo(el.getAttribute("aria-label"));
-  if (!t) {
-    let p = el.parentElement;
-    for (let n = 0; n < 4 && p && !t; n++, p = p.parentElement) {
-      t = limpo(Array.from(p.childNodes).filter(x => x !== el && !(x.contains && x.contains(el)))
-        .map(x => x.nodeType === 3 ? x.textContent : (x.matches && x.matches("input,select,textarea,button") ? "" : (x.innerText || "")))
-        .join(" "));
-    }
-  }
+  if (AJUDA.test(t)) t = "";
+  if (!t) t = perguntaDe(el);
+  const nome = limpo(el.name);
+  if (!t && /[a-zà-ú]{3,}\s+[a-zà-ú]{2,}/i.test(nome)) t = nome;  // ex.: Gupy, a pergunta no name do campo
   if (!t) t = limpo(el.placeholder);
   return t.slice(0, 500);
 };
-const perguntaDoGrupo = (els, textos) => {
-  const fs = els[0].closest("fieldset");
-  if (fs && fs.querySelector("legend")) return textoDe(fs.querySelector("legend")).slice(0, 500);
-  const g = els[0].closest('[role="radiogroup"],[role="group"]');
-  if (g && g.getAttribute("aria-label")) return limpo(g.getAttribute("aria-label")).slice(0, 500);
-  let p = els[0].parentElement;
-  while (p && !els.every(e => p.contains(e))) p = p.parentElement;
-  for (let n = 0; n < 3 && p; n++, p = p.parentElement) {
-    const tudo = textoDe(p);
-    const primeira = textos.map(x => x && tudo.indexOf(x)).filter(x => x > 0);
-    const antes = limpo(primeira.length ? tudo.slice(0, Math.min(...primeira)) : "");
-    if (antes) return antes.slice(-500);
-  }
-  return "";
-};
 const lista = todos();
 const campos = [], vistos = new Set();
+const emGrupo = new Map();
+grupos().forEach(g => g.els.forEach(e => emGrupo.set(e, g)));
 let senhas = 0;
 lista.forEach((el, i) => {
   const tag = el.tagName.toLowerCase();
   const tipoHtml = tag === "input" ? (el.type || "text").toLowerCase() : tag;
   if (["hidden", "submit", "button", "reset", "image"].includes(tipoHtml)) return;
   if (el.disabled || el.readOnly) return;
-  const chave = chaveDe(el, i);
-  if (vistos.has(chave)) return;
   if (tipoHtml === "radio" || tipoHtml === "checkbox") {
-    const els = chave.startsWith("radio:") || chave.startsWith("check:") ? grupo(chave) : [el];
-    if (!els.some(opcaoVisivel)) return;
-    vistos.add(chave);
-    const textos = els.map(e => textoDe(rotuloFor(e)) || textoDe(e.closest("label")) || limpo(e.getAttribute("aria-label")) || limpo(e.value));
-    if (els.length === 1 && tipoHtml === "checkbox") {
-      campos.push({chave, tipo: "caixa", tipo_html: tipoHtml, rotulo: rotuloDe(el), obrigatorio: el.required, valor: el.checked ? "sim" : "nao", limite: 0, opcoes: []});
+    const g = emGrupo.get(el);
+    if (!g || vistos.has(g.chave)) return;
+    vistos.add(g.chave);
+    const textos = g.els.map(e => textoDe(rotuloFor(e)) || textoDe(e.closest("label")) || limpo(e.getAttribute("aria-label")) || limpo(e.value));
+    const pergunta = perguntaDe(g.els[0]);
+    const nome = limpo(g.els[0].name).slice(0, 100);
+    if (g.els.length === 1 && g.tipo === "checkbox") {
+      const rotulo = textos[0].length > 12 || !pergunta ? textos[0] : pergunta + " " + textos[0];
+      campos.push({chave: g.chave, tipo: "caixa", tipo_html: "checkbox", rotulo: rotulo.slice(0, 500), obrigatorio: el.required,
+        valor: el.checked ? "sim" : "nao", limite: 0, opcoes: [], nome});
       return;
     }
-    campos.push({chave, tipo: tipoHtml === "radio" ? "unica" : "multipla", tipo_html: tipoHtml, rotulo: perguntaDoGrupo(els, textos),
-      obrigatorio: els.some(e => e.required), limite: 0,
+    campos.push({chave: g.chave, tipo: g.tipo === "radio" ? "unica" : "multipla", tipo_html: g.tipo, rotulo: pergunta, nome,
+      obrigatorio: g.els.some(e => e.required), limite: 0,
       opcoes: textos.map((t, n) => ({valor: String(n), texto: t.slice(0, 200)})),
-      valor: tipoHtml === "radio" ? String(els.findIndex(e => e.checked)).replace("-1", "") : els.map((e, n) => e.checked ? String(n) : "").filter(Boolean).join(",")});
+      valor: g.els.map((e, n) => e.checked ? String(n) : "").filter(Boolean).join(",")});
     return;
   }
   if (!visivel(el)) return;
+  const chave = chaveDe(el, i);
+  if (vistos.has(chave)) return;
   vistos.add(chave);
   if (tipoHtml === "password") senhas++;
   const base = {chave, tipo_html: tipoHtml, rotulo: rotuloDe(el), obrigatorio: el.required, nome: limpo(el.name).slice(0, 100),
@@ -131,7 +166,7 @@ lista.forEach((el, i) => {
 });
 const outros = Array.from(document.querySelectorAll('[role="combobox"],[role="listbox"],[contenteditable="true"]'))
   .filter(e => !e.matches("input,select,textarea") && visivel(e)).length;
-return {url: location.href, titulos: limpo([document.title, ...Array.from(document.querySelectorAll("h1,h2,h3")).slice(0, 12).map(textoDe)].join(" | ")).slice(0, 1500),
+return {url: location.href, titulos: limpo([document.title, ...Array.from(document.querySelectorAll("h1,h2")).slice(0, 8).map(textoDe)].join(" | ")).slice(0, 1500),
   texto: textoDe(document.body).slice(0, 4000), iframes: Array.from(document.querySelectorAll("iframe")).map(f => String(f.src || "").slice(0, 300)).slice(0, 20),
   campos: campos.slice(0, 80), senhas, outros};
 })()"""
@@ -159,16 +194,15 @@ return el.selectedIndex === indice;
 })(%s, %s)"""
 
 JS_FOCAR_OPCAO = "((chave, indice) => {" + _COMUM + r"""
-const els = chave.startsWith("radio:") || chave.startsWith("check:") ? grupo(chave) : [achar(chave)].filter(Boolean);
-const el = els[indice];
+const el = grupoDe(chave)[indice];
 if (!el || !["radio", "checkbox"].includes(el.type)) return {ok: false};
 el.focus();
 return {ok: document.activeElement === el, marcada: el.checked, tipo: el.type};
 })(%s, %s)"""
 
 JS_MARCADA = "((chave, indice) => {" + _COMUM + r"""
-const els = chave.startsWith("radio:") || chave.startsWith("check:") ? grupo(chave) : [achar(chave)].filter(Boolean);
-return !!(els[indice] && els[indice].checked);
+const el = grupoDe(chave)[indice];
+return !!(el && el.checked);
 })(%s, %s)"""
 
 JS_SAIR = "(() => { const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur(); return true; })()"
@@ -182,6 +216,7 @@ BLOQUEIO_IFRAME = re.compile(r"recaptcha|hcaptcha|turnstile|challenges\.cloudfla
 TESTE = re.compile(r"teste (de perfil|comportamental|de logica|tecnico|de personalidade|de raciocinio|de ingles)|"
                    r"avaliacao (comportamental|tecnica|de perfil)|assessment|(gravar|gravacao de|envie um|enviar um) video|"
                    r"video (interview|recording)|tempo restante|time remaining|cronometro|desafio tecnico|coding challenge")
+ACEITE = re.compile(r"\b(aceito|concordo|li e|i agree|i accept)\b")  # opção que é aceite de termos
 CONSENTIMENTO = re.compile(r"termos|aceito|concordo|\bli\b|privacidade|consent|\bagree\b|lgpd|autorizo|politica|\bterms\b|privacy")
 CADASTRO = re.compile(r"\b(nome|name|sobrenome|first name|last name|full name|e-?mail|telefone|celular|phone|mobile|whatsapp|"
                       r"cpf|rg|documento|passaporte|passport|endereco|address|cep|zip|postal|cidade|city|bairro|estado|pais|"
@@ -209,11 +244,14 @@ def classificar_campo(c: dict) -> tuple[str, str]:
         return "senha", MOTIVOS["senha"]
     if tipo == "arquivo":
         return "arquivo", MOTIVOS["arquivo"]
-    categoria = candidatura_ia.sensivel(c.get("rotulo") or "")
+    categoria = candidatura_ia.sensivel(c.get("rotulo") or "") or candidatura_ia.sensivel(c.get("nome") or "")
     if categoria:
         return "sensivel", f"{MOTIVOS['sensivel']} ({categoria})"
     if tipo == "caixa" and CONSENTIMENTO.search(rotulo):
         return "consentimento", MOTIVOS["consentimento"]
+    if tipo in ("multipla", "unica") and any(ACEITE.search(_sem_acento(o.get("texto")))
+                                            for o in c.get("opcoes") or []):
+        return "consentimento", MOTIVOS["consentimento"]  # um aceite de termos nunca vai junto de outra resposta
     if tipo in ("texto", "selecao") and (
             c.get("tipo_html") in ("email", "tel", "url") or CADASTRO.search(rotulo)
             or AUTOCOMPLETE_CADASTRO.search(_sem_acento(c.get("autocomplete")))):
@@ -253,7 +291,8 @@ def _limpar_campo(c: dict) -> dict | None:
              "limite": int(c.get("limite") or 0) if str(c.get("limite") or "0").isdigit() else 0,
              "opcoes": [{"valor": str(o.get("valor")), "texto": " ".join(str(o.get("texto") or "").split())[:200],
                          "vazia": bool(o.get("vazia"))} for o in opcoes],
-             "valor": str(c.get("valor") or "")[:300], "autocomplete": str(c.get("autocomplete") or "")[:60]}
+             "valor": str(c.get("valor") or "")[:300], "autocomplete": str(c.get("autocomplete") or "")[:60],
+             "nome": str(c.get("nome") or "")[:100]}
     campo["marca"], campo["motivo"] = classificar_campo(campo)
     return campo
 
@@ -357,9 +396,13 @@ def texto_do_valor(c: dict, valor: str) -> str:
     return _cortar(valor, c["limite"])
 
 
-def preencher(aba, assinatura_lida: str, respostas: list, vaga: dict | None) -> dict:
-    """Preenche os campos comuns com as respostas confirmadas ([{chave, valor, trocar}]). Confere o recurso ligado na vaga, o
-    domínio e se a página ainda é a lida; nunca toca em campo sensível, cadastro, consentimento, arquivo ou senha."""
+DA_PESSOA = {"comum", "sensivel", "cadastro"}  # o que a resposta da própria pessoa pode preencher
+
+
+def preencher(aba, assinatura_lida: str, respostas: list, vaga: dict | None, da_pessoa: bool = False) -> dict:
+    """Preenche os campos com as respostas ([{chave, valor, trocar}]). Confere o recurso ligado na vaga, o domínio e se a
+    página ainda é a lida. Resposta da IA (da_pessoa=False) só vai em campo comum; a da pessoa (dada agora ou guardada)
+    vai também em pergunta sensível e dado cadastral. Aceite de termos, arquivo, senha e o resto ficam na janela."""
     exigir_ligada(vaga)
     if not isinstance(respostas, list):
         raise CandidaturaErro("respostas inválidas")
@@ -375,6 +418,7 @@ def preencher(aba, assinatura_lida: str, respostas: list, vaga: dict | None) -> 
         if pagina["assinatura"] != assinatura_lida:
             raise CandidaturaErro("a página mudou desde a leitura: clique em Preencher esta página de novo")
         campos = {c["chave"]: c for c in pagina["campos"]}
+        permitidas = DA_PESSOA if da_pessoa else {"comum"}
         preenchidos, ficaram, vistos = [], [], set()
         for r in respostas[:MAX_CAMPOS]:
             if not isinstance(r, dict) or r.get("chave") not in campos or r["chave"] in vistos:
@@ -383,8 +427,8 @@ def preencher(aba, assinatura_lida: str, respostas: list, vaga: dict | None) -> 
             c = campos[r["chave"]]
             valor = r.get("valor")
             valor = ",".join(str(v) for v in valor) if isinstance(valor, list) else str(valor if valor is not None else "")
-            item = {"chave": c["chave"], "rotulo": c["rotulo"]}
-            if c["marca"] != "comum":
+            item = {"chave": c["chave"], "rotulo": c["rotulo"], "marca": c["marca"], "tipo": c["tipo"], "nome": c.get("nome", "")}
+            if c["marca"] not in permitidas:
                 ficaram.append({**item, "motivo": c["motivo"]})
             elif not valor.strip():
                 ficaram.append({**item, "motivo": "sem resposta"})
@@ -395,7 +439,7 @@ def preencher(aba, assinatura_lida: str, respostas: list, vaga: dict | None) -> 
             else:
                 ficaram.append({**item, "motivo": "não consegui preencher este campo: preencha você"})
         for c in pagina["campos"]:
-            if c["chave"] not in vistos and c["marca"] != "comum":
+            if c["chave"] not in vistos and c["marca"] not in permitidas:
                 ficaram.append({"chave": c["chave"], "rotulo": c["rotulo"], "motivo": c["motivo"]})
         try:
             aba.avaliar(JS_SAIR)

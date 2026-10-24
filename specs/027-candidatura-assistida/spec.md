@@ -46,6 +46,12 @@ clica** em Entrar, Continuar e Enviar é sempre a pessoa. Isso exige uma emenda 
   vaga. Cada vaga tem a chave "usar a candidatura assistida nesta vaga", com o aviso de risco a cada vez; só as vagas
   ligadas ganham o botão no card e podem ser preenchidas. A chave geral saiu; em Contas conectadas ficam os logins e
   os sites liberados.
+- Q (2026-10-24, primeiro teste real na Gupy): a IA deve pedir a resposta de tudo? → A: Não. Ela preenche de acordo
+  com o que sabe da pessoa (respostas que ela já deu e o perfil) e, em caso de dúvida, pergunta. As respostas da
+  pessoa ficam guardadas e são reaproveitadas, salvo salário e relocação, perguntados a cada vaga (constituição 5.0.0).
+  No mesmo teste: na Gupy a pergunta fica num `<h3>` acima das opções, cada caixa tem um `name` próprio
+  (`checkbox-<id>-0/1`) e a pergunta de um campo de texto pode estar só no `name`; a leitura passou a tomar como
+  pergunta o texto entre o campo anterior e o atual, e "permissão para trabalhar" entrou entre as sensíveis.
 - Pesquisa (2026-10-23, research.md §1): os termos do Indeed e do Nerdin proíbem automação na candidatura. Os dois
   ficam bloqueados como o LinkedIn, sem opção de liberar (princípio VI: seguir os termos de cada fonte). Os termos
   de candidato da Gupy não foram encontrados; a Gupy fica na lista com essa pendência anotada.

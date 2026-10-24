@@ -52,12 +52,18 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
     login, a janela vem para a frente e a leitura segue sozinha depois que você entra.
 - **Candidatar com ajuda (candidatura assistida, ligada vaga a vaga):** no detalhe da vaga, aba
   Candidatura, marque "usar a candidatura assistida nesta vaga" (com um aviso de risco) e clique em
-  **Ligar nesta vaga**; a partir daí o card dela, em Salva, ganha o botão. A ferramenta abre a vaga na mesma janela, lê as perguntas do formulário e
-  propõe respostas com os fatos do seu perfil. Você confere e edita; ela preenche os campos. **Quem
-  clica em Entrar, Continuar e Enviar é sempre você.** Os logins guardados e os sites liberados
+  **Ligar nesta vaga**; a partir daí o card dela, em Salva, ganha o botão. A ferramenta abre a vaga
+  na mesma janela. Em cada página do formulário, **Preencher esta página** preenche o que ela sabe de
+  você (as respostas que você já deu e, nas perguntas comuns, os fatos do seu perfil), mostra o que
+  preencheu e de onde veio, e pergunta o resto. Você responde no painel e ela preenche. **Quem
+  confere na janela e clica em Entrar, Continuar e Enviar é sempre você.**
+  - As suas respostas ficam guardadas no seu computador (`dash/dados/`, fora do Git) e são
+    reaproveitadas nas próximas vagas; salário e relocação ela pergunta a cada vaga. Você vê e
+    apaga as guardadas em "Atualizar candidaturas" → Candidatura assistida. Os logins guardados e os sites liberados
   ficam em "Atualizar candidaturas" → Candidatura assistida: logins e sites.
-  - Fica com você: perguntas sensíveis (salário, visto, autorização de trabalho, deficiência,
-    relocação, diversidade), dados cadastrais, aceite de termos, anexos e testes do portal.
+  - A IA nunca responde perguntas sensíveis (salário, visto, autorização de trabalho, deficiência,
+    relocação, diversidade): elas vão com a sua resposta. Aceite de termos, anexos e testes do
+    portal ficam com você, na janela.
   - Preenche só em sites de candidatura conhecidos (Gupy, Greenhouse, Lever, Workday) ou nos que
     você liberar. Indeed e Nerdin ficam de fora porque os termos deles proíbem automação na
     candidatura, e o LinkedIn também.

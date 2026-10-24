@@ -250,8 +250,8 @@ Isso protege o usuário: o recrutador confere, e data é a coisa mais fácil de 
   responde" você não rascunha: pergunte à pessoa e use a resposta dela como ela escreveu.
 - As outras, só com fatos do perfil; se o perfil não responde, diga isso em vez de inventar.
 - Pela página: item "Respostas de formulário" do checklist da vaga, ou "Candidatar com ajuda"
-  (candidatura assistida, se ela ligou nesta vaga): a ferramenta lê as perguntas da página do portal, propõe
-  com o perfil, a pessoa confere e a ferramenta preenche os campos; quem envia é ela.
+  (candidatura assistida, se ela ligou nesta vaga): a ferramenta preenche o que sabe (respostas
+  que ela já deu e o perfil), pergunta o resto e quem confere e envia é ela.
 
 ## Respostas curtas de formulário
 

@@ -45,7 +45,7 @@ IDIOMAS = {"pt": "português do Brasil", "en": "inglês", "es": "espanhol", "fr"
 # perguntas que só a pessoa responde (sem acento, minúsculas)
 SENSIVEIS = {
     "autorização de trabalho": (r"authori[sz]", r"right to work", r"work permit", r"eligible to work", r"legally .{0,20}work",
-                                r"autoriza", r"permissao de trabalho", r"permitido trabalhar"),
+                                r"autoriza", r"permiss\w* (de|para) trabalh", r"permitido trabalhar", r"direito de trabalhar"),
     "visto ou patrocínio": (r"\bvisas?\b", r"sponsor", r"\bvisto\b", r"patrocin"),
     "cidadania": (r"citizen", r"cidada", r"nationality", r"nacionalidade"),
     "salário ou pretensão": (r"salar", r"compensation", r"expected pay", r"pay expectation", r"pretens", r"remunera",

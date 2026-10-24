@@ -503,7 +503,7 @@ as rotas `vaga/{id}/abrir|ler|preencher|login` respondem 409.
 **`GET /api/candidatura`** devolve:
 
 ```text
-{aviso: texto do aviso de risco, navegador: bool,
+{aviso: texto do aviso de risco, navegador: bool, memoria: [{chave, pergunta, resposta, categoria, em}],
  dominios: {conhecidos: [{portal, rotulo, dominios, tem_login}], bloqueados: [{dominio, motivo}],
             liberados: [{dominio, em}]},
  credenciais: [{portal, rotulo, login: [host], guardada, usuario, final (4 últimos caracteres), no_ambiente}]}
@@ -537,7 +537,9 @@ Formato da `proposta`, por tipo:
 | `POST /api/candidatura/vaga/{id}/login` | — | `{portal, rotulo, preenchidos: ["usuario","senha"], aviso}`; 409 fora do host exato de login, sem credencial ou com mais de um campo de senha |
 | `POST /api/candidatura/vaga/{id}/abrir` | — | `{ok, url, dominio}`; abre o link da vaga na janela e a traz para a frente |
 | `POST /api/candidatura/vaga/{id}/ler` | — | `{pagina: {url, dominio: {host, permitido, portal, origem, bloqueado, pode_liberar}, etapa: "perguntas"\|"login"\|"teste"\|"bloqueio"\|"desconhecida", aviso, assinatura}, itens, aviso_ia, ia}`. Os `itens` (com a proposta da IA) só vêm com `etapa: "perguntas"` e domínio permitido. Nada vai à IA antes disso |
-| `POST /api/candidatura/vaga/{id}/preencher` | `{assinatura, respostas: [{chave, valor, trocar?}]}` | `{preenchidos: [{chave, rotulo, valor, texto}], ficaram: [{chave, rotulo, motivo}], aviso, documento}`; 409 se a página mudou ("leia de novo"), se o domínio não está liberado ou se há bloqueio |
+| `POST /api/candidatura/vaga/{id}/auto` | — | "Preencher esta página": `{pagina, preenchidos: [{chave, rotulo, texto, fonte: "sua resposta anterior"\|"seu perfil", conferir}], perguntas: [item + {lembrar}], na_janela: [{chave, rotulo, motivo}], aviso_ia, aviso, documento}`. Preenche com a memória (inclusive sensível) e com a IA (só campos comuns); `perguntas` é o que precisa da pessoa |
+| `POST /api/candidatura/vaga/{id}/preencher` | `{assinatura, respostas: [{chave, valor, trocar?}], lembrar?: bool (padrão true)}` | as respostas da pessoa (podem ir em pergunta sensível e dado cadastral, nunca em aceite, arquivo ou senha): `{preenchidos: [{chave, rotulo, valor, texto}], ficaram, aviso, lembradas, documento}`; 409 se a página mudou, se o domínio não está liberado ou se há bloqueio |
+| `DELETE /api/candidatura/memoria/{chave}` | — | `{memoria}`; 404 se não existe |
 
 Regras do servidor:
 1. Só preenche campos `comum`, sem pisar em valor que já existe (salvo `trocar`).

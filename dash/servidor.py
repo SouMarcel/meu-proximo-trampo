@@ -221,8 +221,15 @@ class Handler(BaseHTTPRequestHandler):
             if not partes:
                 if metodo != "GET":
                     return self._erro(405, "método não permitido")
+                from candidatura import memoria
                 return self._json(200, {"aviso": candidatura.AVISO, "navegador": bool(nav.achar()),
-                                        "dominios": dominios.para_pagina(), "credenciais": login.para_pagina()})
+                                        "dominios": dominios.para_pagina(), "credenciais": login.para_pagina(),
+                                        "memoria": memoria.listar()})
+            if len(partes) == 2 and partes[0] == "memoria" and metodo == "DELETE":
+                from candidatura import memoria
+                if not memoria.apagar(partes[1]):
+                    return self._erro(404, "resposta não encontrada")
+                return self._json(200, {"memoria": memoria.listar()})
             if partes == ["dominios"] and metodo == "POST":
                 corpo = self._corpo()
                 acao = dominios.liberar if corpo.get("acao") == "liberar" else dominios.revogar if corpo.get("acao") == "revogar" else None
@@ -261,13 +268,18 @@ class Handler(BaseHTTPRequestHandler):
                     aba.frente()
                     aba.fechar()
                     return self._json(200, {"ok": True, "url": url, "dominio": dominios.situacao(url)})
-                if acao in ("ler", "preencher"):
+                if acao in ("ler", "auto", "preencher"):
+                    from candidatura import auto
+                    import candidatura_ia
                     corpo = self._corpo()
                     aba = nav.aba_atual()
                     try:
-                        if acao == "preencher":
-                            r = formulario.preencher(aba, str(corpo.get("assinatura") or ""), corpo.get("respostas"), vaga)
-                            import candidatura_ia
+                        if acao in ("auto", "preencher"):
+                            if acao == "auto":  # preenche o que sabe (memória e perfil) e devolve as perguntas para a pessoa
+                                r = auto.preencher_pagina(aba, vaga)
+                            else:  # as respostas que a pessoa deu no painel
+                                r = auto.responder(aba, vaga, str(corpo.get("assinatura") or ""), corpo.get("respostas"),
+                                                   lembrar=corpo.get("lembrar") is not False)
                             meta = candidatura_ia.gravar_preenchidas(vaga, r["preenchidos"]) if r["preenchidos"] else {}
                             return self._json(200, {**r, "documento": meta.get("nome")})
                         pagina = formulario.ler(aba)
@@ -276,7 +288,6 @@ class Handler(BaseHTTPRequestHandler):
                     resposta = {"pagina": {k: pagina[k] for k in ("url", "dominio", "etapa", "aviso", "assinatura")},
                                 "itens": [], "aviso_ia": None, "ia": None}
                     if pagina["etapa"] == "perguntas" and pagina["dominio"]["permitido"]:
-                        import candidatura_ia
                         proposta = candidatura_ia.propor_respostas(vaga, pagina["campos"])
                         resposta.update(itens=proposta["itens"], aviso_ia=proposta["aviso"], ia=proposta["ia"])
                     return self._json(200, resposta)
