@@ -1,7 +1,7 @@
 /**
  * Candidatar com ajuda (dash/API.md §3.11b; spec 027): abre a vaga na janela da ferramenta, preenche o login guardado
  * e, página por página, propõe respostas que a pessoa confere antes de a ferramenta preencher os campos. Nunca clica
- * em botão nem envia: quem avança e envia é a pessoa. Só aparece com o recurso ligado (Contas conectadas).
+ * em botão nem envia: quem avança e envia é a pessoa. A chave é por vaga: a pessoa liga nesta vaga, com o aviso de risco.
  */
 import React, { useEffect, useRef, useState } from "react"
 import { Loader2, AlertTriangle, Wand2 } from "lucide-react"
@@ -116,7 +116,11 @@ export default function CandidaturaAssistida({
   const [ocupado, setOcupado] = useState("")
   const [erro, setErro] = useState("")
 
-  const pronto = Boolean(podeGravar && estado?.ligado && podeCandidatar(vaga))
+  const [ligada, setLigada] = useState(Boolean(vaga.candidatura_assistida?.ligada))
+  const [aceitar, setAceitar] = useState(false)
+  useEffect(() => setLigada(Boolean(vaga.candidatura_assistida?.ligada)), [vaga.candidatura_assistida?.ligada])
+
+  const pronto = Boolean(podeGravar && estado && ligada && podeCandidatar(vaga))
   useEffect(() => {
     if (pronto && abrirAoMontar && !abriu.current) {
       abriu.current = true
@@ -124,8 +128,6 @@ export default function CandidaturaAssistida({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pronto, abrirAoMontar])
-
-  if (!pronto || !estado) return null
 
   const acao = async (chave: string, fn: () => Promise<void>) => {
     setOcupado(chave)
@@ -138,6 +140,47 @@ export default function CandidaturaAssistida({
       setOcupado("")
     }
   }
+
+  const chave = (ligar: boolean) =>
+    acao("chave", async () => {
+      const j = await api.ligarVaga(vaga.id, ligar, ligar && aceitar)
+      setLigada(Boolean(j.vaga.candidatura_assistida?.ligada))
+      setAceitar(false)
+      setLeitura(null)
+      setResultado(null)
+      onAviso(ligar ? "Candidatura assistida ligada nesta vaga." : "Candidatura assistida desligada nesta vaga.")
+    })
+
+  if (!podeGravar || !estado || !podeCandidatar(vaga)) return null
+
+  if (!ligada)
+    return (
+      <section className={semMoldura ? "space-y-2" : "space-y-2 p-3 rounded-2xl border border-slate-200 dark:border-slate-800"}>
+        {!semMoldura && (
+          <h4 className={`${H} flex items-center gap-2`}>
+            <Wand2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Candidatar com ajuda
+          </h4>
+        )}
+        <p className={DICA}>
+          A ferramenta abre esta vaga numa janela dela e preenche os campos do formulário com respostas que você confere. Quem
+          clica em Continuar e Enviar é você. Vale só para esta vaga.
+        </p>
+        <p className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs">{estado.aviso}</p>
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={aceitar} onChange={(e) => setAceitar(e.target.checked)} />
+          Entendi; usar a candidatura assistida nesta vaga
+        </label>
+        <button
+          type="button"
+          className="px-3 py-1 rounded-lg text-[11px] font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+          disabled={!aceitar || Boolean(ocupado)}
+          onClick={() => chave(true)}
+        >
+          {ocupado === "chave" ? "Ligando…" : "Ligar nesta vaga"}
+        </button>
+        {erro && <p role="alert" className="text-rose-600 dark:text-rose-400 text-xs">{erro}</p>}
+      </section>
+    )
 
   const lerPagina = () =>
     acao("ler", async () => {
@@ -196,7 +239,7 @@ export default function CandidaturaAssistida({
             title="Digita o usuário e a senha guardados só na tela de login do portal; quem clica em Entrar é você"
             onClick={() =>
               acao("login", async () => {
-                const j = await api.preencherLogin()
+                const j = await api.preencherLogin(vaga.id)
                 onAviso(j.aviso)
               })
             }
@@ -348,7 +391,12 @@ export default function CandidaturaAssistida({
           {erro}
         </p>
       )}
-      <p className={DICA}>{LEMBRETE}</p>
+      <p className={DICA}>
+        {LEMBRETE}{" "}
+        <button type="button" className="underline disabled:opacity-50" disabled={Boolean(ocupado)} onClick={() => chave(false)}>
+          Desligar nesta vaga
+        </button>
+      </p>
     </section>
   )
 }

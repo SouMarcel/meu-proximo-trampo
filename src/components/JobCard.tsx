@@ -18,7 +18,6 @@ import {
 import type { CamposEditaveis, Vaga, Etapa } from "../types/api"
 import { Lembrete } from "./kit/Kit"
 import { useFerramenta } from "../contexto/Ferramenta"
-import { useCandidatura } from "../hooks/useCandidatura"
 import CandidaturaModal from "./modals/CandidaturaModal"
 import SalarioModal from "./modals/SalarioModal"
 import {
@@ -75,9 +74,8 @@ export default function JobCard({
   const [confirmarRemocao, setConfirmarRemocao] = useState(false)
   const [candidatar, setCandidatar] = useState(false)
   const [salario, setSalario] = useState(false)
-  const assistida = useCandidatura(podeGravar)
   // no funil e antes de enviar a candidatura: o botão abre a ajuda para preencher o formulário (quem envia é a pessoa)
-  const mostrarCandidatar = Boolean(onAviso && assistida?.ligado && vaga.etapa === "salva")
+  const mostrarCandidatar = Boolean(onAviso && podeGravar && vaga.candidatura_assistida?.ligada && vaga.etapa === "salva")
   const link = linkSeguro(vaga.url_candidatura) || linkSeguro(vaga.url)
 
   return (

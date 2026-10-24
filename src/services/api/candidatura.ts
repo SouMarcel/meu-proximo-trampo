@@ -4,6 +4,7 @@
  * nem envia: quem avança e envia é a pessoa. A senha guardada nunca volta do servidor.
  */
 import { pedir } from "../api"
+import type { Vaga } from "../../types/api"
 
 export interface Dominios {
   conhecidos: { portal: string; rotulo: string; dominios: string[]; tem_login: boolean }[]
@@ -22,8 +23,6 @@ export interface Credencial {
 }
 
 export interface EstadoCandidatura {
-  ligado: boolean
-  aviso_aceito: string | null
   aviso: string
   navegador: boolean
   dominios: Dominios
@@ -81,16 +80,17 @@ const p = (s: string) => encodeURIComponent(s)
 const LONGO = { timeoutMs: 10 * 60 * 1000 } // a proposta da IA pode demorar
 
 export const estado = () => pedir<EstadoCandidatura>("GET", "/api/candidatura")
-export const ligar = (ligado: boolean, aceitar_aviso = false) =>
-  pedir<EstadoCandidatura>("PUT", "/api/candidatura", { ligado, aceitar_aviso })
+/** A chave de cada vaga: ligar exige o aviso de risco aceito, a cada vaga. */
+export const ligarVaga = (vagaId: string, ligada: boolean, aceitar_aviso = false) =>
+  pedir<{ vaga: Vaga }>("PUT", `/api/candidatura/vaga/${p(vagaId)}`, { ligada, aceitar_aviso })
 export const dominio = (dominio: string, acao: "liberar" | "revogar") =>
   pedir<{ dominios: Dominios }>("POST", "/api/candidatura/dominios", { dominio, acao })
 export const guardarCredencial = (portal: string, usuario: string, senha: string) =>
   pedir<{ credenciais: Credencial[] }>("PUT", `/api/candidatura/credenciais/${p(portal)}`, { usuario, senha })
 export const apagarCredencial = (portal: string) =>
   pedir<{ credenciais: Credencial[] }>("DELETE", `/api/candidatura/credenciais/${p(portal)}`, {})
-export const preencherLogin = () =>
-  pedir<{ portal: string; rotulo: string; preenchidos: string[]; aviso: string }>("POST", "/api/candidatura/login", {})
+export const preencherLogin = (vagaId: string) =>
+  pedir<{ portal: string; rotulo: string; preenchidos: string[]; aviso: string }>("POST", `/api/candidatura/vaga/${p(vagaId)}/login`, {})
 export const abrir = (vagaId: string) =>
   pedir<{ ok: boolean; url: string; dominio: Situacao }>("POST", `/api/candidatura/vaga/${p(vagaId)}/abrir`, {})
 export const ler = (vagaId: string) => pedir<Leitura>("POST", `/api/candidatura/vaga/${p(vagaId)}/ler`, {}, LONGO)

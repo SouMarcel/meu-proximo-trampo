@@ -1,6 +1,6 @@
 /**
- * Configuração da candidatura assistida (dash/API.md §3.11b; spec 027), dentro de Contas conectadas: ligar o recurso
- * (com o aviso de risco na primeira vez), usuário e senha por portal (vão para o .env; só os 4 últimos caracteres
+ * Configuração da candidatura assistida (dash/API.md §3.11b; spec 027), dentro de Contas conectadas. O recurso é ligado
+ * vaga a vaga, no detalhe da vaga; aqui ficam usuário e senha por portal (vão para o .env; só os 4 últimos caracteres
  * voltam) e os sites que a pessoa liberou. Domínios bloqueados (LinkedIn, Indeed, Nerdin) não podem ser liberados.
  */
 import React, { useEffect, useState } from "react"
@@ -19,7 +19,6 @@ const CAMPO =
 export default function ConfigCandidatura({ onAviso }: { onAviso: (m: string, t?: "info" | "erro") => void }) {
   const { podeGravar } = useFerramenta()
   const [e, setE] = useState<EstadoCandidatura | null>(null)
-  const [aceitar, setAceitar] = useState(false)
   const [editando, setEditando] = useState<string | null>(null)
   const [usuario, setUsuario] = useState("")
   const [senha, setSenha] = useState("")
@@ -45,48 +44,18 @@ export default function ConfigCandidatura({ onAviso }: { onAviso: (m: string, t?
   }
 
   if (!e) return erro ? <p className="text-rose-600 text-xs">{erro}</p> : null
-  const primeira = !e.ligado && !e.aviso_aceito
 
   return (
     <section className="space-y-2">
       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-        <Wand2 className="w-4 h-4" /> Candidatura assistida
+        <Wand2 className="w-4 h-4" /> Candidatura assistida: logins e sites
       </h4>
       <p className={DICA}>
-        No detalhe de uma vaga que você vai seguir, "Candidatar com ajuda" abre a vaga na janela da ferramenta e preenche os
-        campos do formulário com respostas que você confere antes. Quem clica em Continuar e Enviar é sempre você.
+        A candidatura assistida é ligada vaga a vaga, no detalhe da vaga (aba Candidatura). Aqui ficam o login guardado de cada
+        portal e os sites que você liberou. Quem clica em Continuar e Enviar é sempre você.
       </p>
 
-      <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <b>{e.ligado ? "Ligada" : "Desligada"}</b>
-          <button
-            type="button"
-            className={`${BTN_MINI} ml-auto`}
-            disabled={!podeGravar || ocupado || (primeira && !aceitar)}
-            onClick={() =>
-              acao(async () => {
-                await api.ligar(!e.ligado, aceitar)
-                onAviso(e.ligado ? "Candidatura assistida desligada." : "Candidatura assistida ligada.")
-              })
-            }
-          >
-            {e.ligado ? "Desligar" : "Ligar"}
-          </button>
-        </div>
-        {primeira && (
-          <>
-            <p className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs">{e.aviso}</p>
-            <label className="flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={aceitar} onChange={(ev) => setAceitar(ev.target.checked)} />
-              Entendi e quero ligar
-            </label>
-          </>
-        )}
-      </div>
-
-      {e.ligado && (
-        <>
+      <>
           <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
             <b className="text-xs">Login guardado (opcional)</b>
             <p className={DICA}>
@@ -179,8 +148,7 @@ export default function ConfigCandidatura({ onAviso }: { onAviso: (m: string, t?
               Nunca preenche em: {e.dominios.bloqueados.map((b) => `${b.dominio} (${b.motivo})`).join("; ")}.
             </p>
           </div>
-        </>
-      )}
+      </>
       {erro && <p role="alert" className="text-rose-600 dark:text-rose-400 text-xs">{erro}</p>}
     </section>
   )

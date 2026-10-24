@@ -111,6 +111,8 @@ export interface Vaga {
   local?: string
   url?: string
   url_candidatura?: string
+  /** Candidatura assistida ligada nesta vaga (spec 027, chave por vaga). */
+  candidatura_assistida?: { ligada: boolean; em: string }
   ats?: "greenhouse" | "lever" | "ashby"
   publicada_em?: string | null
   descricao?: string
