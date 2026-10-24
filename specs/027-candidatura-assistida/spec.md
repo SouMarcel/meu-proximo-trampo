@@ -269,7 +269,9 @@ Ela confirma, e o botão "Candidatar com ajuda" passa a aparecer nas vagas em "s
 
 **Fluxo**
 
-- **FR-025**: Numa vaga em "seguir", com o recurso ligado, MUST existir a ação "Candidatar com ajuda". Ela abre o
+- **FR-025**: Numa vaga em "seguir", com o recurso ligado, MUST existir a ação "Candidatar com ajuda": um botão no
+  card do quadro enquanto a vaga está em Salva (pedido do usuário em 2026-10-24) e o painel na aba Candidatura do
+  detalhe. Ela abre o
   endereço da vaga na janela da ferramenta, a mesma da spec 018, com perfil próprio e nunca o navegador do dia a dia.
 - **FR-026**: Depois que a pessoa envia, o andamento segue o fluxo atual:
   - Gupy e Indeed: o "Atualizar candidaturas" propõe a etapa "aplicada";

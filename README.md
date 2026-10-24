@@ -50,8 +50,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   - A janela fica aberta e minimizada enquanto o dashboard roda, porque a Gupy esquece o login
     quando ela fecha. Ela fecha quando o dashboard para ou no "Desconectar". Se um portal pedir
     login, a janela vem para a frente e a leitura segue sozinha depois que você entra.
-- **Candidatar com ajuda (candidatura assistida, desligada por padrão):** no detalhe de uma vaga
-  que você vai seguir, a ferramenta abre a vaga na mesma janela, lê as perguntas do formulário e
+- **Candidatar com ajuda (candidatura assistida, desligada por padrão):** pelo botão do card da
+  vaga em Salva, no quadro (ou no detalhe da vaga, aba Candidatura), a ferramenta abre a vaga na mesma janela, lê as perguntas do formulário e
   propõe respostas com os fatos do seu perfil. Você confere e edita; ela preenche os campos. **Quem
   clica em Entrar, Continuar e Enviar é sempre você.** Liga em "Atualizar candidaturas" →
   Candidatura assistida, depois de um aviso de risco.

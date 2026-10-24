@@ -14,5 +14,6 @@
 - [x] T012 Prova com o Edge sem janela numa página de formulário de teste (React e HTML puro): digitação, seleção, radio, nada clicado
 - [x] T013 Front (`frontend-react`): painel "Candidatar com ajuda" no kit e configuração (ligar, domínios, credenciais)
 - [x] T014 Documentação: AGENTS.md, README.md, skills (buscar-vagas, gerar-curriculo) mais `sincronizar_skills.py`, lista de desejos (Gerenciador de Credenciais)
+- [x] T013b Botão "Candidatar com ajuda" no card do quadro (etapa Salva), em janela própria que já abre a vaga
 - [ ] T015 Suíte completa, `graphify update .`, commit na branch, merge na branch pessoal para o teste do usuário
 - [ ] T016 (usuário) Conferir os termos de candidato da Gupy; prova real na Gupy e num ATS externo; OK para `master` e push
