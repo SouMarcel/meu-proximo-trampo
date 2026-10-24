@@ -201,6 +201,38 @@ O front faz uma escrita por vez por vaga (fila) e troca a vaga local pela devolv
 fila). Erros: 404; 409 "a vaga já tem nota"; 409 `{erro: "Para dar nota, ligue uma IA", sem_ia: true}`.
 O andamento chega por `/api/versao` (`verificando`, `falhas`).
 
+### 3.1b Faixa salarial (botão no card do quadro e seção na aba Candidatura do detalhe)
+
+Spec 028. A faixa salarial usa só números com fonte. Nada é buscado na internet e nada é estimado pela IA.
+
+**`GET /api/vagas/{id}/salario`** devolve:
+
+```text
+{vaga: {id, titulo, empresa, salario (texto), valor: Valor|null},
+ moeda,
+ parecidas: [Valor + {id, titulo, empresa, plataforma, salario, url, semelhanca}],
+ resumo: {n, moeda, minimo, maximo, mediana|null}|null,
+ pesquisas: [{texto, fonte, em}],
+ links: [{rotulo, url}],
+ conversao}
+```
+
+Cada campo:
+- **`Valor`:** `{min, max, moeda, periodo: "mes"|"ano"|"hora"|"dia"|"semana", mensal_min, mensal_max}`.
+- **`parecidas`:** vagas do banco com cargo parecido (semelhança ≥ 0,5), mesma moeda e nível compatível que
+  informam salário. Benefícios (VR, VA, auxílio) não contam.
+- **`resumo`:** os valores por mês (ano ÷ 12, hora × 220, dia × 22). A mediana só vem com 3 vagas ou mais.
+- **`pesquisas`:** o que a pessoa anotou.
+- **`links`:** pesquisas para abrir no navegador da pessoa (Glassdoor, salários do Indeed). A ferramenta não lê
+  essas páginas, porque o Glassdoor bloqueia acesso automatizado.
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `POST /api/vagas/{id}/salario` | `{texto, fonte}` (até 300 e 120 caracteres) | o mesmo objeto do GET; 400 sem texto ou sem fonte, ou com mais de 20 anotações |
+| `DELETE /api/vagas/{id}/salario/{indice}` | — | o mesmo objeto do GET; 400 se a anotação não existe |
+
+A preparação de entrevista (`GET /api/entrevista/{id}`) devolve as anotações em `salario.pesquisas`.
+
 ### 3.2 Adicionar vaga (botão Adicionar Vaga)
 
 Fluxo do front: cola o link → `POST /api/vagas/link`. Se for post do LinkedIn ou texto colado, a IA

@@ -329,6 +329,22 @@ há terceiro), e a vaga em **Entrevista**, um lembrete de agradecimento no dia s
 entrevista, se você informar no detalhe). Você marca "feito", "dispensar" ou "parar lembretes". A
 ferramenta só lembra: a mensagem é você quem escreve e envia.
 
+### Faixa salarial
+
+No card de uma vaga do quadro, o ícone de nota abre a **Faixa salarial**. A mesma seção fica na aba
+Candidatura do detalhe da vaga. Ela mostra:
+
+- **o que a própria vaga informa**;
+- **vagas parecidas do seu banco que informam salário**, com a faixa por mês, a mediana (com 3 ou
+  mais) e o link de cada uma. Benefícios como VR e VA não contam. No Brasil, poucas vagas publicam
+  o salário, então muitas vezes essa parte vem vazia;
+- **links de pesquisa** no Glassdoor (cargo e empresa) e nos salários do Indeed, que abrem no seu
+  navegador. A ferramenta não lê essas páginas, porque o Glassdoor bloqueia acesso automatizado;
+- **o que você viu**: cole a faixa que encontrou, com a fonte. Ela fica guardada na vaga e aparece
+  na parte de salário do Preparar entrevista.
+
+Nenhum valor é estimado pela IA. Pelo terminal: `PY salarios.py <ID>`.
+
 ### Preparar entrevista
 
 No card da coluna **Entrevista** (e no detalhe de qualquer vaga do quadro), o botão **Preparar
