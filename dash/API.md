@@ -514,7 +514,8 @@ A senha nunca volta.
 Item de `itens`, devolvido por `ler`:
 
 ```text
-{chave, tipo: "texto"|"area"|"selecao"|"unica"|"multipla"|"caixa"|"arquivo"|"senha"|"data"|"outro",
+{chave, tipo: "texto"|"area"|"selecao"|"lista"|"unica"|"multipla"|"caixa"|"arquivo"|"senha"|"data"|"outro",
+ (lista = lista com busca, ex.: react-select do Greenhouse; as opções são lidas abrindo a lista)
  tipo_html, rotulo, obrigatorio, limite (0 = sem limite),
  opcoes: [{valor (índice em texto), texto, vazia}], valor (atual),
  marca: "comum"|"sensivel"|"cadastro"|"consentimento"|"arquivo"|"senha"|"outro",
@@ -523,7 +524,7 @@ Item de `itens`, devolvido por `ler`:
 
 Formato da `proposta`, por tipo:
 - **texto:** o texto;
-- **selecao e unica:** o índice da opção;
+- **selecao, lista e unica:** o índice da opção;
 - **multipla:** os índices separados por vírgula;
 - **caixa:** `"sim"` ou `"nao"`;
 - **vazia:** sem proposta (a pessoa escreve).

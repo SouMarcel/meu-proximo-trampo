@@ -90,7 +90,7 @@ def valor_para(campo: dict) -> str | None:
     if not r:
         return None
     texto, tipo = r["resposta"], campo.get("tipo")
-    if tipo in ("selecao", "unica", "multipla"):
+    if tipo in ("selecao", "unica", "lista", "multipla"):
         alvos = [_norm(x) for x in texto.split(";")] if tipo == "multipla" else [_norm(texto)]
         achados = [o["valor"] for o in campo.get("opcoes") or [] if not o.get("vazia") and _norm(o.get("texto")) in alvos]
         if not achados or (tipo != "multipla" and len(achados) != 1) or (tipo == "multipla" and len(achados) != len(alvos)):

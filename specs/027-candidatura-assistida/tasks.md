@@ -18,4 +18,5 @@
 - [x] T015 Suíte completa, `graphify update .`, commit na branch, merge na branch pessoal para o teste do usuário
 - [x] T017 Chave por vaga (2026-10-24): ligar em cada vaga com o aviso; botão do card só nas ligadas; sem chave geral
 - [x] T018 Primeiro teste real (Gupy): leitura das perguntas corrigida (texto entre campos, grupos por name numerado, pergunta no name), "permissão para trabalhar" sensível; fluxo "preenche o que sabe e pergunta o resto" com memória das respostas
+- [x] T019 Greenhouse: captcha invisível não para; listas com busca (react-select) lidas e escolhidas pelo teclado (seta, Esc, Tab); campos escondidos de validação ignorados; aba visível
 - [ ] T016 (usuário) Conferir os termos de candidato da Gupy e fazer a prova real na Gupy e num ATS externo. Entregue na `master` em 2026-10-24 com o OK do usuário, antes dessa prova (decisão dele); os dois pontos seguem pendentes

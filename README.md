@@ -64,6 +64,9 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   - A IA nunca responde perguntas sensíveis (salário, visto, autorização de trabalho, deficiência,
     relocação, diversidade): elas vão com a sua resposta. Aceite de termos, anexos e testes do
     portal ficam com você, na janela.
+  - Listas com busca (como as do Greenhouse) também são preenchidas: a ferramenta abre a lista, lê
+    as opções e escolhe pelo teclado, sem clicar. O reCAPTCHA invisível desses sites não atrapalha;
+    um captcha que peça algo a você faz a ferramenta parar até você resolver na janela.
   - Preenche só em sites de candidatura conhecidos (Gupy, Greenhouse, Lever, Workday) ou nos que
     você liberar. Indeed e Nerdin ficam de fora porque os termos deles proíbem automação na
     candidatura, e o LinkedIn também.

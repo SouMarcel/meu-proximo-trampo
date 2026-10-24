@@ -44,7 +44,8 @@ MAX_PERGUNTAS, TAMANHO_PERGUNTA = 30, 500
 IDIOMAS = {"pt": "português do Brasil", "en": "inglês", "es": "espanhol", "fr": "francês", "de": "alemão", "it": "italiano"}
 # perguntas que só a pessoa responde (sem acento, minúsculas)
 SENSIVEIS = {
-    "autorização de trabalho": (r"authori[sz]", r"right to work", r"work permit", r"eligible to work", r"legally .{0,20}work",
+    "autorização de trabalho": (r"authori[sz]", r"right to (live (and|or) )?work", r"work permit", r"eligible to work",
+                                r"legal(ly)? .{0,30}work", r"\bwork (visa|status)\b",
                                 r"autoriza", r"permiss\w* (de|para) trabalh", r"permitido trabalhar", r"direito de trabalhar"),
     "visto ou patrocínio": (r"\bvisas?\b", r"sponsor", r"\bvisto\b", r"patrocin"),
     "cidadania": (r"citizen", r"cidada", r"nationality", r"nacionalidade"),
@@ -336,7 +337,8 @@ def gerar_respostas(vaga: dict, perguntas_texto: str, progresso=None, perfil: st
 # ---------------------------------------------------------------- candidatura assistida (spec 027)
 
 TIPOS_CAMPO = {"texto": "resposta curta", "area": "resposta em texto", "selecao": "escolha uma opção",
-               "unica": "escolha uma opção", "multipla": "escolha uma ou mais opções", "caixa": "sim ou não"}
+               "unica": "escolha uma opção", "lista": "escolha uma opção", "multipla": "escolha uma ou mais opções",
+               "caixa": "sim ou não"}
 SEM_BASE = {"", "sem base", "sem base no perfil", "n/a", "na", "nao sei", "-"}
 
 
@@ -399,7 +401,7 @@ def validar_proposta(campo: dict, resposta) -> str:
     texto = " ".join(str(resposta or "").split())
     if _sem_acento(texto).strip(" .") in SEM_BASE:
         return ""
-    if tipo in ("selecao", "unica"):
+    if tipo in ("selecao", "unica", "lista"):
         return _indice_da_opcao(campo, texto)
     if tipo == "caixa":
         return {"sim": "sim", "yes": "sim", "nao": "nao", "no": "nao"}.get(_sem_acento(texto).strip(" ."), "")

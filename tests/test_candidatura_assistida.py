@@ -254,6 +254,10 @@ class TestClassificacao(Base):
         self.assertEqual(unico(rotulo="Seu e-mail"), "cadastro")
         self.assertEqual(unico(rotulo="Contato", tipo_html="tel"), "cadastro")
         self.assertEqual(unico(rotulo="Você precisa de visto?"), "sensivel")
+        self.assertEqual(unico(rotulo="Você possui permissão para trabalhar no Brasil?"), "sensivel")
+        self.assertEqual(unico(rotulo="Do you have the legal right to live and work in the location you are applying for?"), "sensivel")
+        self.assertEqual(unico(rotulo="Pergunta", nome="Qual sua última/atual remuneração?"), "sensivel")  # a pergunta no name
+        self.assertEqual(unico(rotulo="Are you currently employed by Acme?"), "comum")
         self.assertEqual(unico(rotulo="Pergunta", tipo="senha"), "senha")
         self.assertEqual(unico(rotulo="Início", tipo="data"), "outro")
         self.assertEqual(unico(rotulo=""), "outro")
@@ -265,6 +269,19 @@ class TestClassificacao(Base):
         etapa = lambda **k: formulario.ler(PaginaFalsa(**k))["etapa"]
         self.assertEqual(etapa(), "perguntas")
         self.assertEqual(etapa(iframes=["https://www.google.com/recaptcha/api2/anchor"]), "bloqueio")
+        # o reCAPTCHA invisível (selo no canto, ex.: Greenhouse) não pede nada: segue como perguntas
+        selo = {"src": "https://www.recaptcha.net/recaptcha/enterprise/anchor?ar=1", "titulo": "reCAPTCHA", "visivel": True,
+                "w": 256, "h": 60, "selo": True}
+        self.assertEqual(etapa(iframes=[selo]), "perguntas")
+        self.assertEqual(etapa(iframes=[{**selo, "selo": False, "src": selo["src"] + "&size=invisible"}]), "perguntas")
+        self.assertEqual(etapa(iframes=[{**selo, "selo": False, "w": 0, "h": 0, "visivel": False}]), "perguntas")
+        self.assertEqual(etapa(texto="This site is protected by reCAPTCHA and the Google Privacy Policy"), "perguntas")
+        # captcha que pede algo: a caixa "não sou um robô", o desafio de imagens, o Turnstile visível
+        self.assertEqual(etapa(iframes=[{**selo, "selo": False, "w": 304, "h": 78}]), "bloqueio")
+        self.assertEqual(etapa(iframes=[{"src": "https://www.google.com/recaptcha/api2/bframe", "visivel": True, "w": 400, "h": 580}]), "bloqueio")
+        self.assertEqual(etapa(iframes=[{"src": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/turnstile", "visivel": True,
+                                         "w": 300, "h": 65}]), "bloqueio")
+        self.assertEqual(etapa(texto="Verifying you are human. This may take a few seconds."), "bloqueio")
         self.assertEqual(etapa(texto="Digite o código de verificação enviado ao seu e-mail"), "bloqueio")
         self.assertEqual(etapa(senhas=1), "login")
         self.assertEqual(etapa(titulos="Teste de perfil comportamental"), "teste")
@@ -368,6 +385,13 @@ class TestPreencher(Base):
             self.assertTrue(hasattr(__import__("navegador").Aba, metodo))
         fonte = (RAIZ / "navegador.py").read_text(encoding="utf-8")
         self.assertNotIn("dispatchMouseEvent", fonte)
+        nav = __import__("navegador")
+        self.assertEqual(set(nav.Aba.TECLAS), {"ArrowDown", "Escape", "Tab"})  # nada de Enter
+        aba = nav.Aba.__new__(nav.Aba)
+        aba.sessao = mock.Mock()
+        with self.assertRaises(nav.NavegadorErro):
+            aba.tecla("Enter")
+        aba.sessao.pedir.assert_not_called()
         self.assertNotIn("Enter", re.sub(r'""".*?"""', "", fonte, flags=re.S))
 
 

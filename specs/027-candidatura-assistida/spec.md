@@ -52,6 +52,11 @@ clica** em Entrar, Continuar e Enviar é sempre a pessoa. Isso exige uma emenda 
   No mesmo teste: na Gupy a pergunta fica num `<h3>` acima das opções, cada caixa tem um `name` próprio
   (`checkbox-<id>-0/1`) e a pergunta de um campo de texto pode estar só no `name`; a leitura passou a tomar como
   pergunta o texto entre o campo anterior e o atual, e "permissão para trabalhar" entrou entre as sensíveis.
+- Q (2026-10-24, vaga do LinkedIn que leva ao Greenhouse): "O portal pediu uma verificação" sem captcha na tela →
+  A: era o reCAPTCHA invisível do Greenhouse, um falso alarme. Agora só param a ferramenta captcha visível e frases de
+  verificação. No mesmo teste: as perguntas Sim/Não e o país do Greenhouse são listas com busca (react-select), lidas e
+  escolhidas pelo teclado; "legal right to live and work" entrou entre as sensíveis; com mais de uma aba na janela,
+  vale a visível.
 - Pesquisa (2026-10-23, research.md §1): os termos do Indeed e do Nerdin proíbem automação na candidatura. Os dois
   ficam bloqueados como o LinkedIn, sem opção de liberar (princípio VI: seguir os termos de cada fonte). Os termos
   de candidato da Gupy não foram encontrados; a Gupy fica na lista com essa pendência anotada.
