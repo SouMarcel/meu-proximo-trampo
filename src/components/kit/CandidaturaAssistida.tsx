@@ -45,7 +45,7 @@ function Controle({ c, r, onChange, disabled }: { c: Campo; r: Resposta; onChang
         onChange={(e) => set(e.target.value)}
       />
     )
-  if (c.tipo === "selecao" || c.tipo === "unica")
+  if (c.tipo === "selecao" || c.tipo === "unica" || c.tipo === "lista")
     return (
       <select className={CAMPO} value={r.valor} disabled={disabled} onChange={(e) => set(e.target.value)}>
         <option value="">(não preencher)</option>

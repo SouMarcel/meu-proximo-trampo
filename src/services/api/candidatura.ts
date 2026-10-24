@@ -40,7 +40,7 @@ export interface Situacao {
   pode_liberar: boolean
 }
 
-export type TipoCampo = "texto" | "area" | "selecao" | "unica" | "multipla" | "caixa" | "arquivo" | "senha" | "data" | "outro"
+export type TipoCampo = "texto" | "area" | "selecao" | "lista" | "unica" | "multipla" | "caixa" | "arquivo" | "senha" | "data" | "outro"
 export type Marca = "comum" | "sensivel" | "cadastro" | "consentimento" | "arquivo" | "senha" | "outro"
 
 export interface Campo {
