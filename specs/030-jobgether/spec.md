@@ -136,8 +136,10 @@ busca, sem pedido à página.
   A emenda diz que um portal cujos termos proíbem acesso automatizado só entra:
   - por decisão explícita da pessoa, registrada na spec;
   - pela API oficial, quando houver;
-  - desligado por padrão, com os termos à vista no painel.
-  Liberado: JobGether.
+  - com os termos à vista no painel;
+  - desligado por padrão, salvo outra decisão da pessoa registrada na spec. Isso preserva InfoJobs e Nerdin, ligados
+    por decisão das suas specs (ajuste aprovado no plano, 25/10/2026).
+  Liberado: JobGether, desligado.
 - **FR-013**: Etiqueta "JobGether" no dashboard (front na `frontend-react`: tipo, cor da etiqueta, domínio do link e
   texto do Adicionar Vaga). Também atualizar `dash/banco.py` (`PLATAFORMAS`), `dash/API.md` (`plataforma` e `fontes`),
   README, `dash/README.md`, AGENTS.md e a skill buscar-vagas.

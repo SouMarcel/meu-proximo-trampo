@@ -173,3 +173,73 @@ Ainda não foi conferido entre buscas de dias diferentes.
 | JobPosting | Sim, mas a página não abre para a ferramenta |
 | Id estável | O da URL |
 | Como limita | 60 pedidos/min na API (429 não visto); 403 no site |
+
+## Decisões técnicas (plano, 25/10/2026)
+
+Mais dois pedidos à API no plano, para os nomes de país:
+- um local inválido responde 400 e manda ver a doc, sem lista;
+- `united-states` e `united-kingdom` são aceitos;
+- `czech-republic` é recusado.
+
+### D1. POST dentro da fonte
+- **Decisão**: `fontes/jobgether.py` faz o POST com `urllib` (`_baixar(corpo)`), com o agente da ferramenta, sem
+  cookies e sem nova tentativa.
+- **Motivo**: o robots.txt bloqueia `/*?*`, e o `_comum.baixar` só faz GET, com uma nova tentativa no 429 que o roteiro
+  não quer aqui.
+- **Alternativas**:
+  - GET no alias `/astroapi/ai/jobs.json?…`, liberado no robots: é um alias, não a superfície versionada;
+  - um `_comum.enviar_json`: só uma fonte usaria.
+
+### D2. Respostas da API
+
+| Resposta | O que a ferramenta faz |
+|---|---|
+| 200 | lê `jobs` e `pagination.hasMore` |
+| 403 ou 429 | bloqueio: espera de 24 h, sem nova tentativa |
+| 400 com `field: "locations"` | aviso "o JobGether não reconhece o local <x>", uma vez por busca; as outras consultas seguem |
+| outro 400, 404, 500 ou 504 | erro só daquela consulta, sem nova tentativa |
+| resposta fora do formato | "não consegui ler as vagas do JobGether" |
+
+### D3. Local de cada consulta
+- **Nacional**, nas consultas remota e do país: o país da pessoa.
+- **Internacional**: o país da consulta, ou `anywhere` na global.
+- **Nome do país**: o nome do jobspy (`filtros.PAISES`), com hífen no lugar do espaço. As exceções ficam numa tabela
+  (`usa` → `united-states`, `uk` → `united-kingdom`).
+- Na consulta do país, quando a pessoa aceita híbrido, vai `includeHybrid: true`.
+- As consultas da cidade e de mudança não fazem pedido.
+
+### D4. Páginas e janela
+- `sort: "date"` e `limit: 25`; a próxima página só quando `hasMore` é verdadeiro e a vaga mais antiga da página ainda
+  está na janela.
+- No máximo 3 páginas (`MAX_PAGINAS`).
+- A mesma consulta (cargo, local, híbrido) é lida uma vez por busca (`_estado["listas"]`).
+
+### D5. Id e data
+- **Id**: `jobgether-<24 hex>` tirado da `url` (`/offer/<id>-<slug>`); sem ele, o `id` da API.
+- **Data**: `publicada_em` vem do `postedAt` (`_comum.data_iso`). A data embutida no id da URL não é usada, porque é
+  inferida e não está documentada.
+
+### D6. Campos
+
+| Campo da vaga | De onde vem |
+|---|---|
+| `local` | "Remoto (<location>)" |
+| `restricao_local` | `location` (curto) |
+| `remoto` | sempre verdadeiro |
+| `modelo_trabalho` | "hibrido" se `remote` falar em hybrid; senão "remoto" |
+| `salario` e `moeda` | `salaryRange` ("65000-70000 USD") pelo `_comum.salario`, sem período |
+| `tipo` | `contractType` em português |
+| `tipo_emprego` | só quando é inequívoco: part time → meio_periodo, internships → estagio, fixed term → temporario, freelance → pj |
+| `url_candidatura` | `None` (a candidatura sai da página no JobGether) |
+| `descricao` | vazia |
+
+"Full time" fica só em `tipo`, porque tempo integral no exterior não é CLT.
+
+### D7. Adicionar Vaga
+- **Decisão**: `link.ler` reconhece o link e levanta `LinkErro` com `{plataforma: "JobGether", url}`, sem pedido. O
+  `banco.criar_manual` usa `jobgether.id_do_link(url)` como id; se a vaga já existe, devolve a que existe.
+- **Alternativa**: achar a vaga pela API com as palavras do endereço. É incerta e gasta um pedido a cada link.
+
+### D8. Emenda da constituição
+Seção "Termos contrários" no princípio VI, versão 4.1.0 (texto no plano). A emenda é escrita para não desligar
+InfoJobs e Nerdin, decididos nas suas specs.
