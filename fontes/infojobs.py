@@ -2,12 +2,17 @@
 conta, as senhas ou os cookies da pessoa (spec 026).
 
 Os termos do InfoJobs não autorizam robôs; a pessoa decidiu tê-lo na busca mesmo assim, como o LinkedIn, e a
-ferramenta lê o mínimo. A lista de cada cargo (empregos.aspx?palabra=<cargo>, já filtrada pela data com o
-Antiguedad do próprio site) é lida uma vez por busca e serve às consultas remota e do país; a consulta da cidade lê
-a lista da cidade (vagas-de-emprego-<cargo>-em-<cidade>.aspx), que traz também as cidades vizinhas. Uma página só
-por lista: a seguinte não tem endereço próprio. A busca do site é ampla, então fica só a vaga cujo título bate com o
-cargo. A descrição vem da página da vaga (os dados estruturados JobPosting), só das vagas que vão para o relatório,
-no máximo MAX_DESCRICOES por busca.
+ferramenta lê o mínimo. Cada consulta lê uma lista do site, já filtrada pela data (Antiguedad):
+- a remota, a lista de home office (vagas-de-emprego-<cargo>-trabalho-home-office.aspx), cujas vagas são todas
+  remotas;
+- a da cidade, a lista da cidade (vagas-de-emprego-<cargo>-em-<cidade>.aspx), que traz também as vizinhas;
+- a do país inteiro, empregos.aspx?palabra=<cargo>.
+Fora da remota, vai também o filtro de modelo do site (idw: 1 presencial, 2 home office, 3 híbrido, juntos com
+vírgula) com os modelos que a pessoa marcou.
+Uma página só por lista: a seguinte não tem endereço próprio. A busca do site é ampla, então fica só a vaga cujo
+título bate com o cargo. "Todo Brasil" no local é vaga remota. A descrição vem da página da vaga (os dados
+estruturados JobPosting ou, quando a página não os traz, o texto da própria página), só das vagas que vão para o
+relatório, no máximo MAX_DESCRICOES por busca.
 
 Pausa sorteada de 3 a 7 segundos entre os pedidos (INFOJOBS_PAUSA=N no .env muda para N a N+4, com N de 3 a 60) e,
 no primeiro bloqueio (recusa, limite de consultas ou pedido de login), o InfoJobs fica de fora pelo resto da busca,
@@ -47,6 +52,9 @@ ILEGIVEL = "não consegui ler as vagas do InfoJobs (a página pode ter mudado)"
 VAGA = re.compile(r"^(?:https?://(?:www\.)?infojobs\.com\.br)?/vaga-de-[^/?#]*?__(\d+)\.aspx(?:[?#].*)?$", re.I)
 # horas da janela -> filtro de data do site (Antiguedad): 2 = 3 dias, 3 = semana, 4 = 15 dias; acima, 5 = mês
 ANTIGUIDADE = ((72, 2), (168, 3), (360, 4))
+HOME_OFFICE = "trabalho-home-office"  # sufixo da lista de home office do site (vagas-de-emprego-<cargo>-<sufixo>.aspx)
+TODO_BRASIL = "todo brasil"  # o local das vagas remotas
+IDW = (("presencial", "1"), ("remoto", "2"), ("hibrido", "3"))  # filtro de modelo do site (idw=1,3 junta dois)
 MODELOS = (("home office", "remoto"), ("remoto", "remoto"), ("hibrido", "hibrido"), ("presencial", "presencial"))
 ICONES = {"money": "salario", "buildings": "modelo", "house-and-building": "modelo", "suitcase": "experiencia",
           "graduate-hat": "escolaridade"}
@@ -176,8 +184,10 @@ def _local(texto: str) -> tuple[str, str]:
     return _espacos(texto), ""
 
 
-def ler_lista(pagina: str) -> list[dict]:
-    """As vagas de uma página de resultados, no formato comum (sem a descrição)."""
+def ler_lista(pagina: str, home_office: bool = False) -> list[dict]:
+    """As vagas de uma página de resultados, no formato comum (sem a descrição). home_office: a página é a lista de
+    home office do site, cujos cards não mostram o modelo; todas as vagas dela são remotas. "Todo Brasil" no local
+    também é vaga remota."""
     p = _Cards()
     p.feed(pagina)
     p.close()
@@ -191,6 +201,10 @@ def ler_lista(pagina: str) -> list[dict]:
         cidade, uf = _local(c.get("local"))
         texto_modelo = _comum._norm(c.get("modelo"))
         modelo = next((m_ for k, m_ in MODELOS if k in texto_modelo), None)
+        if _comum._norm(cidade) == TODO_BRASIL:
+            cidade, modelo = "", "remoto"
+        elif home_office:
+            modelo = "remoto"
         empresa = _espacos(c.get("empresa"))
         if _comum._norm(empresa) in ("empresa confidencial", "confidencial"):
             empresa = "Confidencial"
@@ -229,12 +243,19 @@ def _slug(texto: str, junta: str) -> str:
     return junta.join(_comum._norm(texto).split())
 
 
-def url_lista(termo: str, horas: int, cidade: str | None = None) -> str:
-    """A lista do cargo no país inteiro ou, com a cidade, a lista da cidade (que traz também as vizinhas)."""
+def url_lista(termo: str, horas: int, cidade: str | None = None, remoto: bool = False,
+              modelos: list[str] | None = None) -> str:
+    """A lista do cargo: a de home office (consulta remota), a da cidade (que traz também as vizinhas) ou a do país
+    inteiro, sempre com o filtro de data do site e, fora da remota, o de modelo (idw) dos modelos marcados."""
     filtro = urlencode({"Antiguedad": antiguidade(horas)})
+    cargo = quote(_slug(termo, "+"), safe="+")
+    if remoto:
+        return f"{SITE}vagas-de-emprego-{cargo}-{HOME_OFFICE}.aspx?{filtro}"
+    codigos = [c for m, c in IDW if m in (modelos or [])]
+    if codigos and len(codigos) < len(IDW):  # todos os modelos (ou nenhum) = sem filtro
+        filtro += "&idw=" + ",".join(codigos)  # vírgula sem escape, como o site monta
     if cidade:
-        caminho = f"vagas-de-emprego-{quote(_slug(termo, '+'), safe='+')}-em-{_slug(cidade, '-')}.aspx"
-        return f"{SITE}{caminho}?{filtro}"
+        return f"{SITE}vagas-de-emprego-{cargo}-em-{_slug(cidade, '-')}.aspx?{filtro}"
     return f"{LISTA}?{urlencode({'palabra': termo})}&{filtro}"
 
 
@@ -248,7 +269,7 @@ def _lista(url: str) -> tuple[list[dict], str | None]:
     except _comum.FonteErro as e:
         erro = str(e)
     else:
-        vagas = ler_lista(pagina)
+        vagas = ler_lista(pagina, home_office=f"-{HOME_OFFICE}.aspx" in url or url.endswith("&idw=2"))
         if not vagas and "js_vacancyLoad" in pagina:
             erro = ILEGIVEL
     _estado["listas"][url] = (vagas, erro)
@@ -283,7 +304,7 @@ def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list
     termo = " ".join(str(consulta.get("termo") or "").replace('"', " ").split())
     if not termo:
         return [], []
-    url = url_lista(termo, horas, consulta.get("cidade"))
+    url = url_lista(termo, horas, consulta.get("cidade"), bool(consulta.get("remoto")), consulta.get("modelos"))
     ja_lida = url in _estado["listas"]
     if _estado["bloqueado"] and not ja_lida:
         return [], []  # depois de um bloqueio, nenhum pedido a mais (a lista já lida continua valendo)
@@ -293,16 +314,79 @@ def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list
     return achadas[:max(1, por_termo)], [erro] if erro and not ja_lida else []
 
 
+class _Pagina(HTMLParser):
+    """A página da vaga quando ela não traz o JobPosting: título em h2.js_vacancyHeaderTitle, empresa no link de
+    div.h4, local e salário em div.text-medium.mb-4, modelo em div.text-medium.small e a descrição em
+    p.white-space-pre-line."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.campos: dict[str, list[str]] = {}
+        self.pilha: list[list] = []  # [tag, campo]
+
+    def handle_starttag(self, tag, attrs):
+        if tag in link.VAZIOS:
+            return
+        classes = (dict(attrs).get("class") or "").split()
+        campo = None
+        if tag == "h2" and "js_vacancyHeaderTitle" in classes:
+            campo = "titulo"
+        elif tag == "div" and "h4" in classes and "empresa" not in self.campos:
+            campo = "empresa"
+        elif tag == "div" and "text-medium" in classes and "mb-4" in classes:
+            campo = "modelo" if "small" in classes else "linha"
+        elif tag == "p" and "white-space-pre-line" in classes:
+            campo = "descricao"
+        if campo:
+            self.campos.setdefault(campo, []).append("")
+        self.pilha.append([tag, campo])
+
+    def handle_endtag(self, tag):
+        if any(e[0] == tag for e in self.pilha):
+            while self.pilha and self.pilha.pop()[0] != tag:
+                pass
+
+    def handle_data(self, data):
+        campo = next((e[1] for e in reversed(self.pilha) if e[1]), None)
+        if campo:
+            self.campos[campo][-1] += data
+
+
+def ler_pagina(pagina: str) -> dict:
+    """A vaga a partir do HTML da página, para quando ela não traz o JobPosting (ex.: vagas "Todo Brasil"): titulo,
+    empresa, local, remoto, salario e descricao (vazios quando a página não diz)."""
+    p = _Pagina()
+    p.feed(pagina)
+    p.close()
+    um = lambda k: _espacos((p.campos.get(k) or [""])[0])
+    linhas = [_espacos(x) for x in p.campos.get("linha", []) if _espacos(x)]
+    local = next((x for x in linhas if "salario" not in _comum._norm(x) and not x.startswith("R$")), "")
+    salario = next((x for x in linhas if x.startswith("R$")), None)
+    remoto = any(k in _comum._norm(um("modelo")) for k in ("home office", "remoto")) or \
+        _comum._norm(local) == TODO_BRASIL
+    cidade, uf = _local(local)
+    descricao = "\n\n".join(x.strip() for x in p.campos.get("descricao", []) if x.strip())
+    empresa = um("empresa")
+    return {"plataforma": PLATAFORMA, "titulo": um("titulo"),
+            "empresa": "Confidencial" if _comum._norm(empresa) in ("empresa confidencial", "confidencial") else empresa,
+            "local": "Remoto" if _comum._norm(local) == TODO_BRASIL else f"{cidade}, {uf}" if uf else cidade,
+            "remoto": remoto, "salario": salario, "descricao": descricao[:LIMITE_DESCRICAO]}
+
+
 def descrever(vaga: dict) -> str:
-    """A descrição da página da vaga (dados estruturados JobPosting). Depois de um bloqueio ou na espera, devolve o
-    que a vaga já tinha, sem pedido."""
+    """A descrição da página da vaga: os dados estruturados JobPosting ou, quando a página não os traz, o texto da
+    própria página (ler_pagina). Depois de um bloqueio ou na espera, devolve o que a vaga já tinha, sem pedido."""
     if parada():
         return vaga.get("descricao") or ""
     url = str(vaga.get("url") or "")
     if not VAGA.match(url):
         raise _comum.FonteErro("link de vaga do InfoJobs inesperado")
-    lida = link.extrair_jobposting(_baixar(url), PLATAFORMA)
-    return (lida.get("descricao") or vaga.get("descricao") or "")[:LIMITE_DESCRICAO]
+    pagina = _baixar(url)
+    try:
+        texto = link.extrair_jobposting(pagina, PLATAFORMA).get("descricao")
+    except link.LinkErro:
+        texto = ler_pagina(pagina)["descricao"]
+    return (texto or vaga.get("descricao") or "")[:LIMITE_DESCRICAO]
 
 
 def id_do_link(url: str) -> str | None:

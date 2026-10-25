@@ -17,3 +17,5 @@ description: "Tarefas da feature 029: Vagas.com na busca (Windows)"
 - [X] T006 `frontend-react`: "Vagas.com" em `src/types/api.ts`, cor e domínio em `src/utils/formatters.ts`, texto do
   `AddJobModal.tsx` (junto com o InfoJobs, tarefa T014 da spec 026; commit local na branch `front-026-portais`, sem push)
 - [X] T007 Verificação: suíte inteira e busca real pequena (research R2)
+- [X] T008 (25/10/2026) Datas em espanhol ("Hoy", "Ayer", "Hace N días"), que o site usa quando não reconhece o
+  termo da busca

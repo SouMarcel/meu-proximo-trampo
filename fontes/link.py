@@ -322,12 +322,20 @@ def _portal_paginas(plat: str):
 
 
 def _ler_portal_paginas(fonte, url: str) -> dict:
-    """A vaga pela página pública, com o mesmo id da busca; durante a espera do portal, nenhum pedido."""
+    """A vaga pela página pública, com o mesmo id da busca; durante a espera do portal, nenhum pedido. Página sem o
+    JobPosting: a leitura própria do portal (ler_pagina), se ele tiver."""
     e = fonte.espera()
     if e:
         raise LinkErro(f"o {fonte.PLATAFORMA} está em espera até {_comum.ate_quando(e['ate'])} ({e['motivo']}); "
                        "tente depois ou preencha os dados à mão")
-    return {**extrair_jobposting(_baixar(url), fonte.PLATAFORMA), "id": fonte.id_do_link(url), "url": url}
+    pagina = _baixar(url)
+    try:
+        vaga = extrair_jobposting(pagina, fonte.PLATAFORMA)
+    except LinkErro:
+        if not hasattr(fonte, "ler_pagina"):
+            raise
+        vaga = {"publicada_em": None, "tipo": None, **fonte.ler_pagina(pagina)}
+    return {**vaga, "id": fonte.id_do_link(url), "url": url}
 
 
 def _ler_ats(url: str, plat: str) -> dict:

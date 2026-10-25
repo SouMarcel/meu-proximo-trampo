@@ -578,8 +578,11 @@ Para instalar à mão, no Claude Code:
   consulta não oficial à busca pública do site, sem login e sem cookies. **Os termos de uso do InfoJobs
   não autorizam robôs**: ele entra na busca como o LinkedIn, por escolha de quem usa a ferramenta, que
   pode desligá-lo no painel. Para ler o mínimo:
-  - cada cargo faz um pedido da lista do país (já filtrada pela data, no próprio site) e, na busca na
-    cidade, um da lista da cidade, que traz também as cidades vizinhas;
+  - cada cargo faz um pedido por consulta, já filtrado no próprio site pela data e pelo modelo de
+    trabalho: na busca remota, a lista de home office; na busca na cidade, a lista da cidade (que traz
+    também as cidades vizinhas) com os modelos que você marcou;
+  - "Todo Brasil" no local é vaga remota; quando a página da vaga não traz os dados estruturados, a
+    descrição é lida do texto da página;
   - só a primeira página de cada lista (20 vagas), porque a seguinte não tem endereço próprio;
   - ficam só as vagas cujo título bate com o cargo;
   - a descrição vem da página da vaga, só para as que vão para o relatório (até 30 por busca);

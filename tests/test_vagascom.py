@@ -102,7 +102,9 @@ class TestLeitura(SemRede):
     def test_datas_relativas(self):
         hoje = date(2026, 10, 23)
         casos = {"Hoje": "2026-10-23", "Ontem": "2026-10-22", "Há 3 dias": "2026-10-20", "Há 1 dia": "2026-10-22",
-                 "24/09/2026": "2026-09-24", "algum dia": None, "": None}
+                 "24/09/2026": "2026-09-24", "algum dia": None, "": None,
+                 # em espanhol, quando o site não reconhece o termo da busca
+                 "Hoy": "2026-10-23", "Ayer": "2026-10-22", "Hace 2 días": "2026-10-21"}
         for texto, esperado in casos.items():
             self.assertEqual(vagascom.data_relativa(texto, hoje), esperado, texto)
 

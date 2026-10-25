@@ -148,13 +148,14 @@ def _espacos(s) -> str:
 
 
 def data_relativa(texto: str, hoje) -> str | None:
-    """AAAA-MM-DD a partir de "Hoje", "Ontem", "Há 3 dias" ou "24/09/2026"; None se não reconhecer."""
+    """AAAA-MM-DD a partir de "Hoje", "Ontem", "Há 3 dias" ou "24/09/2026"; None se não reconhecer. O site também
+    escreve em espanhol ("Hoy", "Ayer", "Hace 3 días") quando não reconhece o termo da busca."""
     t = _comum._norm(texto)
-    if t == "hoje":
+    if t in ("hoje", "hoy"):
         return hoje.isoformat()
-    if t == "ontem":
+    if t in ("ontem", "ayer"):
         return (hoje - timedelta(days=1)).isoformat()
-    m = re.fullmatch(r"ha (\d+) dias?", t)
+    m = re.fullmatch(r"(?:ha|hace) (\d+) dias?", t)
     if m:
         return (hoje - timedelta(days=int(m.group(1)))).isoformat()
     m = re.search(r"(\d{2})/(\d{2})/(\d{4})", str(texto or ""))

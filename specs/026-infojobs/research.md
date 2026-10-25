@@ -66,3 +66,22 @@ da pessoa (emenda 2.0.0 da constituição, spec 014). O precedente existe, mas f
 - A espera do LinkedIn (`_bloquear`/`espera`, `.cache/linkedin-espera.json`, 6 h) pode ir para `_comum` como
   mecanismo comum. O `vagas.py` (`fontes_em_espera`, `confirmar_espera`, código 5, `--confirmar-espera`) já trata
   qualquer fonte que tenha `espera()`.
+
+## Ajustes de 25/10/2026 (achados numa busca real)
+
+- **Lista de home office**: `vagas-de-emprego-<cargo>-trabalho-home-office.aspx?Antiguedad=N` (o próprio site monta
+  assim no filtro de remoto). A consulta remota passa a usá-la. Os cards dessa lista não mostram o modelo: todas
+  as vagas dela são remotas.
+- **Filtro de modelo `idw`**: 1 presencial, 2 home office, 3 híbrido, juntos com vírgula (`idw=1,3`). Visto com
+  "analista de dados" em São Paulo: sem filtro, 390 vagas; `idw=1`, 291; `idw=3`, 84; `idw=1,3`, 372; `idw=2`, 21.
+  As consultas da cidade e do país mandam os modelos marcados.
+- **"Todo Brasil"**: é o local das vagas remotas (a página da vaga diz "Todo Brasil / Home office").
+- **Página sem `JobPosting`**: algumas vagas (ex.: as "Todo Brasil") não trazem os dados estruturados.
+  `ler_pagina` lê o próprio HTML:
+  - título em `h2.js_vacancyHeaderTitle`;
+  - empresa em `div.h4`;
+  - local e salário em `div.text-medium.mb-4`;
+  - modelo em `div.text-medium.small`;
+  - descrição em `p.white-space-pre-line`.
+
+  Vale para a descrição da busca e para o Adicionar Vaga.

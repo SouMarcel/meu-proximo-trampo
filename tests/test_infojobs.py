@@ -20,6 +20,8 @@ from fontes import FONTES, _comum, infojobs, link  # noqa: E402
 DADOS = Path(__file__).resolve().parent / "dados" / "infojobs"
 LISTA = (DADOS / "lista.html").read_text(encoding="utf-8")
 VAGA = (DADOS / "vaga.html").read_text(encoding="utf-8")
+HOME_OFFICE = (DADOS / "home-office.html").read_text(encoding="utf-8")  # a lista de home office: cards sem o modelo
+SEM_JSONLD = (DADOS / "vaga-sem-jsonld.html").read_text(encoding="utf-8")  # página de vaga sem o JobPosting
 HOJE = datetime(2026, 10, 23, 12, tzinfo=timezone.utc)
 CFG = {"termos": ["analista de dados"], "localidade": {"pais": "Brasil", "estado": "SP", "cidade": "São Paulo",
                                                       "raio_km": 25},
@@ -66,7 +68,7 @@ class SemRede(unittest.TestCase):
             self.addCleanup(p.stop)
         self.addCleanup(_comum.esquecer)
 
-    def respostas(self, fn=lambda url: LISTA):
+    def respostas(self, fn=lambda url: HOME_OFFICE if "home-office" in url else LISTA):
         """Substitui o pedido de rede: fn(url) devolve o HTML."""
         self.urls = []
 
@@ -115,19 +117,49 @@ class TestLeitura(SemRede):
                          "https://www.infojobs.com.br/empregos.aspx?palabra=analista+de+dados&Antiguedad=3")
         self.assertEqual(infojobs.url_lista("Analista de Dados", 24, "São Paulo"),
                          "https://www.infojobs.com.br/vagas-de-emprego-analista+de+dados-em-sao-paulo.aspx?Antiguedad=2")
+        self.assertEqual(infojobs.url_lista("analista de dados", 72, remoto=True),  # o endereço que o próprio site monta
+                         "https://www.infojobs.com.br/vagas-de-emprego-analista+de+dados-trabalho-home-office.aspx?Antiguedad=2")
+        # filtro de modelo (idw) com os modelos marcados; todos ou nenhum = sem filtro
+        casos = {("presencial",): "&idw=1", ("hibrido",): "&idw=3", ("presencial", "hibrido"): "&idw=1,3",
+                 ("remoto", "hibrido", "presencial"): "", (): ""}
+        for modelos, esperado in casos.items():
+            url = infojobs.url_lista("analista de dados", 168, "São Paulo", modelos=list(modelos))
+            self.assertTrue(url.endswith("?Antiguedad=3" + esperado), (modelos, url))
+        self.assertTrue(infojobs.url_lista("analista de dados", 168, modelos=["presencial"]).endswith("&Antiguedad=3&idw=1"))
 
-    def test_remoto_e_cidade(self):
+    def test_remoto_pela_lista_de_home_office(self):
         self.respostas()
         c = grupos(CFG)
         remoto, erros = infojobs.buscar(c["remoto"], 168, 20)
-        self.assertEqual((numeros(remoto), erros), ([70003], []))
+        self.assertEqual((numeros(remoto), erros), ([70001, 70002, 70003, 70004, 70006], []))  # 70005: antes da janela
+        self.assertTrue(all(v["remoto"] and v["modelo_trabalho"] == "remoto" for v in remoto))  # o card não diz
+        self.assertEqual(remoto[3]["local"], "Remoto")  # "Todo Brasil"
+        self.assertEqual(remoto[0]["local"], "São Paulo, SP")  # a cidade da empresa fica
         local, _ = infojobs.buscar(c["local"], 168, 20)
-        self.assertEqual(numeros(local), [70001, 70002])  # SP (cidade e estado); 70005 é de antes da janela
-        self.assertEqual(len(self.urls), 2)  # a lista do país e a da cidade
-        self.assertIn("empregos.aspx?palabra=analista+de+dados", self.urls[0])
+        self.assertEqual(numeros(local), [70001, 70002])  # SP (cidade e estado), da lista da cidade
+        self.assertEqual(len(self.urls), 2)  # a lista de home office e a da cidade
+        self.assertIn("-trabalho-home-office.aspx?Antiguedad=3", self.urls[0])
         self.assertIn("-em-sao-paulo.aspx", self.urls[1])
         infojobs.buscar(c["remoto"], 168, 20)
         self.assertEqual(len(self.urls), 2)  # a mesma lista não é pedida de novo na busca
+
+    def test_todo_brasil_e_remoto(self):
+        vs = {v["id"]: v for v in infojobs.ler_lista(LISTA.replace("Rio de Janeiro - RJ", "Todo Brasil"))}
+        self.assertEqual((vs["infojobs-70006"]["local"], vs["infojobs-70006"]["remoto"]), ("Remoto", True))
+
+    def test_pagina_sem_jsonld(self):  # vagas "Todo Brasil" costumam vir sem o JobPosting
+        v = infojobs.ler_pagina(SEM_JSONLD)
+        self.assertEqual((v["titulo"], v["empresa"], v["local"], v["remoto"], v["salario"]),
+                         ("Analista de Dados Remoto", "Empresa Exemplo Remota Ltda", "Remoto", True,
+                          "R$ 7.000,00 a R$ 8.000,00"))
+        self.assertIn("SQL avançado", v["descricao"])
+        self.respostas(lambda url: SEM_JSONLD)
+        self.assertIn("100% remota", infojobs.descrever({"url": "https://www.infojobs.com.br/vaga-de-x-em-__70004.aspx"}))
+        url = "https://www.infojobs.com.br/vaga-de-analista-de-dados-remoto-em-__70004.aspx"
+        with mock.patch.object(link, "_baixar", return_value=SEM_JSONLD):
+            lida = link.ler(url)  # o Adicionar Vaga também lê a página
+        self.assertEqual((lida["id"], lida["titulo"], lida["empresa"], lida["remoto"]),
+                         ("infojobs-70004", "Analista de Dados Remoto", "Empresa Exemplo Remota Ltda", True))
 
     def test_pais_inteiro_nos_modelos_marcados(self):
         self.respostas()
@@ -172,9 +204,9 @@ class TestLeitura(SemRede):
 
 class TestBloqueio(SemRede):
     def test_429_poe_em_espera_de_24_horas(self):  # SC-005
-        self.abridor([LISTA, 429])
+        self.abridor([HOME_OFFICE, 429])
         c = grupos(CFG)
-        self.assertEqual(numeros(infojobs.buscar(c["remoto"], 168, 20)[0]), [70003])
+        self.assertEqual(numeros(infojobs.buscar(c["remoto"], 168, 20)[0]), [70001, 70002, 70003, 70004, 70006])
         local, erros = infojobs.buscar(c["local"], 168, 20)
         self.assertEqual(local, [])
         self.assertTrue(erros[0].startswith(infojobs.BLOQUEIO + " (código 429); em espera até "), erros)

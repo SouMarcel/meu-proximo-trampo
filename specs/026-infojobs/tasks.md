@@ -56,3 +56,10 @@ description: "Tarefas da feature 026: InfoJobs na busca e pausa por portal (Wind
 - [X] T016 Busca real pequena: `vagas.py buscar --fontes infojobs` com um cargo; conferir 10 vagas (SC-002) e o
   link de uma vaga no `fontes.link.ler`
 - [X] T017 Procurar dados pessoais nos arquivos alterados; commit local na `026-infojobs`
+
+## Ajustes de 25/10/2026
+
+- [X] T018 `fontes/infojobs.py`: consulta remota pela lista de home office; `idw` com os modelos marcados; "Todo
+  Brasil" = remoto; `ler_pagina` para página sem `JobPosting` (descrição e Adicionar Vaga, em `fontes/link.py`)
+- [X] T019 Testes: `tests/dados/infojobs/{home-office.html, vaga-sem-jsonld.html}` e casos novos em
+  `tests/test_infojobs.py`
