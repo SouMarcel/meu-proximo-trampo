@@ -19,7 +19,7 @@ registrada em `specs/lista-de-desejos.md`.
 |---|---|---|
 | Tem API ou MCP oficial para candidatos? Precisa de chave? | site do portal, página de desenvolvedores | — (com API, use a API; a chave vai para o `.env`) |
 | O robots.txt permite a busca e a página da vaga? | `https://<site>/robots.txt` | a busca ou a página da vaga estiver em `Disallow` |
-| Os termos de uso proíbem a consulta automatizada? | termos de uso, aviso legal (leia o texto inteiro; o robots.txt permitir não basta) | proibirem robôs, scripts ou crawlers; aí só com autorização do portal ou decisão explícita da pessoa, registrada na spec |
+| Os termos de uso proíbem a consulta automatizada? | termos de uso, aviso legal (leia o texto inteiro; o robots.txt permitir não basta) | proibirem robôs, scripts ou crawlers; aí só com autorização do portal ou decisão explícita da pessoa, registrada na spec, pela API oficial se houver e, se for novo, desligado por padrão (constituição VI, "Termos contrários"; ex.: JobGether, spec 030) |
 | A busca funciona sem login? | abrir a busca numa janela anônima | exigir login (aí só cabe como conta conectada, spec 018) |
 | Em que formato vem a lista? | código da página | — (JSON, HTML com cards ou RSS; anote os campos) |
 | Que filtros a própria URL aceita? | links dos filtros da busca | — (data, modelo de trabalho, local e tipo de contratação na URL poupam pedidos) |
@@ -65,7 +65,7 @@ Faça poucos pedidos nessa pesquisa, espaçados, e só à parte pública. As amo
 ## 4. Pausa por portal no `.env`
 
 Cada portal que consulta páginas tem sua pausa, em segundos, ajustável pela variável `<NOME>_PAUSA` (o `NOME` da
-fonte em maiúsculas: `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`).
+fonte em maiúsculas: `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`, `JOBGETHER_PAUSA`).
 - Sem a variável, vale o padrão do portal.
 - Um valor abaixo do mínimo dele vira o mínimo; acima de 60, vira 60.
 - Um valor que não é número é ignorado, com aviso no começo da busca.

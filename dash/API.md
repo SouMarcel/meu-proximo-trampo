@@ -79,7 +79,7 @@ Fontes: banco.py:498-604, vagas.py:719-739, kit.py.
 |---|---|---|
 | `id` | string | `^[A-Za-z0-9_.:-]{1,64}$`; vaga manual começa com `m-`, post do LinkedIn com `lip-` |
 | `origem` | `"busca"` \| `"link"` \| `"manual"` | busca automática; adicionada pelo link ou com "Relatório (decidir depois)"; adicionada direto no quadro |
-| `plataforma` | string | uma de: Indeed, LinkedIn, Gupy, InHire, Catho, Startup Jobs, Nerdin, InfoJobs, Vagas.com, Remotive, Himalayas, RemoteOK, Jobicy, We Work Remotely, Get on Board, Greenhouse, Lever, Ashby, Outra |
+| `plataforma` | string | uma de: Indeed, LinkedIn, Gupy, InHire, Catho, Startup Jobs, Nerdin, InfoJobs, Vagas.com, JobGether, Remotive, Himalayas, RemoteOK, Jobicy, We Work Remotely, Get on Board, Greenhouse, Lever, Ashby, Outra |
 | `outras_plataformas` | string[] | outros portais onde o mesmo anúncio apareceu |
 | `formato` | `"post"` | vaga tirada de um post ou texto colado (etiqueta "Post") |
 | `busca_id`, `termos`, `grupos` | string, string[], string[] | busca que achou a vaga e os cargos/grupos que a acharam (`grupos` tipo `remoto`, `internacional:<país>`) |
@@ -244,6 +244,8 @@ preenche (`POST /api/vagas/extrair`), a pessoa confere o formulário e só entã
   parcial: {url, plataforma: "LinkedIn", formato: "post", post_id, descricao, empresa?, publicado_por?, area, pais_vaga},
   ia: {disponivel: bool, local: bool, provedor: string, modelo: string}}` — **nada gravado**; o front abre o formulário.
 - 422 link que não deu para ler: `{erro, parcial: {url, area, pais_vaga, ...o que deu para ler}}` → formulário pré-preenchido.
+  Link do JobGether (`jobgether.com/offer/…`): sempre 422, sem pedido à página (ela recusa a ferramenta), com
+  `parcial: {url, plataforma: "JobGether", area, pais_vaga}`; a pessoa completa cargo, empresa e descrição.
 - 422 post que não deu para ler: `{erro, sugestao: "colar", parcial: {url, plataforma, formato}}` → caixa "colar texto".
 - 400 link inválido.
 
@@ -258,7 +260,7 @@ Erros: 400 texto vazio; 409 "nenhuma IA configurada"; 502 a IA falhou.
 |---|---|---|
 | `titulo*`, `empresa*` | string | 400 sem eles |
 | `plataforma` | string da lista | outra vira "Outra" |
-| `url` | http/https | |
+| `url` | http/https | link de vaga do JobGether: a vaga fica com o id da busca (`jobgether-…`) e, se já existe, volta a que existe (200, `nova: false`) |
 | `local`, `descricao` (até 20.000) | string | |
 | `etapa` | `"relatorio"` ou uma etapa | `relatorio` = vai para o Relatório (`origem: link`); etapa = direto no quadro (`origem: manual`); padrão `salva` |
 | `area`, `pais_vaga` | `nacional\|internacional`, string | |
@@ -309,7 +311,7 @@ cargos; o front mostra o aviso de primeira vez).
   empresas: [{sistema, id, nome, url}], frases_restricao, frases_positivas}, idiomas_aceitos, janela_horas,
   tipos_emprego, senioridades, moedas_aceitas, empresas_excluir, fontes: string[] (indeed, gupy, nerdin, infojobs,
   vagascom, linkedin,
-  startupjobs)}` (filtros.py:231-273).
+  startupjobs, jobgether)}` (filtros.py:231-273).
 - `opcoes`: `{paises, modelos, tipos_emprego, senioridades, moedas, moeda_do_pais, janelas (chaves "24","72","168",
   "360","720"), raios_km, idiomas, regioes, contratacao, fontes_int: [{nome, rotulo, termos}], fontes_nac:
   [{nome, rotulo, termos, precisa}]}` (filtros.py:450-471).

@@ -56,6 +56,7 @@ def plataforma(host: str) -> str:
     for chave, nome in (("indeed.", "Indeed"), ("linkedin.", "LinkedIn"), ("gupy.io", "Gupy"),
                         ("inhire", "InHire"), ("catho.", "Catho"), ("startup.jobs", "Startup Jobs"),
                         ("nerdin.", "Nerdin"), ("infojobs.com.br", "InfoJobs"), ("vagas.com.br", "Vagas.com"),
+                        ("jobgether.", "JobGether"),
                         ("remotive.", "Remotive"), ("himalayas.app", "Himalayas"),
                         ("remoteok.", "RemoteOK"), ("jobicy.", "Jobicy"), ("weworkremotely.", "We Work Remotely"), ("getonbrd.", "Get on Board"),
                         ("getonboard.", "Get on Board"), ("greenhouse.io", "Greenhouse"), ("lever.co", "Lever"),
@@ -413,6 +414,9 @@ def ler(url: str) -> dict:
     if partes.scheme not in ("http", "https") or not partes.hostname:
         raise LinkErro("o link precisa começar com http:// ou https://")
     plat = plataforma(partes.hostname)
+    if plat == "JobGether":  # a página recusa a ferramenta (403) e os termos do portal proíbem a leitura (spec 030)
+        raise LinkErro("o JobGether não deixa a ferramenta ler a página da vaga; complete cargo, empresa e descrição",
+                       {"plataforma": "JobGether", "url": url})
     if plat == "Indeed":
         vaga = _ler_indeed(partes)
     elif plat == "LinkedIn":

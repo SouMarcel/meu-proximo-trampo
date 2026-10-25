@@ -12,8 +12,8 @@ Não há tabela nova nem mudança de formato no banco nem no `config.json`.
 | `plataforma` | — | `"JobGether"` |
 | `titulo` | `title` | como veio, sem espaços sobrando |
 | `empresa` | `company` | "Empresa não informada" se vier vazio |
-| `local` | `location` | `"Remoto (<location curto>)"`, ou `"Remoto"` |
-| `remoto` | — | `true` (a API traz remotas por padrão) |
+| `local` | `location` | `"Remoto (<location curto>)"`, ou `"Remoto"`; na híbrida, `"Híbrido (…)"` |
+| `remoto` | `remote` | `true`, salvo a vaga híbrida (a API traz remotas por padrão) |
 | `modelo_trabalho` | `remote` | `"hibrido"` se falar em hybrid; senão `"remoto"` |
 | `publicada_em` | `postedAt` | AAAA-MM-DD (`_comum.data_iso`) |
 | `url` | `url` | a página no JobGether |

@@ -31,6 +31,7 @@ BLOQUEADOS = {
     "indeed.com": "os termos do Indeed proíbem automação na candidatura",
     "indeed.com.br": "os termos do Indeed proíbem automação na candidatura",
     "nerdin.com.br": "os termos do Nerdin proíbem robôs e automações",
+    "jobgether.com": "os termos do JobGether proíbem acesso automatizado",
 }
 HOST_VALIDO = re.compile(r"^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
 MAX_LIBERADOS = 200

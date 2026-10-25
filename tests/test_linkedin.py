@@ -421,7 +421,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(filtros.efetivos({})["fontes"], ["indeed", "gupy", "nerdin", "infojobs", "vagascom"])
         nomes = {o["nome"]: o for o in filtros.opcoes()["fontes_nac"]}
         self.assertEqual(list(nomes), ["indeed", "gupy", "nerdin", "infojobs", "vagascom", "linkedin",
-                                       "startupjobs"])
+                                       "startupjobs", "jobgether"])
         self.assertTrue(nomes["linkedin"]["termos"])
         self.assertIn("MCP_STARTUP_JOBS", nomes["startupjobs"]["precisa"])
 

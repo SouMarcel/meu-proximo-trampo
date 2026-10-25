@@ -1,6 +1,6 @@
 ---
 name: buscar-vagas
-description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com e Nerdin; LinkedIn e startup.jobs se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
+description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com e Nerdin; LinkedIn, startup.jobs e JobGether se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
 
 # Buscar vagas
@@ -83,7 +83,8 @@ servidor; ele só serve para ver e mexer no quadro.
    `--incluir-presencial`; "só na Gupy" → `--fontes gupy`; "procura também no
    startup.jobs" → `--fontes indeed gupy nerdin startupjobs`; "inclui o LinkedIn" →
    `--fontes indeed gupy nerdin linkedin`; "só vagas de TI da Nerdin" → `--fontes nerdin`; "só no InfoJobs" →
-   `--fontes infojobs`; "só no Vagas.com" → `--fontes vagascom`. Pedido pontual não altera
+   `--fontes infojobs`; "só no Vagas.com" → `--fontes vagascom`; "procura também no JobGether" →
+   `--fontes indeed gupy nerdin jobgether` (só se a pessoa já sabe dos termos dele; veja abaixo). Pedido pontual não altera
    o `config.json`; para mudar o padrão, sugira o painel Filtros da busca (ou edite o
    arquivo, se ele pedir).
 
@@ -158,7 +159,10 @@ servidor; ele só serve para ver e mexer no quadro.
    traz a linha do anúncio (ex.: "PJ • Senior • Home Office"); nas do InfoJobs, a experiência e a
    escolaridade pedidas (ex.: "Entre 3 e 5 anos • Ensino Superior"); nas do Vagas.com, o nível e, quando
    for o caso, "Exclusiva para PCD". O Vagas.com só informa o modelo quando a vaga é 100% home office: nas
-   outras, tire o modelo da descrição.
+   outras, tire o modelo da descrição. As do JobGether vêm **sem descrição**: avalie pelo título, pelo local
+   aceito (`restricao_local`), pelo contrato e pelo salário, deixe claro que a nota é provisória e não abra a
+   página do JobGether por conta própria (os termos dele proíbem acesso automatizado); se a pessoa quiser, ela
+   cola o texto da vaga.
    `senioridade`: os níveis que a vaga aceita, entre `junior`, `pleno` e `senior`
    (pode ser mais de um, como em "PL/SR"), com `senioridade_origem`:
    - `declarada`: o título ou a descrição dizem o nível.
@@ -361,9 +365,18 @@ busca pública de cada site (`fontes/infojobs.py`, `fontes/vagascom.py`), sem lo
 - no primeiro bloqueio, o portal sai da busca e fica **24 horas em espera**, com a mesma pergunta do
   LinkedIn (código 5).
 
-**Pausa por portal:** `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA` e `VAGASCOM_PAUSA` no `.env`
-(de 3 a 60 segundos; o `.env.exemplo` traz uma linha comentada para cada uma, com o padrão e o
-mínimo). Sugira aumentar só a do portal que estiver bloqueando e deixe a pessoa editar o arquivo.
+O JobGether (vagas remotas de empresas do mundo todo, em inglês) é consultado pela API que o portal oferece a
+assistentes de IA (`fontes/jobgether.py`), sem chave, sem login e sem cookies:
+- os termos de uso dele proíbem acesso automatizado; ele está na busca por decisão registrada na spec 030 e vem
+  **desligado**: só sugira ligá-lo depois de contar isso à pessoa;
+- na busca nacional, traz as remotas abertas a quem mora no país dela; na internacional, as de cada país e as do
+  "mundo todo"; cargo em português não acha nada;
+- as vagas vêm sem descrição (a página não abre para a ferramenta);
+- no primeiro bloqueio, sai da busca e fica **24 horas em espera** (código 5).
+
+**Pausa por portal:** `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA` e `JOBGETHER_PAUSA`
+no `.env` (de 3 a 60 segundos; a do JobGether, de 2 a 60; o `.env.exemplo` traz uma linha comentada para cada
+uma, com o padrão e o mínimo). Sugira aumentar só a do portal que estiver bloqueando e deixe a pessoa editar o arquivo.
 
 O startup.jobs é consultado pelo MCP público do site (`fontes/startupjobs.py`), sem
 login. Sem conta, ele aceita 20 consultas por minuto e mostra só as vagas dos últimos

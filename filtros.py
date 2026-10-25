@@ -80,8 +80,10 @@ FONTES_INT = {"remotive": "Remotive", "himalayas": "Himalayas", "remoteok": "Rem
 GLOBAL = "internacional:global"
 # Portais da busca (config.json -> "fontes"), ligados no painel "Filtros da busca"; precisa = o que o portal exige
 FONTES_NAC = {"indeed": "Indeed", "gupy": "Gupy", "nerdin": "Nerdin", "infojobs": "InfoJobs", "vagascom": "Vagas.com",
-              "linkedin": "LinkedIn", "startupjobs": "startup.jobs"}
+              "linkedin": "LinkedIn", "startupjobs": "startup.jobs", "jobgether": "JobGether"}
 FONTES_PADRAO = ["indeed", "gupy", "nerdin", "infojobs", "vagascom"]
+# Portais da lista acima que também rodam na consulta internacional global ("mundo todo"; GLOBAL = True na fonte)
+FONTES_GLOBAIS = ("linkedin", "jobgether")
 PRECISA = {"startupjobs": "da chave MCP_STARTUP_JOBS no arquivo .env"}
 MAX_EMPRESAS, MAX_FRASES, TAMANHO_FRASE = 50, 30, 120
 # palavras comuns que distinguem cada idioma (sem acento); o que aparece em mais de um idioma ficou de fora
@@ -547,7 +549,8 @@ def consultas(f: dict, incluir_presencial: bool = False) -> list[dict]:
                     lista.append({"grupo": f"mudanca:{p}", "termo": t, "pais": PAISES[p], "pais_nome": p,
                                   "local": None, "raio_km": None, "remoto": False, "area": "internacional",
                                   "modelos": ["presencial", "hibrido"], "tipos_emprego": f.get("tipos_emprego", [])})
-        if inter.get("fontes") or inter.get("empresas") or "linkedin" in f.get("fontes", []):  # uma consulta por cargo
+        if inter.get("fontes") or inter.get("empresas") or any(n in FONTES_GLOBAIS for n in f.get("fontes", [])):
+            # uma consulta por cargo
             for t in inter["termos"] or f["termos"]:
                 lista.append({"grupo": GLOBAL, "termo": t, "pais": None, "pais_nome": None, "local": None,
                               "raio_km": None, "remoto": not inter.get("aceita_mudar"), "area": "internacional",
