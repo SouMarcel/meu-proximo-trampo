@@ -76,6 +76,13 @@ export function getPlataformaStyle(
         border: "border-sky-200 dark:border-sky-800",
         accent: "#0284c7",
       }
+    case "JobGether":
+      return {
+        bg: "bg-cyan-50 dark:bg-cyan-950/40",
+        text: "text-cyan-700 dark:text-cyan-300",
+        border: "border-cyan-200 dark:border-cyan-800",
+        accent: "#0891b2",
+      }
     case "Nerdin":
     case "Startup Jobs":
       return {
@@ -378,6 +385,7 @@ export function plataformaDoLink(u: string): string {
     ["nerdin.", "Nerdin"],
     ["infojobs.com.br", "InfoJobs"],
     ["vagas.com.br", "Vagas.com"],
+    ["jobgether.", "JobGether"],
     ["remotive.", "Remotive"],
     ["himalayas.app", "Himalayas"],
     ["remoteok.", "RemoteOK"],
