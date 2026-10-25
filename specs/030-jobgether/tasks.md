@@ -185,7 +185,7 @@ em `tests/test_jobgether.py` e trocam `jobgether._baixar`; nenhum pedido sai par
   - a cor da etiqueta e o domínio `jobgether.com` em `src/utils/formatters.ts`;
   - o texto do `src/components/modals/AddJobModal.tsx`;
   - `npm run build` sem erro, commit local e **sem push** antes do OK da pessoa.
-- [ ] T021 Verificação:
+- [X] T021 Verificação:
   - `PY -m unittest discover -s tests` inteiro;
   - quickstart §2: busca real pequena, só com o OK da pessoa;
   - `graphify update .`.
@@ -214,3 +214,12 @@ em `tests/test_jobgether.py` e trocam `jobgether._baixar`; nenhum pedido sai par
 2. **Incremental**: US2 → US4 → US3 → US5, com os testes de cada uma passando antes da próxima.
 3. Emenda, documentação e front no fim.
 4. Verificação e teste da pessoa na `marcel` antes da `master` (T021–T022).
+
+## Verificação (25/10/2026)
+
+- Suíte inteira: 454 testes na `030-jobgether` e 459 na `marcel`, todos passando.
+- Busca real pequena na `marcel` (`vagas.py buscar --fontes jobgether`, 4 cargos, Brasil, remoto):
+  - 4 consultas em 9 s;
+  - 3 candidatas com local aceito ("Remoto (South America, Latin America, Brazil)"), data e "(sem descrição)";
+  - nenhum erro.
+- Painel: o JobGether aparece na lista de portais, desligado.
