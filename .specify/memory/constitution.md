@@ -1,5 +1,16 @@
 <!--
-Relatório de impacto da emenda (2026-10-23)
+Relatório de impacto da emenda (2026-10-25)
+- Versão: 4.0.0 → 4.1.0 (MINOR: seção nova no princípio VI)
+- Princípio alterado: VI. Respeito aos portais. Entra "Termos contrários": portal cujos termos proíbem acesso
+  automatizado só entra por decisão explícita da pessoa registrada na spec, com os termos à vista no painel, pela API
+  oficial quando houver e, se for novo, desligado por padrão, salvo outra decisão registrada. Registra a regra que já
+  valia para InfoJobs e Nerdin, sem mudar esses portais.
+- Motivo: decisão do usuário de ter o JobGether na busca pela API para assistentes de IA, mesmo com os termos (spec
+  030-jobgether).
+- Arquivos atualizados: AGENTS.md (Respeite os portais), README.md, docs/novo-portal.md, skill buscar-vagas.
+- Pendências: nenhuma.
+
+Emenda anterior (2026-10-23)
 - Versão: 3.0.0 → 4.0.0 (MAJOR: o princípio VI foi redefinido)
 - Princípio alterado: VI. Respeito aos portais. Entra "Candidatura assistida": a pedido da pessoa, a ferramenta
   preenche os campos do formulário de candidatura na janela dela, só em domínio liberado, sem clicar em botão; e,
@@ -93,6 +104,12 @@ login), sem nova tentativa nem forma de contornar. O perfil da pessoa não é li
 só dos arquivos que ela mesma baixa. Sem candidatura automática: a candidatura assistida (abaixo)
 preenche campos, e quem avança e envia é a pessoa.
 
+**Termos contrários.** Um portal cujos termos proíbem acesso automatizado só entra na busca por decisão explícita da
+pessoa, registrada na spec, com os termos resumidos no painel e as regras acima (pausa, parar no primeiro bloqueio,
+sem contornar). Se o portal tem API oficial, só pela API. Portal novo nessa situação entra desligado por padrão, salvo
+outra decisão da pessoa registrada na spec. Exemplos: InfoJobs (spec 026), ligado por padrão; JobGether (spec 030),
+pela API para assistentes, desligado.
+
 **Conta conectada.** A ferramenta pode ler a área da própria pessoa num portal (ex.: o andamento das candidaturas)
 só nestas condições:
 
@@ -160,4 +177,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 4.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-23
+**Version**: 4.1.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-25

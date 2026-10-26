@@ -1,0 +1,15 @@
+{
+  "jobs": [
+    {"id": "6b0000000000000000000006", "title": "Agile Project Manager", "company": "Delta Labs",
+     "url": "https://jobgether.com/offer/6b0000000000000000000006-agile-project-manager",
+     "location": "Anywhere", "remote": "Full Remote", "contractType": "Freelance", "experience": "",
+     "jobFunctions": ["Project Management"], "postedAt": "2026-10-19T12:00:00.000Z"},
+    {"id": "6b0000000000000000000007", "title": "IT Project Manager", "company": "Epsilon Servicos",
+     "url": "https://jobgether.com/offer/6b0000000000000000000007-it-project-manager",
+     "location": "Brazil", "remote": "Full Remote", "contractType": "Full time", "experience": "",
+     "jobFunctions": ["Project Management"], "postedAt": "2026-10-10T08:00:00.000Z"}
+  ],
+  "pagination": {"page": 2, "limit": 25, "hasMore": false},
+  "browseOnSiteUrl": "https://jobgether.com/search-offers?keyword=project+manager",
+  "docs": "/astroapi/ai/jobs/docs"
+}

@@ -1,0 +1,29 @@
+{
+  "jobs": [
+    {"id": "6b0000000000000000000001", "title": "Senior Project Manager", "company": "Acme Remota",
+     "url": "https://jobgether.com/offer/6b0000000000000000000001-senior-project-manager",
+     "location": "South America, Latin America, Brazil", "remote": "Full Remote", "contractType": "Full time",
+     "experience": "Senior (5-10 years)", "salaryRange": "65000-70000 USD", "jobFunctions": ["Project Management"],
+     "postedAt": "2026-10-24T07:31:11.783Z"},
+    {"id": "6b0000000000000000000002", "title": "NetSuite Consultant", "company": "Exemplo Consultoria",
+     "url": "https://jobgether.com/offer/6b0000000000000000000002-netsuite-consultant",
+     "location": "Latin America", "remote": "Full Remote", "contractType": "Full time", "experience": "",
+     "jobFunctions": ["Project Management"], "postedAt": "2026-10-23T10:00:00.000Z"},
+    {"id": "6b0000000000000000000003", "title": "Project Manager (Part-time)", "company": "Beta Digital",
+     "url": "https://jobgether.com/offer/6b0000000000000000000003-project-manager-part-time",
+     "location": "Anywhere", "remote": "Full Remote", "contractType": "Part time", "experience": "",
+     "jobFunctions": ["Project Management"], "postedAt": "2026-10-22T15:20:00.000Z"},
+    {"id": "6b0000000000000000000004", "title": "Technical Project Manager", "company": "Gama Software",
+     "url": "https://jobgether.com/offer/6b0000000000000000000004-technical-project-manager",
+     "location": "Brazil", "remote": "Hybrid", "contractType": "Full time", "experience": "Mid-level (2-5 years)",
+     "jobFunctions": ["Project Management"], "postedAt": "2026-10-21T09:00:00.000Z"},
+    {"id": "6b0000000000000000000005", "title": "Project Manager - Clinical Systems", "company": "Saude Exemplo",
+     "url": "https://jobgether.com/offer/6a0000000000000000000099-project-manager-clinical-systems",
+     "location": "Latin America, Brazil", "remote": "Full Remote", "contractType": "Fixed term",
+     "experience": "Junior (1-2 years)", "salaryRange": "6000-10200 USD", "jobFunctions": ["Healthcare"],
+     "postedAt": "2026-10-20T19:30:32.477Z"}
+  ],
+  "pagination": {"page": 1, "limit": 25, "hasMore": true},
+  "browseOnSiteUrl": "https://jobgether.com/search-offers?keyword=project+manager",
+  "docs": "/astroapi/ai/jobs/docs"
+}

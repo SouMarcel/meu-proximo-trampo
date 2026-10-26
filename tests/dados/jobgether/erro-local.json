@@ -1,0 +1,4 @@
+{"type": "/astroapi/ai/jobs/docs#invalid_parameter", "title": "Invalid parameter", "status": 400,
+ "detail": "Invalid value for 'locations': \"czech-republic\"", "code": "invalid_parameter", "field": "locations",
+ "allowedValues": ["see /astroapi/ai/jobs/docs for supported location slugs"],
+ "error": "Invalid value for 'locations': \"czech-republic\"", "docs": "/astroapi/ai/jobs/docs"}

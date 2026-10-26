@@ -42,6 +42,7 @@ ETAPAS = ("salva", "aplicada", "entrevista", "proposta", "encerrada")
 TRIAGENS = ("pendente", "seguir", "visitada", "fora")  # fora = furou os filtros da busca
 RESULTADOS = ("nao_aprovado", "desisti", "cancelada", "contratado")
 PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Nerdin", "InfoJobs", "Vagas.com",
+               "JobGether",
                "Remotive", "Himalayas", "RemoteOK", "Jobicy", "We Work Remotely", "Get on Board", "Greenhouse", "Lever",
                "Ashby", "Outra")
 SISTEMAS_ATS = ("greenhouse", "lever", "ashby")
@@ -161,6 +162,19 @@ def _id_gupy():
         return id_do_link
     except ImportError:
         return lambda url: None
+
+
+def _id_jobgether(url: str) -> str | None:
+    """fontes.jobgether.id_do_link, carregado sob demanda: a vaga do JobGether completada à mão no Adicionar Vaga fica
+    com o mesmo id da busca (spec 030)."""
+    try:
+        raiz = str(DASH.parent)
+        if raiz not in sys.path:
+            sys.path.insert(0, raiz)
+        from fontes.jobgether import id_do_link
+    except ImportError:
+        return None
+    return id_do_link(url)
 
 
 def ids_da_vaga(doc: dict, id_gupy=None) -> set[str]:
@@ -502,7 +516,8 @@ def criar_manual(campos: dict) -> tuple[dict, bool]:
 
     Com etapa "relatorio", vai para o Relatório de Vagas como as da busca (origem "link");
     nas outras etapas, direto para o quadro. Vaga de post (formato "post") com post_id usa o id do post (lip-…); se o
-    post, ou a mesma vaga, já está no banco, devolve a que existe, sem gravar.
+    post, ou a mesma vaga, já está no banco, devolve a que existe, sem gravar. Vaga com link do JobGether (a página não
+    é lida; spec 030) usa o id da busca (jobgether-…) e, se a busca já trouxe, devolve a que existe.
     """
     titulo = _texto(campos.get("titulo"), 200)
     empresa = _texto(campos.get("empresa"), 120)
@@ -522,8 +537,9 @@ def criar_manual(campos: dict) -> tuple[dict, bool]:
         raise ValueError("id de post inválido")
     publicado_por = _texto(campos.get("publicado_por"), 120) if post else ""
     m = re.search(r"[?&]jk=([0-9a-f]{16})", url, re.I)
-    vid = post_id or "m-" + datetime.now().strftime("%y%m%d%H%M%S") + secrets.token_hex(2)
-    existente = obter(vid) if post_id else None
+    fixo = post_id or (_id_jobgether(url) if url else None)
+    vid = fixo or "m-" + datetime.now().strftime("%y%m%d%H%M%S") + secrets.token_hex(2)
+    existente = obter(vid) if fixo else None
     if existente is not None:
         return existente, False
     doc = {
@@ -546,8 +562,8 @@ def criar_manual(campos: dict) -> tuple[dict, bool]:
         doc["termos"] = []
     aplicar_criterios(doc)
     with escrita() as con:
-        atual = _ler(con, vid) if post_id else None
-        if atual is not None:  # o mesmo post salvo por outra aba no meio do caminho
+        atual = _ler(con, vid) if fixo else None
+        if atual is not None:  # o mesmo post (ou vaga) salvo por outra aba no meio do caminho
             return atual, False
         _gravar(con, vid, doc)
     doc["id"] = vid
