@@ -189,8 +189,9 @@ em `tests/test_jobgether.py` e trocam `jobgether._baixar`; nenhum pedido sai par
   - `PY -m unittest discover -s tests` inteiro;
   - quickstart §2: busca real pequena, só com o OK da pessoa;
   - `graphify update .`.
-- [ ] T022 Procurar dados pessoais nos arquivos alterados; commit na `030-jobgether`. Depois, pelo fluxo do
-  `CLAUDE.local.md`: merge na `marcel`, reiniciar o dashboard e esperar o teste da pessoa antes da `master`.
+- [X] T022 Procurar dados pessoais nos arquivos alterados; commit na `030-jobgether`. Depois, pelo fluxo de
+  desenvolvimento: merge na branch pessoal de teste, reiniciar o dashboard e esperar o teste da pessoa antes da
+  `master`.
 
 ## Dependencies & Execution Order
 
@@ -213,12 +214,12 @@ em `tests/test_jobgether.py` e trocam `jobgether._baixar`; nenhum pedido sai par
 1. **MVP**: T001–T006. A busca nacional traz as vagas do JobGether nos testes.
 2. **Incremental**: US2 → US4 → US3 → US5, com os testes de cada uma passando antes da próxima.
 3. Emenda, documentação e front no fim.
-4. Verificação e teste da pessoa na `marcel` antes da `master` (T021–T022).
+4. Verificação e teste da pessoa na branch pessoal antes da `master` (T021–T022).
 
 ## Verificação (25/10/2026)
 
-- Suíte inteira: 454 testes na `030-jobgether` e 459 na `marcel`, todos passando.
-- Busca real pequena na `marcel` (`vagas.py buscar --fontes jobgether`, 4 cargos, Brasil, remoto):
+- Suíte inteira: 454 testes na `030-jobgether` e 459 na branch pessoal de teste, todos passando.
+- Busca real pequena na branch pessoal de teste (`vagas.py buscar --fontes jobgether`, 4 cargos, Brasil, remoto):
   - 4 consultas em 9 s;
   - 3 candidatas com local aceito ("Remoto (South America, Latin America, Brazil)"), data e "(sem descrição)";
   - nenhum erro.
