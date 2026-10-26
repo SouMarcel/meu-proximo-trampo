@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-25
 
-**Status**: Aprovada em 2026-10-25
+**Status**: Implementada e testada pela pessoa (2026-10-25)
 
 **Input**: User description: "vamos agora configurar os portais jobgether e greenhouse e vamos usar o novo processo
 criado". Decisões de 25/10/2026, depois da pesquisa: o JobGether entra por decisão da pessoa, mesmo com os termos
