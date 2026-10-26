@@ -264,6 +264,8 @@ export interface RespostaLink {
   post?: { id: string; url: string; texto: string; autor?: string; autor_tipo?: string }
   parcial?: ParcialVaga
   ia?: InfoIA
+  /** Link de vaga do Greenhouse, do Lever ou do Ashby: a empresa e se ela já é acompanhada (spec 031). */
+  empresa?: { sistema: string; id: string; nome: string; url: string; acompanhada: boolean }
 }
 
 export interface CamposExtraidos {

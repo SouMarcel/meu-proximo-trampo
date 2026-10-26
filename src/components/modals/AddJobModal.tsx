@@ -8,6 +8,7 @@ import { X, Plus, Link as LinkIcon, FileText, Edit, Loader2, AlertTriangle, Info
 import type { Area, Etapa, NovaVaga, ParcialVaga, Vaga, InfoIA } from "../../types/api"
 import { PLATAFORMAS } from "../../types/api"
 import * as vagasApi from "../../services/api/vagas"
+import * as configApi from "../../services/api/config"
 import { ehErroApi, mensagemDeErro } from "../../services/api"
 import { useFerramenta, motivoSemGravar } from "../../contexto/Ferramenta"
 import { noQuadro, plataformaDoLink } from "../../utils/formatters"
@@ -68,6 +69,8 @@ export default function AddJobModal({ onClose, onVagaAdicionada, onAviso }: AddJ
   const [status, setStatus] = useState<{ texto: string; erro?: boolean }>({ texto: "" })
   const [ocupado, setOcupado] = useState(false)
   const seq = useRef(0) // respostas que chegam depois de mudar de passo são ignoradas
+  // vaga do Greenhouse, do Lever ou do Ashby já adicionada: oferece acompanhar a empresa (spec 031)
+  const [empresaLink, setEmpresaLink] = useState<{ nome: string; link: string } | null>(null)
 
   // formulário
   const [titulo, setTitulo] = useState("")
@@ -181,7 +184,13 @@ export default function AddJobModal({ onClose, onVagaAdicionada, onAviso }: AddJ
       }
       if (j.vaga) {
         onVagaAdicionada(j.vaga)
-        onAviso(j.nova ? avisoAdicionada(j.vaga, j.analise_automatica) : jaEstava(j.vaga))
+        const aviso = j.nova ? avisoAdicionada(j.vaga, j.analise_automatica) : jaEstava(j.vaga)
+        if (j.empresa && !j.empresa.acompanhada) {
+          setEmpresaLink({ nome: j.empresa.nome || j.empresa.id, link: u })
+          setStatus({ texto: aviso })
+          return
+        }
+        onAviso(j.empresa ? `${aviso} Você já acompanha a ${j.empresa.nome || j.empresa.id}.` : aviso)
         onClose()
       }
     } catch (e) {
@@ -363,6 +372,41 @@ export default function AddJobModal({ onClose, onVagaAdicionada, onAviso }: AddJ
               <p className="text-[11px] text-slate-500">
                 A vaga vai para o Relatório. O link de um post é lido uma vez, na versão pública, sem login.
               </p>
+              {empresaLink && (
+                <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2">
+                  <p className="text-xs text-slate-700 dark:text-slate-200">
+                    Quer acompanhar a <b>{empresaLink.nome}</b>? A busca passa a trazer as vagas dela abertas a quem mora no
+                    seu país (e, com a busca internacional ligada, as do exterior).
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={ocupado || gravarBloqueado}
+                      onClick={async () => {
+                        setOcupado(true)
+                        try {
+                          const r = await configApi.acompanhar(empresaLink.link)
+                          onAviso(`Agora você acompanha a ${r.empresa.nome || r.empresa.id}.`)
+                          onClose()
+                        } catch (e) {
+                          setStatus({ texto: mensagemDeErro(e, "Não deu para acompanhar a empresa."), erro: true })
+                          setOcupado(false)
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+                    >
+                      Acompanhar {empresaLink.nome}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800"
+                    >
+                      Agora não
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

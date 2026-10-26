@@ -17,6 +17,7 @@ import { BTN_MINI, LinkArquivo } from "../curriculo/Curriculos"
 import TextoDaVaga from "../TextoDaVaga"
 import CandidaturaAssistida from "./CandidaturaAssistida"
 import FaixaSalarial from "./FaixaSalarial"
+import AcompanharEmpresa from "./AcompanharEmpresa"
 
 const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
 const H = "font-bold text-sm text-slate-900 dark:text-white"
@@ -180,9 +181,12 @@ export function KitDaVaga({
     } else if (i.acao === "candidatar") {
       const u = linkSeguro(vaga.url_candidatura) || linkSeguro(vaga.url)
       acao = u ? (
-        <a href={u} target="_blank" rel="noopener noreferrer" className={BTN_MINI} title="Só abre a página; nada é preenchido nem enviado">
-          Candidatar no {sistemaDe(vaga)}
-        </a>
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <a href={u} target="_blank" rel="noopener noreferrer" className={BTN_MINI} title="Só abre a página; nada é preenchido nem enviado">
+            Candidatar no {sistemaDe(vaga)}
+          </a>
+          <AcompanharEmpresa vaga={vaga} onAviso={onAviso} />
+        </span>
       ) : (
         <span className={DICA}>sem link</span>
       )

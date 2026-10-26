@@ -196,7 +196,7 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
       .then((c) => {
         if (!ativo) return
         const f: Filtros = JSON.parse(JSON.stringify(proposta || c.filtros))
-        f.internacional.empresas = f.internacional.empresas || []
+        f.empresas = f.empresas || (f.internacional as any).empresas || [] // servidor antigo: a lista vinha em internacional
         f.internacional.fontes = f.internacional.fontes || []
         setOp(c.opcoes)
         setD(f)
@@ -471,6 +471,68 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
                   rotulo="Empresa a excluir"
                 />
               </section>
+
+              <section className={SEC}>
+                <h4 className={H}>Empresas que você acompanha</h4>
+                <p className={DICA}>
+                  Cole o link da página de vagas de empresas no Greenhouse, Lever ou Ashby (ex.: jobs.lever.co/empresa), ou
+                  use "Acompanhar empresa" no detalhe de uma vaga. A busca traz as vagas delas abertas a quem mora no seu
+                  país e, com a busca internacional ligada, as do exterior. Os títulos costumam vir em inglês: inclua o cargo
+                  em inglês nos seus cargos.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    value={linkEmpresa}
+                    maxLength={300}
+                    onChange={(e) => setLinkEmpresa(e.target.value)}
+                    placeholder="https://jobs.lever.co/empresa"
+                    aria-label="Link da página de vagas da empresa"
+                    className={`${CAMPO} flex-1`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const e = configApi.empresaDoLink(linkEmpresa.trim())
+                      if (!linkEmpresa.trim()) return
+                      if (!e) {
+                        setErroEmpresa("Esse link não é de uma página de vagas do Greenhouse, do Lever nem do Ashby.")
+                        return
+                      }
+                      setErroEmpresa("")
+                      mudar((f) => {
+                        if (!f.empresas.some((x) => x.sistema === e.sistema && String(x.id).toLowerCase() === e.id.toLowerCase())) {
+                          f.empresas.push(e)
+                        }
+                      })
+                      setLinkEmpresa("")
+                    }}
+                    className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Adicionar
+                  </button>
+                </div>
+                {erroEmpresa && <p className="text-[11px] text-rose-600 dark:text-rose-400">{erroEmpresa}</p>}
+                <ul className="space-y-1">
+                  {d.empresas.length ? (
+                    d.empresas.map((e, i) => (
+                      <li key={e.sistema + e.id} className="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                        <span className="min-w-0 truncate">
+                          {e.nome || e.id} <span className={DICA}>{e.sistema} · {e.url}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => mudar((f) => f.empresas.splice(i, 1))}
+                          className="text-rose-600 hover:underline shrink-0"
+                        >
+                          Remover
+                        </button>
+                      </li>
+                    ))
+                  ) : (
+                    <li className={DICA}>Nenhuma empresa.</li>
+                  )}
+                </ul>
+              </section>
             </>
           )}
 
@@ -606,66 +668,6 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
                     </Marcar>
                   ))}
                 </div>
-              </section>
-
-              <section className={SEC}>
-                <h4 className={H}>Empresas que você acompanha</h4>
-                <p className={DICA}>
-                  Cole o link da página de vagas de empresas no Greenhouse, Lever ou Ashby (ex.: jobs.lever.co/empresa). A
-                  busca traz as vagas delas que batem com os cargos em inglês.
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    value={linkEmpresa}
-                    maxLength={300}
-                    onChange={(e) => setLinkEmpresa(e.target.value)}
-                    placeholder="https://jobs.lever.co/empresa"
-                    aria-label="Link da página de vagas da empresa"
-                    className={`${CAMPO} flex-1`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const e = configApi.empresaDoLink(linkEmpresa.trim())
-                      if (!linkEmpresa.trim()) return
-                      if (!e) {
-                        setErroEmpresa("Esse link não é de uma página de vagas do Greenhouse, do Lever nem do Ashby.")
-                        return
-                      }
-                      setErroEmpresa("")
-                      mudarInt((it) => {
-                        if (!it.empresas.some((x) => x.sistema === e.sistema && String(x.id).toLowerCase() === e.id.toLowerCase())) {
-                          it.empresas.push(e)
-                        }
-                      })
-                      setLinkEmpresa("")
-                    }}
-                    className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Adicionar
-                  </button>
-                </div>
-                {erroEmpresa && <p className="text-[11px] text-rose-600 dark:text-rose-400">{erroEmpresa}</p>}
-                <ul className="space-y-1">
-                  {d.internacional.empresas.length ? (
-                    d.internacional.empresas.map((e, i) => (
-                      <li key={e.sistema + e.id} className="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                        <span className="min-w-0 truncate">
-                          {e.nome || e.id} <span className={DICA}>{e.sistema} · {e.url}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => mudarInt((it) => it.empresas.splice(i, 1))}
-                          className="text-rose-600 hover:underline shrink-0"
-                        >
-                          Remover
-                        </button>
-                      </li>
-                    ))
-                  ) : (
-                    <li className={DICA}>Nenhuma empresa.</li>
-                  )}
-                </ul>
               </section>
 
               <section className={SEC}>
