@@ -96,7 +96,7 @@ outros sites e `m-…` nas preenchidas à mão.
 | `area`, `pais_vaga` | `nacional` ou `internacional` e o país (ou região) da vaga: pela consulta que achou a vaga ou pelo local; nas vagas antigas, deduzidos pelos grupos da busca |
 | `idioma` | idioma da vaga (`pt`, `en`, `es`…), detectado sem IA ou lido pela análise; base do filtro `idiomas_aceitos` |
 | `restricao_local` | onde a vaga aceita candidatos, como o portal informa (ex.: `USA, Canada`, `Worldwide`); base da elegibilidade |
-| `ats` | sistema de candidatura (`greenhouse`, `lever`, `ashby`), quando conhecido; o detalhe mostra o botão "Candidatar no …" |
+| `ats` | sistema de candidatura (`greenhouse`, `lever`, `ashby`), quando conhecido; o detalhe mostra o botão "Candidatar no …" e, quando o link da vaga ou o de candidatura é de um desses sistemas, "Acompanhar empresa" (`POST /api/empresas`) |
 | `autorizacao`, `contratacao[]`, `ingles`, `fuso`, `sistema_candidatura`, `pede[]`, `riscos[]` | o que a análise leu sobre a candidatura, cada um com a `frase` do anúncio (opções em `dash/kit.py`) |
 | `kit` | o que a pessoa marcou no checklist: `estados` por item (`a_fazer`, `pronto`, `nao_se_aplica`), `extras` e `removidos` |
 | `lembretes`, `entrevista_em` | lembretes de follow-up marcados (`feito`, `dispensado`, `parar`, valem para a etapa e a data em `base`) e a data da entrevista |

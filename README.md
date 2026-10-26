@@ -443,11 +443,12 @@ funcionar, abra uma issue.
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
-| `internacional` | Busca no exterior, desligada por padrão (painel **Filtros da busca internacional**): `ativo`, `paises`, `termos` (cargos em inglês), `regioes`, `salario_min_anual_usd`, `fuso_horas`, `contratacao`, a sua situação (`aceita_mudar` + `paises_mudanca`, `passaporte`, `autorizacao_trabalho`, `precisa_sponsor`), `fontes` (fontes do exterior: `remotive`, `himalayas`, `remoteok`, `jobicy`, `weworkremotely`, `getonboard`), `empresas` (empresas acompanhadas no Greenhouse, Lever ou Ashby, informadas pelo link da página de vagas), `frases_restricao` e `frases_positivas`. Cada país × cargo é uma consulta a mais; as fontes do exterior fazem uma consulta por cargo (as listas, uma por busca) |
+| `internacional` | Busca no exterior, desligada por padrão (painel **Filtros da busca internacional**): `ativo`, `paises`, `termos` (cargos em inglês), `regioes`, `salario_min_anual_usd`, `fuso_horas`, `contratacao`, a sua situação (`aceita_mudar` + `paises_mudanca`, `passaporte`, `autorizacao_trabalho`, `precisa_sponsor`), `fontes` (fontes do exterior: `remotive`, `himalayas`, `remoteok`, `jobicy`, `weworkremotely`, `getonboard`), `frases_restricao` e `frases_positivas`. Cada país × cargo é uma consulta a mais; as fontes do exterior fazem uma consulta por cargo (as listas, uma por busca) |
 | `idiomas_aceitos` | `pt`, `en`, `es`, `fr`, `de`, `it`: vaga em outro idioma vai para Fora dos critérios. Vazio = todos |
 | `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias; no painel, de 24 horas a 30 dias, o máximo). Portais com poucas vagas novas por semana, como a Nerdin, aparecem mais com 15 dias (`360`) |
 | `tipos_emprego` | `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario`. Vazio = todos; com IA, conferido na descrição |
 | `senioridades` | `junior`, `pleno`, `senior`. Vazio = todas |
+| `empresas` | Empresas que você acompanha no Greenhouse, no Lever ou no Ashby (painel **Filtros da busca**), informadas pelo link da página de vagas ou pelo botão "Acompanhar"; no máximo 50. Rodam na busca nacional e, com a internacional ligada, na do exterior. Num `config.json` antigo, a lista dentro de `internacional` continua valendo e sobe para cá ao salvar |
 | `empresas_excluir` | Empresas que você não quer ver |
 | `moedas_aceitas` | `USD`, `EUR`, `GBP`, `CAD`, `CHF`: em que moeda você aceita receber em vaga de fora do seu país (a moeda do seu país sempre vale). Vazio = qualquer uma; com IA, conferido na vaga |
 | `resultados_por_termo` | Máximo de vagas por termo |
@@ -469,13 +470,24 @@ presenciais e híbridas nos países escolhidos. A sua situação vai para a aná
 aponta o que pode impedir (autorização, sponsor, fuso). Cada portal só roda nas buscas que
 atende (a Gupy, por exemplo, só no Brasil).
 
-**Fontes do exterior e empresas que você acompanha.** No mesmo painel, você liga as fontes de
-vagas remotas que quiser (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on
-Board; todas desligadas até você marcar) e cola o link da página de vagas das empresas que
-acompanha no Greenhouse, no Lever ou no Ashby (ex.: `jobs.lever.co/empresa`). A busca consulta
-cada fonte e cada empresa uma vez e filtra pelos cargos em inglês. Cada vaga traz, quando o
-portal informa, onde ela aceita candidatos, o salário, a moeda, o link de candidatura e o
-sistema de candidatura usado.
+**Fontes do exterior.** No mesmo painel, você liga as fontes de vagas remotas que quiser (Remotive, Himalayas,
+Remote OK, Jobicy, We Work Remotely, Get on Board; todas desligadas até você marcar). A busca consulta cada fonte uma
+vez e filtra pelos cargos em inglês. Cada vaga traz, quando o portal informa, onde ela aceita candidatos, o salário, a
+moeda, o link de candidatura e o sistema de candidatura usado.
+
+**Empresas que você acompanha.** No painel **Filtros da busca**, cole o link da página de vagas das empresas que você
+acompanha no Greenhouse, no Lever ou no Ashby (ex.: `jobs.lever.co/empresa`). Também dá para usar o botão
+**Acompanhar**: ele aparece no Adicionar Vaga, quando você cola um link de vaga de um desses sistemas, e no detalhe de
+qualquer vaga cuja candidatura é num deles, inclusive as que vieram do Indeed ou do LinkedIn.
+- Na busca nacional, entram as vagas remotas abertas a quem mora no seu país (o local cita o país, uma região que o
+  inclui, como América Latina, ou "Anywhere") e, na busca da cidade, as presenciais e híbridas nela. Uma vaga só com
+  "Remote", sem país, fica de fora: em empresa dos EUA, costuma ser remoto nos EUA.
+- Com a busca internacional ligada, entram também as do exterior, com os cargos em inglês.
+- Cada empresa é consultada uma vez por busca, para as duas áreas. Os títulos costumam vir em inglês: inclua o cargo
+  em inglês nos seus cargos.
+- Se o Greenhouse, o Lever ou o Ashby recusar ou limitar as consultas, as outras empresas daquele sistema ficam para a
+  próxima busca, sem nova tentativa. Uma empresa que saiu do sistema gera um aviso para remover ou trocar o link.
+- O Greenhouse não entra como portal com busca por cargo: a busca dele entre empresas (MyGreenhouse Jobs) exige login.
 
 **Elegibilidade.** Sem IA, a ferramenta lê a restrição de local do portal e frases comuns do
 anúncio ("US only", "must be authorized to work in", "we do not sponsor visas", "open to
@@ -647,7 +659,8 @@ Para instalar à mão, no Claude Code:
     não traz termos próprios; a ferramenta cita a fonte, linka a vaga e consulta pouco (uma
     lista por busca, ou uma consulta por cargo).
   - **Greenhouse, Lever e Ashby**: as APIs públicas das páginas de vagas das empresas, uma
-    consulta por empresa por busca.
+    consulta por empresa por busca, sem nova tentativa; no primeiro bloqueio de um sistema, as outras empresas dele
+    ficam para a próxima busca.
 - A elegibilidade lê só o que o anúncio diz e erra para o lado de deixar passar: confira a
   vaga antes de se candidatar.
 - A nota da IA serve para triagem; ela não substitui ler a vaga.
@@ -666,7 +679,7 @@ O link e o QR code também ficam no canto de cima do dashboard.
 - [x] Nerdin (vagas de tecnologia no Brasil, busca pública; ligada por padrão)
 - [x] InfoJobs e Vagas.com (vagas de todas as áreas no Brasil, busca pública; ligados por padrão)
 - [x] Fontes do exterior (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board)
-  e empresas acompanhadas no Greenhouse, Lever e Ashby; opcionais
+  e empresas acompanhadas no Greenhouse, Lever e Ashby (também na busca nacional); opcionais
 - [x] LinkedIn (busca pública, sem login; opcional)
 - [x] JobGether (vagas remotas do mundo todo, pela API para assistentes; opcional, termos contrários)
 - [ ] Mais portais do Brasil (ex.: InHire, Catho, Vagas.com, InfoJobs, Glassdoor)

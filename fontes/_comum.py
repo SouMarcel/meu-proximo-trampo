@@ -42,16 +42,19 @@ _memoria: dict[str, tuple[float, object]] = {}
 
 
 class FonteErro(Exception):
-    def __init__(self, motivo: str, repetido: bool = False):
+    def __init__(self, motivo: str, repetido: bool = False, codigo: int | None = None):
         super().__init__(motivo)
         self.repetido = repetido  # o mesmo erro já saiu nesta busca
+        self.codigo = codigo  # o status HTTP da resposta, quando houver
 
 
 # ---------------------------------------------------------------- rede
 
-def baixar(url: str, params: dict | None = None, aceitar: str = "application/json") -> bytes:
+def baixar(url: str, params: dict | None = None, aceitar: str = "application/json",
+           nova_tentativa: bool = True) -> bytes:
     """Corpo da resposta, com pausa entre consultas ao mesmo site e uma nova tentativa se ele pedir para
-    esperar (429). Levanta FonteErro com uma explicação legível."""
+    esperar (429; com nova_tentativa=False, o 429 vira erro na hora). Levanta FonteErro com uma explicação legível
+    e o status HTTP em `codigo`."""
     if params:
         url += ("&" if "?" in url else "?") + urlencode(params)
     site = urlsplit(url).hostname or ""
@@ -65,10 +68,10 @@ def baixar(url: str, params: dict | None = None, aceitar: str = "application/jso
             with urllib.request.urlopen(req, timeout=TEMPO) as r:
                 corpo = r.read(LIMITE_BYTES + 1)
         except urllib.error.HTTPError as e:
-            if e.code == 429 and tentativa == 0:
+            if e.code == 429 and tentativa == 0 and nova_tentativa:
                 time.sleep(_segundos(e.headers.get("Retry-After")))
                 continue
-            raise FonteErro(f"{site} respondeu {e.code}") from None
+            raise FonteErro(f"{site} respondeu {e.code}", codigo=e.code) from None
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             raise FonteErro(f"não consegui falar com {site} ({getattr(e, 'reason', e)})") from None
         if len(corpo) > LIMITE_BYTES:
@@ -84,8 +87,8 @@ def _segundos(retry_after) -> float:
         return 20.0
 
 
-def baixar_json(url: str, params: dict | None = None):
-    corpo = baixar(url, params)
+def baixar_json(url: str, params: dict | None = None, nova_tentativa: bool = True):
+    corpo = baixar(url, params) if nova_tentativa else baixar(url, params, nova_tentativa=False)
     try:
         return json.loads(corpo.decode("utf-8", errors="replace"), strict=False)
     except ValueError:
@@ -106,7 +109,7 @@ def lembrar(chave: str, fn, horas_disco: float = 0):
     if guardado and agora - guardado[0] < VALIDADE:
         valor = guardado[1]
         if isinstance(valor, FonteErro):
-            raise FonteErro(str(valor), repetido=True)
+            raise FonteErro(str(valor), repetido=True, codigo=valor.codigo)
         return valor
     try:
         valor = _do_disco(chave, horas_disco, fn) if horas_disco else fn()

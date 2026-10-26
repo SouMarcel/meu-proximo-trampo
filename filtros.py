@@ -258,7 +258,6 @@ def efetivos(cfg: dict) -> dict:
             "autorizacao_trabalho": [p for p in map(pais_pt, inter.get("autorizacao_trabalho") or []) if p],
             "precisa_sponsor": bool(inter.get("precisa_sponsor")),
             "fontes": [n for n in FONTES_INT if n in (inter.get("fontes") or [])],
-            "empresas": [e for e in inter.get("empresas") or [] if isinstance(e, dict) and e.get("sistema") and e.get("id")],
             "frases_restricao": [str(x).strip() for x in inter.get("frases_restricao") or [] if str(x).strip()],
             "frases_positivas": [str(x).strip() for x in inter.get("frases_positivas") or [] if str(x).strip()],
         },
@@ -269,6 +268,9 @@ def efetivos(cfg: dict) -> dict:
         "moedas_aceitas": [m for m in cfg.get("moedas_aceitas") or [] if m in MOEDAS],
         "empresas_excluir": [str(e).strip() for e in cfg.get("empresas_excluir") or [] if str(e).strip()],
         "fontes": [str(n) for n in cfg.get("fontes") or FONTES_PADRAO],
+        # empresas acompanhadas, nas duas áreas (spec 031); config antigo: a lista ficava em "internacional"
+        "empresas": [e for e in (cfg["empresas"] if isinstance(cfg.get("empresas"), list) else inter.get("empresas"))
+                     or [] if isinstance(e, dict) and e.get("sistema") and e.get("id")],
     }
     if not loc and cfg.get("local"):
         f["local_legado"] = str(cfg["local"])  # formato antigo: onde fazer a busca do país
@@ -336,8 +338,8 @@ def _empresas(v) -> list[dict]:
             raise ValueError(f"empresa {url[:80]}: {erro}") from None
         if isinstance(x, dict) and str(x.get("nome") or "").strip():
             e["nome"] = str(x["nome"]).strip()[:80]
-        if (e["sistema"], e["id"]) not in vistas:
-            vistas.add((e["sistema"], e["id"]))
+        if (e["sistema"], e["id"].lower()) not in vistas:
+            vistas.add((e["sistema"], e["id"].lower()))
             saida.append(e)
     if len(saida) > MAX_EMPRESAS:
         raise ValueError(f"empresas: no máximo {MAX_EMPRESAS}")
@@ -379,7 +381,8 @@ def validar(e: dict) -> dict:
     termos_int = _textos(inter.get("termos"), "cargos para o exterior", 10)
     ativo = bool(inter.get("ativo"))  # não depende mais do remoto no país
     fontes_int = _codigos(inter.get("fontes"), "fonte internacional", FONTES_INT)
-    empresas = _empresas(inter.get("empresas"))
+    # a lista de cima (spec 031); sem ela no pedido (front antigo), a que vinha dentro de "internacional"
+    empresas = _empresas(e["empresas"] if "empresas" in e else inter.get("empresas"))
     if ativo and not (paises_int or fontes_int or empresas):
         raise ValueError("escolha pelo menos um país, uma fonte do exterior ou uma empresa para a busca internacional")
     if ativo and not termos_int:
@@ -400,7 +403,7 @@ def validar(e: dict) -> dict:
         "passaporte": bool(inter.get("passaporte")),
         "autorizacao_trabalho": _paises(inter.get("autorizacao_trabalho"), "autorização de trabalho"),
         "precisa_sponsor": bool(inter.get("precisa_sponsor")),
-        "fontes": fontes_int, "empresas": empresas,
+        "fontes": fontes_int,
         "frases_restricao": _textos(inter.get("frases_restricao"), "frases de restrição", MAX_FRASES, TAMANHO_FRASE),
         "frases_positivas": _textos(inter.get("frases_positivas"), "frases positivas", MAX_FRASES, TAMANHO_FRASE),
     }
@@ -425,6 +428,7 @@ def validar(e: dict) -> dict:
         "localidade": {"pais": pais, "estado": estado, "cidade": cidade, "raio_km": raio},
         "modelos": m,
         "internacional": internacional,
+        "empresas": empresas,
         "idiomas_aceitos": _codigos(e.get("idiomas_aceitos"), "idioma", IDIOMAS),
         "janela_horas": _inteiro(e.get("janela_horas") or 168, "período de publicação", 1, 720),
         "tipos_emprego": [t for t in TIPOS_EMPREGO if t in tipos],
@@ -443,10 +447,42 @@ def salvar(entrada: dict) -> dict:
     for k in LEGADOS:
         cfg.pop(k, None)
     cfg.update(novos)
+    _gravar(cfg)
+    return efetivos(cfg)
+
+
+def _gravar(cfg: dict) -> None:
     tmp = CONFIG.with_name(CONFIG.name + ".tmp")
     tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + chr(10), encoding="utf-8")
     os.replace(tmp, CONFIG)
-    return efetivos(cfg)
+
+
+def empresa_igual(lista: list[dict], e: dict) -> dict | None:
+    """A empresa da lista com o mesmo sistema e o mesmo nome no sistema (sem diferença de maiúsculas)."""
+    return next((x for x in lista if x.get("sistema") == e.get("sistema")
+                 and str(x.get("id") or "").lower() == str(e.get("id") or "").lower()), None)
+
+
+def acompanhar(url: str) -> tuple[dict, bool, list[dict]]:
+    """Põe uma empresa na lista de empresas acompanhadas pelo link (página de vagas ou vaga do Greenhouse, do Lever ou do
+    Ashby), a pedido da pessoa, sem revalidar os outros filtros nem fazer pedido ao sistema (spec 031). Devolve
+    (empresa, nova, empresas); ValueError com a mensagem para a pessoa (link não reconhecido, lista cheia)."""
+    from fontes import ats  # aqui para o filtros.py não depender das fontes ao ser importado
+
+    e = ats.reconhecer(str(url or "").strip()[:1000])
+    cfg = ler_config()
+    empresas = efetivos(cfg)["empresas"]
+    igual = empresa_igual(empresas, e)
+    if igual:
+        return igual, False, empresas
+    if len(empresas) >= MAX_EMPRESAS:
+        raise ValueError(f"a lista de empresas está cheia ({MAX_EMPRESAS}); remova uma no painel Filtros da busca")
+    empresas = [*empresas, e]
+    cfg["empresas"] = empresas  # no nível de cima; a lista antiga, dentro de "internacional", sai
+    if isinstance(cfg.get("internacional"), dict):
+        cfg["internacional"].pop("empresas", None)
+    _gravar(cfg)
+    return e, True, empresas
 
 
 def opcoes() -> dict:
@@ -530,13 +566,13 @@ def consultas(f: dict, incluir_presencial: bool = False) -> list[dict]:
                           "pais_nome": loc["pais"], "local": f.get("local_legado"), "raio_km": None,
                           "remoto": not pais_sem_filtro, "area": "nacional",
                           "modelos": [k for k in MODELOS if m[k] or incluir_presencial] if pais_sem_filtro else ["remoto"],
-                          "tipos_emprego": f.get("tipos_emprego", [])})
+                          "tipos_emprego": f.get("tipos_emprego", []), "empresas": f.get("empresas") or []})
     if cidade and (m["hibrido"] or m["presencial"]):
         for t in f["termos"]:
             lista.append({"grupo": "local", "termo": t, "pais": pais, "pais_nome": loc["pais"], "local": cidade,
                           "cidade": loc["cidade"], "estado": loc["estado"], "raio_km": loc["raio_km"],
                           "remoto": False, "area": "nacional", "modelos": [k for k in ("presencial", "hibrido") if m[k]],
-                          "tipos_emprego": f.get("tipos_emprego", [])})
+                          "tipos_emprego": f.get("tipos_emprego", []), "empresas": f.get("empresas") or []})
     if inter["ativo"]:  # não depende do remoto no país
         for p in inter["paises"]:
             for t in inter["termos"] or f["termos"]:
@@ -549,12 +585,12 @@ def consultas(f: dict, incluir_presencial: bool = False) -> list[dict]:
                     lista.append({"grupo": f"mudanca:{p}", "termo": t, "pais": PAISES[p], "pais_nome": p,
                                   "local": None, "raio_km": None, "remoto": False, "area": "internacional",
                                   "modelos": ["presencial", "hibrido"], "tipos_emprego": f.get("tipos_emprego", [])})
-        if inter.get("fontes") or inter.get("empresas") or any(n in FONTES_GLOBAIS for n in f.get("fontes", [])):
+        if inter.get("fontes") or f.get("empresas") or any(n in FONTES_GLOBAIS for n in f.get("fontes", [])):
             # uma consulta por cargo
             for t in inter["termos"] or f["termos"]:
                 lista.append({"grupo": GLOBAL, "termo": t, "pais": None, "pais_nome": None, "local": None,
                               "raio_km": None, "remoto": not inter.get("aceita_mudar"), "area": "internacional",
-                              "global": True, "empresas": inter.get("empresas") or [],
+                              "global": True, "empresas": f.get("empresas") or [],
                               "modelos": list(MODELOS) if inter.get("aceita_mudar") else ["remoto"],
                               "tipos_emprego": f.get("tipos_emprego", [])})
     return lista
@@ -640,9 +676,9 @@ def resumo(f: dict) -> str:
             partes.append(f"presencial ou híbrido em: {', '.join(inter.get('paises_mudanca') or inter['paises'])}")
         if inter.get("fontes"):
             partes.append("fontes do exterior: " + ", ".join(FONTES_INT[n] for n in inter["fontes"]))
-        if inter.get("empresas"):
-            n = len(inter["empresas"])
-            partes.append(f"{n} empresa{'s' if n > 1 else ''} acompanhada{'s' if n > 1 else ''}")
+    if f.get("empresas"):  # nas duas áreas (spec 031)
+        n = len(f["empresas"])
+        partes.append(f"{n} empresa{'s' if n > 1 else ''} acompanhada{'s' if n > 1 else ''}")
     return "; ".join(partes)
 
 
@@ -708,6 +744,19 @@ def _lugares(texto) -> list[str]:
         if lugar and lugar not in achados:
             achados.append(lugar)
     return achados
+
+
+def aberta_ao_pais(texto, pais: str) -> bool:
+    """O local da vaga cita o país, uma região que o inclui ou o mundo todo ("Remote, Brazil", "Latin America",
+    "Anywhere"). "Remote" sozinho não cita lugar e não conta (empresas acompanhadas na busca nacional, spec 031)."""
+    return any(_inclui(lugar, pais) for lugar in _lugares(texto))
+
+
+def so_regioes(texto) -> bool:
+    """O local cita lugares, e todos são regiões ou o mundo todo ("Latin America", "Anywhere"): vaga remota mesmo sem a
+    palavra "Remote" (Greenhouse, spec 031)."""
+    lugares = _lugares(texto)
+    return bool(lugares) and all(lugar == "mundo todo" or lugar in PAISES_DA_REGIAO for lugar in lugares)
 
 
 def _acha(padroes, texto: str) -> bool:

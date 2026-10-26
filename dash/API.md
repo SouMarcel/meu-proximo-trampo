@@ -239,7 +239,9 @@ Fluxo do front: cola o link → `POST /api/vagas/link`. Se for post do LinkedIn 
 preenche (`POST /api/vagas/extrair`), a pessoa confere o formulário e só então `POST /api/vagas`.
 
 **`POST /api/vagas/link`** — corpo `{url*: string}` (até 1.000). Respostas:
-- 201 (nova) ou 200 (já estava): `{vaga: Vaga, nova: bool, analise_automatica?: bool}` — gravada no Relatório.
+- 201 (nova) ou 200 (já estava): `{vaga: Vaga, nova: bool, analise_automatica?: bool, empresa?}` — gravada no Relatório.
+  Com link de vaga do Greenhouse, do Lever ou do Ashby, `empresa: {sistema, id, nome, url, acompanhada: bool}`: o front
+  oferece "Acompanhar" quando `acompanhada` é falso (spec 031).
 - 200 de link de post do LinkedIn ainda não gravado: `{post: {id, url, texto, autor, autor_tipo: "empresa"|"pessoa"|...},
   parcial: {url, plataforma: "LinkedIn", formato: "post", post_id, descricao, empresa?, publicado_por?, area, pais_vaga},
   ia: {disponivel: bool, local: bool, provedor: string, modelo: string}}` — **nada gravado**; o front abre o formulário.
@@ -248,6 +250,16 @@ preenche (`POST /api/vagas/extrair`), a pessoa confere o formulário e só entã
   `parcial: {url, plataforma: "JobGether", area, pais_vaga}`; a pessoa completa cargo, empresa e descrição.
 - 422 post que não deu para ler: `{erro, sugestao: "colar", parcial: {url, plataforma, formato}}` → caixa "colar texto".
 - 400 link inválido.
+
+**`GET /api/empresas`** — `{empresas: [{sistema, id, nome, url}], maximo: 50}`: as empresas acompanhadas (spec 031).
+
+**`POST /api/empresas`** — "Acompanhar". Corpo `{url*: string}` (até 1.000): link da página de vagas ou de uma vaga do
+Greenhouse, do Lever ou do Ashby (inclusive `embed/job_app?for=…`). Grava só a lista `empresas` do `config.json`, sem
+pedido ao sistema da empresa. Respostas: 201 `{empresa, nova: true, empresas}`; 200 com `nova: false` (já estava); 400
+link não reconhecido ou "a lista de empresas está cheia (50); remova uma no painel Filtros da busca".
+
+**`PUT /api/config`** e as empresas: o front manda `empresas` no nível de cima; sem essa chave (front antigo), vale
+`internacional.empresas`. A lista é gravada sempre em cima.
 
 **`POST /api/vagas/extrair`** **[local]** — a IA tira os campos de um texto livre; nada é gravado.
 Corpo `{texto*: string, autor?: string, autor_tipo?: string}`. Resposta `{campos: {titulo, empresa, local, url,
@@ -308,7 +320,8 @@ cargos; o front mostra o aviso de primeira vez).
 - `filtros`: `{termos: string[] (cargo entre aspas = frase exata), localidade: {pais, estado, cidade, raio_km},
   modelos: {remoto, hibrido, presencial: bool}, internacional: {ativo, paises, termos, regioes, salario_min_anual_usd,
   fuso_horas, contratacao, aceita_mudar, paises_mudanca, passaporte, autorizacao_trabalho, precisa_sponsor, fontes,
-  empresas: [{sistema, id, nome, url}], frases_restricao, frases_positivas}, idiomas_aceitos, janela_horas,
+  frases_restricao, frases_positivas}, empresas: [{sistema, id, nome, url}] (até 50; nas duas áreas, spec 031),
+  idiomas_aceitos, janela_horas,
   tipos_emprego, senioridades, moedas_aceitas, empresas_excluir, fontes: string[] (indeed, gupy, nerdin, infojobs,
   vagascom, linkedin,
   startupjobs, jobgether)}` (filtros.py:231-273).

@@ -1,9 +1,13 @@
 """Fonte das empresas que a pessoa acompanha, pelas páginas de vagas no Greenhouse, no Lever e no Ashby.
 
-A pessoa cola no painel o link da página de vagas da empresa; reconhecer() descobre o sistema e o
-identificador da empresa. Na busca internacional, cada empresa é consultada uma vez pela API pública do
-sistema (sem login) e as vagas são filtradas aqui pelos cargos em inglês. ler() traz uma vaga pelo link
-(Adicionar Vaga).
+A pessoa cola no painel o link da página de vagas da empresa (ou acompanha a empresa a partir de uma vaga);
+reconhecer() descobre o sistema e o identificador da empresa. Cada empresa é consultada no máximo uma vez por busca
+pela API pública do sistema (sem login), e a mesma lista serve às duas áreas (spec 031):
+- na busca nacional, as vagas remotas abertas a quem mora no país da pessoa (o local cita o país, uma região que o
+  inclui ou o mundo todo) e, na consulta da cidade, as presenciais e híbridas na cidade ou no estado dela;
+- na busca internacional, a consulta global com os cargos em inglês, como antes.
+No primeiro 403 ou 429 de um sistema, sem nova tentativa, as empresas dele ficam sem pedido até o fim da busca. ler()
+traz uma vaga pelo link (Adicionar Vaga).
 """
 from __future__ import annotations
 
@@ -14,13 +18,25 @@ from . import _comum
 
 NOME = "ats"
 PLATAFORMA = "Empresas acompanhadas"
-AREAS = ("internacional",)
-POR_PAIS = False
+AREAS = ("nacional", "internacional")
+POR_PAIS = True  # atende as consultas nacionais (remota, do país e da cidade)…
+GLOBAL = True  # …e a consulta internacional global; as por país e as de mudança não fazem pedido
 TERMOS = "APIs públicas de vagas das próprias empresas; uma consulta por empresa por busca."
 SISTEMAS = {"greenhouse": "Greenhouse", "lever": "Lever", "ashby": "Ashby"}
 EXEMPLOS = "job-boards.greenhouse.io/empresa, jobs.lever.co/empresa ou jobs.ashbyhq.com/empresa"
 SLUG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")
 MODELOS = {"remote": "remoto", "hybrid": "hibrido", "onsite": "presencial", "on-site": "presencial"}
+NACIONAIS = ("remoto", "pais", "local")  # grupos das consultas nacionais (filtros.consultas)
+BLOQUEIOS = (403, 429)
+
+_estado = {"bloqueados": set()}  # sistemas que recusaram ou limitaram nesta busca
+
+
+def _esquecer() -> None:
+    _estado["bloqueados"] = set()
+
+
+_comum.AO_ESQUECER.append(_esquecer)
 
 
 def _partes(url: str) -> tuple[str, str, list[str], dict]:
@@ -49,7 +65,8 @@ def reconhecer(url: str) -> dict:
     sistema = _sistema(host)
     if not sistema or esquema not in ("http", "https"):
         raise ValueError(f"não é uma página de vagas do Greenhouse, do Lever nem do Ashby (ex.: {EXEMPLOS})")
-    slug = (query.get("for") or [""])[0] if segs[:2] == ["embed", "job_board"] else (segs[0] if segs else "")
+    # embed/job_board?for=… e embed/job_app?for=… (formulário embutido no site da empresa) trazem a empresa no for
+    slug = (query.get("for") or [""])[0] if segs[:1] == ["embed"] else (segs[0] if segs else "")
     if not SLUG.fullmatch(slug or ""):
         raise ValueError(f"o link não traz o nome da empresa no {SISTEMAS[sistema]} (ex.: {EXEMPLOS})")
     base = {"greenhouse": "https://job-boards.greenhouse.io", "ashby": "https://jobs.ashbyhq.com",
@@ -87,13 +104,14 @@ def _lista(e: dict) -> list:
     if not SLUG.fullmatch(slug):
         raise _comum.FonteErro("identificador de empresa inválido")
     if sistema == "greenhouse":
-        dados = _comum.baixar_json(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs", {"content": "true"})
+        dados = _comum.baixar_json(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs", {"content": "true"},
+                                   nova_tentativa=False)
         itens = dados.get("jobs") if isinstance(dados, dict) else None
     elif sistema == "lever":
-        itens = _comum.baixar_json(f"{_api_lever(e)}/v0/postings/{slug}", {"mode": "json"})
+        itens = _comum.baixar_json(f"{_api_lever(e)}/v0/postings/{slug}", {"mode": "json"}, nova_tentativa=False)
     elif sistema == "ashby":
         dados = _comum.baixar_json(f"https://api.ashbyhq.com/posting-api/job-board/{slug}",
-                                   {"includeCompensation": "true"})
+                                   {"includeCompensation": "true"}, nova_tentativa=False)
         itens = dados.get("jobs") if isinstance(dados, dict) else None
     else:
         raise _comum.FonteErro(f"sistema desconhecido: {sistema}")
@@ -114,8 +132,11 @@ def normalizar(r: dict, e: dict) -> dict | None:
     base = {"id": _comum.ident(sistema, f"{slug}-{r['id']}"), "plataforma": SISTEMAS[sistema], "ats": sistema,
             "empresa": e.get("nome") or slug}
     if sistema == "greenhouse":
+        import filtros  # aqui: o filtros.py importa este módulo sob demanda
+
         local = str((r.get("location") or {}).get("name") or "").strip()
-        remoto = "remote" in local.lower()
+        # "Remote, Brazil", ou só regiões e o mundo todo ("Latin America", "Anywhere")
+        remoto = "remote" in local.lower() or filtros.so_regioes(local)
         return {**base, "titulo": str(r.get("title") or "").strip(),
                 "empresa": str(r.get("company_name") or "").strip() or base["empresa"],
                 "local": local, "remoto": remoto,
@@ -164,14 +185,67 @@ def normalizar(r: dict, e: dict) -> dict | None:
     return None
 
 
+def _na_cidade(local, consulta: dict) -> bool:
+    """O local cita a cidade da pessoa ou o nome do estado dela, e nenhum outro país."""
+    import filtros  # aqui: o filtros.py importa este módulo sob demanda
+
+    t = f" {_comum._norm(local)} "
+    cidade = _comum._norm(consulta.get("cidade"))
+    estado = _comum.UFS.get(str(consulta.get("estado") or "").strip().upper(), "")
+    if not any(nome and f" {nome} " in t for nome in (cidade, estado)):
+        return False
+    return filtros.pais_do_local(local) in (None, consulta.get("pais_nome"))
+
+
+def _na_area(v: dict, consulta: dict) -> bool:
+    """Na consulta global, como antes (só remotas, a não ser que a pessoa aceite morar fora). Nas nacionais (spec 031):
+    remota aberta ao país; na do país, também as não remotas no país; na da cidade, as não remotas na cidade."""
+    import filtros
+
+    if consulta.get("global"):
+        return bool(v.get("remoto")) or not consulta.get("remoto")
+    pais, grupo = consulta.get("pais_nome") or "", consulta.get("grupo")
+    aberta = bool(v.get("remoto")) and filtros.aberta_ao_pais(v.get("restricao_local") or v.get("local"), pais)
+    if grupo == "remoto":
+        return aberta
+    if grupo == "pais":
+        return aberta or (not v.get("remoto") and filtros.pais_do_local(v.get("local")) == pais)
+    return not v.get("remoto") and _na_cidade(v.get("local"), consulta)
+
+
+def _aviso(erro: _comum.FonteErro, e: dict) -> str | None:
+    """O aviso do erro de uma empresa; 403 e 429 param o sistema dela até o fim da busca."""
+    sistema = SISTEMAS.get(e.get("sistema"), e.get("sistema"))
+    if erro.codigo in BLOQUEIOS:
+        _estado["bloqueados"].add(e.get("sistema"))
+        return (f"o {sistema} limitou as consultas (código {erro.codigo}); as outras empresas dele ficam para a "
+                "próxima busca")
+    if erro.repetido:
+        return None  # o mesmo erro já saiu nesta busca
+    nome = e.get("nome") or e.get("id")
+    if erro.codigo == 404:
+        return (f"a página de vagas de {nome} no {sistema} não existe mais (a empresa pode ter mudado de sistema ou de "
+                "nome); remova ou troque o link")
+    return f"{nome} ({sistema}): {erro}"
+
+
 def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list[str]]:
+    if not consulta.get("global") and consulta.get("grupo") not in NACIONAIS:
+        return [], []  # por país e mudança: as empresas rodam nas consultas nacionais e na global
     vagas, erros = [], []
     for e in consulta.get("empresas") or []:
-        rotulo = f"{e.get('nome') or e.get('id')} ({SISTEMAS.get(e.get('sistema'), e.get('sistema'))})"
-        achadas, errs = _comum.buscar_lista(f"{NOME}:{e.get('sistema')}:{e.get('id')}", lambda e=e: _lista(e),
-                                            lambda r, e=e: normalizar(r, e), consulta, horas, por_termo)
-        vagas += achadas
-        erros += [f"{rotulo}: {m}" for m in errs]
+        if e.get("sistema") in _estado["bloqueados"]:
+            continue  # o sistema recusou ou limitou nesta busca: nenhum pedido a mais
+        try:  # a mesma lista para todos os cargos e as duas áreas
+            itens = _comum.lembrar(f"{NOME}:{e.get('sistema')}:{e.get('id')}", lambda e=e: _lista(e))
+        except _comum.FonteErro as erro:
+            aviso = _aviso(erro, e)
+            if aviso:
+                erros.append(aviso)
+            continue
+        achadas = _comum.filtrar(itens, {**consulta, "remoto": False}, horas, len(itens) + 1,
+                                 lambda r, e=e: normalizar(r, e))  # cargo e janela; a área vem abaixo
+        vagas += [v for v in achadas if _na_area(v, consulta)][:max(1, por_termo)]
     return vagas, erros
 
 
@@ -182,9 +256,10 @@ def ler(url: str) -> dict:
         raise _comum.FonteErro("link de vaga do Greenhouse, Lever ou Ashby não reconhecido")
     e, vid = achado
     if e["sistema"] == "greenhouse":
-        r = _comum.baixar_json(f"https://boards-api.greenhouse.io/v1/boards/{e['id']}/jobs/{vid}")
+        r = _comum.baixar_json(f"https://boards-api.greenhouse.io/v1/boards/{e['id']}/jobs/{vid}",
+                               nova_tentativa=False)
     elif e["sistema"] == "lever":
-        r = _comum.baixar_json(f"{_api_lever(e)}/v0/postings/{e['id']}/{vid}", {"mode": "json"})
+        r = _comum.baixar_json(f"{_api_lever(e)}/v0/postings/{e['id']}/{vid}", {"mode": "json"}, nova_tentativa=False)
     else:
         r = next((x for x in _lista(e) if str(x.get("id")) == vid), None)
     vaga = normalizar(r, e) if isinstance(r, dict) else None

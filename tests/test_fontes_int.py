@@ -42,7 +42,7 @@ class ComRede(unittest.TestCase):
             self.addCleanup(p.stop)
         self.chamadas = []
 
-        def baixar(url, params=None, aceitar="application/json"):
+        def baixar(url, params=None, aceitar="application/json", nova_tentativa=True):
             self.chamadas.append(url)
             return gravada(url)
         p = mock.patch.object(_comum, "baixar", side_effect=baixar)
@@ -133,7 +133,8 @@ class TestConsultas(unittest.TestCase):
             "frases_restricao": ["Must be in the office", " "], "frases_positivas": ["Brazil welcome"]}})
         inter = cfg["internacional"]
         self.assertEqual(inter["fontes"], ["remotive", "jobicy"])  # na ordem do catálogo
-        self.assertEqual([(e["sistema"], e["id"], e["nome"]) for e in inter["empresas"]],
+        self.assertNotIn("empresas", inter)  # a lista sobe para o nível de cima (spec 031)
+        self.assertEqual([(e["sistema"], e["id"], e["nome"]) for e in cfg["empresas"]],
                          [("lever", "spotify", "Spotify"), ("greenhouse", "gitlab", "GitLab")])
         self.assertEqual(inter["frases_restricao"], ["Must be in the office"])
         with self.assertRaisesRegex(ValueError, "Greenhouse, do Lever nem do Ashby"):
@@ -231,7 +232,7 @@ class TestFontes(ComRede):
         self.assertEqual(len([u for u in self.chamadas if "lever" in u]), 1)
 
     def test_fonte_fora_do_ar_nao_derruba_as_outras(self):
-        def baixar(url, params=None, aceitar=None):
+        def baixar(url, params=None, aceitar=None, nova_tentativa=True):
             if "remotive" in url or "lever" in url:
                 raise _comum.FonteErro("remotive.com respondeu 503")
             return gravada(url)
