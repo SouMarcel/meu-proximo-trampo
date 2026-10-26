@@ -1,6 +1,6 @@
 """JobGether na busca (fontes/jobgether.py), com respostas fictícias da API e sem rede (spec 030): campos da vaga,
 filtro pelo cargo, janela de tempo e páginas, local do país, "anywhere" e híbridas, consultas sem pedido (cidade e
-mudança), local recusado, pausa, bloqueio com espera de 24 horas (SC-002), portal desligado por padrão (SC-001), vaga
+mudança), local recusado, pausa, bloqueio com espera de 24 horas (SC-002), portal ligado por padrão desde 26/10 e desligado pela pessoa (SC-001), vaga
 republicada com o mesmo id (SC-003) e o link no Adicionar Vaga."""
 import io
 import json
@@ -226,15 +226,17 @@ class TestBuscaInternacional(SemRede):  # US2
         self.assertTrue({"remoto", "local", "internacional:Portugal", "mudanca:Portugal", filtros.GLOBAL} <= atendidas)
 
 
-class TestDesligadoPorPadrao(SemRede):  # US3, SC-001
-    def test_fora_da_configuracao_nova(self):
+class TestPadrao(SemRede):  # US3, SC-001 (ligado por padrão desde 26/10/2026)
+    def test_na_configuracao_nova(self):
         self.assertIn("jobgether", FONTES)
-        self.assertNotIn("jobgether", filtros.FONTES_PADRAO)
-        self.assertNotIn("jobgether", vagas.fontes_da_busca({}, filtros.efetivos({})))
+        self.assertIn("jobgether", filtros.FONTES_PADRAO)
+        self.assertIn("jobgether", vagas.fontes_da_busca({}, filtros.efetivos({})))
+        exemplo = json.loads((RAIZ / "config.exemplo.json").read_text(encoding="utf-8"))
+        self.assertIn("jobgether", exemplo["fontes"])
+
+    def test_desligado_pela_pessoa(self):  # a lista escolhida pela pessoa não muda
         cfg = {"termos": ["project manager"], "fontes": ["indeed", "gupy"]}
         self.assertEqual(vagas.fontes_da_busca(cfg, filtros.efetivos(cfg)), ["indeed", "gupy"])
-        exemplo = json.loads((RAIZ / "config.exemplo.json").read_text(encoding="utf-8"))
-        self.assertNotIn("jobgether", exemplo.get("fontes") or filtros.FONTES_PADRAO)
 
     def test_termos_no_painel(self):
         nomes = {o["nome"]: o for o in filtros.opcoes()["fontes_nac"]}

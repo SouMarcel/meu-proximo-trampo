@@ -25,8 +25,9 @@ O que pesa contra:
 - **A lista não traz a descrição**, e a página da vaga recusa a ferramenta (403). Imitar navegador fica fora (R2).
   As vagas entram sem descrição, com a nota provisória da spec 021.
 
-Como os termos proíbem, o portal vem **desligado por padrão**, com os termos à vista no painel. Cada pessoa que usa
-a ferramenta pública decide se liga.
+Como os termos proíbem, o portal veio **desligado por padrão**, com os termos à vista no painel. **Em 2026-10-26, a
+pessoa decidiu ligá-lo por padrão** também na ferramenta pública (configuração nova); quem não concordar desliga no
+painel, e quem já escolheu os portais continua com a lista que tinha.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -101,7 +102,8 @@ busca, sem pedido à página.
 
 ### Functional Requirements
 
-- **FR-001**: O JobGether MUST ser um portal da lista do painel "Filtros da busca", **desligado por padrão**. A lista de
+- **FR-001**: O JobGether MUST ser um portal da lista do painel "Filtros da busca", **ligado por padrão** (decisão de
+  2026-10-26; antes, desligado). A lista de
   portais que a pessoa já escolheu não muda.
 - **FR-002**: Na área nacional, MUST atender as consultas remota e do país, com o local do país da pessoa (`brazil`
   para o Brasil). A consulta da cidade fica de fora (o JobGether não filtra por cidade). Na do país, as híbridas
@@ -139,7 +141,7 @@ busca, sem pedido à página.
   - com os termos à vista no painel;
   - desligado por padrão, salvo outra decisão da pessoa registrada na spec. Isso preserva InfoJobs e Nerdin, ligados
     por decisão das suas specs (ajuste aprovado no plano, 25/10/2026).
-  Liberado: JobGether, desligado.
+  Liberado: JobGether, ligado por padrão por decisão de 2026-10-26.
 - **FR-013**: Etiqueta "JobGether" no dashboard (front na `frontend-react`: tipo, cor da etiqueta, domínio do link e
   texto do Adicionar Vaga). Também atualizar `dash/banco.py` (`PLATAFORMAS`), `dash/API.md` (`plataforma` e `fontes`),
   README, `dash/README.md`, AGENTS.md e a skill buscar-vagas.
@@ -152,7 +154,8 @@ busca, sem pedido à página.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: Numa configuração nova, ou com o JobGether desligado, nenhum pedido vai a ele.
+- **SC-001**: Com o JobGether desligado pela pessoa, nenhum pedido vai a ele. Numa configuração nova, ele vem ligado
+  (decisão de 2026-10-26).
 - **SC-002**: Num bloqueio simulado, zero novas tentativas e zero pedidos durante a espera.
 - **SC-003**: Uma vaga republicada (outro `id` da API, mesmo id da URL) não volta ao Relatório.
 - **SC-004**: Numa busca real pequena no Windows, com cargo em inglês e o Brasil, vagas entram com a etiqueta

@@ -2,7 +2,8 @@
 (jobgether.com/api/v1/jobs), sem chave, sem login e sem cookies (spec 030).
 
 Os termos de uso do JobGether proíbem acesso automatizado (seções 4.5 e 9). A pessoa decidiu tê-lo na busca pela API
-para assistentes, desligado por padrão (constituição, princípio VI, "Termos contrários"). Cada consulta pede as vagas
+para assistentes, ligado por padrão por decisão dela de 26/10/2026 (constituição, princípio VI, "Termos contrários");
+quem não concordar desliga no painel. Cada consulta pede as vagas
 mais recentes do cargo num local:
 - na busca nacional (consultas remota e do país), o país da pessoa;
 - na internacional, o país da consulta, ou "anywhere" na consulta global ("mundo todo").
@@ -38,7 +39,8 @@ POR_PAIS = True
 GLOBAL = True  # também na consulta "mundo todo" (anywhere)
 TERMOS = ("API oficial do JobGether para assistentes de IA, sem chave e sem login: vagas remotas de empresas do mundo "
           "todo, em inglês. Os termos de uso do JobGether proíbem acesso automatizado; a ferramenta usa a API que o "
-          "portal oferece a assistentes, por decisão registrada na spec 030, e vem desligada. As vagas chegam sem "
+          "portal oferece a assistentes, por decisão registrada na spec 030, e vem ligada; desligue aqui se não "
+          "concordar. As vagas chegam sem "
           "descrição (a nota da IA fica provisória). Se o JobGether limitar, a busca segue sem ele e ele fica 24 horas "
           "em espera. A candidatura é no site da empresa.")
 
