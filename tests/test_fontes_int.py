@@ -90,7 +90,8 @@ class TestComum(unittest.TestCase):
 
 
 class TestConsultas(unittest.TestCase):
-    BASE = {"termos": ["analista"], "localidade": {"pais": "Brasil"}, "modelos": {"remoto": True}}
+    # portais escolhidos sem os que rodam também no "mundo todo" (LinkedIn, JobGether)
+    BASE = {"termos": ["analista"], "localidade": {"pais": "Brasil"}, "modelos": {"remoto": True}, "fontes": ["indeed"]}
 
     def efet(self, **inter):
         return filtros.efetivos({**self.BASE, "internacional": {"ativo": True, "termos": ["data engineer", "analyst"],

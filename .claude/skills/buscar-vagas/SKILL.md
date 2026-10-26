@@ -1,6 +1,6 @@
 ---
 name: buscar-vagas
-description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com e Nerdin; LinkedIn, startup.jobs e JobGether se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
+description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin e JobGether; LinkedIn e startup.jobs se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
 <!-- Cópia gerada de .agents/skills/buscar-vagas/ por sincronizar_skills.py: edite lá. -->
 
@@ -84,8 +84,8 @@ servidor; ele só serve para ver e mexer no quadro.
    `--incluir-presencial`; "só na Gupy" → `--fontes gupy`; "procura também no
    startup.jobs" → `--fontes indeed gupy nerdin startupjobs`; "inclui o LinkedIn" →
    `--fontes indeed gupy nerdin linkedin`; "só vagas de TI da Nerdin" → `--fontes nerdin`; "só no InfoJobs" →
-   `--fontes infojobs`; "só no Vagas.com" → `--fontes vagascom`; "procura também no JobGether" →
-   `--fontes indeed gupy nerdin jobgether` (só se a pessoa já sabe dos termos dele; veja abaixo). Pedido pontual não altera
+   `--fontes infojobs`; "só no Vagas.com" → `--fontes vagascom`; "só no JobGether" → `--fontes jobgether`. Pedido
+   pontual não altera
    o `config.json`; para mudar o padrão, sugira o painel Filtros da busca (ou edite o
    arquivo, se ele pedir).
 
@@ -368,8 +368,8 @@ busca pública de cada site (`fontes/infojobs.py`, `fontes/vagascom.py`), sem lo
 
 O JobGether (vagas remotas de empresas do mundo todo, em inglês) é consultado pela API que o portal oferece a
 assistentes de IA (`fontes/jobgether.py`), sem chave, sem login e sem cookies:
-- os termos de uso dele proíbem acesso automatizado; ele está na busca por decisão registrada na spec 030 e vem
-  **desligado**: só sugira ligá-lo depois de contar isso à pessoa;
+- os termos de uso dele proíbem acesso automatizado; ele vem **ligado por padrão** por decisão registrada na spec 030.
+  Se a pessoa perguntar ou estiver configurando a busca, conte isso, e ela desliga no painel se não concordar;
 - na busca nacional, traz as remotas abertas a quem mora no país dela; na internacional, as de cada país e as do
   "mundo todo"; cargo em português não acha nada;
 - as vagas vêm sem descrição (a página não abre para a ferramenta);

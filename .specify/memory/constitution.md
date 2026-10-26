@@ -1,5 +1,12 @@
 <!--
-Relatório de impacto da emenda (2026-10-25)
+Relatório de impacto da emenda (2026-10-26)
+- Versão: 4.1.0 → 4.1.1 (PATCH: esclarecimento)
+- Princípio VI, "Termos contrários": o exemplo do JobGether passa a dizer "ligado por padrão", por decisão do usuário
+  registrada na spec 030. A regra não muda: portal novo nessa situação entra desligado, salvo outra decisão registrada.
+- Arquivos atualizados: README.md, AGENTS.md, skill buscar-vagas, config.exemplo.json.
+- Pendências: nenhuma.
+
+Emenda anterior (2026-10-25)
 - Versão: 4.0.0 → 4.1.0 (MINOR: seção nova no princípio VI)
 - Princípio alterado: VI. Respeito aos portais. Entra "Termos contrários": portal cujos termos proíbem acesso
   automatizado só entra por decisão explícita da pessoa registrada na spec, com os termos à vista no painel, pela API
@@ -108,7 +115,7 @@ preenche campos, e quem avança e envia é a pessoa.
 pessoa, registrada na spec, com os termos resumidos no painel e as regras acima (pausa, parar no primeiro bloqueio,
 sem contornar). Se o portal tem API oficial, só pela API. Portal novo nessa situação entra desligado por padrão, salvo
 outra decisão da pessoa registrada na spec. Exemplos: InfoJobs (spec 026), ligado por padrão; JobGether (spec 030),
-pela API para assistentes, desligado.
+pela API para assistentes, ligado por padrão por decisão de 2026-10-26.
 
 **Conta conectada.** A ferramenta pode ler a área da própria pessoa num portal (ex.: o andamento das candidaturas)
 só nestas condições:
@@ -177,4 +184,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 4.1.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-25
+**Version**: 4.1.1 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-26

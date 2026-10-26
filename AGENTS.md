@@ -23,9 +23,9 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   e a busca pergunta antes de seguir sem ele (`vagas.py buscar` sai com código 5; repita com
   `--confirmar-espera` só com o OK da pessoa). A pausa de cada portal que lê páginas é ajustável no
   `.env` (`<PORTAL>_PAUSA`, de 3 a 60 s; exemplos em `.env.exemplo`). O JobGether entra só pela API que o
-  portal oferece a assistentes de IA, desligado por padrão, porque os termos dele proíbem acesso automatizado
-  (constituição VI, "Termos contrários", spec 030); a página da vaga não é lida, e no bloqueio ele fica 24 horas de
-  fora (`JOBGETHER_PAUSA`, de 2 a 60 s). O perfil da pessoa não é lido do
+  portal oferece a assistentes de IA; os termos dele proíbem acesso automatizado, e ele vem ligado por padrão por
+  decisão registrada (constituição VI, "Termos contrários", spec 030); a página da vaga não é lida, e no bloqueio
+  ele fica 24 horas de fora (`JOBGETHER_PAUSA`, de 2 a 60 s). O perfil da pessoa não é lido do
   LinkedIn, só dos arquivos que ela baixa. Um link de post colado no Adicionar Vaga é uma consulta
   pontual à versão pública do post (`fontes/post.py`), sem login, que para no primeiro bloqueio e não
   mexe na espera da busca. **Conta conectada** (constituição VI): o botão "Atualizar candidaturas" lê

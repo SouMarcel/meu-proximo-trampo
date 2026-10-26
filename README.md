@@ -1,7 +1,7 @@
 # meu-proximo-trampo
 
-Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com e na
-Nerdin (vagas de tecnologia; e, se você quiser, no startup.jobs e no JobGether), monta um relatório para você decidir o que vale a pena e
+Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na
+Nerdin (vagas de tecnologia) e no JobGether (vagas remotas; e, se você quiser, no startup.jobs), monta um relatório para você decidir o que vale a pena e
 acompanha suas candidaturas num quadro kanban. Com IA (opcional), cada vaga recebe uma
 nota de aderência ao seu perfil, com o que bate, o que falta e o que o anúncio esconde.
 
@@ -11,10 +11,9 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ## O que ela faz
 
-- **Busca** vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com e na Nerdin, de tecnologia (e no LinkedIn, no
-  startup.jobs, de
-  startups, no JobGether, de vagas remotas abertas a quem mora no Brasil, e em portais de vagas remotas do exterior,
-  se você ligar) com
+- **Busca** vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na Nerdin, de tecnologia, e no JobGether, de vagas
+  remotas abertas a quem mora no Brasil (e no LinkedIn, no startup.jobs, de startups, e em portais de vagas remotas do
+  exterior, se você ligar) com
   os seus cargos e filtros, que você ajusta no painel **Filtros da busca** do dashboard:
   remoto no seu país (e, se quiser, em outros países), híbrido e presencial só na sua
   cidade, data de publicação, tipo de emprego, senioridade, moedas aceitas para vagas de
@@ -439,7 +438,7 @@ funcionar, abra uma issue.
 | Campo | O que é |
 |---|---|
 | `perfil` | Arquivo do seu perfil de carreira (usado pela IA; montado nos primeiros passos). Padrão: `perfil.md` |
-| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `linkedin`, `startupjobs` e `jobgether` (padrão, quando o campo não existe: `indeed`, `gupy`, `nerdin`, `infojobs` e `vagascom`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `infojobs` e o `vagascom` trazem vagas de todas as áreas, muitas presenciais; veja os Avisos. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos. O `jobgether` traz vagas remotas de empresas do mundo todo, em inglês, e vem desligado porque os termos do JobGether proíbem acesso automatizado; veja os Avisos |
+| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `linkedin`, `startupjobs` e `jobgether` (padrão, quando o campo não existe: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom` e `jobgether`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `infojobs` e o `vagascom` trazem vagas de todas as áreas, muitas presenciais; veja os Avisos. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos. O `jobgether` traz vagas remotas de empresas do mundo todo, em inglês; os termos do JobGether proíbem acesso automatizado, e ele vem ligado por decisão registrada na spec 030: desligue no painel se não concordar (veja os Avisos) |
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
@@ -618,7 +617,8 @@ Para instalar à mão, no Claude Code:
 - A busca no JobGether (`jobgether.com`, vagas remotas de empresas do mundo todo) usa a API oficial que o portal
   oferece a assistentes de IA, sem chave, sem login e sem cookies. **Os termos de uso do JobGether proíbem acesso
   automatizado** (seções 4.5 e 9). A ferramenta usa essa API por decisão registrada na spec 030, e o portal vem
-  **desligado**: ligue no painel só se aceitar isso.
+  **ligado** numa configuração nova: desligue no painel "Filtros da busca" se não concordar. Quem já escolheu os
+  portais continua com a lista que tinha.
   - Na busca nacional, ele traz as vagas remotas abertas a quem mora no seu país (no Brasil: Brasil, América
     Latina ou "Anywhere"). Na internacional, as de cada país escolhido e as do "mundo todo".
   - As vagas vêm em inglês: um cargo em português não acha nada, então inclua o cargo em inglês nos seus termos.
@@ -681,7 +681,7 @@ O link e o QR code também ficam no canto de cima do dashboard.
 - [x] Fontes do exterior (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board)
   e empresas acompanhadas no Greenhouse, Lever e Ashby (também na busca nacional); opcionais
 - [x] LinkedIn (busca pública, sem login; opcional)
-- [x] JobGether (vagas remotas do mundo todo, pela API para assistentes; opcional, termos contrários)
+- [x] JobGether (vagas remotas do mundo todo, pela API para assistentes; ligado por padrão, termos contrários)
 - [ ] Mais portais do Brasil (ex.: InHire, Catho, Vagas.com, InfoJobs, Glassdoor)
 - [x] Preparar e simular entrevista para as vagas na coluna Entrevista
 
