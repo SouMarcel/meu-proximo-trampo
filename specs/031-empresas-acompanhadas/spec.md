@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-25
 
-**Status**: Aprovada em 2026-10-25
+**Status**: Implementada e testada pela pessoa (2026-10-26)
 
 **Input**: User description: "vamos agora configurar os portais jobgether e greenhouse e vamos usar o novo processo
 criado". A pesquisa barrou o Greenhouse como portal, porque a busca entre empresas exige login (research R1). Em

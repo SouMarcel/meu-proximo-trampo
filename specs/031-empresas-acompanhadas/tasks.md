@@ -175,9 +175,9 @@ grava na lista.
   - `dash/API.md`: `filtros.empresas` em cima; `GET`/`POST /api/empresas`; `empresa` na resposta do link.
 - [X] T020 [P] `.agents/skills/buscar-vagas/SKILL.md`: empresas acompanhadas nas duas áreas e "Acompanhar"; depois
   `python sincronizar_skills.py` e `--conferir`.
-- [ ] T021 Verificação: `PY -m unittest discover -s tests` inteiro; busca real pequena na branch de teste com
+- [X] T021 Verificação: `PY -m unittest discover -s tests` inteiro; busca real pequena na branch de teste com
   `--fontes ats`, com o OK da pessoa (quickstart §2).
-- [ ] T022 Procurar dados pessoais nos arquivos alterados; commit; merge na branch pessoal de teste; reiniciar o
+- [X] T022 Procurar dados pessoais nos arquivos alterados; commit; merge na branch pessoal de teste; reiniciar o
   dashboard; teste da pessoa; com o OK, master e push. Só depois, o push do front e o PR.
 
 ## Dependencies & Execution Order
@@ -201,3 +201,16 @@ grava na lista.
 2. **Incremental**: US2 → US3 → US4 → US5.
 3. Documentação e lista de desejos.
 4. Teste da pessoa e master; depois o front (D7).
+
+## Verificação (26/10/2026)
+
+- Suíte inteira passando: 477 testes na branch da spec e 482 na branch pessoal de teste.
+- Na branch pessoal de teste, com a busca internacional desligada:
+  - `POST /api/empresas` com o link de uma empresa no Lever gravou a lista em `empresas`, no nível de cima, e o mesmo
+    link em maiúsculas não duplicou;
+  - `vagas.py buscar --fontes ats` consultou a empresa na busca nacional, com uma lista baixada e sem erro;
+  - com cargos mais amplos, só no comando, entrou uma vaga "Brazil" remota pela consulta remota nacional.
+- Visto no teste: o Lever não informa o nome da empresa na API, e o nome sai do link (ex.: "Acme-corp" → "Acme Corp").
+- Teste instável na suíte inteira: `test_candidatura_assistida` (`WinError 10053`, conexão local abortada), 2 em cerca
+  de 11 rodadas com esta spec e 0 em 5 sem ela. Ele roda antes dos testes novos e passa sozinho; a relação não foi
+  descartada.
