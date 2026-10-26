@@ -39,7 +39,7 @@ import ia  # noqa: E402  (ia.py, na raiz: provedores de IA)
 import post_ia  # noqa: E402  (post_ia.py, na raiz: vaga a partir de texto livre, com a IA)
 import primeiros_passos as pp  # noqa: E402  (primeiros_passos.py, na raiz: perfil a partir do currículo e do LinkedIn)
 import segredos  # noqa: E402  (segredos.py, na raiz: chaves no .env)
-from fontes import link, post  # noqa: E402  (lê a vaga a partir do link; o post do LinkedIn com uma vaga)
+from fontes import ats, link, post  # noqa: E402  (lê a vaga a partir do link; o post do LinkedIn com uma vaga)
 
 FRONT = banco.DASH / "front"  # a página (specs 022 e 025), montada pelo GitHub Actions a partir da branch frontend-react
 TIPOS_FRONT = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
@@ -683,7 +683,14 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(422, {"erro": str(e), "parcial": {**e.parcial, "url": url, "area": area, "pais_vaga": pais}})
                 vaga, nova = banco.criar_de_link(dados)
                 auto = nova and analise.precisa(vaga) and analise.FILA.pedir()
-                return self._json(201 if nova else 200, {"vaga": banco.com_kit(vaga), "nova": nova, "analise_automatica": auto})
+                resposta = {"vaga": banco.com_kit(vaga), "nova": nova, "analise_automatica": auto}
+                empresa = self._empresa_do_link(url)
+                if empresa:  # vaga do Greenhouse, do Lever ou do Ashby: a página oferece "Acompanhar" (spec 031)
+                    resposta["empresa"] = empresa
+                return self._json(201 if nova else 200, resposta)
+            if metodo == "POST" and caminho == "/api/empresas":
+                empresa, nova, empresas = filtros.acompanhar(self._corpo().get("url"))
+                return self._json(201 if nova else 200, {"empresa": empresa, "nova": nova, "empresas": empresas})
             if caminho == "/api/ia" or caminho.startswith("/api/ia/"):
                 return self._ia(metodo, caminho)
             if caminho in ("/api/perfil", "/api/curriculo-base") or caminho.startswith("/api/perfil/"):
@@ -790,6 +797,9 @@ class Handler(BaseHTTPRequestHandler):
         if caminho == "/api/config":
             cfg = filtros.ler_config()
             return self._json(200, {**self._config(filtros.efetivos(cfg)), "existe": bool(cfg.get("termos"))})
+        if caminho == "/api/empresas":
+            return self._json(200, {"empresas": filtros.efetivos(filtros.ler_config())["empresas"],
+                                    "maximo": filtros.MAX_EMPRESAS})
         if caminho == "/favicon.ico":
             return self._enviar(204, b"", "image/x-icon")
         if not caminho.startswith(("/api/", "/arquivos/")):  # os arquivos da página (assets/, favicon.svg)
@@ -822,6 +832,16 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         self._tratar("DELETE")
+
+    @staticmethod
+    def _empresa_do_link(url: str) -> dict | None:
+        """A empresa de um link de vaga do Greenhouse, do Lever ou do Ashby, com "acompanhada"; None para outro link."""
+        achado = ats.vaga_do_link(url)
+        if not achado:
+            return None
+        empresa = achado[0]
+        lista = filtros.efetivos(filtros.ler_config())["empresas"]
+        return {**empresa, "acompanhada": filtros.empresa_igual(lista, empresa) is not None}
 
     @staticmethod
     def _config(f: dict) -> dict:

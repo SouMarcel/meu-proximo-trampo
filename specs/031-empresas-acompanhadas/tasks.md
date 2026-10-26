@@ -15,7 +15,7 @@ atualizados.
 
 ## Phase 1: Setup
 
-- [ ] T001 Base de testes em `tests/test_empresas_acompanhadas.py`:
+- [X] T001 Base de testes em `tests/test_empresas_acompanhadas.py`:
   - `_comum.esquecer()`, `urlopen` falso (fila de respostas JSON ou código HTTP), `filtros.CONFIG` e `banco.ARQUIVO`
     num diretório temporário;
   - um ajudante que monta a lista de uma empresa a partir das amostras, trocando o `location` de cada vaga ("Remote,
@@ -23,13 +23,13 @@ atualizados.
 
 ## Phase 2: Foundational (bloqueia as histórias)
 
-- [ ] T002 `fontes/_comum.py`:
+- [X] T002 `fontes/_comum.py`:
   - `FonteErro(motivo, repetido=False, codigo=None)`, guardando o `codigo`;
   - `baixar(url, params=None, aceitar=..., nova_tentativa=True)`: com `False`, o 429 vira
     `FonteErro(..., codigo=429)` sem esperar; todo `HTTPError` leva o `codigo`;
   - `baixar_json(url, params=None, nova_tentativa=True)` repassa o parâmetro;
   - as outras fontes não mudam (padrão `True`).
-- [ ] T003 `filtros.py`, a lista no nível de cima (data-model, `config.json`):
+- [X] T003 `filtros.py`, a lista no nível de cima (data-model, `config.json`):
   - `efetivos` devolve `"empresas"` a partir de `cfg["empresas"]` ou, sem a chave, de `cfg["internacional"]["empresas"]`,
     e `internacional` deixa de ter `empresas`;
   - `validar` usa `_empresas(e["empresas"])` quando a chave vem e `_empresas(inter.get("empresas"))` quando não vem,
@@ -38,7 +38,7 @@ atualizados.
   - `consultas` usa `f["empresas"]` na consulta global e na condição dela;
   - o resumo da busca conta as empresas fora do bloco da internacional ("N empresas acompanhadas");
   - `salvar` não muda: o `cfg.update(novos)` já tira `internacional.empresas`.
-- [ ] T004 Atualizar `tests/test_fontes_int.py` (linhas que leem `inter["empresas"]` ou montam
+- [X] T004 Atualizar `tests/test_fontes_int.py` (linhas que leem `inter["empresas"]` ou montam
   `internacional.empresas`) para a lista de cima, mantendo o mesmo comportamento esperado.
 
 **Checkpoint**: `PY -m unittest discover -s tests` passa sem mudança de comportamento visível.
@@ -49,10 +49,10 @@ atualizados.
 
 **Independent Test**: listas simuladas: "Remote, Brazil" entra como nacional e "Remote, United States" não entra.
 
-- [ ] T005 [US1] `filtros.aberta_ao_pais(texto, pais) -> bool`: verdadeiro se algum lugar de `_lugares(texto)` satisfaz
+- [X] T005 [US1] `filtros.aberta_ao_pais(texto, pais) -> bool`: verdadeiro se algum lugar de `_lugares(texto)` satisfaz
   `_inclui(lugar, pais)`; "Remote" sozinho dá falso. A elegibilidade continua usando `_lugares` e `_inclui`, sem mudança.
-- [ ] T006 [US1] `filtros.consultas`: as consultas nacionais (`remoto`, `pais`, `local`) levam `"empresas": f["empresas"]`.
-- [ ] T007 [US1] `fontes/ats.py`:
+- [X] T006 [US1] `filtros.consultas`: as consultas nacionais (`remoto`, `pais`, `local`) levam `"empresas": f["empresas"]`.
+- [X] T007 [US1] `fontes/ats.py`:
   - `AREAS = ("nacional", "internacional")`, `POR_PAIS = True`, `GLOBAL = True`;
   - `buscar` atende `grupo` em (`remoto`, `pais`, `local`) e a global; `internacional:<p>` e `mudanca:<p>` devolvem
     `([], [])` sem pedido;
@@ -64,9 +64,9 @@ atualizados.
   - na `local`, não remota cujo local (sem acento) cita a cidade da consulta ou o nome do estado (`_comum.UFS`), sem
     citar outro país;
   - na global, como hoje.
-- [ ] T008 [US1] `vagas.fontes_da_busca`: `ats` entra sempre que `f["empresas"]` não está vazia, com ou sem a
+- [X] T008 [US1] `vagas.fontes_da_busca`: `ats` entra sempre que `f["empresas"]` não está vazia, com ou sem a
   internacional.
-- [ ] T009 [P] [US1] Testes:
+- [X] T009 [P] [US1] Testes:
   - "Remote, Brazil", "Latin America" e "Anywhere" entram na consulta `remoto`;
   - "Remote, United States" e "Remote" ficam de fora;
   - "São Paulo, Brazil" presencial entra na `local` e não na `remoto`;
@@ -84,11 +84,11 @@ atualizados.
 
 **Independent Test**: config antigo lido e regravado pelo `filtros.salvar`.
 
-- [ ] T010 [US2] Conferir e completar os casos de compatibilidade em `filtros.py` (T003):
+- [X] T010 [US2] Conferir e completar os casos de compatibilidade em `filtros.py` (T003):
   - pedido com `empresas` em cima e `internacional.empresas` diferente: vale a de cima;
   - pedido só com `internacional.empresas` (front antigo): vira `empresas`;
   - `salvar` não deixa `internacional.empresas` no arquivo.
-- [ ] T011 [P] [US2] Testes:
+- [X] T011 [P] [US2] Testes:
   - config antigo → `efetivos(...)["empresas"]` com as mesmas empresas (SC-003);
   - `salvar` com pedido do front antigo grava em cima e tira de `internacional`;
   - pedido do front novo vale;
@@ -100,7 +100,7 @@ atualizados.
 
 **Independent Test**: três empresas no Greenhouse e uma no Lever; 429 na primeira.
 
-- [ ] T012 [US3] `fontes/ats.py`:
+- [X] T012 [US3] `fontes/ats.py`:
   - `_estado = {"bloqueados": set()}`, zerado num `_esquecer` registrado em `_comum.AO_ESQUECER`;
   - `_lista` baixa com `nova_tentativa=False`;
   - no `buscar`, empresa de sistema bloqueado não faz pedido;
@@ -110,7 +110,7 @@ atualizados.
     de nome); remova ou troque o link";
   - outros erros: como hoje ("<empresa> (<Sistema>): <motivo>");
   - `ler(url)` baixa com `nova_tentativa=False`.
-- [ ] T013 [P] [US3] Testes:
+- [X] T013 [P] [US3] Testes:
   - 429 na primeira empresa do Greenhouse: zero pedidos às outras duas, a do Lever pedida, aviso uma vez e um só
     pedido ao Greenhouse, sem nova tentativa (SC-002);
   - 403 igual;
@@ -125,14 +125,14 @@ grava na lista.
 
 **Independent Test**: `filtros.acompanhar` num config temporário; resposta do `POST /api/vagas/link` com a empresa.
 
-- [ ] T014 [US4] `filtros.acompanhar(url) -> (empresa, nova, empresas)`:
+- [X] T014 [US4] `filtros.acompanhar(url) -> (empresa, nova, empresas)`:
   - reconhece pelo `ats.reconhecer` (`ValueError` com a mensagem do link inválido);
   - lê `ler_config()` e parte de `efetivos(cfg)["empresas"]`;
   - deduplica por sistema e id, sem diferença de maiúsculas;
   - recusa a 51ª com "a lista de empresas está cheia (50); remova uma no painel Filtros da busca";
   - grava `cfg["empresas"]`, tira `cfg["internacional"]["empresas"]` e escreve o arquivo como o `salvar` (tmp +
     `os.replace`), sem revalidar os outros filtros.
-- [ ] T015 [US4] `dash/servidor.py`:
+- [X] T015 [US4] `dash/servidor.py`:
   - `GET /api/empresas` → `{empresas, maximo: filtros.MAX_EMPRESAS}`;
   - `POST /api/empresas` com `{url}` (até 1.000) → 201 `{empresa, nova: true, empresas}`, 200 com `nova: false`, 400 no
     `ValueError`;
@@ -140,7 +140,7 @@ grava na lista.
     `empresa: {sistema, id, nome, url, acompanhada}`.
 
   O `POST /api/empresas` entra na mesma checagem de origem dos outros pedidos de escrita.
-- [ ] T016 [P] [US4] Testes:
+- [X] T016 [P] [US4] Testes:
   - `acompanhar` nova, repetida (outra caixa), lista cheia e link inválido;
   - config antigo migra no primeiro acompanhar;
   - servidor: `POST /api/empresas` e `GET /api/empresas` pelo handler, como nos testes atuais do servidor;
@@ -153,7 +153,7 @@ grava na lista.
 **Independent Test**: no front, a empresa sai de `empresaDoLink(url_candidatura || url)` e o estado vem de
 `GET /api/empresas`.
 
-- [ ] T017 [US5] Front, na `frontend-react` (worktree própria saída de `origin/frontend-react`, branch
+- [X] T017 [US5] Front, na `frontend-react` (worktree própria saída de `origin/frontend-react`, branch
   `front-031-empresas`):
   - `src/services/api/config.ts`: `empresas` no nível de cima do tipo dos filtros, fora de `internacional`, e
     `contarConsultas` com as empresas;
@@ -166,14 +166,14 @@ grava na lista.
 
 ## Phase 8: Polish & Cross-Cutting
 
-- [ ] T018 [P] `specs/lista-de-desejos.md`: Greenhouse como portal barrado (o MyGreenhouse Jobs exige login), com a
+- [X] T018 [P] `specs/lista-de-desejos.md`: Greenhouse como portal barrado (o MyGreenhouse Jobs exige login), com a
   ideia da conta conectada e o motivo de não seguir (research D8).
-- [ ] T019 [P] Documentação:
+- [X] T019 [P] Documentação:
   - `README.md`: as empresas acompanhadas também na busca nacional, a seção no painel principal, "Acompanhar" e a
     parada no bloqueio;
   - `dash/README.md`;
   - `dash/API.md`: `filtros.empresas` em cima; `GET`/`POST /api/empresas`; `empresa` na resposta do link.
-- [ ] T020 [P] `.agents/skills/buscar-vagas/SKILL.md`: empresas acompanhadas nas duas áreas e "Acompanhar"; depois
+- [X] T020 [P] `.agents/skills/buscar-vagas/SKILL.md`: empresas acompanhadas nas duas áreas e "Acompanhar"; depois
   `python sincronizar_skills.py` e `--conferir`.
 - [ ] T021 Verificação: `PY -m unittest discover -s tests` inteiro; busca real pequena na branch de teste com
   `--fontes ats`, com o OK da pessoa (quickstart §2).

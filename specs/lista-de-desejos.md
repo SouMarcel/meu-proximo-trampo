@@ -18,6 +18,14 @@ priorizado.
   ou oficial, os termos de uso e o risco de bloqueio, e seguir o princípio VI (só a busca pública, sem login, pausa,
   parar no primeiro bloqueio). Entra como portal na seção Portais do painel, desligado por padrão.
 
+- **Greenhouse como portal, com busca por cargo** (pesquisa de 2026-10-25, specs 030 e 031): barrado. A única busca
+  do Greenhouse entre empresas, o MyGreenhouse Jobs, exige login (sem sessão, `my.greenhouse.io/jobs` leva a
+  `/users/sign_in`), não tem API documentada e só mostra as empresas que aderiram. A API pública de vagas responde
+  empresa por empresa, e isso já é usado nas empresas acompanhadas (que a spec 031 levou também para a busca nacional).
+  Ler essa busca pela janela da ferramenta, com o login feito pela pessoa, ou com a credencial do `.env`, exigiria
+  emenda da constituição (a conta conectada cobre só a área da própria pessoa) e leria uma busca interna que pode mudar
+  sem aviso. Rever se a Greenhouse publicar uma busca pública ou uma API de busca.
+
 ## Contas conectadas (spec 018)
 
 - **MCP oficial com login**: se a Gupy (ou outro portal) lançar uma integração oficial com login (ex.: MCP com

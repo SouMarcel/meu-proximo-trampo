@@ -374,6 +374,13 @@ assistentes de IA (`fontes/jobgether.py`), sem chave, sem login e sem cookies:
 - as vagas vêm sem descrição (a página não abre para a ferramenta);
 - no primeiro bloqueio, sai da busca e fica **24 horas em espera** (código 5).
 
+As **empresas acompanhadas** (Greenhouse, Lever e Ashby, `fontes/ats.py`, lista `empresas` do `config.json`) rodam
+nas duas áreas: na nacional, as remotas abertas a quem mora no país e as presenciais ou híbridas na cidade; na
+internacional, as do exterior. Cada empresa é consultada uma vez por busca; no primeiro bloqueio de um sistema, as
+outras empresas dele ficam para a próxima busca. Para a pessoa acompanhar uma empresa, sugira o botão "Acompanhar" (no
+Adicionar Vaga ou no detalhe de uma vaga com candidatura num desses sistemas) ou o painel Filtros da busca; não grave
+a lista por conta própria. O Greenhouse não tem busca pública entre empresas (exige login).
+
 **Pausa por portal:** `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA` e `JOBGETHER_PAUSA`
 no `.env` (de 3 a 60 segundos; a do JobGether, de 2 a 60; o `.env.exemplo` traz uma linha comentada para cada
 uma, com o padrão e o mínimo). Sugira aumentar só a do portal que estiver bloqueando e deixe a pessoa editar o arquivo.
