@@ -14,9 +14,10 @@ priorizado.
 ## Fontes de vagas
 
 - **Mais portais do Brasil** (pedido do usuário em 2026-10-13): ampliar a busca nacional com outros portais
-  brasileiros (ex.: InHire, Catho, Vagas.com, InfoJobs, Glassdoor). Para cada um, levantar antes se há API pública
-  ou oficial, os termos de uso e o risco de bloqueio, e seguir o princípio VI (só a busca pública, sem login, pausa,
-  parar no primeiro bloqueio). Entra como portal na seção Portais do painel, desligado por padrão.
+  brasileiros (ex.: InHire, Catho, Glassdoor; InfoJobs e Vagas.com já entraram, specs 026 e 029). Cada um segue o
+  roteiro `docs/novo-portal.md`: a pesquisa (API oficial, robots.txt, termos de uso, login, formato da lista) e as
+  decisões na spec, inclusive se entra ligado ou desligado por padrão (princípio VI). O Glassdoor recusou acesso
+  automatizado (403) em 2026-10-23, na pesquisa da faixa salarial.
 
 - **Greenhouse como portal, com busca por cargo** (pesquisa de 2026-10-25, specs 030 e 031): barrado. A única busca
   do Greenhouse entre empresas, o MyGreenhouse Jobs, exige login (sem sessão, `my.greenhouse.io/jobs` leva a
