@@ -682,7 +682,7 @@ O link e o QR code também ficam no canto de cima do dashboard.
   e empresas acompanhadas no Greenhouse, Lever e Ashby (também na busca nacional); opcionais
 - [x] LinkedIn (busca pública, sem login; opcional)
 - [x] JobGether (vagas remotas do mundo todo, pela API para assistentes; ligado por padrão, termos contrários)
-- [ ] Mais portais do Brasil (ex.: InHire, Catho, Vagas.com, InfoJobs, Glassdoor)
+- [ ] Mais portais do Brasil (ex.: InHire, Catho, Glassdoor), pelo roteiro `docs/novo-portal.md`
 - [x] Preparar e simular entrevista para as vagas na coluna Entrevista
 
 ### Adicionar um portal
