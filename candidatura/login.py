@@ -21,7 +21,7 @@ import json
 
 import segredos
 
-from . import TRAVA, CandidaturaErro, exigir_ligado
+from . import TRAVA, CandidaturaErro, exigir_ligada
 from .dominios import CONHECIDOS, host_de
 
 PREFIXO_B64 = "b64:"
@@ -124,9 +124,9 @@ def portal_do_login(url: str) -> str | None:
     return next((n for n, p in CONHECIDOS.items() if host and p["credencial"] and host in p["login"]), None)
 
 
-def preencher_login(aba) -> dict:
+def preencher_login(aba, vaga: dict | None) -> dict:
     """Digita usuário e/ou senha guardados na tela de login aberta. Nunca clica em Entrar."""
-    exigir_ligado()
+    exigir_ligada(vaga)
     portal = portal_do_login(aba.url())
     if not portal:
         raise CandidaturaErro("esta página não é a tela de login de um portal com credencial guardável "

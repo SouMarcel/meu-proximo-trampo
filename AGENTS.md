@@ -32,10 +32,11 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   a área logada da Gupy e do Indeed numa janela do navegador só da ferramenta (`navegador.py`,
   `contas/`), com o login feito pela pessoa; só leitura, só no clique, e a proposta só é gravada com
   a marcação dela. Nunca peça nem digite senha; nunca clique em botões dos portais. O LinkedIn
-  fica desativado. **Candidatura assistida** (constituição VI, spec 027): desligada por padrão; no
-  detalhe da vaga, "Candidatar com ajuda" preenche campos do formulário na janela da ferramenta
+  fica desativado. **Candidatura assistida** (constituição VI, spec 027): desligada por padrão e ligada
+  vaga a vaga pela pessoa, com o aviso de risco; no detalhe da vaga, "Candidatar com ajuda" preenche campos do formulário na janela da ferramenta
   (`candidatura/`), só em domínio liberado (Indeed, Nerdin e LinkedIn bloqueados pelos termos), com
-  respostas que a pessoa confere; o login guardado por ela no `.env` só é digitado na página de login
+  o que ela sabe (respostas que a pessoa já deu, em `dash/dados/respostas_formulario.json`, e o perfil) e
+  pergunta o resto; o login guardado por ela no `.env` só é digitado na página de login
   do portal. Você (assistente) não usa esse recurso pela pessoa nem lê a credencial do `.env`.
 
 ## Como rodar os scripts

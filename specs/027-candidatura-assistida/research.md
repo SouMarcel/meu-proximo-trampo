@@ -49,6 +49,18 @@ liberá-lo. Foi trocado por bloqueio, porque liberar contraria o princípio VI, 
   digita com `Input.insertText` do protocolo de depuração. É digitação de verdade: as páginas em React recebem os
   eventos de entrada normais.
 - **Seleção nativa:** troca o valor com o setter nativo e dispara `input` e `change`.
+- **Lista com busca** (react-select, ex.: Greenhouse, 2026-10-24): o `input` tem `role="combobox"` e as opções só
+  existem com a lista aberta. Para ler, a ferramenta abre (seta para baixo), lê as opções (`role="option"`) e fecha
+  (Esc). Para escolher, digita o texto da opção, leva o destaque até a opção exata (seta para baixo) e aperta Tab, que
+  escolhe sem enviar; depois confere o valor escolhido. Teclas permitidas: seta para baixo, Esc, Tab e espaço
+  (`Aba.TECLAS`); a de confirmar não existe. Campos escondidos de validação (`aria-hidden`, `tabindex=-1` e opacidade
+  0) não são perguntas.
+- **Captcha:** o reCAPTCHA invisível (selo `.grecaptcha-badge`, `size=invisible` ou tamanho zero) e o aviso
+  "protected by reCAPTCHA" não param a ferramenta.
+  - Desde 2026-10-27, a caixa "não sou um robô" e o Turnstile junto do formulário também não param. A ferramenta
+    preenche e avisa que o captcha do envio é com a pessoa.
+  - Param: captcha numa página sem formulário, o desafio de imagens aberto (`bframe`), a tela de espera ("verifying you
+    are human"), o pedido de código e "atividade incomum" ou "acesso bloqueado".
 - **Opção (radio) e caixas:** foca a opção e aperta espaço (`Input.dispatchKeyEvent`). O espaço só é enviado depois
   de conferir que o elemento ativo é aquele `input` de radio ou checkbox. Assim, nunca cai num botão por engano.
 - **Fica com a pessoa:** seletores que não são nativos (listas feitas com `div`). A ferramenta marca o campo como

@@ -14,9 +14,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import time
 import unicodedata
 
-from . import TRAVA, CandidaturaErro, exigir_ligado
+from . import TRAVA, CandidaturaErro, exigir_ligada
 from . import dominios
 
 MAX_CAMPOS, MAX_OPCOES, MAX_RESPOSTA = 80, 60, 5000
@@ -37,23 +38,96 @@ const rotuloFor = el => el.id ? document.querySelector('label[for="' + CSS.escap
 const opcaoVisivel = el => visivel(el) || visivel(el.closest("label")) || visivel(rotuloFor(el));
 const textoDe = el => el ? limpo(el.innerText || el.textContent) : "";
 const unico = (sel) => document.querySelectorAll(sel).length === 1;
+const ehOpcao = e => !!e && (e.type === "radio" || e.type === "checkbox");
+// textos que não são pergunta: numeração, asterisco, contadores e avisos de tamanho
+const AJUDA = /^(\*|\d+|[.)\-–:]|obrigat[oó]ri[oa]|opcional|optional|required|selecione|select)$|^(m[aá]x|m[ií]n|maximum|minimum|at[eé])\b.{0,25}caracter|^\d+\s*(\/|de|of)\s*\d+/i;
+const deOpcao = n => { const l = n.parentElement && n.parentElement.closest("label");
+  return !!(l && l.querySelector('input[type=radio],input[type=checkbox]')); };
+// os textos visíveis entre o campo a (ou o começo da página) e o campo b, sem os rótulos das opções
+const textosEntre = (a, b) => {
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const saida = [];
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (a && !(a.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING)) continue;
+    if (!(n.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
+    const p = n.parentElement;
+    if (!p || p.closest("script,style,noscript,option,template,select,textarea,button")) continue;
+    const t = limpo(n.textContent);
+    if (!t || AJUDA.test(t) || deOpcao(n) || !visivel(p)) continue;
+    saida.push({n, t});
+  }
+  return saida;
+};
+const anterior = el => { let ant = null; for (const e of todos()) { if (e === el) break; if (e.type !== "hidden") ant = e; } return ant; };
+// a pergunta de um campo: o bloco do último texto com "?" entre o campo anterior e ele (ou os últimos textos)
+const perguntaDe = el => {
+  const segs = textosEntre(anterior(el), el);
+  if (!segs.length) return "";
+  let t = "";
+  for (let k = segs.length - 1; k >= 0 && !t; k--) {
+    if (segs[k].t.includes("?")) {
+      const bloco = segs[k].n.parentElement.closest("h1,h2,h3,h4,h5,h6,legend,label,p,span,div") || segs[k].n.parentElement;
+      t = textoDe(bloco);
+      if (t.length > 400) t = segs[k].t;
+    }
+  }
+  if (!t) t = segs.slice(-2).map(s => s.t).join(" ");
+  return limpo(t.replace(/^\s*\d+\s*[.)\-–:]\s*/, "").replace(/\s*\*\s*$/, "")).slice(0, 500);
+};
+// grupos de opções: o mesmo name, ou names que só mudam no número do fim (ex.: Gupy, "checkbox-6405922-0" e "-1"),
+// seguidos e sem pergunta entre eles. Caixas soltas (ex.: aceite de termos) nunca entram no grupo de outra pergunta.
+const raiz = n => { const r = String(n || "").replace(/[-_]?\[?\d+\]?$/, ""); return r && r !== n ? r : null; };
+const grupos = () => {
+  const ops = todos().filter(e => ehOpcao(e) && !e.disabled && opcaoVisivel(e));
+  const gs = [];
+  let g = null;
+  for (const e of ops) {
+    const mesmaRaiz = g && raiz(e.name) && raiz(e.name) === g.raiz && !textosEntre(g.els[g.els.length - 1], e).length;
+    const continua = g && e.type === g.tipo && ((e.name && e.name === g.nome) || mesmaRaiz);
+    if (continua) { g.els.push(e); if (g.nome !== e.name) g.nome = null; }
+    else { g = {tipo: e.type, nome: e.name || null, raiz: raiz(e.name), els: [e]}; gs.push(g); }
+  }
+  const lista = todos();
+  return gs.map(x => ({els: x.els, tipo: x.tipo,
+    chave: x.nome && x.els.length > 1 && document.getElementsByName(x.nome).length === x.els.length
+      ? (x.tipo === "radio" ? "radio:" : "check:") + x.nome : "grp:" + lista.indexOf(x.els[0])}));
+};
+const grupoDe = chave => (grupos().find(g => g.chave === chave) || {els: []}).els;
 const chaveDe = (el, i) => {
-  if (el.type === "radio" && el.name) return "radio:" + el.name;
-  if (el.type === "checkbox" && el.name && document.getElementsByName(el.name).length > 1) return "check:" + el.name;
   if (el.id && unico('[id="' + CSS.escape(el.id) + '"]')) return "#" + el.id;
   if (el.name && unico('[name="' + CSS.escape(el.name) + '"]')) return "n:" + el.name;
   return "pos:" + i;
-};
-const grupo = (chave) => {
-  const nome = chave.slice(chave.indexOf(":") + 1);
-  const tipo = chave.startsWith("radio:") ? "radio" : "checkbox";
-  return Array.from(document.getElementsByName(nome)).filter(e => e.type === tipo);
 };
 const achar = (chave) => {
   if (chave.startsWith("#")) return document.getElementById(chave.slice(1));
   if (chave.startsWith("n:")) return document.getElementsByName(chave.slice(2))[0] || null;
   if (chave.startsWith("pos:")) return todos()[Number(chave.slice(4))] || null;
   return null;
+};
+// campos escondidos de validação (ex.: o "required" do react-select): não são perguntas
+const escondido = e => e.getAttribute("aria-hidden") === "true" || !!e.closest('[aria-hidden="true"]')
+  || (e.tabIndex < 0 && getComputedStyle(e).opacity === "0");
+// lista com busca (react-select e parecidos, ex.: Greenhouse): o input é um combobox e as opções só existem aberta
+const ehLista = e => !!e && e.tagName === "INPUT" && (e.getAttribute("role") === "combobox" || e.getAttribute("aria-autocomplete") === "list");
+const controleDe = e => e.closest('[class*="control"]') || e.parentElement;
+const valorLista = e => {
+  const c = controleDe(e);
+  const v = c && c.querySelector('[class*="singleValue"],[class*="single-value"],[class*="-single-value"]');
+  return v ? textoDe(v) : "";
+};
+const opcoesLista = e => {
+  const ids = String(e.getAttribute("aria-controls") || e.getAttribute("aria-owns") || "").split(/\s+/).filter(Boolean);
+  let box = ids.map(id => document.getElementById(id)).find(Boolean);
+  if (!box) { const r = e.closest('[class*="container"]') || controleDe(e).parentElement; box = r && r.querySelector('[role="listbox"],[class*="menu"]'); }
+  if (!box) return [];
+  return Array.from(box.querySelectorAll('[role="option"],[class*="__option"],[class*="-option"]'))
+    .filter(o => !o.querySelector('[role="option"],[class*="__option"]'));
+};
+const estadoLista = e => {
+  const ativa = document.getElementById(e.getAttribute("aria-activedescendant") || "");
+  const ops = opcoesLista(e);
+  return {ativo: document.activeElement === e, valor: valorLista(e),
+    opcoes: ops.map(o => ({t: textoDe(o), foco: o === ativa || /--is-focused|focused/.test(String(o.className)) || o.getAttribute("aria-selected") === "true"}))};
 };
 """
 
@@ -65,59 +139,52 @@ const rotuloDe = el => {
   if (!t) t = textoDe(rotuloFor(el));
   if (!t) t = textoDe(el.closest("label"));
   if (!t) t = limpo(el.getAttribute("aria-label"));
-  if (!t) {
-    let p = el.parentElement;
-    for (let n = 0; n < 4 && p && !t; n++, p = p.parentElement) {
-      t = limpo(Array.from(p.childNodes).filter(x => x !== el && !(x.contains && x.contains(el)))
-        .map(x => x.nodeType === 3 ? x.textContent : (x.matches && x.matches("input,select,textarea,button") ? "" : (x.innerText || "")))
-        .join(" "));
-    }
-  }
+  if (AJUDA.test(t)) t = "";
+  if (!t) t = perguntaDe(el);
+  const nome = limpo(el.name);
+  if (!t && /[a-zà-ú]{3,}\s+[a-zà-ú]{2,}/i.test(nome)) t = nome;  // ex.: Gupy, a pergunta no name do campo
   if (!t) t = limpo(el.placeholder);
   return t.slice(0, 500);
 };
-const perguntaDoGrupo = (els, textos) => {
-  const fs = els[0].closest("fieldset");
-  if (fs && fs.querySelector("legend")) return textoDe(fs.querySelector("legend")).slice(0, 500);
-  const g = els[0].closest('[role="radiogroup"],[role="group"]');
-  if (g && g.getAttribute("aria-label")) return limpo(g.getAttribute("aria-label")).slice(0, 500);
-  let p = els[0].parentElement;
-  while (p && !els.every(e => p.contains(e))) p = p.parentElement;
-  for (let n = 0; n < 3 && p; n++, p = p.parentElement) {
-    const tudo = textoDe(p);
-    const primeira = textos.map(x => x && tudo.indexOf(x)).filter(x => x > 0);
-    const antes = limpo(primeira.length ? tudo.slice(0, Math.min(...primeira)) : "");
-    if (antes) return antes.slice(-500);
-  }
-  return "";
-};
 const lista = todos();
 const campos = [], vistos = new Set();
+const emGrupo = new Map();
+grupos().forEach(g => g.els.forEach(e => emGrupo.set(e, g)));
 let senhas = 0;
 lista.forEach((el, i) => {
   const tag = el.tagName.toLowerCase();
   const tipoHtml = tag === "input" ? (el.type || "text").toLowerCase() : tag;
   if (["hidden", "submit", "button", "reset", "image"].includes(tipoHtml)) return;
   if (el.disabled || el.readOnly) return;
-  const chave = chaveDe(el, i);
-  if (vistos.has(chave)) return;
   if (tipoHtml === "radio" || tipoHtml === "checkbox") {
-    const els = chave.startsWith("radio:") || chave.startsWith("check:") ? grupo(chave) : [el];
-    if (!els.some(opcaoVisivel)) return;
-    vistos.add(chave);
-    const textos = els.map(e => textoDe(rotuloFor(e)) || textoDe(e.closest("label")) || limpo(e.getAttribute("aria-label")) || limpo(e.value));
-    if (els.length === 1 && tipoHtml === "checkbox") {
-      campos.push({chave, tipo: "caixa", tipo_html: tipoHtml, rotulo: rotuloDe(el), obrigatorio: el.required, valor: el.checked ? "sim" : "nao", limite: 0, opcoes: []});
+    const g = emGrupo.get(el);
+    if (!g || vistos.has(g.chave)) return;
+    vistos.add(g.chave);
+    const textos = g.els.map(e => textoDe(rotuloFor(e)) || textoDe(e.closest("label")) || limpo(e.getAttribute("aria-label")) || limpo(e.value));
+    const pergunta = perguntaDe(g.els[0]);
+    const nome = limpo(g.els[0].name).slice(0, 100);
+    if (g.els.length === 1 && g.tipo === "checkbox") {
+      const rotulo = textos[0].length > 12 || !pergunta ? textos[0] : pergunta + " " + textos[0];
+      campos.push({chave: g.chave, tipo: "caixa", tipo_html: "checkbox", rotulo: rotulo.slice(0, 500), obrigatorio: el.required,
+        valor: el.checked ? "sim" : "nao", limite: 0, opcoes: [], nome});
       return;
     }
-    campos.push({chave, tipo: tipoHtml === "radio" ? "unica" : "multipla", tipo_html: tipoHtml, rotulo: perguntaDoGrupo(els, textos),
-      obrigatorio: els.some(e => e.required), limite: 0,
+    campos.push({chave: g.chave, tipo: g.tipo === "radio" ? "unica" : "multipla", tipo_html: g.tipo, rotulo: pergunta, nome,
+      obrigatorio: g.els.some(e => e.required), limite: 0,
       opcoes: textos.map((t, n) => ({valor: String(n), texto: t.slice(0, 200)})),
-      valor: tipoHtml === "radio" ? String(els.findIndex(e => e.checked)).replace("-1", "") : els.map((e, n) => e.checked ? String(n) : "").filter(Boolean).join(",")});
+      valor: g.els.map((e, n) => e.checked ? String(n) : "").filter(Boolean).join(",")});
     return;
   }
-  if (!visivel(el)) return;
+  if (!visivel(el) || escondido(el)) return;
+  const chave = chaveDe(el, i);
+  if (vistos.has(chave)) return;
   vistos.add(chave);
+  if (ehLista(el)) {  // as opções vêm depois, abrindo a lista (ler, em Python)
+    campos.push({chave, tipo: "lista", tipo_html: "combobox", rotulo: rotuloDe(el), nome: limpo(el.name).slice(0, 100),
+      obrigatorio: el.required || el.getAttribute("aria-required") === "true", limite: 0, opcoes: [], valor: valorLista(el),
+      autocomplete: ""});
+    return;
+  }
   if (tipoHtml === "password") senhas++;
   const base = {chave, tipo_html: tipoHtml, rotulo: rotuloDe(el), obrigatorio: el.required, nome: limpo(el.name).slice(0, 100),
     autocomplete: limpo(el.getAttribute("autocomplete")).slice(0, 60), limite: el.maxLength > 0 ? el.maxLength : 0};
@@ -131,8 +198,10 @@ lista.forEach((el, i) => {
 });
 const outros = Array.from(document.querySelectorAll('[role="combobox"],[role="listbox"],[contenteditable="true"]'))
   .filter(e => !e.matches("input,select,textarea") && visivel(e)).length;
-return {url: location.href, titulos: limpo([document.title, ...Array.from(document.querySelectorAll("h1,h2,h3")).slice(0, 12).map(textoDe)].join(" | ")).slice(0, 1500),
-  texto: textoDe(document.body).slice(0, 4000), iframes: Array.from(document.querySelectorAll("iframe")).map(f => String(f.src || "").slice(0, 300)).slice(0, 20),
+return {url: location.href, titulos: limpo([document.title, ...Array.from(document.querySelectorAll("h1,h2")).slice(0, 8).map(textoDe)].join(" | ")).slice(0, 1500),
+  texto: textoDe(document.body).slice(0, 4000), iframes: Array.from(document.querySelectorAll("iframe")).slice(0, 20).map(f => { const r = f.getBoundingClientRect();
+    return {src: String(f.src || "").slice(0, 300), titulo: limpo(f.title).slice(0, 60), visivel: visivel(f), w: Math.round(r.width),
+            h: Math.round(r.height), selo: !!f.closest(".grecaptcha-badge")}; }),
   campos: campos.slice(0, 80), senhas, outros};
 })()"""
 
@@ -146,8 +215,14 @@ if (limpar && "value" in el) {
 }
 el.focus();
 const a = document.activeElement;
-return {ok: a === el, tag: a ? a.tagName : "", tipo: a && a.type ? String(a.type).toLowerCase() : "", vazio: !(a && a.value)};
+return {ok: a === el, tag: a ? a.tagName : "", tipo: a && a.type ? String(a.type).toLowerCase() : "", vazio: !(a && a.value),
+        lista: ehLista(a)};
 })(%s, %s)"""
+
+JS_ESTADO_LISTA = "((chave) => {" + _COMUM + r"""
+const el = achar(chave);
+return el && ehLista(el) ? estadoLista(el) : null;
+})(%s)"""
 
 JS_SELECIONAR = "((chave, indice) => {" + _COMUM + r"""
 const el = achar(chave);
@@ -159,29 +234,52 @@ return el.selectedIndex === indice;
 })(%s, %s)"""
 
 JS_FOCAR_OPCAO = "((chave, indice) => {" + _COMUM + r"""
-const els = chave.startsWith("radio:") || chave.startsWith("check:") ? grupo(chave) : [achar(chave)].filter(Boolean);
-const el = els[indice];
+const el = grupoDe(chave)[indice];
 if (!el || !["radio", "checkbox"].includes(el.type)) return {ok: false};
 el.focus();
 return {ok: document.activeElement === el, marcada: el.checked, tipo: el.type};
 })(%s, %s)"""
 
 JS_MARCADA = "((chave, indice) => {" + _COMUM + r"""
-const els = chave.startsWith("radio:") || chave.startsWith("check:") ? grupo(chave) : [achar(chave)].filter(Boolean);
-return !!(els[indice] && els[indice].checked);
+const el = grupoDe(chave)[indice];
+return !!(el && el.checked);
 })(%s, %s)"""
 
 JS_SAIR = "(() => { const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur(); return true; })()"
 
 # ---------------------------------------------------------------- classificação (Python, testável sem navegador)
 
-BLOQUEIO = re.compile(r"captcha|nao sou um robo|i'?m not a robot|verifique que voce e humano|verify (that )?you are (a )?human|"
+# "protegido por reCAPTCHA" no rodapé não é pedido de verificação: só frases de desafio e captcha visível contam
+BLOQUEIO = re.compile(r"nao sou um robo|i'?m not a robot|(verifique|confirme) que voce e humano|verify(ing)? (that )?you are (a )?human|"
+                      r"(resolva|complete|preencha) o captcha|(solve|complete) the captcha|"
                       r"codigo de verificacao|verification code|digite o codigo|enter the code|atividade (incomum|suspeita)|"
                       r"unusual activity|acesso bloqueado|access denied")
 BLOQUEIO_IFRAME = re.compile(r"recaptcha|hcaptcha|turnstile|challenges\.cloudflare|captcha", re.I)
+# Param sempre, mesmo com o formulário na página: pedido de código, atividade suspeita, acesso bloqueado e a tela de
+# espera que confere se é humano (Cloudflare e parecidos)
+VERIFICACAO = re.compile(r"codigo de verificacao|verification code|digite o codigo|enter the code|atividade (incomum|suspeita)|"
+                         r"unusual activity|acesso bloqueado|access denied|verifying (that )?you are (a )?human|"
+                         r"checking (if the site connection is secure|your browser)|verificando (se voce e humano|seu navegador)")
+DESAFIO_IFRAME = re.compile(r"recaptcha/[^\s]*bframe|hcaptcha[^\s]*(challenge|frame=challenge)", re.I)
+AVISO_CAPTCHA = ("Esta página tem um captcha para o envio: a ferramenta preenche os campos e não toca nele. Depois, "
+                 "resolva o captcha na janela e clique você em Enviar.")
+CAPTCHA_INVISIVEL = re.compile(r"[?&#]size=invisible", re.I)
+
+
+def captcha_visivel(f) -> bool:
+    """Um iframe de captcha que pede algo à pessoa: visível, fora do selo do reCAPTCHA invisível (canto da página) e sem
+    size=invisible. Texto puro (formato antigo da leitura) conta como visível."""
+    if isinstance(f, str):
+        return bool(BLOQUEIO_IFRAME.search(f))
+    if not isinstance(f, dict) or not BLOQUEIO_IFRAME.search(str(f.get("src") or "") + " " + str(f.get("titulo") or "")):
+        return False
+    if f.get("selo") or CAPTCHA_INVISIVEL.search(str(f.get("src") or "")):
+        return False
+    return bool(f.get("visivel")) and (f.get("w") or 0) >= 60 and (f.get("h") or 0) >= 40
 TESTE = re.compile(r"teste (de perfil|comportamental|de logica|tecnico|de personalidade|de raciocinio|de ingles)|"
                    r"avaliacao (comportamental|tecnica|de perfil)|assessment|(gravar|gravacao de|envie um|enviar um) video|"
                    r"video (interview|recording)|tempo restante|time remaining|cronometro|desafio tecnico|coding challenge")
+ACEITE = re.compile(r"\b(aceito|concordo|li e|i agree|i accept)\b")  # opção que é aceite de termos
 CONSENTIMENTO = re.compile(r"termos|aceito|concordo|\bli\b|privacidade|consent|\bagree\b|lgpd|autorizo|politica|\bterms\b|privacy")
 CADASTRO = re.compile(r"\b(nome|name|sobrenome|first name|last name|full name|e-?mail|telefone|celular|phone|mobile|whatsapp|"
                       r"cpf|rg|documento|passaporte|passport|endereco|address|cep|zip|postal|cidade|city|bairro|estado|pais|"
@@ -209,33 +307,53 @@ def classificar_campo(c: dict) -> tuple[str, str]:
         return "senha", MOTIVOS["senha"]
     if tipo == "arquivo":
         return "arquivo", MOTIVOS["arquivo"]
-    categoria = candidatura_ia.sensivel(c.get("rotulo") or "")
+    if tipo == "lista" and not c.get("opcoes"):
+        return "outro", "lista que a ferramenta não conseguiu abrir: escolha você na janela"
+    categoria = candidatura_ia.sensivel(c.get("rotulo") or "") or candidatura_ia.sensivel(c.get("nome") or "")
     if categoria:
         return "sensivel", f"{MOTIVOS['sensivel']} ({categoria})"
     if tipo == "caixa" and CONSENTIMENTO.search(rotulo):
         return "consentimento", MOTIVOS["consentimento"]
-    if tipo in ("texto", "selecao") and (
+    if tipo in ("multipla", "unica") and any(ACEITE.search(_sem_acento(o.get("texto")))
+                                            for o in c.get("opcoes") or []):
+        return "consentimento", MOTIVOS["consentimento"]  # um aceite de termos nunca vai junto de outra resposta
+    if tipo in ("texto", "selecao", "lista") and (
             c.get("tipo_html") in ("email", "tel", "url") or CADASTRO.search(rotulo)
             or AUTOCOMPLETE_CADASTRO.search(_sem_acento(c.get("autocomplete")))):
         return "cadastro", MOTIVOS["cadastro"]
-    if tipo not in ("texto", "area", "selecao", "unica", "multipla", "caixa"):
+    if tipo not in ("texto", "area", "selecao", "lista", "unica", "multipla", "caixa"):
         return "outro", MOTIVOS["outro"]
     if not rotulo.strip():
         return "outro", "campo sem pergunta legível: preencha você"
     return "comum", ""
 
 
+def desafio_aberto(f) -> bool:
+    """O desafio de imagens do captcha aberto na tela (o quadro grande que aparece depois de clicar na caixa)."""
+    if isinstance(f, str):
+        return bool(DESAFIO_IFRAME.search(f))
+    return (captcha_visivel(f) and bool(DESAFIO_IFRAME.search(str(f.get("src") or "")))
+            and (f.get("w") or 0) >= 280 and (f.get("h") or 0) >= 280)
+
+
 def classificar_pagina(bruto: dict, campos: list[dict]) -> tuple[str, str]:
-    """(etapa, aviso) da página."""
+    """(etapa, aviso) da página. O captcha que só protege o envio (a caixa "não sou um robô" junto do botão Enviar) não
+    impede o preenchimento: a ferramenta preenche os campos, não toca no captcha e avisa; resolver e enviar ficam com a
+    pessoa (constituição VI, "Parar no bloqueio", esclarecido em 2026-10-27). Param: pedido de código, atividade
+    suspeita, acesso bloqueado, a tela de espera que confere se é humano, o desafio de imagens aberto e o captcha numa
+    página sem formulário."""
     texto, titulos = _sem_acento(bruto.get("texto")), _sem_acento(bruto.get("titulos"))
-    if any(BLOQUEIO_IFRAME.search(f or "") for f in bruto.get("iframes") or []) or BLOQUEIO.search(texto):
+    iframes = bruto.get("iframes") or []
+    captcha = any(captcha_visivel(f) for f in iframes) or bool(BLOQUEIO.search(texto))
+    tem_campos = any(c["marca"] != "outro" for c in campos)
+    if VERIFICACAO.search(texto) or any(desafio_aberto(f) for f in iframes) or (captcha and not tem_campos):
         return "bloqueio", "O portal pediu uma verificação (captcha ou código). Resolva na janela; a ferramenta parou aqui."
     if bruto.get("senhas"):
         return "login", "Tela de login: use Preencher login (se guardou a credencial) ou entre à mão, e clique você em Entrar."
     if TESTE.search(titulos):
         return "teste", "Esta etapa é um teste ou vídeo do portal: é com você. A ferramenta não preenche testes."
-    if any(c["marca"] != "outro" for c in campos):
-        return "perguntas", ""
+    if tem_campos:
+        return "perguntas", AVISO_CAPTCHA if captcha else ""
     return "desconhecida", "Não reconheci perguntas nesta página. Avance no portal até o formulário e leia de novo."
 
 
@@ -253,7 +371,8 @@ def _limpar_campo(c: dict) -> dict | None:
              "limite": int(c.get("limite") or 0) if str(c.get("limite") or "0").isdigit() else 0,
              "opcoes": [{"valor": str(o.get("valor")), "texto": " ".join(str(o.get("texto") or "").split())[:200],
                          "vazia": bool(o.get("vazia"))} for o in opcoes],
-             "valor": str(c.get("valor") or "")[:300], "autocomplete": str(c.get("autocomplete") or "")[:60]}
+             "valor": str(c.get("valor") or "")[:300], "autocomplete": str(c.get("autocomplete") or "")[:60],
+             "nome": str(c.get("nome") or "")[:100]}
     campo["marca"], campo["motivo"] = classificar_campo(campo)
     return campo
 
@@ -271,7 +390,11 @@ def interpretar(bruto) -> dict:
 
 
 def ler(aba) -> dict:
-    return interpretar(aba.avaliar(JS_LER))
+    bruto = aba.avaliar(JS_LER)
+    if isinstance(bruto, dict):  # listas com busca: as opções só aparecem com a lista aberta
+        for c in [c for c in bruto.get("campos") or [] if isinstance(c, dict) and c.get("tipo") == "lista"][:20]:
+            c["opcoes"] = [{"valor": str(i), "texto": t} for i, t in enumerate(_opcoes_lista(aba, c["chave"]))]
+    return interpretar(bruto)
 
 
 # ---------------------------------------------------------------- escrita
@@ -310,6 +433,49 @@ def _marcar_opcao(aba, c: dict, indice: int) -> bool:
     return bool(aba.avaliar(_js(JS_MARCADA, c["chave"], indice)))
 
 
+def _opcoes_lista(aba, chave: str) -> list[str]:
+    """Abre a lista com busca (seta para baixo), lê as opções e fecha (Esc). Não escolhe nada."""
+    foco = aba.avaliar(_js(JS_FOCAR, chave, False)) or {}
+    if not foco.get("ok") or not foco.get("lista"):
+        return []
+    estado = None
+    try:
+        aba.tecla("ArrowDown")
+        for _ in range(8):
+            time.sleep(0.15)
+            estado = aba.avaliar(_js(JS_ESTADO_LISTA, chave)) or {}
+            if estado.get("opcoes"):
+                break
+    finally:
+        aba.tecla("Escape")
+        aba.avaliar(JS_SAIR)
+    return [o["t"] for o in (estado or {}).get("opcoes") or [] if o.get("t")][:MAX_OPCOES]
+
+
+def _escolher_na_lista(aba, chave: str, alvo: str) -> bool:
+    """Escolhe a opção pelo texto: digita (a lista filtra), põe o destaque na opção exata (seta para baixo) e aperta Tab,
+    que escolhe sem enviar nada. Confere que ficou escolhida; se não der, fecha (Esc) e devolve False."""
+    foco = aba.avaliar(_js(JS_FOCAR, chave, False)) or {}
+    if not foco.get("ok") or not foco.get("lista"):
+        return False
+    norm = lambda s: " ".join(_sem_acento(s).split())  # noqa: E731
+    certo = norm(alvo)
+    aba.digitar(alvo)
+    for _ in range(40):
+        time.sleep(0.15)
+        estado = aba.avaliar(_js(JS_ESTADO_LISTA, chave)) or {}
+        opcoes = estado.get("opcoes") or []
+        if not estado.get("ativo") or not any(norm(o.get("t")) == certo for o in opcoes):
+            break
+        if any(o.get("foco") and norm(o.get("t")) == certo for o in opcoes):
+            aba.tecla("Tab")
+            time.sleep(0.25)
+            return norm((aba.avaliar(_js(JS_ESTADO_LISTA, chave)) or {}).get("valor")) == certo
+        aba.tecla("ArrowDown")
+    aba.tecla("Escape")
+    return False
+
+
 def _escrever(aba, c: dict, valor, trocar: bool) -> bool:
     tipo = c["tipo"]
     if tipo in ("texto", "area"):
@@ -317,6 +483,9 @@ def _escrever(aba, c: dict, valor, trocar: bool) -> bool:
         if c.get("tipo_html") == "number" and not re.fullmatch(r"-?\d+([.,]\d+)?", valor):
             return False
         return bool(valor) and _escrever_texto(aba, c, valor, trocar)
+    if tipo == "lista":
+        i = int(valor) if str(valor).isdigit() else -1
+        return 0 <= i < len(c["opcoes"]) and _escolher_na_lista(aba, c["chave"], c["opcoes"][i]["texto"])
     indices = range(len(c["opcoes"]))
     if tipo == "selecao":
         i = int(valor) if str(valor).isdigit() else -1
@@ -357,10 +526,14 @@ def texto_do_valor(c: dict, valor: str) -> str:
     return _cortar(valor, c["limite"])
 
 
-def preencher(aba, assinatura_lida: str, respostas: list) -> dict:
-    """Preenche os campos comuns com as respostas confirmadas ([{chave, valor, trocar}]). Confere o recurso ligado, o
-    domínio e se a página ainda é a lida; nunca toca em campo sensível, cadastro, consentimento, arquivo ou senha."""
-    exigir_ligado()
+DA_PESSOA = {"comum", "sensivel", "cadastro"}  # o que a resposta da própria pessoa pode preencher
+
+
+def preencher(aba, assinatura_lida: str, respostas: list, vaga: dict | None, da_pessoa: bool = False) -> dict:
+    """Preenche os campos com as respostas ([{chave, valor, trocar}]). Confere o recurso ligado na vaga, o domínio e se a
+    página ainda é a lida. Resposta da IA (da_pessoa=False) só vai em campo comum; a da pessoa (dada agora ou guardada)
+    vai também em pergunta sensível e dado cadastral. Aceite de termos, arquivo, senha e o resto ficam na janela."""
+    exigir_ligada(vaga)
     if not isinstance(respostas, list):
         raise CandidaturaErro("respostas inválidas")
     if not TRAVA.acquire(blocking=False):
@@ -375,6 +548,7 @@ def preencher(aba, assinatura_lida: str, respostas: list) -> dict:
         if pagina["assinatura"] != assinatura_lida:
             raise CandidaturaErro("a página mudou desde a leitura: clique em Preencher esta página de novo")
         campos = {c["chave"]: c for c in pagina["campos"]}
+        permitidas = DA_PESSOA if da_pessoa else {"comum"}
         preenchidos, ficaram, vistos = [], [], set()
         for r in respostas[:MAX_CAMPOS]:
             if not isinstance(r, dict) or r.get("chave") not in campos or r["chave"] in vistos:
@@ -383,8 +557,8 @@ def preencher(aba, assinatura_lida: str, respostas: list) -> dict:
             c = campos[r["chave"]]
             valor = r.get("valor")
             valor = ",".join(str(v) for v in valor) if isinstance(valor, list) else str(valor if valor is not None else "")
-            item = {"chave": c["chave"], "rotulo": c["rotulo"]}
-            if c["marca"] != "comum":
+            item = {"chave": c["chave"], "rotulo": c["rotulo"], "marca": c["marca"], "tipo": c["tipo"], "nome": c.get("nome", "")}
+            if c["marca"] not in permitidas:
                 ficaram.append({**item, "motivo": c["motivo"]})
             elif not valor.strip():
                 ficaram.append({**item, "motivo": "sem resposta"})
@@ -395,7 +569,7 @@ def preencher(aba, assinatura_lida: str, respostas: list) -> dict:
             else:
                 ficaram.append({**item, "motivo": "não consegui preencher este campo: preencha você"})
         for c in pagina["campos"]:
-            if c["chave"] not in vistos and c["marca"] != "comum":
+            if c["chave"] not in vistos and c["marca"] not in permitidas:
                 ficaram.append({"chave": c["chave"], "rotulo": c["rotulo"], "motivo": c["motivo"]})
         try:
             aba.avaliar(JS_SAIR)

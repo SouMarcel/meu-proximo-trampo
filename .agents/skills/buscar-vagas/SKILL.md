@@ -270,8 +270,8 @@ quer o quadro em dia com a Gupy e o Indeed, sugira o botão "Atualizar candidatu
 dashboard (contas conectadas): ele lê a área logada na janela da ferramenta, com o login feito
 por ela, e propõe as mudanças para ela marcar. Você não abre a área logada dos portais nem
 aplica a proposta por ela. Se ela quer ajuda para preencher o formulário de uma candidatura, o
-caminho é o "Candidatar com ajuda" do detalhe da vaga (candidatura assistida, que ela liga em
-Atualizar candidaturas): a ferramenta preenche campos na janela dela e quem envia é ela. Você não
+caminho é o "Candidatar com ajuda" do detalhe da vaga (candidatura assistida, que ela liga
+em cada vaga, na aba Candidatura): a ferramenta preenche campos na janela dela e quem envia é ela. Você não
 aciona esse recurso nem lê usuário e senha do `.env`.
 "O que essa vaga pede?", "o que falta para eu me candidatar?": `PY dash/banco.py kit ID`
 (autorização, contratação, inglês, fuso, riscos e o checklist com o que a pessoa já

@@ -162,8 +162,11 @@ class Base(unittest.TestCase):
             import os
             os.environ.pop(nome, None)
 
+    VAGA = {"id": "v1", "candidatura_assistida": {"ligada": True, "em": "2026-10-24"}}  # ligada nesta vaga
+    DESLIGADA = {"id": "v2"}
+
     def ligar(self):
-        candidatura.ligar(True, aceitar_aviso=True)
+        pass  # a chave agora é por vaga: os testes passam self.VAGA (ligada)
 
 
 class TestDominios(Base):
@@ -206,28 +209,39 @@ class TestDominios(Base):
 
     def test_config_preserva_outras_chaves(self):
         filtros.CONFIG.write_text(json.dumps({"termos": ["analista"], "ia": {"provedor": "nenhum"}}), encoding="utf-8")
-        self.ligar()
+        dominios.liberar("carreiras.empresa.com.br")
         cfg = json.loads(filtros.CONFIG.read_text(encoding="utf-8"))
-        self.assertEqual((cfg["termos"], cfg["ia"]["provedor"], cfg["candidatura"]["ligado"]), (["analista"], "nenhum", True))
+        self.assertEqual((cfg["termos"], cfg["ia"]["provedor"], cfg["candidatura"]["dominios"][0]["dominio"]),
+                         (["analista"], "nenhum", "carreiras.empresa.com.br"))
 
 
 class TestLigar(Base):
-    def test_desligado_por_padrao_e_aviso(self):  # US4, FR-006
-        self.assertFalse(candidatura.estado()["ligado"])
+    def test_desligada_por_padrao_e_aviso_por_vaga(self):  # US4, FR-006 (vaga a vaga, decisão de 2026-10-24)
+        with banco.escrita() as con:
+            banco._gravar(con, "v1", {"id": "v1", "titulo": "Analista", "empresa": "Acme"})
+            banco._gravar(con, "v2", {"id": "v2", "titulo": "Analista", "empresa": "Beta"})
+        self.assertFalse(candidatura.ligada(banco.obter("v1")))
         with self.assertRaises(candidatura.CandidaturaErro):
-            candidatura.exigir_ligado()
+            candidatura.exigir_ligada(banco.obter("v1"))
         with self.assertRaises(candidatura.CandidaturaErro):
-            candidatura.ligar(True)
-        e = candidatura.ligar(True, aceitar_aviso=True)
-        self.assertTrue(e["ligado"] and e["aviso_aceito"])
-        candidatura.ligar(False)
-        self.assertTrue(candidatura.ligar(True)["ligado"])  # o aviso não volta
+            candidatura.ligar_vaga("v1", True)  # sem o aviso
+        self.assertTrue(candidatura.ligada(candidatura.ligar_vaga("v1", True, aceitar_aviso=True)))
+        self.assertFalse(candidatura.ligada(banco.obter("v2")))  # só a vaga ligada
+        candidatura.ligar_vaga("v1", False)
+        self.assertFalse(candidatura.ligada(banco.obter("v1")))
+        with self.assertRaises(candidatura.CandidaturaErro):
+            candidatura.ligar_vaga("v1", True)  # religar pede o aviso de novo
+        with self.assertRaises(KeyError):
+            candidatura.ligar_vaga("nao-existe", True, aceitar_aviso=True)
 
-    def test_desligado_recusa_preencher(self):
-        with self.assertRaises(candidatura.CandidaturaErro):
-            formulario.preencher(PaginaFalsa(), "x", [])
-        with self.assertRaises(candidatura.CandidaturaErro):
-            login.preencher_login(PaginaFalsa(url="https://login.gupy.io/candidates/signin"))
+    def test_desligada_recusa_preencher(self):
+        for vaga in (self.DESLIGADA, None, {"id": "v3", "candidatura_assistida": {"ligada": False}}):
+            aba = PaginaFalsa()
+            with self.assertRaises(candidatura.CandidaturaErro):
+                formulario.preencher(aba, formulario.ler(aba)["assinatura"], [{"chave": "#exp", "valor": "x"}], vaga)
+            with self.assertRaises(candidatura.CandidaturaErro):
+                login.preencher_login(PaginaFalsa(url="https://login.gupy.io/candidates/signin"), vaga)
+            self.assertEqual(aba.digitado, [])
 
 
 class TestClassificacao(Base):
@@ -240,15 +254,44 @@ class TestClassificacao(Base):
         self.assertEqual(unico(rotulo="Seu e-mail"), "cadastro")
         self.assertEqual(unico(rotulo="Contato", tipo_html="tel"), "cadastro")
         self.assertEqual(unico(rotulo="Você precisa de visto?"), "sensivel")
+        self.assertEqual(unico(rotulo="Você possui permissão para trabalhar no Brasil?"), "sensivel")
+        self.assertEqual(unico(rotulo="Do you have the legal right to live and work in the location you are applying for?"), "sensivel")
+        self.assertEqual(unico(rotulo="Pergunta", nome="Qual sua última/atual remuneração?"), "sensivel")  # a pergunta no name
+        self.assertEqual(unico(rotulo="Are you currently employed by Acme?"), "comum")
         self.assertEqual(unico(rotulo="Pergunta", tipo="senha"), "senha")
         self.assertEqual(unico(rotulo="Início", tipo="data"), "outro")
         self.assertEqual(unico(rotulo=""), "outro")
+        aceite = {"tipo": "multipla", "rotulo": "Quais ferramentas você usa?", "opcoes": [{"valor": "0", "texto": "Excel"},
+                  {"valor": "1", "texto": "Li e aceito os termos de uso"}]}
+        self.assertEqual(formulario.classificar_campo(aceite)[0], "consentimento")
 
     def test_paginas(self):
         etapa = lambda **k: formulario.ler(PaginaFalsa(**k))["etapa"]
         self.assertEqual(etapa(), "perguntas")
-        self.assertEqual(etapa(iframes=["https://www.google.com/recaptcha/api2/anchor"]), "bloqueio")
+        aviso = lambda **k: formulario.ler(PaginaFalsa(**k))["aviso"]
+        # captcha que só protege o envio (formulário na página): preenche e avisa (2026-10-27)
+        self.assertEqual(etapa(iframes=["https://www.google.com/recaptcha/api2/anchor"]), "perguntas")
+        self.assertIn("captcha para o envio", aviso(iframes=["https://www.google.com/recaptcha/api2/anchor"]))
+        self.assertEqual(etapa(iframes=["https://www.google.com/recaptcha/api2/anchor"], campos=[]), "bloqueio")
+        # o reCAPTCHA invisível (selo no canto, ex.: Greenhouse) não pede nada: segue como perguntas
+        selo = {"src": "https://www.recaptcha.net/recaptcha/enterprise/anchor?ar=1", "titulo": "reCAPTCHA", "visivel": True,
+                "w": 256, "h": 60, "selo": True}
+        self.assertEqual(etapa(iframes=[selo]), "perguntas")
+        self.assertEqual(etapa(iframes=[{**selo, "selo": False, "src": selo["src"] + "&size=invisible"}]), "perguntas")
+        self.assertEqual(etapa(iframes=[{**selo, "selo": False, "w": 0, "h": 0, "visivel": False}]), "perguntas")
+        self.assertEqual(etapa(texto="This site is protected by reCAPTCHA and the Google Privacy Policy"), "perguntas")
+        # a caixa "não sou um robô" e o Turnstile junto do formulário: preenche, sem tocar no captcha
+        caixa = {**selo, "selo": False, "w": 304, "h": 78}
+        turnstile = {"src": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/turnstile", "visivel": True,
+                     "w": 300, "h": 65}
+        self.assertEqual(etapa(iframes=[caixa]), "perguntas")
+        self.assertEqual(etapa(iframes=[turnstile]), "perguntas")
+        self.assertEqual(etapa(iframes=[caixa], campos=[]), "bloqueio")  # captcha numa página sem formulário
+        # o desafio de imagens aberto, a tela de espera e o pedido de código param sempre
+        self.assertEqual(etapa(iframes=[{"src": "https://www.google.com/recaptcha/api2/bframe", "visivel": True, "w": 400, "h": 580}]), "bloqueio")
+        self.assertEqual(etapa(texto="Verifying you are human. This may take a few seconds."), "bloqueio")
         self.assertEqual(etapa(texto="Digite o código de verificação enviado ao seu e-mail"), "bloqueio")
+        self.assertEqual(etapa(texto="We detected unusual activity from your network"), "bloqueio")
         self.assertEqual(etapa(senhas=1), "login")
         self.assertEqual(etapa(titulos="Teste de perfil comportamental"), "teste")
         self.assertEqual(etapa(campos=[]), "desconhecida")
@@ -274,7 +317,7 @@ class TestPreencher(Base):
     def test_preenche_so_os_comuns(self):  # US1, FR-001, FR-004
         self.ligar()
         aba = PaginaFalsa()
-        r = formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas())
+        r = formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas(), self.VAGA)
         valores = {c["chave"]: c["valor"] for c in aba.campos}
         self.assertEqual(valores["#exp"], "Escrevo SQL avançado para o time de vendas.")
         self.assertEqual((valores["#anos"], valores["n:ingles"], valores["radio:remoto"], valores["check:ferr"],
@@ -296,10 +339,10 @@ class TestPreencher(Base):
         campos[1]["valor"] = "Texto que a pessoa já escreveu"
         aba = PaginaFalsa(campos=campos)
         a = formulario.ler(aba)["assinatura"]
-        r = formulario.preencher(aba, a, [{"chave": "#exp", "valor": "Novo"}])
+        r = formulario.preencher(aba, a, [{"chave": "#exp", "valor": "Novo"}], self.VAGA)
         self.assertEqual(aba._c("#exp")["valor"], "Texto que a pessoa já escreveu")
         self.assertIn("mantido", r["ficaram"][0]["motivo"])
-        r = formulario.preencher(aba, formulario.ler(aba)["assinatura"], [{"chave": "#exp", "valor": "Novo", "trocar": True}])
+        r = formulario.preencher(aba, formulario.ler(aba)["assinatura"], [{"chave": "#exp", "valor": "Novo", "trocar": True}], self.VAGA)
         self.assertEqual(aba._c("#exp")["valor"], "Novo")
 
     def test_limite_e_numero(self):  # FR-010
@@ -307,7 +350,7 @@ class TestPreencher(Base):
         aba = PaginaFalsa()
         longo = "Escrevo SQL avançado " * 20
         r = formulario.preencher(aba, formulario.ler(aba)["assinatura"],
-                                 [{"chave": "#exp", "valor": longo}, {"chave": "#anos", "valor": "quatro anos"}])
+                                 [{"chave": "#exp", "valor": longo}, {"chave": "#anos", "valor": "quatro anos"}], self.VAGA)
         self.assertLessEqual(len(aba._c("#exp")["valor"]), 120)
         self.assertEqual(aba._c("#anos")["valor"], "")
         self.assertIn("#anos", {f["chave"] for f in r["ficaram"]})
@@ -315,7 +358,7 @@ class TestPreencher(Base):
     def test_foco_errado_nao_digita(self):  # nunca digita num botão
         self.ligar()
         aba = PaginaFalsa(foco_em_botao={"#exp"})
-        r = formulario.preencher(aba, formulario.ler(aba)["assinatura"], [{"chave": "#exp", "valor": "texto"}])
+        r = formulario.preencher(aba, formulario.ler(aba)["assinatura"], [{"chave": "#exp", "valor": "texto"}], self.VAGA)
         self.assertEqual(aba.digitado, [])
         self.assertEqual(r["preenchidos"], [])
 
@@ -323,23 +366,27 @@ class TestPreencher(Base):
         self.ligar()
         aba = PaginaFalsa()
         with self.assertRaisesRegex(candidatura.CandidaturaErro, "mudou"):
-            formulario.preencher(aba, "assinatura-velha", self.respostas())
+            formulario.preencher(aba, "assinatura-velha", self.respostas(), self.VAGA)
         for url in ("https://carreiras.empresa.com.br/x", "https://br.indeed.com/x", "https://gupy.io.exemplo.com/x"):
             aba = PaginaFalsa(url=url)
             with self.assertRaises(candidatura.CandidaturaErro):
-                formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas())
+                formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas(), self.VAGA)
             self.assertEqual(aba.digitado, [])
-        aba = PaginaFalsa(iframes=["https://challenges.cloudflare.com/turnstile"])
+        aba = PaginaFalsa(texto="Digite o código de verificação enviado ao seu e-mail")
         with self.assertRaises(candidatura.CandidaturaErro):
-            formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas())
+            formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas(), self.VAGA)
         self.assertEqual((aba.digitado, aba.teclas), ([], 0))
+        # captcha só no envio: preenche os campos (o captcha fica num iframe, que não é campo)
+        aba = PaginaFalsa(iframes=["https://challenges.cloudflare.com/turnstile"])
+        formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas(), self.VAGA)
+        self.assertTrue(aba.digitado)
 
     def test_um_por_vez(self):
         self.ligar()
         aba = PaginaFalsa()
         with candidatura.TRAVA:
             with self.assertRaisesRegex(candidatura.CandidaturaErro, "andamento"):
-                formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas())
+                formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas(), self.VAGA)
 
     def test_javascript_nunca_clica_nem_envia(self):  # SC-002
         textos = [v for m in (formulario, login) for v in vars(m).values() if isinstance(v, str) and "=>" in v]
@@ -351,6 +398,13 @@ class TestPreencher(Base):
             self.assertTrue(hasattr(__import__("navegador").Aba, metodo))
         fonte = (RAIZ / "navegador.py").read_text(encoding="utf-8")
         self.assertNotIn("dispatchMouseEvent", fonte)
+        nav = __import__("navegador")
+        self.assertEqual(set(nav.Aba.TECLAS), {"ArrowDown", "Escape", "Tab"})  # nada de Enter
+        aba = nav.Aba.__new__(nav.Aba)
+        aba.sessao = mock.Mock()
+        with self.assertRaises(nav.NavegadorErro):
+            aba.tecla("Enter")
+        aba.sessao.pedir.assert_not_called()
         self.assertNotIn("Enter", re.sub(r'""".*?"""', "", fonte, flags=re.S))
 
 
@@ -385,7 +439,7 @@ class TestLogin(Base):
         self.guardar()
         campos = {"senhas": 1, "usuario": 0, "senha": 1}
         aba = PaginaFalsa(url=self.URL_LOGIN, login_campos=campos)
-        r = login.preencher_login(aba)
+        r = login.preencher_login(aba, self.VAGA)
         self.assertEqual(aba.digitado, [("login:usuario", "pessoa@exemplo.com"), ("login:senha", SENHA)])
         self.assertNotIn(SENHA, json.dumps(r))
         self.assertEqual(aba.teclas, 0)
@@ -393,7 +447,7 @@ class TestLogin(Base):
                     "http://login.gupy.io/candidates/signin", "https://login-gupy.io/x"):
             aba = PaginaFalsa(url=url, login_campos=campos)
             with self.assertRaises(candidatura.CandidaturaErro) as e:
-                login.preencher_login(aba)
+                login.preencher_login(aba, self.VAGA)
             self.assertEqual(aba.digitado, [], url)
             self.assertNotIn(SENHA, str(e.exception))
 
@@ -401,20 +455,20 @@ class TestLogin(Base):
         self.ligar()
         aba = PaginaFalsa(url=self.URL_LOGIN, login_campos={"senhas": 1, "usuario": 0, "senha": 1})
         with self.assertRaisesRegex(candidatura.CandidaturaErro, "nenhuma credencial"):
-            login.preencher_login(aba)
+            login.preencher_login(aba, self.VAGA)
         self.guardar()
         aba = PaginaFalsa(url=self.URL_LOGIN, login_campos={"senhas": 2, "usuario": 0, "senha": -1})
         with self.assertRaises(candidatura.CandidaturaErro):
-            login.preencher_login(aba)
+            login.preencher_login(aba, self.VAGA)
         self.assertEqual(aba.digitado, [])
 
     def test_login_em_duas_etapas(self):  # primeiro só o e-mail, depois só a senha
         self.ligar()
         self.guardar()
         aba = PaginaFalsa(url=self.URL_LOGIN, login_campos={"senhas": 0, "usuario": 0, "senha": -1})
-        self.assertEqual(login.preencher_login(aba)["preenchidos"], ["usuario"])
+        self.assertEqual(login.preencher_login(aba, self.VAGA)["preenchidos"], ["usuario"])
         aba = PaginaFalsa(url=self.URL_LOGIN, login_campos={"senhas": 1, "usuario": -1, "senha": 0})
-        self.assertEqual(login.preencher_login(aba)["preenchidos"], ["senha"])
+        self.assertEqual(login.preencher_login(aba, self.VAGA)["preenchidos"], ["senha"])
 
     def test_erro_do_navegador_nao_vaza_senha(self):
         self.ligar()
@@ -425,7 +479,7 @@ class TestLogin(Base):
             raise RuntimeError(f"falhou ao digitar {texto}")
         aba.digitar = falha
         with self.assertRaises(candidatura.CandidaturaErro) as e:
-            login.preencher_login(aba)
+            login.preencher_login(aba, self.VAGA)
         self.assertNotIn(SENHA, str(e.exception))
         self.assertNotIn("pessoa@exemplo.com", str(e.exception))
 
@@ -495,6 +549,95 @@ class TestPropostas(Base):
         self.assertEqual(candidatura_ia.listar("v1")[0]["nome"], meta["nome"])
 
 
+class TestMemoriaEAuto(Base):
+    """Preencher esta página (decisão de 2026-10-24): preenche o que sabe e pergunta o resto."""
+
+    def setUp(self):
+        super().setUp()
+        from candidatura import auto, memoria
+        self.auto, self.memoria = auto, memoria
+        self.propostas = []
+
+    def pagina(self):
+        campos = campos_exemplo() + [
+            {"chave": "grp:30", "tipo": "multipla", "tipo_html": "checkbox", "rotulo": "Você possui permissão para trabalhar no Brasil?",
+             "valor": "", "opcoes": [{"valor": "0", "texto": "Sim"}, {"valor": "1", "texto": "Não"}]},
+            {"chave": "#mudar", "tipo": "unica", "tipo_html": "radio", "rotulo": "Você aceita se mudar para São Paulo (relocation)?",
+             "valor": "", "opcoes": [{"valor": "0", "texto": "Sim"}, {"valor": "1", "texto": "Não"}]},
+        ]
+        return PaginaFalsa(campos=campos)
+
+    def propor(self, vaga, campos):
+        self.propostas.append([c["rotulo"] for c in campos])
+        respostas = {"Conte sua experiência com SQL": "Escrevo SQL avançado.", "Nível de inglês": "3", "Já trabalhou remoto?": "0"}
+        return {"itens": [{**c, "proposta": respostas.get(c["rotulo"], ""), "conferir": []} for c in campos], "aviso": None, "ia": None}
+
+    def test_memoria(self):
+        m = self.memoria
+        campo = {"rotulo": "1. Você possui permissão para trabalhar no Brasil? *", "tipo": "multipla",
+                 "opcoes": [{"valor": "0", "texto": "Sim"}, {"valor": "1", "texto": "Não"}]}
+        self.assertTrue(m.lembrar(campo, "Sim"))
+        self.assertEqual(m.valor_para({**campo, "rotulo": "Você possui permissão para trabalhar no Brasil?"}), "0")
+        self.assertIsNone(m.valor_para({**campo, "opcoes": [{"valor": "0", "texto": "Talvez"}]}))  # opção que não existe aqui
+        self.assertFalse(m.lembrar({"rotulo": "Qual sua pretensão salarial?", "tipo": "texto"}, "R$ 10 mil"))
+        self.assertFalse(m.lembrar({"rotulo": "Topa relocation para outra cidade?", "tipo": "texto"}, "Sim"))
+        self.assertTrue(m.lembrar({"rotulo": "Possui CNH?", "tipo": "caixa"}, "sim"))
+        self.assertEqual(m.valor_para({"rotulo": "Possui CNH?", "tipo": "caixa"}), "sim")
+        self.assertTrue(m.lembrar({"rotulo": "Link do portfólio", "tipo": "texto"}, "https://exemplo.com/p"))
+        self.assertIsNone(m.valor_para({"rotulo": "Link do portfólio", "tipo": "texto", "limite": 5}))  # não cabe
+        chaves = [x["chave"] for x in m.listar()]
+        self.assertEqual(len(chaves), 3)
+        self.assertTrue(m.apagar(chaves[0]))
+        self.assertEqual(len(m.listar()), 2)
+
+    def test_preenche_o_que_sabe_e_pergunta_o_resto(self):
+        self.memoria.lembrar({"rotulo": "Você possui permissão para trabalhar no Brasil?", "tipo": "multipla"}, "Sim")
+        self.memoria.lembrar({"rotulo": "Você aceita se mudar para São Paulo (relocation)?", "tipo": "unica"}, "Sim")  # não guarda
+        aba = self.pagina()
+        r = self.auto.preencher_pagina(aba, self.VAGA, propor=self.propor)
+        fontes = {p["rotulo"]: p["fonte"] for p in r["preenchidos"]}
+        self.assertEqual(fontes, {"Você possui permissão para trabalhar no Brasil?": "sua resposta anterior",
+                                  "Conte sua experiência com SQL": "seu perfil", "Nível de inglês": "seu perfil",
+                                  "Já trabalhou remoto?": "seu perfil"})
+        self.assertEqual(aba._c("grp:30")["valor"], "0")  # sensível, com a resposta da própria pessoa
+        self.assertEqual(aba._c("#salario")["valor"], "")
+        perguntas = {q["rotulo"]: q for q in r["perguntas"]}
+        self.assertIn("Qual sua pretensão salarial?", perguntas)
+        self.assertFalse(perguntas["Qual sua pretensão salarial?"]["lembrar"])
+        self.assertIn("Você aceita se mudar para São Paulo (relocation)?", perguntas)
+        self.assertIn("Quantos anos de experiência com Power BI?", perguntas)  # a IA não tinha base
+        self.assertNotIn("Nome completo", perguntas)  # já preenchido na página
+        self.assertEqual({j["rotulo"] for j in r["na_janela"]}, {"Anexe seu currículo", "Li e aceito os termos de uso"})
+        enviados = [x for lote in self.propostas for x in lote]
+        for sensivel in ("Qual sua pretensão salarial?", "Você possui permissão para trabalhar no Brasil?",
+                         "Você aceita se mudar para São Paulo (relocation)?", "Nome completo"):
+            self.assertNotIn(sensivel, enviados)  # nada disso vai à IA
+        self.assertEqual(aba.teclas, 2)  # a caixa "Sim" da permissão e o radio de remoto: nenhum botão
+
+    def test_responder_preenche_e_guarda(self):
+        aba = self.pagina()
+        a = formulario.ler(aba)["assinatura"]
+        r = self.auto.responder(aba, self.VAGA, a, [{"chave": "#salario", "valor": "R$ 9 mil"}, {"chave": "grp:30", "valor": "0"},
+                                                    {"chave": "#termos", "valor": "sim"}, {"chave": "#cv", "valor": "x"}])
+        self.assertEqual({p["chave"] for p in r["preenchidos"]}, {"#salario", "grp:30"})
+        self.assertEqual(aba._c("#termos")["valor"], "nao")  # aceite de termos fica na janela
+        self.assertEqual(r["lembradas"], 1)  # salário não fica guardado
+        self.assertEqual([x["pergunta"] for x in self.memoria.listar()], ["Você possui permissão para trabalhar no Brasil?"])
+        aba = self.pagina()
+        r = self.auto.responder(aba, self.VAGA, formulario.ler(aba)["assinatura"], [{"chave": "#anos", "valor": "4"}], lembrar=False)
+        self.assertEqual((r["lembradas"], len(self.memoria.listar())), (0, 1))
+
+    def test_ia_nunca_preenche_sensivel(self):
+        aba = self.pagina()
+        r = formulario.preencher(aba, formulario.ler(aba)["assinatura"], [{"chave": "#salario", "valor": "R$ 1"}], self.VAGA)
+        self.assertEqual((r["preenchidos"], aba._c("#salario")["valor"]), ([], ""))
+
+    def test_desligada(self):
+        with self.assertRaises(candidatura.CandidaturaErro):
+            self.auto.preencher_pagina(self.pagina(), self.DESLIGADA, propor=self.propor)
+        self.assertEqual(self.propostas, [])
+
+
 class TestRotas(Base):
     def setUp(self):
         super().setUp()
@@ -522,10 +665,12 @@ class TestRotas(Base):
 
     def test_fluxo(self):
         st, j, _ = self.pedir("GET", "/api/candidatura")
-        self.assertEqual((st, j["ligado"]), (200, False))
-        self.assertEqual(self.pedir("POST", "/api/candidatura/vaga/v1/ler", {})[0], 409)  # desligado
-        self.assertEqual(self.pedir("PUT", "/api/candidatura", {"ligado": True})[0], 409)  # sem aceitar o aviso
-        self.assertTrue(self.pedir("PUT", "/api/candidatura", {"ligado": True, "aceitar_aviso": True})[1]["ligado"])
+        self.assertEqual((st, "ligado" in j, bool(j["aviso"])), (200, False, True))  # sem chave geral
+        self.assertEqual(self.pedir("POST", "/api/candidatura/vaga/v1/ler", {})[0], 409)  # desligada na vaga
+        self.assertEqual(self.pedir("PUT", "/api/candidatura/vaga/v1", {"ligada": True})[0], 409)  # sem o aviso
+        self.assertEqual(self.pedir("PUT", "/api/candidatura/vaga/zz", {"ligada": True, "aceitar_aviso": True})[0], 404)
+        st, j, _ = self.pedir("PUT", "/api/candidatura/vaga/v1", {"ligada": True, "aceitar_aviso": True})
+        self.assertEqual((st, j["vaga"]["candidatura_assistida"]["ligada"]), (200, True))
         st, j, bruto = self.pedir("PUT", "/api/candidatura/credenciais/gupy", {"usuario": "pessoa@exemplo.com", "senha": SENHA})
         self.assertEqual(st, 200)
         self.assertNotIn(SENHA, bruto)
@@ -533,7 +678,7 @@ class TestRotas(Base):
 
         aba = PaginaFalsa(url="https://login.gupy.io/candidates/signin", login_campos={"senhas": 1, "usuario": 0, "senha": 1})
         with mock.patch.object(self.nav, "aba_atual", return_value=aba):
-            st, j, bruto = self.pedir("POST", "/api/candidatura/login", {})
+            st, j, bruto = self.pedir("POST", "/api/candidatura/vaga/v1/login", {})
         self.assertEqual(st, 200, bruto)
         self.assertNotIn(SENHA, bruto)
         self.assertIn(("login:senha", SENHA), aba.digitado)
@@ -556,9 +701,19 @@ class TestRotas(Base):
         self.assertEqual(len(j["preenchidos"]), 2)
         self.assertTrue(j["documento"])
         self.assertEqual(aba._c("n:ingles")["valor"], "3")
+        st, j, _ = self.pedir("GET", "/api/candidatura")
+        self.assertEqual(sorted(m["pergunta"] for m in j["memoria"]), ["Conte sua experiência com SQL", "Nível de inglês"])
+        self.assertEqual(self.pedir("DELETE", "/api/candidatura/memoria/" + j["memoria"][0]["chave"].replace(" ", "%20"), {})[0], 200)
+        self.assertEqual(self.pedir("DELETE", "/api/candidatura/memoria/nao%20existe", {})[0], 404)
+        aba = PaginaFalsa()
+        with mock.patch.object(self.nav, "aba_atual", return_value=aba),                 mock.patch.object(ia, "disponivel", return_value=False),                 mock.patch.object(curriculo_ia, "perfil_texto", return_value=PERFIL):
+            st, j, bruto = self.pedir("POST", "/api/candidatura/vaga/v1/auto", {})
+        self.assertEqual(st, 200, bruto)
+        self.assertIn("Sem IA", j["aviso_ia"])
+        self.assertTrue(any(q["rotulo"] == "Qual sua pretensão salarial?" for q in j["perguntas"]))
 
     def test_dominio_nao_liberado_e_rede(self):
-        self.pedir("PUT", "/api/candidatura", {"ligado": True, "aceitar_aviso": True})
+        self.pedir("PUT", "/api/candidatura/vaga/v1", {"ligada": True, "aceitar_aviso": True})
         aba = PaginaFalsa(url="https://carreiras.empresa.com.br/vaga")
         with mock.patch.object(self.nav, "aba_atual", return_value=aba), \
                 mock.patch.object(candidatura_ia, "_ia_responder") as chamada:
@@ -570,7 +725,8 @@ class TestRotas(Base):
         self.assertEqual(self.pedir("POST", "/api/candidatura/dominios", {"dominio": "br.indeed.com", "acao": "liberar"})[0], 409)
         with mock.patch.object(self.servidor.Handler, "_local", return_value=False):
             self.assertEqual(self.pedir("GET", "/api/candidatura")[0], 403)
-            self.assertEqual(self.pedir("POST", "/api/candidatura/login", {})[0], 403)
+            self.assertEqual(self.pedir("POST", "/api/candidatura/vaga/v1/login", {})[0], 403)
+            self.assertEqual(self.pedir("PUT", "/api/candidatura/vaga/v1", {"ligada": False})[0], 403)
 
 
 if __name__ == "__main__":

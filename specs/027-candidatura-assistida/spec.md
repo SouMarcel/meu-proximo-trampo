@@ -42,6 +42,24 @@ clica** em Entrar, Continuar e Enviar é sempre a pessoa. Isso exige uma emenda 
 - Q: Como fica o login? → A: Login e senha da pessoa no `.env`. A ferramenta digita na tela de login do portal, e
   quem clica em "Entrar" é a pessoa. Isso muda a decisão da spec 018 (2026-10-18), que tinha recusado guardar a senha.
 - Q: O LinkedIn entra? → A: Não. Continua bloqueado, como na spec 018.
+- Q (2026-10-24): A candidatura é por vaga; o recurso deve agir assim, não de modo geral? → A: Sim, ligar vaga a
+  vaga. Cada vaga tem a chave "usar a candidatura assistida nesta vaga", com o aviso de risco a cada vez; só as vagas
+  ligadas ganham o botão no card e podem ser preenchidas. A chave geral saiu; em Contas conectadas ficam os logins e
+  os sites liberados.
+- Q (2026-10-24, primeiro teste real na Gupy): a IA deve pedir a resposta de tudo? → A: Não. Ela preenche de acordo
+  com o que sabe da pessoa (respostas que ela já deu e o perfil) e, em caso de dúvida, pergunta. As respostas da
+  pessoa ficam guardadas e são reaproveitadas, salvo salário e relocação, perguntados a cada vaga (constituição 5.0.0).
+  No mesmo teste: na Gupy a pergunta fica num `<h3>` acima das opções, cada caixa tem um `name` próprio
+  (`checkbox-<id>-0/1`) e a pergunta de um campo de texto pode estar só no `name`; a leitura passou a tomar como
+  pergunta o texto entre o campo anterior e o atual, e "permissão para trabalhar" entrou entre as sensíveis.
+- Q (2026-10-27, vaga do JazzHR, `applytojob.com`): "O portal pediu uma verificação", mas o captcha era só o do envio,
+  no fim do formulário → A: o captcha que só protege o envio não impede o preenchimento. A ferramenta preenche, não toca
+  no captcha e avisa; a pessoa resolve e envia (constituição 5.0.1).
+- Q (2026-10-24, vaga do LinkedIn que leva ao Greenhouse): "O portal pediu uma verificação" sem captcha na tela →
+  A: era o reCAPTCHA invisível do Greenhouse, um falso alarme. Agora só param a ferramenta captcha visível e frases de
+  verificação. No mesmo teste: as perguntas Sim/Não e o país do Greenhouse são listas com busca (react-select), lidas e
+  escolhidas pelo teclado; "legal right to live and work" entrou entre as sensíveis; com mais de uma aba na janela,
+  vale a visível.
 - Pesquisa (2026-10-23, research.md §1): os termos do Indeed e do Nerdin proíbem automação na candidatura. Os dois
   ficam bloqueados como o LinkedIn, sem opção de liberar (princípio VI: seguir os termos de cada fonte). Os termos
   de candidato da Gupy não foram encontrados; a Gupy fica na lista com essa pendência anotada.
@@ -152,28 +170,31 @@ como já faz na spec 018. Também é a parte de mais risco, por envolver a senha
 
 ---
 
-### User Story 4 - Ligar o recurso (Priority: P2)
+### User Story 4 - Ligar o recurso numa vaga (Priority: P2)
 
-O recurso vem desligado. Na configuração, a pessoa liga "Candidatura assistida". Na primeira vez, aparece um aviso:
+O recurso vem desligado em toda vaga. No detalhe de uma vaga, aba Candidatura, a pessoa marca "usar a candidatura
+assistida nesta vaga" e clica em "Ligar nesta vaga". Antes, aparece o aviso:
 - **o portal pode restringir a conta** se perceber automação;
 - **a senha fica em texto no `.env`** deste computador, fora do Git, mas legível por programas da máquina;
 - **o envio é sempre dela.**
 
-Ela confirma, e o botão "Candidatar com ajuda" passa a aparecer nas vagas em "seguir".
+Ela confirma, e só essa vaga ganha os botões no detalhe e o "Candidatar com ajuda" no card (em Salva). Ela pode
+desligar a qualquer momento ("Desligar nesta vaga"); religar pede o aviso de novo.
 
 **Why this priority**: garante que ninguém da ferramenta pública recebe o recurso sem escolher.
 
 **Independent Test**:
-- Com o recurso desligado, o botão não aparece e as rotas recusam.
-- Ao ligar, o aviso aparece uma única vez.
+- Numa vaga desligada, o botão não aparece e as rotas recusam.
+- Ligar uma vaga não liga as outras.
 
 **Acceptance Scenarios**:
 
-1. **Given** o recurso desligado, **When** a pessoa abre uma vaga em "seguir", **Then** não há "Candidatar com
-   ajuda".
-2. **Given** o recurso desligado, **When** algo chama a leitura ou o preenchimento, **Then** a ferramenta recusa.
-3. **Given** a pessoa liga o recurso pela primeira vez, **When** confirma o aviso, **Then** o recurso fica ligado e o
-   aviso não volta.
+1. **Given** uma vaga sem a chave ligada, **When** a pessoa olha o card, **Then** não há "Candidatar com ajuda"; no
+   detalhe, aparece só a chave com o aviso.
+2. **Given** uma vaga desligada, **When** algo chama a leitura, o login ou o preenchimento, **Then** a ferramenta
+   recusa.
+3. **Given** a pessoa marca o aviso e clica em "Ligar nesta vaga", **When** volta ao quadro, **Then** só essa vaga
+   tem o botão no card.
 
 ### Edge Cases
 
@@ -214,10 +235,11 @@ Ela confirma, e o botão "Candidatar com ajuda" passa a aparecer nas vagas em "s
 - **FR-004**: A ferramenta MUST NOT preencher campos de pergunta sensível (autorização de trabalho, visto,
   cidadania, salário ou pretensão, deficiência, relocação, diversidade), campos de arquivo nem campos de senha fora
   do login.
-- **FR-005**: Diante de captcha, verificação em duas etapas, código por e-mail ou pedido de nova verificação, a
-  ferramenta MUST parar e pedir que a pessoa resolva na janela, sem tentar contornar.
-- **FR-006**: O recurso MUST vir desligado e só funcionar depois que a pessoa ligar na configuração e confirmar o
-  aviso de risco.
+- **FR-005**: Diante de captcha que impede chegar ao formulário, verificação em duas etapas, código por e-mail ou pedido
+  de nova verificação, a ferramenta MUST parar e pedir que a pessoa resolva na janela, sem tentar contornar. O captcha
+  que só protege o envio não impede o preenchimento: a ferramenta preenche, não toca nele e avisa (2026-10-27).
+- **FR-006**: O recurso MUST vir desligado em toda vaga e só funcionar numa vaga depois que a pessoa o ligar nela e
+  confirmar o aviso de risco.
 
 **Perguntas e respostas**
 
@@ -269,7 +291,7 @@ Ela confirma, e o botão "Candidatar com ajuda" passa a aparecer nas vagas em "s
 
 **Fluxo**
 
-- **FR-025**: Numa vaga em "seguir", com o recurso ligado, MUST existir a ação "Candidatar com ajuda": um botão no
+- **FR-025**: Numa vaga em "seguir", com o recurso ligado nela, MUST existir a ação "Candidatar com ajuda": um botão no
   card do quadro enquanto a vaga está em Salva (pedido do usuário em 2026-10-24) e o painel na aba Candidatura do
   detalhe. Ela abre o
   endereço da vaga na janela da ferramenta, a mesma da spec 018, com perfil próprio e nunca o navegador do dia a dia.

@@ -239,6 +239,17 @@ class Aba:
             self.sessao.pedir("Input.dispatchKeyEvent", type=tipo, key=" ", code="Space", windowsVirtualKeyCode=32,
                               nativeVirtualKeyCode=32, **({"text": " "} if tipo == "keyDown" else {}))
 
+    TECLAS = {"ArrowDown": 40, "Escape": 27, "Tab": 9}  # listas com busca: abrir, fechar, escolher; a de envio não existe
+
+    def tecla(self, nome: str) -> None:
+        """Uma tecla de navegação no elemento focado (lista com busca, ex.: react-select). Só as de TECLAS: a tecla
+        de confirmar poderia enviar o formulário e não existe aqui."""
+        if nome not in self.TECLAS:
+            raise NavegadorErro(f"tecla não permitida: {nome}")
+        for tipo in ("rawKeyDown", "keyUp"):
+            self.sessao.pedir("Input.dispatchKeyEvent", type=tipo, key=nome, code=nome,
+                              windowsVirtualKeyCode=self.TECLAS[nome], nativeVirtualKeyCode=self.TECLAS[nome])
+
     def esperar_carregar(self, tempo: float = TEMPO_PEDIDO, calma: float = 1.5) -> None:
         """Espera o documento carregar e mais um pouco para a página montar a lista (páginas feitas em JavaScript)."""
         limite = time.monotonic() + tempo
@@ -327,7 +338,16 @@ def aba_atual() -> Aba:
                and not str(a.get("url", "")).startswith(("devtools:", "chrome-extension:", "edge:", "chrome:"))]
     if not paginas:
         raise NavegadorErro("a janela da ferramenta não tem nenhuma página aberta")
-    return Aba(paginas[0])
+    if len(paginas) > 1:  # ex.: o LinkedIn abriu a candidatura numa aba nova: vale a aba que a pessoa está vendo
+        for info in paginas:
+            aba = Aba(info)
+            try:
+                if aba.avaliar("document.visibilityState === 'visible'"):
+                    return aba
+            except NavegadorErro:
+                pass
+            aba.fechar()
+    return Aba(paginas[0])  # janela minimizada: a lista vem da aba usada por último
 
 
 def fechar() -> None:

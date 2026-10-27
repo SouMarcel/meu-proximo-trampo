@@ -73,6 +73,7 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---------- utilidades
     def _enviar(self, status: int, corpo: bytes, tipo: str):
+        self._descartar_corpo()  # resposta antes de ler o pedido (ex.: 403): sem isso, o Windows às vezes corta a conexão
         self.send_response(status)
         self.send_header("Content-Type", tipo)
         self.send_header("Content-Length", str(len(corpo)))
@@ -117,10 +118,22 @@ class Handler(BaseHTTPRequestHandler):
         origem = self.headers.get("Origin")
         return origem is None or origem == f"http://{self.headers.get('Host')}" or self._origem_local() is not None
 
+    def _descartar_corpo(self) -> None:
+        if getattr(self, "_corpo_lido", False):
+            return
+        self._corpo_lido = True
+        try:
+            tamanho = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return
+        if 0 < tamanho <= LIMITE_MATERIAL:
+            self.rfile.read(tamanho)
+
     def _corpo(self, limite: int = LIMITE_CORPO) -> dict:
         tamanho = int(self.headers.get("Content-Length") or 0)
         if tamanho > limite:
             raise ValueError("pedido grande demais")
+        self._corpo_lido = True
         dados = json.loads(self.rfile.read(tamanho) or b"{}")
         if not isinstance(dados, dict):
             raise ValueError("esperava um objeto JSON")
@@ -196,8 +209,8 @@ class Handler(BaseHTTPRequestHandler):
         return self._erro(404, "rota não encontrada")
 
     def _candidatura(self, metodo: str, caminho: str):
-        """Candidatura assistida (spec 027): só deste computador e só no clique. Preenche campos na janela da
-        ferramenta; nunca clica em botão nem envia. A senha guardada nunca sai nas respostas."""
+        """Candidatura assistida (spec 027): só deste computador, só no clique e só nas vagas em que a pessoa ligou.
+        Preenche campos na janela da ferramenta; nunca clica em botão nem envia. A senha guardada nunca sai."""
         if not self._local():
             return self._erro(403, SO_LOCAL_PERFIL)
         import candidatura
@@ -206,13 +219,17 @@ class Handler(BaseHTTPRequestHandler):
         partes = [unquote(x) for x in caminho.strip("/").split("/")[2:]]  # api / candidatura / ...
         try:
             if not partes:
-                if metodo == "PUT":
-                    corpo = self._corpo()
-                    candidatura.ligar(corpo.get("ligado") is True, aceitar_aviso=corpo.get("aceitar_aviso") is True)
-                elif metodo != "GET":
+                if metodo != "GET":
                     return self._erro(405, "método não permitido")
-                return self._json(200, {**candidatura.estado(), "aviso": candidatura.AVISO, "navegador": bool(nav.achar()),
-                                        "dominios": dominios.para_pagina(), "credenciais": login.para_pagina()})
+                from candidatura import memoria
+                return self._json(200, {"aviso": candidatura.AVISO, "navegador": bool(nav.achar()),
+                                        "dominios": dominios.para_pagina(), "credenciais": login.para_pagina(),
+                                        "memoria": memoria.listar()})
+            if len(partes) == 2 and partes[0] == "memoria" and metodo == "DELETE":
+                from candidatura import memoria
+                if not memoria.apagar(partes[1]):
+                    return self._erro(404, "resposta não encontrada")
+                return self._json(200, {"memoria": memoria.listar()})
             if partes == ["dominios"] and metodo == "POST":
                 corpo = self._corpo()
                 acao = dominios.liberar if corpo.get("acao") == "liberar" else dominios.revogar if corpo.get("acao") == "revogar" else None
@@ -227,18 +244,22 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     login.apagar(partes[1])
                 return self._json(200, {"credenciais": login.para_pagina()})
-            if partes == ["login"] and metodo == "POST":
-                aba = nav.aba_atual()
-                try:
-                    return self._json(200, login.preencher_login(aba))
-                finally:
-                    aba.fechar()
+            if len(partes) == 2 and partes[0] == "vaga" and metodo == "PUT" and banco.ID_VALIDO.match(partes[1]):
+                corpo = self._corpo()  # a chave da vaga: ligar exige o aviso aceito, a cada vaga
+                vaga = candidatura.ligar_vaga(partes[1], corpo.get("ligada") is True, aceitar_aviso=corpo.get("aceitar_aviso") is True)
+                return self._json(200, {"vaga": banco.com_kit(vaga)})
             if len(partes) == 3 and partes[0] == "vaga" and metodo == "POST" and banco.ID_VALIDO.match(partes[1]):
                 vaga = banco.obter(partes[1])
                 if vaga is None:
                     return self._erro(404, "vaga não encontrada")
-                candidatura.exigir_ligado()
+                candidatura.exigir_ligada(vaga)
                 acao = partes[2]
+                if acao == "login":
+                    aba = nav.aba_atual()
+                    try:
+                        return self._json(200, login.preencher_login(aba, vaga))
+                    finally:
+                        aba.fechar()
                 if acao == "abrir":
                     url = vaga.get("url_candidatura") or vaga.get("url") or ""
                     if not url.startswith("https://"):
@@ -247,13 +268,18 @@ class Handler(BaseHTTPRequestHandler):
                     aba.frente()
                     aba.fechar()
                     return self._json(200, {"ok": True, "url": url, "dominio": dominios.situacao(url)})
-                if acao in ("ler", "preencher"):
+                if acao in ("ler", "auto", "preencher"):
+                    from candidatura import auto
+                    import candidatura_ia
                     corpo = self._corpo()
                     aba = nav.aba_atual()
                     try:
-                        if acao == "preencher":
-                            r = formulario.preencher(aba, str(corpo.get("assinatura") or ""), corpo.get("respostas"))
-                            import candidatura_ia
+                        if acao in ("auto", "preencher"):
+                            if acao == "auto":  # preenche o que sabe (memória e perfil) e devolve as perguntas para a pessoa
+                                r = auto.preencher_pagina(aba, vaga)
+                            else:  # as respostas que a pessoa deu no painel
+                                r = auto.responder(aba, vaga, str(corpo.get("assinatura") or ""), corpo.get("respostas"),
+                                                   lembrar=corpo.get("lembrar") is not False)
                             meta = candidatura_ia.gravar_preenchidas(vaga, r["preenchidos"]) if r["preenchidos"] else {}
                             return self._json(200, {**r, "documento": meta.get("nome")})
                         pagina = formulario.ler(aba)
@@ -262,7 +288,6 @@ class Handler(BaseHTTPRequestHandler):
                     resposta = {"pagina": {k: pagina[k] for k in ("url", "dominio", "etapa", "aviso", "assinatura")},
                                 "itens": [], "aviso_ia": None, "ia": None}
                     if pagina["etapa"] == "perguntas" and pagina["dominio"]["permitido"]:
-                        import candidatura_ia
                         proposta = candidatura_ia.propor_respostas(vaga, pagina["campos"])
                         resposta.update(itens=proposta["itens"], aviso_ia=proposta["aviso"], ia=proposta["ia"])
                     return self._json(200, resposta)
