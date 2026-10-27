@@ -29,6 +29,30 @@ export interface EstadoCandidatura {
   credenciais: Credencial[]
   /** As respostas que a pessoa já deu, reaproveitadas nas próximas vagas (salvo salário e relocação). */
   memoria: { chave: string; pergunta: string; resposta: string; categoria: string | null; em: string }[]
+  /** Os dados de contato salvos (spec 033): preenchem os campos de contato em qualquer formulário, sem IA. */
+  contato?: DadosContato
+  campos_contato?: string[]
+}
+
+export interface DadosContato {
+  nome?: string
+  sobrenome?: string
+  email?: string
+  telefone?: string
+  cidade?: string
+  estado?: string
+  pais?: string
+  linkedin?: string
+  portfolio?: string
+  endereco?: string
+  cep?: string
+}
+
+/** Proposta tirada do currículo base, das respostas já dadas e dos filtros da busca; não é gravada. */
+export interface PropostaContato {
+  dados: DadosContato
+  fontes: Record<string, string>
+  avisos: string[]
 }
 
 export interface Situacao {
@@ -94,6 +118,11 @@ const p = (s: string) => encodeURIComponent(s)
 const LONGO = { timeoutMs: 10 * 60 * 1000 } // a proposta da IA pode demorar
 
 export const estado = () => pedir<EstadoCandidatura>("GET", "/api/candidatura")
+
+export const propostaContato = () => pedir<PropostaContato>("POST", "/api/candidatura/contato/proposta", {})
+export const salvarContato = (dados: DadosContato) =>
+  pedir<{ contato: DadosContato }>("PUT", "/api/candidatura/contato", { dados })
+export const apagarContato = () => pedir<{ contato: DadosContato }>("DELETE", "/api/candidatura/contato", {})
 /** A chave de cada vaga: ligar exige o aviso de risco aceito, a cada vaga. */
 export const ligarVaga = (vagaId: string, ligada: boolean, aceitar_aviso = false) =>
   pedir<{ vaga: Vaga }>("PUT", `/api/candidatura/vaga/${p(vagaId)}`, { ligada, aceitar_aviso })

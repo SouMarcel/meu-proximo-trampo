@@ -11,6 +11,7 @@ import { mensagemDeErro } from "../../services/api"
 import { useFerramenta } from "../../contexto/Ferramenta"
 import { BTN_MINI } from "../curriculo/Curriculos"
 import { recarregarCandidatura } from "../../hooks/useCandidatura"
+import DadosContato from "./DadosContato"
 
 const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
 const CAMPO =
@@ -48,14 +49,16 @@ export default function ConfigCandidatura({ onAviso }: { onAviso: (m: string, t?
   return (
     <section className="space-y-2">
       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-        <Wand2 className="w-4 h-4" /> Candidatura assistida: logins e sites
+        <Wand2 className="w-4 h-4" /> Candidatura assistida: seus dados, logins e sites
       </h4>
       <p className={DICA}>
-        A candidatura assistida é ligada vaga a vaga, no detalhe da vaga (aba Candidatura). Aqui ficam o login guardado de cada
+        A candidatura assistida é ligada vaga a vaga, no detalhe da vaga (aba Candidatura). Aqui ficam os seus dados de contato, o login guardado de cada
         portal e os sites que você liberou. Quem clica em Continuar e Enviar é sempre você.
       </p>
 
       <>
+          <DadosContato inicial={e.contato || {}} podeGravar={podeGravar} onSalvo={carregar} onAviso={onAviso} />
+
           <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
             <b className="text-xs">Login guardado (opcional)</b>
             <p className={DICA}>
