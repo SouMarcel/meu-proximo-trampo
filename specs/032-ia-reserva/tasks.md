@@ -14,7 +14,7 @@ não regressão.
 
 ## Phase 1: Setup
 
-- [ ] T001 Base de testes em `tests/test_ia_reserva.py`:
+- [X] T001 Base de testes em `tests/test_ia_reserva.py`:
   - provedor simulado por URL (resposta OpenAI-like `{"choices": [{"message": {"content": "..."}}]}` ou erro HTTP
     com código);
   - `segredos.ler` com chaves fictícias por variável;
@@ -23,7 +23,7 @@ não regressão.
 
 ## Phase 2: Foundational (bloqueia as histórias)
 
-- [ ] T002 `ia.py`, validação e leitura:
+- [X] T002 `ia.py`, validação e leitura:
   - `validar_escolha` aceita `reservas` (lista, **até 3**). Cada item passa pela mesma validação da principal e
     não pode ser "nenhum" ("Sem IA não pode ser reserva"). Não aceita repetida: mesmo provedor, modelo efetivo e
     `url_base` da principal ou de outra ("reserva repetida"). Mais de 3 → "no máximo 3 reservas";
@@ -40,7 +40,7 @@ não regressão.
 
 **Independent Test**: principal com 503 e reserva respondendo; principal funcionando, sem chamar a reserva.
 
-- [ ] T003 [US1] `ia.py`:
+- [X] T003 [US1] `ia.py`:
   - a chamada de uma IA sai do `responder` atual para `_responder_uma(escolha, pedido, sistema, tempo, chave)`, sem
     mudar o comportamento;
   - `responder(...)` com `escolha` explícita chama `_responder_uma`;
@@ -53,11 +53,11 @@ não regressão.
     devolve `"{nome principal} fora: {motivo}. Respondeu o {nome} ({modelo})."` quando a resposta veio de uma reserva,
     senão `None`; `marca()` devolve `{provedor, modelo}` de quem respondeu (+ `reserva: True` e `aviso`) ou a escolha
     efetiva sem chamada na thread.
-- [ ] T004 [US1] Chamadores com `ia.marca()`:
+- [X] T004 [US1] Chamadores com `ia.marca()`:
   - `candidatura_ia._marca_ia`, `analise_perfil._marca_ia` e a marca em `curriculo_ia` (`escolha = ia.escolha_efetiva()`
     no meta) passam a usar `ia.marca()`;
   - `candidatura_ia.propor_respostas` devolve `"aviso": ia.aviso_reserva()` quando a resposta veio de uma reserva.
-- [ ] T005 [P] [US1] Testes:
+- [X] T005 [P] [US1] Testes:
   - principal 503 e reserva ok: texto da reserva, `ultima()` com a falha, `aviso_reserva()` com o motivo,
     `marca()` da reserva (SC-001);
   - principal ok: uma chamada só e `aviso_reserva()` `None` (SC-002);
@@ -75,16 +75,16 @@ não regressão.
 
 **Independent Test**: todas falhando; situação gravada; alerta da principal no estado e no `/api/versao`.
 
-- [ ] T006 [US2] `ia.py`:
+- [X] T006 [US2] `ia.py`:
   - `ARQ_ESTADO = .cache/ia-estado.json`;
   - `_registrar(escolha, ok, motivo)` grava `{"provedor|modelo": {ok, em, motivo}}` a cada tentativa, inclusive no
     `testar`, sem chave e sem texto do pedido. `OSError` é ignorado;
   - `situacao()` lê o arquivo;
   - `estado_para_pagina` traz `sequencia: [{provedor, nome, modelo, gratuito, chave_ok, principal, situacao}]` e
     `alerta: {nome, modelo, motivo, em}`, este quando a situação da principal é falha.
-- [ ] T007 [US2] `dash/servidor.py`: `/api/versao` traz `ia_alerta` (o mesmo `alerta`). Conferir que o erro da análise
+- [X] T007 [US2] `dash/servidor.py`: `/api/versao` traz `ia_alerta` (o mesmo `alerta`). Conferir que o erro da análise
   automática (`analise.FILA.erro()`) já traz a mensagem com todas as IAs.
-- [ ] T008 [P] [US2] Testes:
+- [X] T008 [P] [US2] Testes:
   - todas falhando: a mensagem lista cada uma, com a chave mascarada (SC-003);
   - uma IA só: a mensagem de hoje;
   - situação gravada no sucesso e na falha, sem chave;
@@ -97,14 +97,14 @@ não regressão.
 
 **Independent Test**: `PUT /api/ia` com reservas; estado com a sequência; `testar` grava a situação.
 
-- [ ] T009 [US3] `dash/servidor.py`: `PUT /api/ia` repassa `reservas` ao `salvar_escolha` (400 com a regra); `POST
+- [X] T009 [US3] `dash/servidor.py`: `PUT /api/ia` repassa `reservas` ao `salvar_escolha` (400 com a regra); `POST
   /api/ia/testar` continua com uma IA e passa a gravar a situação (via `ia.testar`).
-- [ ] T010 [P] [US3] Testes:
+- [X] T010 [P] [US3] Testes:
   - `PUT /api/ia` com 1 reserva → `GET /api/ia` traz a sequência com `chave_ok`;
   - 4 reservas e reserva repetida dão 400;
   - nenhuma chave no `config.json`;
   - PUT sem `reservas` mantém a lista.
-- [ ] T011 [US3] Front, na `frontend-react`:
+- [X] T011 [US3] Front, na `frontend-react`:
   - **worktree pública** saída de `origin/frontend-react`, branch `front-032-ia-reserva`:
     - `src/services/api/ia.ts`: tipos `reservas`, `sequencia`, `alerta`;
     - `AISettingsModal.tsx`: lista de reservas (adicionar até 3, remover, subir e descer, provedor, modelo e chave como
@@ -118,7 +118,7 @@ não regressão.
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T012 [P] `dash/API.md` §3.5 (reservas, sequência, alerta, `ia_alerta`) e a seção da IA no README (reserva e aviso).
+- [X] T012 [P] `dash/API.md` §3.5 (reservas, sequência, alerta, `ia_alerta`) e a seção da IA no README (reserva e aviso).
 - [ ] T013 Verificação:
   - `PY -m unittest discover -s tests` inteiro;
   - na branch pessoal de teste: configurar Gemini (`gemini-3.8-flash`) como principal e OpenRouter (`openrouter/free`)

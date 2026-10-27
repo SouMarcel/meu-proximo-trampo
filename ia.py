@@ -1,8 +1,13 @@
 """IA da ferramenta: a porta única das chamadas diretas (pedido → resposta, sem conversa).
 
-  escolha_efetiva(cfg=None)   {"provedor", "modelo", "url_base"} que a ferramenta usa de fato
+  escolha_efetiva(cfg=None)   {"provedor", "modelo", "url_base"} da IA principal
+  sequencia(cfg=None)         a principal e as reservas, na ordem (spec 032)
   disponivel(cfg=None)        há IA ligada e pronta (chave cadastrada; no Claude Code, o comando)
-  responder(pedido, ...)      texto da resposta; levanta IAErro com motivo legível e sem chave
+  responder(pedido, ...)      texto da resposta; sem escolha explícita, passa para a próxima reserva quando a IA em uso
+                              falha; levanta IAErro com motivo legível e sem chave
+  ultima() / aviso_reserva() / marca()   quem respondeu na última chamada desta thread, o aviso quando foi uma reserva
+                              e a marca para os documentos
+  situacao()                  o último sucesso ou falha de cada IA (.cache/ia-estado.json)
   testar(escolha, chave)      (ok, mensagem) com uma chamada mínima
   validar_escolha(dados)      confere provedor, modelo e endereço
   salvar_escolha(dados)       grava "ia" no config.json (nunca a chave)
@@ -21,8 +26,10 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 import segredos
@@ -33,6 +40,10 @@ TEMPO_TESTE_CLAUDE = 30
 MAX_TOKENS_ANTHROPIC = 16000
 LIMITE_MODELO = 120
 PEDIDO_TESTE = "Responda apenas: ok"
+MAX_RESERVAS = 3  # IAs de reserva, em ordem, depois da principal (spec 032)
+ARQ_ESTADO = RAIZ / ".cache" / "ia-estado.json"  # último sucesso ou falha de cada IA (fora do Git)
+_local = threading.local()  # quem respondeu na última chamada, por thread (o servidor atende em várias)
+_trava_estado = threading.Lock()
 
 
 class IAErro(Exception):
@@ -131,7 +142,7 @@ def disponivel(cfg: dict | None = None) -> bool:
     return escolha["provedor"] == "compativel" or bool(segredos.ler(prov["variavel"]))
 
 
-def validar_escolha(dados) -> dict:
+def _validar_uma(dados) -> dict:
     if not isinstance(dados, dict):
         raise ValueError("dados inválidos")
     provedor = str(dados.get("provedor") or "")
@@ -151,13 +162,77 @@ def validar_escolha(dados) -> dict:
     return {"provedor": provedor, "modelo": modelo, "url_base": url}
 
 
+def _identidade(escolha: dict) -> tuple:
+    return (escolha.get("provedor"), modelo_efetivo(escolha).strip().lower(), str(escolha.get("url_base") or "").lower())
+
+
+def validar_escolha(dados) -> dict:
+    """A principal e, se vierem, as reservas (até MAX_RESERVAS, sem repetir e sem "Sem IA"). Sem a chave "reservas",
+    o resultado também não a traz (quem grava mantém a lista que já existe)."""
+    escolha = _validar_uma(dados)
+    if dados.get("reservas") is None:
+        return escolha
+    brutas = dados["reservas"]
+    if not isinstance(brutas, list):
+        raise ValueError("reservas: esperava uma lista")
+    if len(brutas) > MAX_RESERVAS:
+        raise ValueError(f"no máximo {MAX_RESERVAS} reservas")
+    if brutas and escolha["provedor"] == "nenhum":
+        raise ValueError("com Sem IA não há reservas: escolha antes a IA principal")
+    vistas, reservas = {_identidade(escolha)}, []
+    for bruta in brutas:
+        reserva = _validar_uma(bruta)
+        if reserva["provedor"] == "nenhum":
+            raise ValueError("Sem IA não pode ser reserva")
+        if _identidade(reserva) in vistas:
+            nome = PROVEDORES[reserva["provedor"]]["nome"]
+            raise ValueError(f"reserva repetida: {nome} · {modelo_efetivo(reserva) or 'modelo padrão'}")
+        vistas.add(_identidade(reserva))
+        reservas.append(reserva)
+    escolha["reservas"] = reservas
+    return escolha
+
+
+def _reservas_gravadas(cfg: dict) -> list[dict]:
+    """As reservas do config.json que ainda são válidas (um item estragado fica de fora)."""
+    ia = cfg.get("ia") if isinstance(cfg.get("ia"), dict) else {}
+    saida = []
+    for bruta in ia.get("reservas") or [] if isinstance(ia.get("reservas"), list) else []:
+        try:
+            reserva = _validar_uma(bruta)
+        except ValueError:
+            continue
+        if reserva["provedor"] != "nenhum":
+            saida.append(reserva)
+    return saida[:MAX_RESERVAS]
+
+
+def sequencia(cfg: dict | None = None) -> list[dict]:
+    """A principal e as reservas, na ordem; vazia com Sem IA. Reserva igual à principal ou repetida fica de fora."""
+    cfg = _ler_config() if cfg is None else cfg
+    principal = escolha_efetiva(cfg)
+    if principal["provedor"] == "nenhum":
+        return []
+    lista, vistas = [principal], {_identidade(principal)}
+    for reserva in _reservas_gravadas(cfg):
+        if _identidade(reserva) not in vistas:
+            vistas.add(_identidade(reserva))
+            lista.append(reserva)
+    return lista
+
+
 def salvar_escolha(dados) -> dict:
-    """Grava a escolha em config.json → "ia", preservando as outras chaves. Nunca grava chave."""
+    """Grava a escolha em config.json → "ia", preservando as outras chaves. Nunca grava chave. Sem "reservas" no
+    pedido, mantém as que já estavam (as iguais à nova principal saem); com "reservas": [], apaga a lista."""
     escolha = validar_escolha(dados)
     if str(RAIZ) not in sys.path:
         sys.path.insert(0, str(RAIZ))
     import filtros
     cfg = filtros.ler_config()
+    if "reservas" not in escolha and escolha["provedor"] != "nenhum":
+        escolha["reservas"] = [r for r in _reservas_gravadas(cfg) if _identidade(r) != _identidade(escolha)]
+    if not escolha.get("reservas"):
+        escolha.pop("reservas", None)
     cfg["ia"] = escolha
     tmp = filtros.CONFIG.with_name(filtros.CONFIG.name + ".tmp")
     tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -276,10 +351,37 @@ def _claude_code(pedido, sistema, modelo, tempo):
     return texto
 
 
+def nome_de(escolha: dict) -> str:
+    return PROVEDORES.get(escolha.get("provedor"), {}).get("nome", str(escolha.get("provedor") or ""))
+
+
 def responder(pedido: str, sistema: str | None = None, tempo: float = 600, escolha: dict | None = None,
               chave: str | None = None) -> str:
-    """Texto da resposta da IA escolhida. Levanta IAErro (mensagem legível e mascarada)."""
-    escolha = escolha or escolha_efetiva()
+    """Texto da resposta. Com `escolha`, só aquela IA (ex.: Testar). Sem ela, a sequência configurada: quando a IA em
+    uso falha por motivo do provedor, a próxima é tentada, sem nova tentativa na que falhou (spec 032). Levanta IAErro
+    (mensagem legível e mascarada); com mais de uma IA falhando, o motivo de cada uma."""
+    lista = [escolha] if escolha is not None else sequencia()
+    if not lista:
+        raise IAErro("a IA está desligada (Sem IA)")
+    falhas = []
+    for item in lista:
+        try:
+            texto = _responder_uma(item, pedido, sistema, tempo, chave if escolha is not None else None)
+        except IAErro as erro:
+            falhas.append({"provedor": item.get("provedor"), "nome": nome_de(item), "modelo": modelo_efetivo(item),
+                           "motivo": str(erro)})
+            continue
+        _local.ultima = {"provedor": item["provedor"], "modelo": modelo_efetivo(item), "nome": nome_de(item),
+                         "falhas": falhas}
+        return texto
+    _local.ultima = {"provedor": None, "modelo": "", "nome": "", "falhas": falhas}
+    if len(falhas) == 1:
+        raise IAErro(falhas[0]["motivo"])
+    raise IAErro("nenhuma IA respondeu: " + "; ".join(f"{f['nome']}: {f['motivo']}" for f in falhas))
+
+
+def _responder_uma(escolha: dict, pedido: str, sistema: str | None, tempo: float, chave: str | None) -> str:
+    """Uma IA só; grava a situação dela (sucesso ou falha, com o motivo)."""
     prov = PROVEDORES.get(escolha.get("provedor"))
     if not prov or escolha["provedor"] == "nenhum":
         raise IAErro("a IA está desligada (Sem IA)")
@@ -295,9 +397,72 @@ def responder(pedido: str, sistema: str | None = None, tempo: float = 600, escol
             pedido_http = _pedido_anthropic(url, modelo, chave, pedido, sistema)
         else:
             pedido_http = _pedido_openai(url, modelo, chave, pedido, sistema)
-        return _texto(prov["adaptador"], _postar(*pedido_http, tempo=tempo, modelo=modelo))
+        texto = _texto(prov["adaptador"], _postar(*pedido_http, tempo=tempo, modelo=modelo))
     except IAErro as erro:
-        raise IAErro(mascarar(str(erro), chave or "")) from None
+        motivo = mascarar(str(erro), chave or "")
+        _registrar(escolha, False, motivo)
+        raise IAErro(motivo) from None
+    _registrar(escolha, True, "")
+    return texto
+
+
+# ---------------------------------------------------------------- quem respondeu e situação (spec 032)
+
+def ultima() -> dict | None:
+    """{provedor, modelo, nome, falhas: [{provedor, nome, modelo, motivo}]} da última chamada nesta thread."""
+    return getattr(_local, "ultima", None)
+
+
+def aviso_reserva() -> str | None:
+    """O aviso quando a última resposta desta thread veio de uma reserva: quem falhou, por quê e quem respondeu."""
+    u = ultima()
+    if not u or not u.get("provedor") or not u.get("falhas"):
+        return None
+    fora = "; ".join(f"{f['nome']} fora: {f['motivo']}" for f in u["falhas"])
+    return f"{fora}. Respondeu o {u['nome']} ({u['modelo'] or 'modelo padrão'})."
+
+
+def marca() -> dict:
+    """A IA que respondeu de fato (para os documentos); sem chamada nesta thread, a principal configurada."""
+    u = ultima()
+    if u and u.get("provedor"):
+        m = {"provedor": u["provedor"], "modelo": u["modelo"]}
+        aviso = aviso_reserva()
+        if aviso:
+            m.update(reserva=True, aviso=aviso)
+        return m
+    escolha = escolha_efetiva()
+    return {"provedor": escolha["provedor"], "modelo": modelo_efetivo(escolha)}
+
+
+def _chave_estado(escolha: dict) -> str:
+    return f"{escolha.get('provedor')}|{modelo_efetivo(escolha)}"
+
+
+def situacao() -> dict:
+    """{"provedor|modelo": {ok, em, motivo}} da última tentativa com cada IA; {} sem arquivo legível."""
+    try:
+        dados = json.loads(ARQ_ESTADO.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return dados if isinstance(dados, dict) else {}
+
+
+def _registrar(escolha: dict, ok: bool, motivo: str) -> None:
+    """Grava a situação da IA (sem chave e sem o pedido); se não der para gravar, segue sem ela."""
+    if escolha.get("provedor") in (None, "nenhum"):
+        return
+    with _trava_estado:
+        dados = situacao()
+        dados[_chave_estado(escolha)] = {"ok": bool(ok), "em": datetime.now().isoformat(timespec="minutes"),
+                                         "motivo": "" if ok else str(motivo)[:300]}
+        try:
+            ARQ_ESTADO.parent.mkdir(parents=True, exist_ok=True)
+            tmp = ARQ_ESTADO.with_name(ARQ_ESTADO.name + ".tmp")
+            tmp.write_text(json.dumps(dados, ensure_ascii=False), encoding="utf-8")
+            os.replace(tmp, ARQ_ESTADO)
+        except OSError:
+            pass
 
 
 def testar(escolha, chave: str | None = None) -> tuple[bool, str]:
@@ -319,11 +484,32 @@ def testar(escolha, chave: str | None = None) -> tuple[bool, str]:
 
 # ---------------------------------------------------------------- página
 
+def chave_ok(escolha: dict) -> bool:
+    """A IA tem o que precisa para ser chamada: a chave cadastrada (no Claude Code, o comando instalado)."""
+    prov = PROVEDORES.get(escolha.get("provedor"), {})
+    if prov.get("adaptador") == "claude_code":
+        return shutil.which("claude") is not None
+    return escolha.get("provedor") == "compativel" or bool(prov.get("variavel") and segredos.ler(prov["variavel"]))
+
+
+def alerta(cfg: dict | None = None) -> dict | None:
+    """{nome, modelo, motivo, em} quando a última tentativa com a IA principal falhou; None se deu certo ou não houve."""
+    lista = sequencia(cfg)
+    if not lista:
+        return None
+    s = situacao().get(_chave_estado(lista[0]))
+    if not s or s.get("ok"):
+        return None
+    return {"nome": nome_de(lista[0]), "modelo": modelo_efetivo(lista[0]), "motivo": str(s.get("motivo") or ""),
+            "em": str(s.get("em") or "")}
+
+
 def estado_para_pagina(pode_alterar: bool, ultimo_erro=None) -> dict:
     """O que o painel "IA" mostra. Nunca inclui chave: só se existe, os últimos 4 e a origem."""
     cfg = _ler_config()
     efetiva = escolha_efetiva(cfg)
     gravada = cfg.get("ia") if isinstance(cfg.get("ia"), dict) else None
+    sit = situacao()
     provedores = [{"id": pid, "nome": p["nome"], "precisa_chave": bool(p["variavel"]) and pid != "compativel",
                    "aceita_chave": bool(p["variavel"]), "cobranca": p["cobranca"], "modelo_padrao": p["modelo"],
                    "url_padrao": p["url"], "onde_obter_chave": p["chave_em"],
@@ -335,4 +521,10 @@ def estado_para_pagina(pode_alterar: bool, ultimo_erro=None) -> dict:
             "cobranca_efetiva": cobranca_efetiva(efetiva),
             "url_efetiva": efetiva.get("url_base", ""), "provedores": provedores, "chaves": chaves,
             "claude_instalado": shutil.which("claude") is not None, "pode_alterar": bool(pode_alterar),
-            "disponivel": disponivel(cfg), "ultimo_erro": ultimo_erro}
+            "disponivel": disponivel(cfg), "ultimo_erro": ultimo_erro,
+            # a principal e as reservas, com a situação de cada uma (spec 032)
+            "sequencia": [{"provedor": e["provedor"], "nome": nome_de(e), "modelo": modelo_efetivo(e),
+                           "url_base": e.get("url_base", ""), "gratuito": gratuito(e), "chave_ok": chave_ok(e),
+                           "principal": i == 0, "situacao": sit.get(_chave_estado(e))}
+                          for i, e in enumerate(sequencia(cfg))],
+            "alerta": alerta(cfg)}

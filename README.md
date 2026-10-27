@@ -98,6 +98,15 @@ chave, o uso é cobrado pelo provedor; modelos diferentes podem dar notas um pou
 e o seu perfil e o texto das vagas vão para o provedor escolhido. A chave fica só no arquivo
 `.env` deste computador e nunca volta para a página.
 
+**Reservas.** No mesmo painel, dá para cadastrar até 3 IAs de reserva, em ordem. Exemplo: Gemini como principal e o
+OpenRouter gratuito (`openrouter/free`) como reserva.
+- Se a principal falhar (fora do ar, limite de uso, sem crédito, chave recusada), a ferramenta tenta a próxima e avisa
+  qual falhou e por quê. Isso vale para a nota, o currículo, a carta, as respostas e a candidatura assistida.
+- O botão **IA** fica com um alerta quando a principal falhou na última tentativa, e o painel mostra a situação de cada
+  IA. "Testar a sequência" testa uma por uma.
+- A reserva recebe os mesmos pedidos que a principal. Perguntas sensíveis (salário, visto, deficiência) nunca vão a
+  nenhuma IA.
+
 As conversas (buscar vagas pelo chat, montar o currículo, consultar a Gupy) funcionam no
 Claude Code e em outros assistentes de código (Codex, Gemini CLI/Antigravity, OpenCode): as
 skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`analisar-perfil`,

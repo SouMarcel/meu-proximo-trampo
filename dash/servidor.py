@@ -329,6 +329,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not variavel:
                     raise ValueError("este provedor não usa chave")
                 segredos.gravar(variavel, chave)
+            for bruta in corpo.get("reservas") or [] if isinstance(corpo.get("reservas"), list) else []:
+                chave_r = str(bruta.get("chave") or "").strip() if isinstance(bruta, dict) else ""
+                variavel_r = ia.PROVEDORES.get(str(bruta.get("provedor") or ""), {}).get("variavel") if chave_r else ""
+                if variavel_r:  # a chave da reserva vai para o .env, como a da principal; nunca para o config.json
+                    segredos.gravar(variavel_r, chave_r)
             ia.salvar_escolha(escolha)
             if ia.disponivel():
                 analise.FILA.pedir()
@@ -735,7 +740,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._front(caminho)
         if caminho == "/api/versao":
             return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando,
-                                    "ia_erro": analise.FILA.erro(), "busca": buscador.BUSCA.resumo(),
+                                    "ia_erro": analise.FILA.erro(), "ia_alerta": ia.alerta(),
+                                    "busca": buscador.BUSCA.resumo(),
                                     "verificando": analise.FILA.verificando(), "falhas": analise.FILA.falhas_atuais()})
         if caminho == "/api/ia":
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))

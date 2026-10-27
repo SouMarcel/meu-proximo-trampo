@@ -192,9 +192,9 @@ def _ia_json(pedido: str, abre: str, fecha: str):
 
 
 def _marca_ia() -> dict:
+    """A IA que respondeu de fato (a principal ou uma reserva, spec 032)."""
     import ia
-    escolha = ia.escolha_efetiva()
-    return {"provedor": escolha["provedor"], "modelo": ia.modelo_efetivo(escolha)}
+    return ia.marca()
 
 
 def _perfil_seguro(perfil: str) -> str:

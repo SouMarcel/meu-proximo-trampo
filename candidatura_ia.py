@@ -119,9 +119,9 @@ def _ia_responder(pedido: str) -> str:
 
 
 def _marca_ia() -> dict:
+    """A IA que respondeu de fato (a principal ou uma reserva, spec 032)."""
     import ia
-    escolha = ia.escolha_efetiva()
-    return {"provedor": escolha["provedor"], "modelo": ia.modelo_efetivo(escolha)}
+    return ia.marca()
 
 
 def _alvo(vaga: dict) -> dict:
@@ -445,7 +445,8 @@ def propor_respostas(vaga: dict, campos: list[dict], progresso=None, perfil: str
     textos = [{"resposta": x["proposta"]} if x["tipo"] in ("texto", "area") else {} for x in itens]
     for x, conf in zip(itens, conferir.conferir_respostas(textos, perfil)):
         x["conferir"] = conf.get("conferir") or []
-    return {"itens": itens, "aviso": None, "ia": _marca_ia()}
+    import ia
+    return {"itens": itens, "aviso": ia.aviso_reserva(), "ia": _marca_ia()}  # aviso: quando respondeu uma reserva
 
 
 def gravar_preenchidas(vaga: dict, preenchidos: list[dict]) -> dict:
