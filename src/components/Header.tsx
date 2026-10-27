@@ -25,6 +25,8 @@ interface HeaderProps {
   onOpenFiltersModal: () => void
   onOpenProfileModal: () => void
   onOpenAIModal: () => void
+  /** A IA principal falhou na última tentativa (spec 032): o botão IA mostra o alerta com o motivo. */
+  iaAlerta?: { nome: string; modelo: string; motivo: string; em: string } | null
   onOpenAccountsModal?: () => void
 }
 
@@ -44,6 +46,7 @@ export default function Header({
   onOpenProfileModal,
   onOpenAIModal,
   onOpenAccountsModal,
+  iaAlerta,
 }: HeaderProps) {
   const { ia, servidor } = useFerramenta()
   const [tema, setTema] = useState<Tema>(() => ScreenPreferencesService.getTema())
@@ -87,13 +90,19 @@ export default function Header({
             <button
               onClick={onOpenAIModal}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition max-w-[220px]"
-              title={ia?.disponivel ? "IA escolhida (clique para trocar)" : "Nenhuma IA pronta: clique para escolher"}
+              title={
+                iaAlerta
+                  ? `${iaAlerta.nome} falhou às ${iaAlerta.em.slice(11, 16)}: ${iaAlerta.motivo} (clique para ver as reservas)`
+                  : ia?.disponivel
+                    ? "IA escolhida (clique para trocar)"
+                    : "Nenhuma IA pronta: clique para escolher"
+              }
             >
               <Sparkles className="w-3.5 h-3.5 text-violet-500 shrink-0" />
               <span className="truncate">{rotuloIA}</span>
               <span
                 className={`w-2 h-2 rounded-full inline-block shrink-0 ${
-                  ia?.disponivel ? "bg-emerald-500" : "bg-slate-400"
+                  iaAlerta ? "bg-amber-500" : ia?.disponivel ? "bg-emerald-500" : "bg-slate-400"
                 }`}
               />
             </button>

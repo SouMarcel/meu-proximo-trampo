@@ -1,11 +1,12 @@
 /**
  * Painel IA (dash/API.md §3.5): provedor, modelo, endereço (compatível) e chave. A chave nunca volta para a página
  * (só os 4 últimos caracteres e a origem) e não fica guardada no navegador: o campo começa sempre vazio.
+ * Reservas (spec 032): até 3 IAs, em ordem, tentadas quando a principal falha; o painel mostra a situação de cada uma.
  */
 import React, { useEffect, useState } from "react"
 import { X, Sparkles, Loader2, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
 import * as iaApi from "../../services/api/ia"
-import type { EstadoIA, Provedor, EscolhaIA } from "../../services/api/ia"
+import type { EstadoIA, Provedor, EscolhaIA, ReservaIA, SituacaoIA } from "../../services/api/ia"
 import { mensagemDeErro } from "../../services/api"
 import { useFerramenta } from "../../contexto/Ferramenta"
 import { linkSeguro } from "../../utils/formatters"
@@ -22,6 +23,20 @@ const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
 const CAMPO =
   "w-full px-3 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60"
 const ROTULO = "text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1"
+const BTN_MINI =
+  "px-2 py-0.5 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-40"
+const MAX_RESERVAS = 3
+const hora = (em: string) => (em || "").slice(11, 16)
+
+/** "Funcionou às 14:32." / "Falhou às 14:32: motivo" para a última tentativa com a IA. */
+function TextoSituacao({ s }: { s: SituacaoIA | null | undefined }) {
+  if (!s) return null
+  return (
+    <p className={`text-[11px] ${s.ok ? "text-emerald-700 dark:text-emerald-300" : "text-rose-600 dark:text-rose-400"}`}>
+      {s.ok ? `Funcionou às ${hora(s.em)}.` : `Falhou às ${hora(s.em)}: ${s.motivo}`}
+    </p>
+  )
+}
 
 /** O que a pessoa precisa saber antes de salvar (o mesmo texto do dashboard antigo). */
 /** Modelo gratuito do OpenRouter (o roteador openrouter/free ou um modelo :free): sem custo, com limite de pedidos. */
@@ -58,7 +73,8 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
   const [urlBase, setUrlBase] = useState("")
   const [chave, setChave] = useState("")
   const [erro, setErro] = useState("")
-  const [teste, setTeste] = useState<{ ok: boolean; mensagem: string } | null>(null)
+  const [testes, setTestes] = useState<{ nome: string; ok: boolean; mensagem: string }[] | null>(null)
+  const [reservas, setReservas] = useState<ReservaIA[]>([])
   const [ocupado, setOcupado] = useState<"" | "testar" | "salvar" | "remover">("")
 
   const escolher = (estado: EstadoIA, prov: string) => {
@@ -67,7 +83,7 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
     setModelo(g && g.provedor === prov ? g.modelo || "" : "")
     setUrlBase(g && g.provedor === prov ? g.url_base || "" : "")
     setChave("")
-    setTeste(null)
+    setTestes(null)
   }
 
   useEffect(() => {
@@ -77,6 +93,7 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
         setE(j)
         registrarPodeAlterar(j.pode_alterar)
         escolher(j, j.escolha?.provedor || j.efetiva)
+        setReservas((j.escolha?.reservas || []).map((r) => ({ provedor: r.provedor, modelo: r.modelo || "", url_base: r.url_base || "" })))
       })
       .catch((err) => setErro("Não deu para abrir o painel de IA: " + mensagemDeErro(err)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,24 +103,65 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
   const podeMudar = Boolean(e?.pode_alterar) && servidor === "no_ar"
   const c = (p && e?.chaves?.[p.id]) || null
 
-  const corpo = (): EscolhaIA => {
+  const principal = (): EscolhaIA => {
     const x: EscolhaIA = { provedor, modelo: modelo.trim(), url_base: urlBase.trim() }
     if (chave.trim()) x.chave = chave.trim()
     return x
   }
 
+  const limpa = (r: ReservaIA): ReservaIA => {
+    const y: ReservaIA = { provedor: r.provedor, modelo: (r.modelo || "").trim(), url_base: (r.url_base || "").trim() }
+    if ((r.chave || "").trim()) y.chave = (r.chave || "").trim()
+    return y
+  }
+
+  const corpo = (): EscolhaIA => ({ ...principal(), reservas: provedor === "nenhum" ? [] : reservas.map(limpa) })
+
+  const nomeDe = (id: string, mod?: string) => {
+    const pr = e?.provedores.find((x) => x.id === id)
+    return `${pr?.nome || id} · ${(mod || "").trim() || pr?.modelo_padrao || "modelo padrão"}`
+  }
+
+  /** Testa a principal e cada reserva, uma por vez; a chave digitada só vai para o teste daquela IA. */
   const testar = async () => {
     setOcupado("testar")
-    setTeste(null)
-    try {
-      setTeste(await iaApi.testar(corpo()))
-    } catch (err) {
-      tratarErro(err)
-      setTeste({ ok: false, mensagem: mensagemDeErro(err) })
-    } finally {
-      setOcupado("")
+    const itens: EscolhaIA[] = [principal(), ...(provedor === "nenhum" ? [] : reservas.map(limpa))]
+    const lista: { nome: string; ok: boolean; mensagem: string }[] = []
+    setTestes([])
+    for (const it of itens) {
+      try {
+        const r = await iaApi.testar(it)
+        lista.push({ nome: nomeDe(it.provedor, it.modelo), ...r })
+      } catch (err) {
+        tratarErro(err)
+        lista.push({ nome: nomeDe(it.provedor, it.modelo), ok: false, mensagem: mensagemDeErro(err) })
+      }
+      setTestes([...lista])
     }
+    setOcupado("")
   }
+
+  const situacaoDe = (id: string, mod?: string) => {
+    const pr = e?.provedores.find((x) => x.id === id)
+    const alvo = ((mod || "").trim() || pr?.modelo_padrao || "").toLowerCase()
+    return e?.sequencia?.find((s) => s.provedor === id && (s.modelo || "").toLowerCase() === alvo)?.situacao
+  }
+
+  const mudarReserva = (i: number, campos: Partial<ReservaIA>) =>
+    setReservas((rs) => rs.map((r, j) => (j === i ? { ...r, ...campos } : r)))
+  const moverReserva = (i: number, d: number) =>
+    setReservas((rs) => {
+      const n = [...rs]
+      ;[n[i], n[i + d]] = [n[i + d], n[i]]
+      return n
+    })
+  const adicionarReserva = () => {
+    if (!e) return
+    const usados = new Set([provedor, ...reservas.map((r) => r.provedor)])
+    const livre = ["openrouter", ...e.provedores.map((x) => x.id)].find((id) => id !== "nenhum" && !usados.has(id))
+    setReservas((rs) => [...rs, { provedor: livre || "openrouter", modelo: "", url_base: "" }])
+  }
+  const principalLocal = provedor === "claude_code" || (provedor === "compativel" && /^http:\/\/(127\.0\.0\.1|localhost)/.test(urlBase.trim()))
 
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault()
@@ -112,6 +170,7 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
     try {
       const j = await iaApi.salvar(corpo())
       setChave("")
+      setReservas((rs) => rs.map((r) => ({ ...r, chave: "" })))
       await recarregarIA()
       onSalvo(`IA salva: ${j.provedores.find((x) => x.id === j.efetiva)?.nome || j.efetiva}.`)
     } catch (err) {
@@ -201,6 +260,7 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
                 {e.ultimo_erro && (
                   <p className="text-[11px] text-rose-600 dark:text-rose-400">Último erro: {e.ultimo_erro.motivo}</p>
                 )}
+                {provedor === e.escolha?.provedor && <TextoSituacao s={situacaoDe(provedor, modelo)} />}
               </section>
 
               {provedor !== "nenhum" && (
@@ -288,6 +348,108 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
                 </section>
               )}
 
+              {provedor !== "nenhum" && (
+                <section className={SEC}>
+                  <h4 className={H}>Reservas (se a principal falhar)</h4>
+                  <p className={DICA}>
+                    Se a IA principal falhar (fora do ar, limite de uso, sem crédito, chave recusada), a ferramenta tenta as
+                    reservas, na ordem, e avisa qual falhou e por quê. A reserva recebe os mesmos pedidos que a principal
+                    (o seu perfil e o texto das vagas).
+                  </p>
+                  {principalLocal && reservas.length > 0 && (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      A principal roda neste computador; quando ela falhar, a reserva recebe esses dados fora dele.
+                    </p>
+                  )}
+                  {reservas.map((r, i) => {
+                    const pr = e.provedores.find((x) => x.id === r.provedor)
+                    const ch = e.chaves?.[r.provedor]
+                    return (
+                      <div key={i} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <b className="text-xs">{i + 1}ª reserva</b>
+                          <span className="ml-auto flex gap-1">
+                            <button type="button" className={BTN_MINI} disabled={!podeMudar || i === 0} onClick={() => moverReserva(i, -1)} aria-label="Subir">
+                              ↑
+                            </button>
+                            <button type="button" className={BTN_MINI} disabled={!podeMudar || i === reservas.length - 1} onClick={() => moverReserva(i, 1)} aria-label="Descer">
+                              ↓
+                            </button>
+                            <button type="button" className={BTN_MINI} disabled={!podeMudar} onClick={() => setReservas((rs) => rs.filter((_, j) => j !== i))}>
+                              Remover
+                            </button>
+                          </span>
+                        </div>
+                        <select
+                          aria-label={`Provedor da ${i + 1}ª reserva`}
+                          value={r.provedor}
+                          disabled={!podeMudar}
+                          onChange={(ev) => mudarReserva(i, { provedor: ev.target.value, modelo: "", url_base: "", chave: "" })}
+                          className={CAMPO}
+                        >
+                          {e.provedores
+                            .filter((x) => x.id !== "nenhum")
+                            .map((x) => (
+                              <option key={x.id} value={x.id}>{x.nome}</option>
+                            ))}
+                        </select>
+                        <input
+                          aria-label={`Modelo da ${i + 1}ª reserva`}
+                          maxLength={120}
+                          autoComplete="off"
+                          spellCheck={false}
+                          value={r.modelo || ""}
+                          disabled={!podeMudar}
+                          onChange={(ev) => mudarReserva(i, { modelo: ev.target.value })}
+                          placeholder={pr?.modelo_padrao ? `${pr.modelo_padrao} (padrão)` : "modelo padrão da sua conta"}
+                          className={CAMPO}
+                        />
+                        {r.provedor === "compativel" && (
+                          <input
+                            aria-label={`Endereço da ${i + 1}ª reserva`}
+                            maxLength={300}
+                            autoComplete="off"
+                            spellCheck={false}
+                            value={r.url_base || ""}
+                            disabled={!podeMudar}
+                            onChange={(ev) => mudarReserva(i, { url_base: ev.target.value })}
+                            placeholder="https://…/v1"
+                            className={CAMPO}
+                          />
+                        )}
+                        {pr?.aceita_chave && (
+                          <>
+                            <p className={DICA}>
+                              {ch?.cadastrada
+                                ? `Chave cadastrada, terminada em ${ch.final || "…"}.`
+                                : pr.precisa_chave
+                                  ? "Sem chave: cole abaixo, senão esta reserva é pulada."
+                                  : "Chave opcional para este serviço."}
+                            </p>
+                            <input
+                              aria-label={`Chave da ${i + 1}ª reserva`}
+                              type="password"
+                              autoComplete="off"
+                              spellCheck={false}
+                              maxLength={400}
+                              value={r.chave || ""}
+                              disabled={!podeMudar}
+                              onChange={(ev) => mudarReserva(i, { chave: ev.target.value })}
+                              placeholder={ch?.cadastrada ? "em branco, mantém a atual" : "fica só no arquivo .env deste computador"}
+                              className={CAMPO}
+                            />
+                          </>
+                        )}
+                        <TextoSituacao s={situacaoDe(r.provedor, r.modelo)} />
+                      </div>
+                    )
+                  })}
+                  <button type="button" className={BTN_MINI} disabled={!podeMudar || reservas.length >= MAX_RESERVAS} onClick={adicionarReserva}>
+                    + Adicionar reserva
+                  </button>
+                </section>
+              )}
+
               <section className={SEC}>
                 <h4 className={H}>Antes de salvar</h4>
                 <ul className="list-disc pl-5 space-y-1 text-slate-700 dark:text-slate-300">
@@ -297,18 +459,24 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
                 </ul>
               </section>
 
-              {teste && (
-                <p
-                  role="status"
-                  className={`flex items-start gap-2 p-3 rounded-xl border text-xs ${
-                    teste.ok
-                      ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200"
-                      : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200"
-                  }`}
-                >
-                  {teste.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
-                  <span>{teste.mensagem}</span>
-                </p>
+              {testes && (
+                <div role="status" className="space-y-1.5">
+                  {testes.map((t, i) => (
+                    <p
+                      key={i}
+                      className={`flex items-start gap-2 p-3 rounded-xl border text-xs ${
+                        t.ok
+                          ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200"
+                          : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200"
+                      }`}
+                    >
+                      {t.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                      <span>
+                        <b>{t.nome}:</b> {t.mensagem}
+                      </span>
+                    </p>
+                  ))}
+                </div>
               )}
               {!e.pode_alterar && (
                 <p className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs">
@@ -338,7 +506,9 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
             title="Testa a conexão com o que está no painel; a chave digitada não é gravada"
           >
             {ocupado === "testar" && <Loader2 className="w-4 h-4 animate-spin" />}
-            <span>{ocupado === "testar" ? "Testando a conexão…" : "Testar conexão"}</span>
+            <span>
+              {ocupado === "testar" ? "Testando…" : reservas.length && provedor !== "nenhum" ? "Testar a sequência" : "Testar conexão"}
+            </span>
           </button>
           <button
             type="submit"

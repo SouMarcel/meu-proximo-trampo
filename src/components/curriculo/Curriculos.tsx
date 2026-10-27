@@ -235,6 +235,7 @@ function ItemCurriculo({ m }: { m: MetaCurriculo }) {
         </span>
       </div>
       {nomes.length > 0 && <p className={DICA}>Técnicas: {nomes.join(", ")}</p>}
+      {m.ia?.aviso && <p className="text-[11px] text-amber-700 dark:text-amber-300">{m.ia.aviso}</p>}
       {bloqueios.length > 0 && (
         <p className="text-xs text-rose-700 dark:text-rose-300">
           Não envie este currículo ainda: {bloqueios.map((p) => p.mensagem + (p.valor ? ` (${p.valor})` : "")).join("; ")}. Confirme o

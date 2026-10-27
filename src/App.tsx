@@ -477,6 +477,7 @@ function Pagina({
         onOpenProfileModal={() => setPerfilAberto({})}
         onOpenAIModal={() => setIsAIModalOpen(true)}
         onOpenAccountsModal={() => setIsAccountsModalOpen(true)}
+        iaAlerta={versaoInfo?.ia_alerta || null}
       />
 
       <NavigationTabs
