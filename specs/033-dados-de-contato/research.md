@@ -52,3 +52,56 @@ São 9 respostas, quase todas de contato, da candidatura de teste no JazzHR:
   - "cidade" / "city", "estado" / "state" / "province", "país" / "country";
   - "cep" / "postal" / "zip", "endereço" / "address";
   - "linkedin", "portfólio" / "portfolio" / "site" / "website" / "github".
+
+## Decisões técnicas (plano, 28/10/2026)
+
+### D1. Onde fica
+- **Decisão**: `candidatura/contato.py` e `dash/dados/contato.json`, ao lado de `memoria.py` e
+  `respostas_formulario.json`.
+- **Motivo**: a memória guarda a resposta de uma pergunta específica; os dados de contato servem a qualquer pergunta
+  com o mesmo sentido.
+- **Alternativa**: guardar no `perfil.md`. Ele vai para a IA, e estes dados não podem ir.
+
+### D2. Reconhecimento (conservador)
+A ordem é:
+1. **`autocomplete`**:
+   - `given-name` → nome; `family-name` → sobrenome; `name` → nome completo;
+   - `email`; `tel`/`tel-national` → telefone;
+   - `address-level2` → cidade; `address-level1` → estado; `country`/`country-name` → país;
+   - `postal-code` → CEP; `address-line1`/`street-address` → endereço;
+   - `url` → portfólio, ou LinkedIn se a pergunta falar de LinkedIn.
+2. **Tipo do campo**: `email` → e-mail; `tel` → telefone; `url` → LinkedIn ou portfólio, pela pergunta.
+3. **Sinônimos**: a pergunta inteira, normalizada e sem "obrigatório", "required", "optional" e `*`, precisa bater com
+   um sinônimo (R4). "Nome da empresa anterior" não vira nome. O atributo `name` do campo (ex.: `first_name`) também
+   conta.
+- **Campo `sensivel`** (cidadania, país de residência legal etc.) nunca é preenchido com dado de contato.
+
+### D3. Proposta
+- **Do currículo base** (`curriculo_base.marcados()`, pt e depois en), lido por `primeiros_passos.extrair`:
+  - e-mail, telefone e LinkedIn por `reconhecer_contato`;
+  - nome pela primeira linha que tenha de 2 a 6 palavras, só letras, até 60 caracteres e sem "@". O primeiro nome vai
+    para nome, e o resto para sobrenome.
+- **Da memória**, pelas chaves conhecidas (`first name`, `last name`, `email address`, `phone`, `city`, `postal`,
+  `address` e os sinônimos em português), quando o currículo não trouxe.
+- **Dos filtros da busca** (`localidade`): cidade, estado e país.
+- A resposta diz a fonte de cada valor ("currículo", "respostas anteriores", "filtros da busca") e não grava nada.
+
+### D4. Validação ao salvar
+- Textos de até 200 caracteres.
+- E-mail no formato `a@b.c`.
+- LinkedIn com `linkedin.com/`.
+- Portfólio começando com `http(s)://` ou parecendo um domínio.
+- Valor que pareça CPF, RG ou data de nascimento (as mesmas expressões de `primeiros_passos`) é recusado.
+- Campo vazio não é gravado.
+
+### D5. Formato no preenchimento
+- **Texto**: o valor salvo. Nome completo é `nome + " " + sobrenome`.
+- **Lista de país ou estado**: a opção cujo texto normalizado bate com o valor ou com o nome em inglês do país
+  (`filtros.PAISES`), ou, no estado, com a sigla ou o nome (`_comum.UFS`). Sem opção que bata, o campo fica com a
+  pessoa.
+
+### D6. Ordem em `preencher_pagina`
+- Dados de contato → memória → IA.
+- O passo novo usa `formulario.preencher(..., da_pessoa=True)`, que já é o caminho das respostas da pessoa (pode
+  preencher `cadastro`).
+- Os campos preenchidos saem dos passos seguintes.
