@@ -48,6 +48,8 @@ class Base(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.patch_env = mock.patch.object(segredos, "ENV", Path(self.tmp.name) / ".env")
         self.patch_env.start()
+        self.patch_estado = mock.patch.object(ia, "ARQ_ESTADO", Path(self.tmp.name) / "ia-estado.json")
+        self.patch_estado.start()  # a situação de cada IA (spec 032) não vai para o .cache de verdade
         self.ambiente = mock.patch.dict(os.environ, {}, clear=False)
         self.ambiente.start()
         for p in ia.PROVEDORES.values():
@@ -56,6 +58,7 @@ class Base(unittest.TestCase):
 
     def tearDown(self):
         self.ambiente.stop()
+        self.patch_estado.stop()
         self.patch_env.stop()
         self.tmp.cleanup()
 

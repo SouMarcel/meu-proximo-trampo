@@ -337,18 +337,34 @@ informe a cidade"; filtros.py:355-433). Também usado por "Gravar filtros" nos p
 
 A chave nunca volta para a página: só se existe, os 4 últimos caracteres e a origem.
 
-**`GET /api/ia`** — `{escolha: {provedor, modelo, url_base}|null, efetiva: string (id do provedor), modelo_efetivo,
+**`GET /api/ia`** — `{escolha: {provedor, modelo, url_base, reservas?: [{provedor, modelo, url_base}]}|null, efetiva: string (id do provedor), modelo_efetivo,
 cobranca_efetiva: "uso"|"assinatura"|"gratuito"|"" (a da escolha; "gratuito" = openrouter/free ou modelo :free do OpenRouter),
 url_efetiva, provedores: [{id, nome, precisa_chave, aceita_chave, cobranca: "uso"|"assinatura"|"", modelo_padrao,
 url_padrao, onde_obter_chave, dica}], chaves: {id: {cadastrada, final (4 últimos ou ""), origem: "arquivo"|"ambiente"|null}},
-claude_instalado, pode_alterar, disponivel: bool (IA pronta para uso), ultimo_erro}` (ia.py:302-317).
+claude_instalado, pode_alterar, disponivel: bool (IA pronta para uso), ultimo_erro, sequencia, alerta}`.
+- `sequencia` (spec 032): `[{provedor, nome, modelo, url_base, gratuito, chave_ok, principal: bool, situacao: {ok, em
+  ("AAAA-MM-DDTHH:MM"), motivo}|null}]`, a principal e as reservas, com a última tentativa de cada uma (gravada em
+  `.cache/ia-estado.json`, sem chave nem pedido).
+- `alerta`: `{nome, modelo, motivo, em}` quando a última tentativa com a principal falhou; senão `null`. O mesmo vem em
+  `GET /api/versao` → `ia_alerta`, para o botão IA.
+
+Reserva: sem escolha explícita, toda chamada à IA tenta a principal e, se ela falhar por motivo do provedor (5xx, 429,
+sem crédito, chave recusada, modelo inexistente, tempo esgotado, sem conexão, falta de chave), a próxima reserva, sem
+nova tentativa na que falhou. Com mais de uma falhando, o erro lista cada uma: "nenhuma IA respondeu: {nome}: {motivo};
+…". Quando a resposta vem de uma reserva, o documento gravado leva `ia: {provedor, modelo, reserva: true, aviso}`, e a
+candidatura assistida traz o aviso em `aviso_ia`.
 Ids: `claude_code, anthropic, openai, openrouter, groq, deepseek, gemini, compativel, nenhum`.
 
 **`PUT /api/ia`** **[local]** — "Salvar". Corpo `{provedor*, modelo?, url_base? (obrigatório em compativel),
-chave?}`. Resposta = o mesmo de `GET /api/ia`. Erro 400.
+chave?, reservas?: [{provedor*, modelo?, url_base?, chave?}]}`. Resposta = o mesmo de `GET /api/ia`.
+- `reservas`: até 3, sem repetir a principal nem outra, sem "nenhum".
+- A `chave` de cada reserva vai para o `.env`, nunca para o `config.json`.
+- Sem `reservas`, a lista gravada fica como está; `reservas: []` apaga a lista.
+- Erro 400 com a regra ("no máximo 3 reservas", "reserva repetida: …", "Sem IA não pode ser reserva").
 
-**`POST /api/ia/testar`** **[local]** — "Testar conexão" (a chave passada não é gravada). Mesmo corpo.
-Resposta `{ok: bool, mensagem}`.
+**`POST /api/ia/testar`** **[local]** — "Testar conexão" (a chave passada não é gravada). Corpo de uma IA só
+(`{provedor, modelo?, url_base?, chave?}`); "Testar a sequência" chama uma vez para cada. Resposta `{ok: bool,
+mensagem}`, e a situação daquela IA é gravada.
 
 **`DELETE /api/ia/chave/{provedor}`** **[local]** — "Remover" a chave do `.env`. Resposta = estado de `GET /api/ia`
 + `aviso?` (chave definida nas variáveis do sistema). Erro 404 "provedor sem chave".
@@ -580,7 +596,7 @@ Na página, são links `<a target="_blank">` com o endereço da API na frente (`
 
 **`GET /api/versao`** — consultado a cada 4 s. `{versao: number (sobe a cada escrita no banco; mudou =
 recarregar /api/vagas), analisando: bool (IA dando notas), ia_erro: {motivo, em}|null (última análise automática
-falhou), busca: {situacao, origem} (inclui `externa` para busca do terminal/chat), verificando: string[] (vagas do
+falhou), ia_alerta: {nome, modelo, motivo, em}|null (a IA principal falhou na última tentativa; spec 032), busca: {situacao, origem} (inclui `externa` para busca do terminal/chat), verificando: string[] (vagas do
 Forçar verificar na fila), falhas: {id: {motivo, em}} (Forçar verificar que não deu nota)}`. Também serve para saber
 se o servidor está no ar.
 

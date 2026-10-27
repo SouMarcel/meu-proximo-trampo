@@ -198,7 +198,6 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
         paginas = curriculo.paginas(pdf) if pdf else None
         avisar("conferindo")
         conf = conferir.conferir(cv, perfil, texto_da_vaga(vaga) or None, arq_docx)
-        escolha = ia.escolha_efetiva()
         meta = {
             "nome": nome,
             "alvo": ({"tipo": "vaga", "id": vaga.get("id"), "titulo": vaga.get("titulo"), "empresa": vaga.get("empresa")}
@@ -208,7 +207,7 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
             "paginas": paginas, "acima_do_limite": bool(paginas and paginas > tecnicas["paginas"]),
             "sugestoes_corte": curriculo.sugestoes_corte(cv) if paginas and paginas > tecnicas["paginas"] else [],
             "conferencia": conf, "pronto": conf["veredito"] != "bloquear",
-            "ia": {"provedor": escolha["provedor"], "modelo": ia.modelo_efetivo(escolha)},
+            "ia": ia.marca(),  # quem respondeu de fato (a principal ou uma reserva, spec 032)
             "criado_em": datetime.now().isoformat(timespec="seconds"),
         }
         (CURRICULOS / f"{nome}.meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
