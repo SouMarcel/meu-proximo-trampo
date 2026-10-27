@@ -22,7 +22,6 @@ export interface FiltrosInternacional {
   autorizacao_trabalho: string[]
   precisa_sponsor: boolean
   fontes: string[]
-  empresas: EmpresaAcompanhada[]
   frases_restricao: string[]
   frases_positivas: string[]
 }
@@ -39,6 +38,8 @@ export interface Filtros {
   moedas_aceitas: string[]
   empresas_excluir: string[]
   fontes: string[]
+  /** Empresas acompanhadas, nas duas áreas (spec 031; antes ficavam em internacional). */
+  empresas: EmpresaAcompanhada[]
 }
 
 export interface Fonte {
@@ -76,6 +77,13 @@ export const ler = () => pedir<Config>("GET", "/api/config")
 /** Grava o objeto de filtros inteiro; erro 400 traz a regra que falhou. */
 export const gravar = (filtros: Filtros) => pedir<Config>("PUT", "/api/config", filtros)
 
+/** Empresas acompanhadas (dash/API.md, spec 031). */
+export const empresas = () => pedir<{ empresas: EmpresaAcompanhada[]; maximo: number }>("GET", "/api/empresas")
+
+/** Acompanha a empresa de um link (página de vagas ou vaga do Greenhouse, do Lever ou do Ashby); só grava a lista. */
+export const acompanhar = (url: string) =>
+  pedir<{ empresa: EmpresaAcompanhada; nova: boolean; empresas: EmpresaAcompanhada[] }>("POST", "/api/empresas", { url })
+
 // ---------- contas que o dashboard antigo mostra antes de salvar (as mesmas de filtros.consultas()) ----------
 
 /** Consultas por portal; porGrupo: os cargos numa consulta só (LinkedIn). */
@@ -93,7 +101,7 @@ export function contarConsultas(d: Filtros, porGrupo = false): number {
   let n = m.remoto || (locais && !cidade) ? t : 0
   if (locais && cidade) n += t
   if (it.ativo) n += it.paises.length * ti + (it.aceita_mudar ? ((it.paises_mudanca || []).length || it.paises.length) * ti : 0)
-  if (it.ativo && ((it.fontes || []).length || (it.empresas || []).length)) n += ti // fontes do exterior: uma por cargo
+  if (it.ativo && ((it.fontes || []).length || (d.empresas || []).length)) n += ti // fontes do exterior: uma por cargo
   return n
 }
 
@@ -101,7 +109,7 @@ export function contarConsultas(d: Filtros, porGrupo = false): number {
 export function contarLinkedin(d: Filtros): number {
   const it = d.internacional
   const ti = Math.min(it.termos.length || d.termos.length, 1)
-  return contarConsultas(d, true) + (it.ativo && !((it.fontes || []).length || (it.empresas || []).length) ? ti : 0)
+  return contarConsultas(d, true) + (it.ativo && !((it.fontes || []).length || (d.empresas || []).length) ? ti : 0)
 }
 
 /** Empresa acompanhada pelo link da página de vagas (Greenhouse, Lever ou Ashby); o servidor confere de novo ao salvar. */
@@ -110,7 +118,7 @@ export function empresaDoLink(url: string): EmpresaAcompanhada | null {
     /^(?:https?:\/\/)?(boards|job-boards)(?:\.eu)?\.greenhouse\.io\/(?:embed\/job_board\?for=)?([A-Za-z0-9._-]+)|^(?:https?:\/\/)?jobs(?:\.eu)?\.lever\.co\/([A-Za-z0-9._-]+)|^(?:https?:\/\/)?jobs\.ashbyhq\.com\/([A-Za-z0-9._-]+)/i.exec(
       url,
     )
-  if (!m) return null
+  if (!m || (m[2] || "").toLowerCase() === "embed") return null // embed/job_app?for=… não traz a empresa no caminho
   const sistema = m[2] ? "greenhouse" : m[3] ? "lever" : "ashby"
   return { sistema, id: m[2] || m[3] || m[4], nome: "", url } // o nome sai do link ao salvar
 }
