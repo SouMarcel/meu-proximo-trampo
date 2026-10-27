@@ -55,7 +55,7 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   Candidatura, marque "usar a candidatura assistida nesta vaga" (com um aviso de risco) e clique em
   **Ligar nesta vaga**; a partir daí o card dela, em Salva, ganha o botão. A ferramenta abre a vaga
   na mesma janela. Em cada página do formulário, **Preencher esta página** preenche o que ela sabe de
-  você (as respostas que você já deu e, nas perguntas comuns, os fatos do seu perfil), mostra o que
+  você (os seus dados de contato, as respostas que você já deu e, nas perguntas comuns, os fatos do seu perfil), mostra o que
   preencheu e de onde veio, e pergunta o resto. Você responde no painel e ela preenche. **Quem
   confere na janela e clica em Entrar, Continuar e Enviar é sempre você.**
   - As suas respostas ficam guardadas no seu computador (`dash/dados/`, fora do Git) e são
@@ -70,6 +70,11 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
     Um captcha que só protege o envio (a caixa "não sou um robô" no fim do formulário) também não: a
     ferramenta preenche os campos e não toca nele, e você resolve o captcha e clica em Enviar. Pedido
     de código ou tela de verificação antes do formulário fazem a ferramenta parar até você resolver.
+  - **Seus dados de contato** (Contas conectadas → Candidatura assistida): nome, e-mail, telefone,
+    cidade, LinkedIn e portfólio. "Propor a partir do currículo" lê o seu currículo base e propõe os
+    valores, e nada é gravado até você salvar. Depois, a ferramenta preenche esses campos em qualquer
+    formulário, mesmo escritos de outro jeito ("Full name", "Celular", "LinkedIn profile"), sem IA e
+    com a IA fora do ar. Eles ficam só no seu computador e nunca vão para a IA.
   - Preenche só em sites de candidatura conhecidos (Gupy, Greenhouse, Lever, Workday) ou nos que
     você liberar. Indeed e Nerdin ficam de fora porque os termos deles proíbem automação na
     candidatura, e o LinkedIn também.

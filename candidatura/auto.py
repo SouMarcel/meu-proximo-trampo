@@ -1,8 +1,9 @@
 """Preencher esta página (spec 027, decisão de 2026-10-24): a ferramenta preenche o que sabe e pergunta o resto.
 
-  preencher_pagina(aba, vaga)      lê a página; preenche com as respostas que a pessoa já deu (memória) e, nos campos
-                                   comuns, com as propostas da IA tiradas do perfil; devolve o que preencheu (com a fonte),
-                                   as perguntas que precisam da pessoa e o que fica com ela na janela
+  preencher_pagina(aba, vaga)      lê a página; preenche os campos de contato com os dados que a pessoa salvou (spec
+                                   033, sem IA), depois com as respostas que ela já deu (memória) e, nos campos comuns,
+                                   com as propostas da IA tiradas do perfil; devolve o que preencheu (com a fonte), as
+                                   perguntas que precisam da pessoa e o que fica com ela na janela
   responder(aba, vaga, ...)        preenche as respostas que a pessoa deu no painel e as guarda na memória (se ela quiser)
 
 Nunca clica nem envia: quem confere na janela e clica em Continuar ou Enviar é a pessoa. Pergunta sensível só recebe
@@ -10,7 +11,7 @@ resposta da própria pessoa (dada agora ou guardada); salário e relocação ela
 """
 from __future__ import annotations
 
-from . import exigir_ligada, memoria
+from . import contato, exigir_ligada, memoria
 from .formulario import _tem_valor, ler, preencher
 
 NA_JANELA = {"consentimento", "arquivo", "senha", "outro"}
@@ -29,13 +30,19 @@ def preencher_pagina(aba, vaga: dict, propor=None) -> dict:
     saida = _vazio(pagina)
     if pagina["etapa"] != "perguntas" or not pagina["dominio"]["permitido"]:
         return saida
-    da_memoria, abertos = [], []
+    dados_contato = contato.ler()
+    do_contato, da_memoria, abertos = [], [], []
     for c in pagina["campos"]:
         if c["marca"] in NA_JANELA:
             saida["na_janela"].append({"chave": c["chave"], "rotulo": c["rotulo"], "motivo": c["motivo"]})
             continue
         if _tem_valor(c):
             continue  # já preenchido na página (ex.: dados da conta do portal)
+        if c["marca"] in ("cadastro", "comum"):
+            v_contato = contato.valor_para(c, dados_contato) if dados_contato else None
+            if v_contato:
+                do_contato.append({"chave": c["chave"], "valor": v_contato})
+                continue
         valor = memoria.valor_para(c)
         if valor:
             da_memoria.append({"chave": c["chave"], "valor": valor})
@@ -43,6 +50,10 @@ def preencher_pagina(aba, vaga: dict, propor=None) -> dict:
             abertos.append(c)
 
     preenchidos, falhas = [], []
+    if do_contato:  # os dados de contato que a pessoa salvou: sem IA (spec 033)
+        r = preencher(aba, pagina["assinatura"], do_contato, vaga, da_pessoa=True)
+        preenchidos += [{**p, "fonte": contato.FONTE, "conferir": []} for p in r["preenchidos"]]
+        falhas += [f for f in r["ficaram"] if f["chave"] in {x["chave"] for x in do_contato}]
     if da_memoria:
         r = preencher(aba, pagina["assinatura"], da_memoria, vaga, da_pessoa=True)
         preenchidos += [{**p, "fonte": "sua resposta anterior", "conferir": []} for p in r["preenchidos"]]
