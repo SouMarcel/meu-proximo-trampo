@@ -206,6 +206,8 @@ export interface Versao {
   versao: number
   analisando?: boolean
   ia_erro?: { motivo: string; em: string } | null
+  /** A IA principal falhou na última tentativa (spec 032). */
+  ia_alerta?: { nome: string; modelo: string; motivo: string; em: string } | null
   busca?: { situacao: SituacaoBusca; origem?: string }
   verificando?: string[]
   falhas?: Record<string, { motivo: string; em: string }>

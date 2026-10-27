@@ -52,6 +52,8 @@ export interface MetaCurriculo {
     cobertura?: { achadas: number; total: number; faltando: string[] } | null
   }
   pronto?: boolean
+  /** A IA que escreveu; com reserva, o aviso de qual falhou e por quê (spec 032). */
+  ia?: { provedor: string; modelo: string; reserva?: boolean; aviso?: string }
   criado_em: string
 }
 
