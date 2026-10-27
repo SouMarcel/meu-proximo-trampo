@@ -116,7 +116,7 @@ todos preenchidos com a fonte "seus dados de contato" e zero chamadas à IA.
   - build de teste copiado no `dash/front` da branch pessoal, sem commit.
 - [X] T011 [P] Documentação: `dash/API.md` §3.11b (rotas e fonte "seus dados de contato"), README (candidatura
   assistida) e uma linha na spec 027 apontando para a 033.
-- [ ] T012 Verificação:
+- [X] T012 Verificação:
   - `PY -m unittest discover -s tests` inteiro;
   - na branch pessoal de teste: proposta com o currículo base do usuário (SC-004), salvar, e "Preencher esta página"
     num formulário real;
@@ -142,3 +142,14 @@ todos preenchidos com a fonte "seus dados de contato" e zero chamadas à IA.
 1. **MVP**: T001–T005. Cadastrar e confirmar os dados pelos testes e pelas rotas.
 2. US2: reconhecer e preencher.
 3. Front e documentação; verificação com o currículo real; master.
+
+## Verificação (28/10/2026)
+
+- Suíte inteira passando: 511 testes na branch da spec e na branch pessoal de teste.
+- Na branch pessoal de teste, `POST /api/candidatura/contato/proposta` com o currículo base real (SC-004), sem
+  gravar nada:
+  - nome, sobrenome, e-mail, telefone e LinkedIn vieram do currículo;
+  - cidade, endereço e CEP vieram das respostas guardadas;
+  - estado e país vieram dos filtros;
+  - o portfólio ficou vazio.
+- Falta o teste da pessoa no painel (Propor, Salvar) e num formulário real.
