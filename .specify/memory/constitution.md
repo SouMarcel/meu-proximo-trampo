@@ -1,5 +1,15 @@
 <!--
-Relatório de impacto da emenda (2026-10-24, segunda)
+Relatório de impacto da emenda (2026-10-27)
+- Versão: 5.0.0 → 5.0.1 (PATCH: esclarecimento)
+- Princípio VI, "Candidatura assistida", "Parar no bloqueio": o captcha que só protege o envio (a caixa "não sou um
+  robô" junto do botão Enviar) não impede o preenchimento; a ferramenta não toca nele, e resolver e enviar ficam com a
+  pessoa. Continuam parando: pedido de código, atividade suspeita, tela de espera, desafio aberto e captcha sem
+  formulário.
+- Motivo: no teste numa vaga do JazzHR (applytojob.com), o captcha do envio parou o preenchimento (decisão do usuário).
+- Arquivos atualizados: README.md, spec 027.
+- Pendências: nenhuma.
+
+Emenda anterior (2026-10-24, segunda)
 - Versão: 4.0.1 → 5.0.0 (MAJOR: regra do princípio VI redefinida; IV ampliado)
 - Princípio VI, "Candidatura assistida": "proposta vista antes de preencher" passa a "preenche o que sabe e pergunta
   o resto"; a pessoa confere na janela antes de avançar. Pergunta sensível só com a resposta da própria pessoa.
@@ -149,7 +159,9 @@ de uma candidatura na janela dela, só nestas condições:
 - **Credencial presa ao login:** usuário e senha que a pessoa guardar no `.env` só são digitados na página de login
   cadastrada para aquele portal (nome exato do domínio), nunca vão para a IA, para a página do dashboard ou para
   registros, e a pessoa clica em "Entrar".
-- **Parar no bloqueio:** captcha, verificação ou código param o recurso, sem tentar contornar.
+- **Parar no bloqueio:** captcha, verificação ou código que impedem chegar ao formulário param o recurso, sem tentar
+  contornar. O captcha que só protege o envio (a caixa "não sou um robô" junto do botão Enviar) não impede o
+  preenchimento: a ferramenta preenche os campos e não toca nele; resolver o captcha e enviar ficam com a pessoa.
 
 ## Restrições técnicas
 
@@ -182,4 +194,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 5.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-24
+**Version**: 5.0.1 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-27

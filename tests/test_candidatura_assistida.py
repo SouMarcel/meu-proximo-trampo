@@ -268,7 +268,11 @@ class TestClassificacao(Base):
     def test_paginas(self):
         etapa = lambda **k: formulario.ler(PaginaFalsa(**k))["etapa"]
         self.assertEqual(etapa(), "perguntas")
-        self.assertEqual(etapa(iframes=["https://www.google.com/recaptcha/api2/anchor"]), "bloqueio")
+        aviso = lambda **k: formulario.ler(PaginaFalsa(**k))["aviso"]
+        # captcha que só protege o envio (formulário na página): preenche e avisa (2026-10-27)
+        self.assertEqual(etapa(iframes=["https://www.google.com/recaptcha/api2/anchor"]), "perguntas")
+        self.assertIn("captcha para o envio", aviso(iframes=["https://www.google.com/recaptcha/api2/anchor"]))
+        self.assertEqual(etapa(iframes=["https://www.google.com/recaptcha/api2/anchor"], campos=[]), "bloqueio")
         # o reCAPTCHA invisível (selo no canto, ex.: Greenhouse) não pede nada: segue como perguntas
         selo = {"src": "https://www.recaptcha.net/recaptcha/enterprise/anchor?ar=1", "titulo": "reCAPTCHA", "visivel": True,
                 "w": 256, "h": 60, "selo": True}
@@ -276,13 +280,18 @@ class TestClassificacao(Base):
         self.assertEqual(etapa(iframes=[{**selo, "selo": False, "src": selo["src"] + "&size=invisible"}]), "perguntas")
         self.assertEqual(etapa(iframes=[{**selo, "selo": False, "w": 0, "h": 0, "visivel": False}]), "perguntas")
         self.assertEqual(etapa(texto="This site is protected by reCAPTCHA and the Google Privacy Policy"), "perguntas")
-        # captcha que pede algo: a caixa "não sou um robô", o desafio de imagens, o Turnstile visível
-        self.assertEqual(etapa(iframes=[{**selo, "selo": False, "w": 304, "h": 78}]), "bloqueio")
+        # a caixa "não sou um robô" e o Turnstile junto do formulário: preenche, sem tocar no captcha
+        caixa = {**selo, "selo": False, "w": 304, "h": 78}
+        turnstile = {"src": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/turnstile", "visivel": True,
+                     "w": 300, "h": 65}
+        self.assertEqual(etapa(iframes=[caixa]), "perguntas")
+        self.assertEqual(etapa(iframes=[turnstile]), "perguntas")
+        self.assertEqual(etapa(iframes=[caixa], campos=[]), "bloqueio")  # captcha numa página sem formulário
+        # o desafio de imagens aberto, a tela de espera e o pedido de código param sempre
         self.assertEqual(etapa(iframes=[{"src": "https://www.google.com/recaptcha/api2/bframe", "visivel": True, "w": 400, "h": 580}]), "bloqueio")
-        self.assertEqual(etapa(iframes=[{"src": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/turnstile", "visivel": True,
-                                         "w": 300, "h": 65}]), "bloqueio")
         self.assertEqual(etapa(texto="Verifying you are human. This may take a few seconds."), "bloqueio")
         self.assertEqual(etapa(texto="Digite o código de verificação enviado ao seu e-mail"), "bloqueio")
+        self.assertEqual(etapa(texto="We detected unusual activity from your network"), "bloqueio")
         self.assertEqual(etapa(senhas=1), "login")
         self.assertEqual(etapa(titulos="Teste de perfil comportamental"), "teste")
         self.assertEqual(etapa(campos=[]), "desconhecida")
@@ -363,10 +372,14 @@ class TestPreencher(Base):
             with self.assertRaises(candidatura.CandidaturaErro):
                 formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas(), self.VAGA)
             self.assertEqual(aba.digitado, [])
-        aba = PaginaFalsa(iframes=["https://challenges.cloudflare.com/turnstile"])
+        aba = PaginaFalsa(texto="Digite o código de verificação enviado ao seu e-mail")
         with self.assertRaises(candidatura.CandidaturaErro):
             formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas(), self.VAGA)
         self.assertEqual((aba.digitado, aba.teclas), ([], 0))
+        # captcha só no envio: preenche os campos (o captcha fica num iframe, que não é campo)
+        aba = PaginaFalsa(iframes=["https://challenges.cloudflare.com/turnstile"])
+        formulario.preencher(aba, formulario.ler(aba)["assinatura"], self.respostas(), self.VAGA)
+        self.assertTrue(aba.digitado)
 
     def test_um_por_vez(self):
         self.ligar()

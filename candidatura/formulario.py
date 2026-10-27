@@ -255,6 +255,14 @@ BLOQUEIO = re.compile(r"nao sou um robo|i'?m not a robot|(verifique|confirme) qu
                       r"codigo de verificacao|verification code|digite o codigo|enter the code|atividade (incomum|suspeita)|"
                       r"unusual activity|acesso bloqueado|access denied")
 BLOQUEIO_IFRAME = re.compile(r"recaptcha|hcaptcha|turnstile|challenges\.cloudflare|captcha", re.I)
+# Param sempre, mesmo com o formulário na página: pedido de código, atividade suspeita, acesso bloqueado e a tela de
+# espera que confere se é humano (Cloudflare e parecidos)
+VERIFICACAO = re.compile(r"codigo de verificacao|verification code|digite o codigo|enter the code|atividade (incomum|suspeita)|"
+                         r"unusual activity|acesso bloqueado|access denied|verifying (that )?you are (a )?human|"
+                         r"checking (if the site connection is secure|your browser)|verificando (se voce e humano|seu navegador)")
+DESAFIO_IFRAME = re.compile(r"recaptcha/[^\s]*bframe|hcaptcha[^\s]*(challenge|frame=challenge)", re.I)
+AVISO_CAPTCHA = ("Esta página tem um captcha para o envio: a ferramenta preenche os campos e não toca nele. Depois, "
+                 "resolva o captcha na janela e clique você em Enviar.")
 CAPTCHA_INVISIVEL = re.compile(r"[?&#]size=invisible", re.I)
 
 
@@ -320,17 +328,32 @@ def classificar_campo(c: dict) -> tuple[str, str]:
     return "comum", ""
 
 
+def desafio_aberto(f) -> bool:
+    """O desafio de imagens do captcha aberto na tela (o quadro grande que aparece depois de clicar na caixa)."""
+    if isinstance(f, str):
+        return bool(DESAFIO_IFRAME.search(f))
+    return (captcha_visivel(f) and bool(DESAFIO_IFRAME.search(str(f.get("src") or "")))
+            and (f.get("w") or 0) >= 280 and (f.get("h") or 0) >= 280)
+
+
 def classificar_pagina(bruto: dict, campos: list[dict]) -> tuple[str, str]:
-    """(etapa, aviso) da página."""
+    """(etapa, aviso) da página. O captcha que só protege o envio (a caixa "não sou um robô" junto do botão Enviar) não
+    impede o preenchimento: a ferramenta preenche os campos, não toca no captcha e avisa; resolver e enviar ficam com a
+    pessoa (constituição VI, "Parar no bloqueio", esclarecido em 2026-10-27). Param: pedido de código, atividade
+    suspeita, acesso bloqueado, a tela de espera que confere se é humano, o desafio de imagens aberto e o captcha numa
+    página sem formulário."""
     texto, titulos = _sem_acento(bruto.get("texto")), _sem_acento(bruto.get("titulos"))
-    if any(captcha_visivel(f) for f in bruto.get("iframes") or []) or BLOQUEIO.search(texto):
+    iframes = bruto.get("iframes") or []
+    captcha = any(captcha_visivel(f) for f in iframes) or bool(BLOQUEIO.search(texto))
+    tem_campos = any(c["marca"] != "outro" for c in campos)
+    if VERIFICACAO.search(texto) or any(desafio_aberto(f) for f in iframes) or (captcha and not tem_campos):
         return "bloqueio", "O portal pediu uma verificação (captcha ou código). Resolva na janela; a ferramenta parou aqui."
     if bruto.get("senhas"):
         return "login", "Tela de login: use Preencher login (se guardou a credencial) ou entre à mão, e clique você em Entrar."
     if TESTE.search(titulos):
         return "teste", "Esta etapa é um teste ou vídeo do portal: é com você. A ferramenta não preenche testes."
-    if any(c["marca"] != "outro" for c in campos):
-        return "perguntas", ""
+    if tem_campos:
+        return "perguntas", AVISO_CAPTCHA if captcha else ""
     return "desconhecida", "Não reconheci perguntas nesta página. Avance no portal até o formulário e leia de novo."
 
 

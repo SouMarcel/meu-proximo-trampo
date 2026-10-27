@@ -52,6 +52,9 @@ clica** em Entrar, Continuar e Enviar é sempre a pessoa. Isso exige uma emenda 
   No mesmo teste: na Gupy a pergunta fica num `<h3>` acima das opções, cada caixa tem um `name` próprio
   (`checkbox-<id>-0/1`) e a pergunta de um campo de texto pode estar só no `name`; a leitura passou a tomar como
   pergunta o texto entre o campo anterior e o atual, e "permissão para trabalhar" entrou entre as sensíveis.
+- Q (2026-10-27, vaga do JazzHR, `applytojob.com`): "O portal pediu uma verificação", mas o captcha era só o do envio,
+  no fim do formulário → A: o captcha que só protege o envio não impede o preenchimento. A ferramenta preenche, não toca
+  no captcha e avisa; a pessoa resolve e envia (constituição 5.0.1).
 - Q (2026-10-24, vaga do LinkedIn que leva ao Greenhouse): "O portal pediu uma verificação" sem captcha na tela →
   A: era o reCAPTCHA invisível do Greenhouse, um falso alarme. Agora só param a ferramenta captcha visível e frases de
   verificação. No mesmo teste: as perguntas Sim/Não e o país do Greenhouse são listas com busca (react-select), lidas e
@@ -232,8 +235,9 @@ desligar a qualquer momento ("Desligar nesta vaga"); religar pede o aviso de nov
 - **FR-004**: A ferramenta MUST NOT preencher campos de pergunta sensível (autorização de trabalho, visto,
   cidadania, salário ou pretensão, deficiência, relocação, diversidade), campos de arquivo nem campos de senha fora
   do login.
-- **FR-005**: Diante de captcha, verificação em duas etapas, código por e-mail ou pedido de nova verificação, a
-  ferramenta MUST parar e pedir que a pessoa resolva na janela, sem tentar contornar.
+- **FR-005**: Diante de captcha que impede chegar ao formulário, verificação em duas etapas, código por e-mail ou pedido
+  de nova verificação, a ferramenta MUST parar e pedir que a pessoa resolva na janela, sem tentar contornar. O captcha
+  que só protege o envio não impede o preenchimento: a ferramenta preenche, não toca nele e avisa (2026-10-27).
 - **FR-006**: O recurso MUST vir desligado em toda vaga e só funcionar numa vaga depois que a pessoa o ligar nela e
   confirmar o aviso de risco.
 

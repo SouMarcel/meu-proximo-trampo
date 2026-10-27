@@ -65,8 +65,10 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
     relocação, diversidade): elas vão com a sua resposta. Aceite de termos, anexos e testes do
     portal ficam com você, na janela.
   - Listas com busca (como as do Greenhouse) também são preenchidas: a ferramenta abre a lista, lê
-    as opções e escolhe pelo teclado, sem clicar. O reCAPTCHA invisível desses sites não atrapalha;
-    um captcha que peça algo a você faz a ferramenta parar até você resolver na janela.
+    as opções e escolhe pelo teclado, sem clicar. O reCAPTCHA invisível desses sites não atrapalha.
+    Um captcha que só protege o envio (a caixa "não sou um robô" no fim do formulário) também não: a
+    ferramenta preenche os campos e não toca nele, e você resolve o captcha e clica em Enviar. Pedido
+    de código ou tela de verificação antes do formulário fazem a ferramenta parar até você resolver.
   - Preenche só em sites de candidatura conhecidos (Gupy, Greenhouse, Lever, Workday) ou nos que
     você liberar. Indeed e Nerdin ficam de fora porque os termos deles proíbem automação na
     candidatura, e o LinkedIn também.
