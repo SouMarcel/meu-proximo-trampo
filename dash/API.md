@@ -538,10 +538,21 @@ as rotas `vaga/{id}/abrir|ler|preencher|login` respondem 409.
 {aviso: texto do aviso de risco, navegador: bool, memoria: [{chave, pergunta, resposta, categoria, em}],
  dominios: {conhecidos: [{portal, rotulo, dominios, tem_login}], bloqueados: [{dominio, motivo}],
             liberados: [{dominio, em}]},
- credenciais: [{portal, rotulo, login: [host], guardada, usuario, final (4 últimos caracteres), no_ambiente}]}
+ credenciais: [{portal, rotulo, login: [host], guardada, usuario, final (4 últimos caracteres), no_ambiente}],
+ contato: {nome?, sobrenome?, email?, telefone?, cidade?, estado?, pais?, linkedin?, portfolio?, endereco?, cep?},
+ campos_contato: [nomes dos campos]}
 ```
 
 A senha nunca volta.
+
+**Dados de contato** (spec 033). Eles preenchem os campos de contato de qualquer formulário, sem IA: o campo é
+reconhecido pelo `autocomplete`, pelo tipo e por sinônimos em português e inglês, e a pergunta inteira precisa bater.
+Ficam em `dash/dados/contato.json`, fora do Git, e nunca vão para a IA.
+- `POST /api/candidatura/contato/proposta` (sem corpo) → `{dados, fontes: {campo: "currículo"|"respostas
+  anteriores"|"filtros da busca"}, avisos}`. Lê do currículo base, das respostas guardadas e dos filtros, sem gravar.
+- `PUT /api/candidatura/contato` `{dados: {campo: valor}}` → `{contato}`. Erro 400 com a regra: "e-mail inválido", "o
+  LinkedIn precisa ser um link do linkedin.com…", "parece um documento (CPF, RG ou data de nascimento) em <campo>…".
+- `DELETE /api/candidatura/contato` → `{contato: {}}`.
 
 Item de `itens`, devolvido por `ler`:
 
@@ -570,7 +581,7 @@ Formato da `proposta`, por tipo:
 | `POST /api/candidatura/vaga/{id}/login` | — | `{portal, rotulo, preenchidos: ["usuario","senha"], aviso}`; 409 fora do host exato de login, sem credencial ou com mais de um campo de senha |
 | `POST /api/candidatura/vaga/{id}/abrir` | — | `{ok, url, dominio}`; abre o link da vaga na janela e a traz para a frente |
 | `POST /api/candidatura/vaga/{id}/ler` | — | `{pagina: {url, dominio: {host, permitido, portal, origem, bloqueado, pode_liberar}, etapa: "perguntas"\|"login"\|"teste"\|"bloqueio"\|"desconhecida", aviso, assinatura}, itens, aviso_ia, ia}`. Os `itens` (com a proposta da IA) só vêm com `etapa: "perguntas"` e domínio permitido. Nada vai à IA antes disso |
-| `POST /api/candidatura/vaga/{id}/auto` | — | "Preencher esta página": `{pagina, preenchidos: [{chave, rotulo, texto, fonte: "sua resposta anterior"\|"seu perfil", conferir}], perguntas: [item + {lembrar}], na_janela: [{chave, rotulo, motivo}], aviso_ia, aviso, documento}`. Preenche com a memória (inclusive sensível) e com a IA (só campos comuns); `perguntas` é o que precisa da pessoa |
+| `POST /api/candidatura/vaga/{id}/auto` | — | "Preencher esta página": `{pagina, preenchidos: [{chave, rotulo, texto, fonte: "seus dados de contato"\|"sua resposta anterior"\|"seu perfil", conferir}], perguntas: [item + {lembrar}], na_janela: [{chave, rotulo, motivo}], aviso_ia, aviso, documento}`. Preenche primeiro os campos de contato com os dados de contato salvos (spec 033, sem IA), depois com a memória (inclusive sensível) e com a IA (só campos comuns); `perguntas` é o que precisa da pessoa |
 | `POST /api/candidatura/vaga/{id}/preencher` | `{assinatura, respostas: [{chave, valor, trocar?}], lembrar?: bool (padrão true)}` | as respostas da pessoa (podem ir em pergunta sensível e dado cadastral, nunca em aceite, arquivo ou senha): `{preenchidos: [{chave, rotulo, valor, texto}], ficaram, aviso, lembradas, documento}`; 409 se a página mudou, se o domínio não está liberado ou se há bloqueio |
 | `DELETE /api/candidatura/memoria/{chave}` | — | `{memoria}`; 404 se não existe |
 

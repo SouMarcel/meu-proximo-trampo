@@ -221,10 +221,20 @@ class Handler(BaseHTTPRequestHandler):
             if not partes:
                 if metodo != "GET":
                     return self._erro(405, "método não permitido")
-                from candidatura import memoria
+                from candidatura import contato, memoria
                 return self._json(200, {"aviso": candidatura.AVISO, "navegador": bool(nav.achar()),
                                         "dominios": dominios.para_pagina(), "credenciais": login.para_pagina(),
-                                        "memoria": memoria.listar()})
+                                        "memoria": memoria.listar(), "contato": contato.ler(),
+                                        "campos_contato": list(contato.CAMPOS)})
+            if partes[:1] == ["contato"]:  # dados de contato (spec 033): só o que a pessoa salva; nunca vão à IA
+                from candidatura import contato
+                if partes == ["contato", "proposta"] and metodo == "POST":
+                    return self._json(200, contato.propor())
+                if partes == ["contato"] and metodo == "PUT":
+                    return self._json(200, {"contato": contato.gravar(self._corpo().get("dados"))})
+                if partes == ["contato"] and metodo == "DELETE":
+                    return self._json(200, {"contato": contato.apagar()})
+                return self._erro(405, "método não permitido")
             if len(partes) == 2 and partes[0] == "memoria" and metodo == "DELETE":
                 from candidatura import memoria
                 if not memoria.apagar(partes[1]):

@@ -52,6 +52,8 @@ clica** em Entrar, Continuar e Enviar é sempre a pessoa. Isso exige uma emenda 
   No mesmo teste: na Gupy a pergunta fica num `<h3>` acima das opções, cada caixa tem um `name` próprio
   (`checkbox-<id>-0/1`) e a pergunta de um campo de texto pode estar só no `name`; a leitura passou a tomar como
   pergunta o texto entre o campo anterior e o atual, e "permissão para trabalhar" entrou entre as sensíveis.
+- Q (2026-10-28): os dados de contato (nome, e-mail, telefone, LinkedIn) eram pedidos de novo a cada formulário com
+  outro texto → A: spec 033, "Dados de contato na candidatura assistida, sem IA".
 - Q (2026-10-27, vaga do JazzHR, `applytojob.com`): "O portal pediu uma verificação", mas o captcha era só o do envio,
   no fim do formulário → A: o captcha que só protege o envio não impede o preenchimento. A ferramenta preenche, não toca
   no captcha e avisa; a pessoa resolve e envia (constituição 5.0.1).

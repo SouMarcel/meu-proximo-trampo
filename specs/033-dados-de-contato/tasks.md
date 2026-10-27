@@ -14,7 +14,7 @@ de currículo fictício e `ia.responder` trocado para provar que a IA não é ch
 
 ## Phase 1: Setup
 
-- [ ] T001 Base de testes em `tests/test_dados_contato.py`:
+- [X] T001 Base de testes em `tests/test_dados_contato.py`:
   - diretório temporário para `banco.ARQUIVO` (os dados vão ao lado) e `filtros.CONFIG` com
     `localidade: {pais: "Brasil", estado: "SP", cidade: "São Paulo"}`;
   - `PaginaFalsa` com campos configuráveis (`rotulo`, `tipo`, `tipo_html`, `autocomplete`, `nome`, `opcoes`, `valor`),
@@ -24,7 +24,7 @@ de currículo fictício e `ia.responder` trocado para provar que a IA não é ch
 
 ## Phase 2: Foundational (bloqueia as histórias)
 
-- [ ] T002 `candidatura/contato.py`, armazenamento:
+- [X] T002 `candidatura/contato.py`, armazenamento:
   - `CAMPOS`, `arquivo()` (`banco.ARQUIVO.parent / "contato.json"`), `ler()` (`{}` sem arquivo ou com arquivo
     ilegível) e `apagar()`;
   - `gravar(dados)` com a validação do data-model:
@@ -43,7 +43,7 @@ de currículo fictício e `ia.responder` trocado para provar que a IA não é ch
 
 **Independent Test**: proposta com nome, e-mail, telefone e LinkedIn; `contato.json` não existe até o `gravar`.
 
-- [ ] T003 [US1] `contato.propor()`:
+- [X] T003 [US1] `contato.propor()`:
   - **currículo base**: `curriculo_base.marcados()` (pt, depois en), lido por `primeiros_passos.extrair`;
     `reconhecer_contato` dá e-mail, telefone e LinkedIn;
   - **nome**: a primeira linha do texto com **de 2 a 6 palavras, só letras, até 60 caracteres e sem "@"**. O primeiro
@@ -53,12 +53,12 @@ de currículo fictício e `ia.responder` trocado para provar que a IA não é ch
   - **filtros** (`filtros.efetivos(filtros.ler_config())["localidade"]`): cidade, estado e país;
   - `fontes` por campo e `avisos` (ex.: "o currículo traz 2 e-mails; ficou o primeiro", "sem currículo base marcado");
   - erro de leitura do currículo vira aviso e não derruba a proposta.
-- [ ] T004 [US1] `dash/servidor.py`, dentro de `_candidatura`:
+- [X] T004 [US1] `dash/servidor.py`, dentro de `_candidatura`:
   - `GET /api/candidatura` passa a trazer `contato` e `campos_contato`;
   - `POST /api/candidatura/contato/proposta` → `contato.propor()`;
   - `PUT /api/candidatura/contato` → `{contato: contato.gravar(corpo["dados"])}`, com 400 no `ValueError`;
   - `DELETE /api/candidatura/contato` → `{contato: contato.apagar()}`.
-- [ ] T005 [P] [US1] Testes:
+- [X] T005 [P] [US1] Testes:
   - proposta do currículo fictício (`primeiros_passos.extrair` trocado para devolver o texto): nome "Ana", sobrenome
     "Exemplo Silva", e-mail, telefone e LinkedIn; `contato.json` não existe depois (SC-003);
   - memória preenche o que o currículo não trouxe; filtros dão cidade, estado e país;
@@ -75,25 +75,25 @@ de currículo fictício e `ia.responder` trocado para provar que a IA não é ch
 **Independent Test**: página com "Full name", "E-mail", "Celular", "LinkedIn profile" e campos com `autocomplete`;
 todos preenchidos com a fonte "seus dados de contato" e zero chamadas à IA.
 
-- [ ] T006 [US2] `contato.reconhecer(campo)` (D2):
+- [X] T006 [US2] `contato.reconhecer(campo)` (D2):
   - `None` para marca `sensivel`;
   - **`autocomplete`**: `given-name`, `family-name`, `name`, `email`, `tel`/`tel-national`, `address-level2`,
     `address-level1`, `country`/`country-name`, `postal-code`, `address-line1`/`street-address`, `url`;
   - **tipo**: `email`, `tel`; `url` vira LinkedIn se a pergunta ou o `name` falam de LinkedIn, senão portfólio;
   - **sinônimos**: a pergunta inteira (sem acento, sem `*`, "obrigatório", "required", "optional") precisa bater com a
     lista de R4. O `name` do campo também conta (ex.: `first_name`, `email`, `phone`).
-- [ ] T007 [US2] `contato.valor_para(campo, dados)` (D5):
+- [X] T007 [US2] `contato.valor_para(campo, dados)` (D5):
   - texto: o valor; `nome_completo` = nome + sobrenome;
   - lista ou seleção de país: a opção cujo texto normalizado bate com o país ou com o nome em inglês
     (`filtros.PAISES`);
   - estado: a sigla ou o nome (`fontes._comum.UFS`);
   - sem opção que bata, `None`.
-- [ ] T008 [US2] `candidatura/auto.preencher_pagina`:
+- [X] T008 [US2] `candidatura/auto.preencher_pagina`:
   - antes da memória, para cada campo fora de `NA_JANELA`, sem valor e com marca `cadastro` ou `comum`: `k =
     contato.reconhecer(c)` e `v = contato.valor_para(c, dados)`;
   - os achados vão por `preencher(..., da_pessoa=True)`, com `fonte: "seus dados de contato"`;
   - os campos preenchidos saem dos passos seguintes (memória e IA).
-- [ ] T009 [P] [US2] Testes:
+- [X] T009 [P] [US2] Testes:
   - "Full name", "Nome", "E-mail", "Celular" e "LinkedIn profile" reconhecidos e preenchidos (SC-001);
   - `autocomplete=given-name` e `family-name`;
   - "Nome da empresa anterior" não reconhecido;
@@ -106,7 +106,7 @@ todos preenchidos com a fonte "seus dados de contato" e zero chamadas à IA.
 
 ## Phase 5: Polish & Cross-Cutting
 
-- [ ] T010 Front, na `frontend-react` (worktree própria saída de `origin/frontend-react`, branch
+- [X] T010 Front, na `frontend-react` (worktree própria saída de `origin/frontend-react`, branch
   `front-033-dados-de-contato`):
   - `src/services/api/candidatura.ts`: `contato`, `campos_contato` e os clientes de proposta, salvar e apagar;
   - em `src/components/modals/ConfigCandidatura.tsx`, a seção "Seus dados de contato" (ou componente
@@ -114,7 +114,7 @@ todos preenchidos com a fonte "seus dados de contato" e zero chamadas à IA.
     valor, Salvar, Apagar e a dica de privacidade;
   - `npm run build` sem erro e commit local, **sem push** antes do back-end na master;
   - build de teste copiado no `dash/front` da branch pessoal, sem commit.
-- [ ] T011 [P] Documentação: `dash/API.md` §3.11b (rotas e fonte "seus dados de contato"), README (candidatura
+- [X] T011 [P] Documentação: `dash/API.md` §3.11b (rotas e fonte "seus dados de contato"), README (candidatura
   assistida) e uma linha na spec 027 apontando para a 033.
 - [ ] T012 Verificação:
   - `PY -m unittest discover -s tests` inteiro;
