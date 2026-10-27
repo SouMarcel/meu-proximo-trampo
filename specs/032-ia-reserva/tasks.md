@@ -119,7 +119,7 @@ não regressão.
 ## Phase 6: Polish & Cross-Cutting
 
 - [X] T012 [P] `dash/API.md` §3.5 (reservas, sequência, alerta, `ia_alerta`) e a seção da IA no README (reserva e aviso).
-- [ ] T013 Verificação:
+- [X] T013 Verificação:
   - `PY -m unittest discover -s tests` inteiro;
   - na branch pessoal de teste: configurar Gemini (`gemini-3.8-flash`) como principal e OpenRouter (`openrouter/free`)
     como reserva (SC-004), reiniciar o dashboard, testar a sequência e ver o aviso;
@@ -144,3 +144,15 @@ não regressão.
 1. **MVP**: T001–T005. A reserva responde nos testes.
 2. US2 (aviso e situação) → US3 (servidor e painel).
 3. Documentação, configuração do usuário e teste na branch pessoal.
+
+## Verificação (27/10/2026)
+
+- Suíte inteira passando: 493 testes na branch da spec e 498 na branch pessoal de teste (com a 027b).
+- Na branch pessoal de teste:
+  - `PUT /api/ia` gravou Gemini (`gemini-3.8-flash`) como principal e OpenRouter (`openrouter/free`) como reserva, as
+    duas com chave e sem chave no `config.json` (SC-004);
+  - "Testar a sequência": Gemini com 503 e OpenRouter funcionando; `/api/versao` com `ia_alerta` do Gemini;
+  - uma chamada normal (`ia.responder`, sem escolha) estourou o tempo no Gemini e foi respondida pelo OpenRouter, com o
+    aviso "Gemini (Google) fora: o provedor demorou demais para responder…" e a marca da reserva (SC-001).
+- Observação: quando a principal não responde (tempo esgotado, e não erro), a reserva só entra depois do tempo limite
+  da função.
