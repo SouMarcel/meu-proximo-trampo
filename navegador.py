@@ -10,6 +10,8 @@ espaco), nunca em botões: quem chama confere antes qual é o elemento ativo.
   achar()                   caminho do Edge ou do Chrome, ou None
   aberto()                  a janela da ferramenta está aberta (porta de depuração respondendo)
   abrir(url, minimizado)    abre a janela (ou uma aba nela) na URL; devolve a Aba
+  abrir_para_leitura(url)   leitura em segundo plano (Atualizar candidaturas): aba nova, sem tirar da frente a aba
+                            em uso (ex.: um formulário de candidatura); Aba.fechar_aba() fecha só ela
   aba_atual()                a aba que a pessoa está vendo, sem navegar (candidatura assistida)
   Aba.ir(url) / .avaliar(js) / .url() / .origem() / .fechar()
   Aba.digitar(texto) / .espaco()   digitação no elemento focado (spec 027)
@@ -288,6 +290,22 @@ class Aba:
     def fechar(self) -> None:
         self.sessao.fechar()
 
+    propria = False  # aba aberta só para uma leitura (abrir_para_leitura): pode ser fechada no fim
+
+    def fechar_aba(self) -> None:
+        """Fecha a aba, se ela foi aberta só para a leitura; senão, só a conexão (a janela e a aba continuam)."""
+        try:
+            if self.propria:
+                s = _Sessao(_http("/json/version")["webSocketDebuggerUrl"])
+                try:
+                    s.pedir("Target.closeTarget", targetId=self.id)
+                finally:
+                    s.fechar()
+        except (NavegadorErro, OSError, ValueError, KeyError):
+            pass
+        finally:
+            self.fechar()
+
 
 def abrir(url: str, minimizado: bool = False) -> Aba:
     """Abre a janela da ferramenta na URL e devolve a Aba. Se a janela já está aberta, usa a aba que ela tem (sem
@@ -326,6 +344,31 @@ def abrir(url: str, minimizado: bool = False) -> Aba:
     else:
         alvo = _http(f"/json/new?{url}", "PUT")
     aba = Aba(alvo)
+    aba.esperar_carregar()
+    return aba
+
+
+def abrir_para_leitura(url: str) -> Aba:
+    """Para leituras em segundo plano (Atualizar candidaturas): com a janela aberta, abre a URL numa aba nova, em
+    segundo plano, sem navegar nem tirar da frente a aba que a pessoa está usando (um formulário de candidatura, por
+    exemplo). Sem janela, abre a janela minimizada, como abrir(). A Aba volta com propria=True quando é uma aba nova."""
+    if not aberto():
+        return abrir(url, minimizado=True)
+    s = _Sessao(_http("/json/version")["webSocketDebuggerUrl"])
+    try:
+        alvo = s.pedir("Target.createTarget", url=url, background=True).get("targetId")
+    finally:
+        s.fechar()
+    limite = time.monotonic() + TEMPO_ABRIR
+    info = None
+    while info is None and time.monotonic() < limite:
+        info = next((a for a in _http("/json/list") if a.get("id") == alvo and a.get("webSocketDebuggerUrl")), None)
+        if info is None:
+            time.sleep(0.2)
+    if info is None:
+        raise NavegadorErro("o navegador não abriu a aba da leitura")
+    aba = Aba(info)
+    aba.propria = True
     aba.esperar_carregar()
     return aba
 

@@ -184,12 +184,14 @@ class Leitura:
             raise contas.PortalErro(f"o login na {modulo.PLATAFORMA} não foi concluído na janela")
         self.estado.update(situacao="lendo")
         lidas = modulo.ler(aba)
-        aba.minimizar()
+        if not aba.propria:  # aba própria da leitura: a janela pode estar em uso (ex.: um formulário), não minimiza
+            aba.minimizar()
         return lidas
 
     def _rodar(self, portais: list[str]) -> None:
         """A janela fica aberta e minimizada depois da leitura (decisão da pessoa): a Gupy esquece o login quando
-        ela fecha. Ela fecha no Desconectar ou quando o dashboard para."""
+        ela fecha. Ela fecha no Desconectar ou quando o dashboard para. Com a janela já aberta, a leitura usa uma aba
+        própria em segundo plano e fecha só ela no fim, para não tirar a pessoa de um formulário de candidatura."""
         lidas, erros, aba, r = [], {}, None, None
         try:
             for nome in portais:
@@ -198,7 +200,7 @@ class Leitura:
                     continue
                 self.estado.update(situacao="lendo", portal=modulo.PLATAFORMA)
                 try:
-                    aba = aba or navegador.abrir(modulo.URL_CANDIDATURAS, minimizado=True)
+                    aba = aba or navegador.abrir_para_leitura(modulo.URL_CANDIDATURAS)
                     lidas += self._ler_portal(modulo, aba)
                 except contas.PortalErro as e:
                     erros[modulo.PLATAFORMA] = str(e)
@@ -211,8 +213,11 @@ class Leitura:
             r = proposta(lidas, banco.listar_vagas())
         finally:
             if aba is not None:
-                aba.minimizar()
-                aba.fechar()  # só a conexão; a janela continua aberta
+                if aba.propria:
+                    aba.fechar_aba()  # só a aba da leitura; a da pessoa e a janela continuam como estavam
+                else:
+                    aba.minimizar()
+                    aba.fechar()  # só a conexão; a janela continua aberta
             r = r or {"itens": [], "sem_mudanca": 0}
             r.update(erros=erros, lidas_em=datetime.now().isoformat(timespec="seconds"))
             self.resultado = r

@@ -53,8 +53,6 @@ priorizado.
   ajustar por portal quando aparecerem.
 - **Formulário dentro de iframe** (ex.: Greenhouse embutido no site da empresa): hoje só a página principal é lida;
   a pessoa pode abrir o endereço do iframe direto na janela.
-- **"Atualizar candidaturas" no meio de uma candidatura** navega a aba da janela para a área do portal: abrir a
-  leitura numa aba própria.
 
 ## Faixa salarial (spec 028)
 
