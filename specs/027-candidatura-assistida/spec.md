@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-23
 
-**Status**: Entregue em 2026-10-24. Prova real feita em 2026-10-27 (FullStack e JazzHR); os termos de candidato da Gupy seguem sem leitura (T016)
+**Status**: Entregue em 2026-10-24. Prova real feita em 2026-10-27 (FullStack e JazzHR); os termos de candidato da Gupy foram conferidos pelo usuário no mesmo dia (T016)
 
 **Input**: User description: "Analise a possibilidade de a própria IA que estamos colocando no sistema via API
 fazer a aplicação na plataforma que homologamos. Ex.: quando clico em seguir com a vaga no Gupy, ela segue com o

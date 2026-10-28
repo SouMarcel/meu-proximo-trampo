@@ -44,17 +44,11 @@ priorizado.
 
 - **Senha no Gerenciador de Credenciais do Windows** em vez do `.env` (texto puro): exige `ctypes` com a API do
   Windows (CredRead/CredWrite) ou uma dependência; manter o `.env` como alternativa no macOS e no Linux.
-- **Termos de candidato da Gupy**: em 2026-10-23 as páginas de termos deram 404. Em 2026-10-27, o "Aviso de
-  Privacidade … para Pessoas Candidatas" (26/06/2025) não trata de automação, e o suporte de candidatos não carrega
-  para leitura automática. Falta ver, na tela de cadastro da Gupy, se há link para termos de uso. Se proibirem
-  automação, a Gupy vai para os bloqueados.
 - **Seletores próprios dos portais**: as listas com busca do tipo react-select (`role=combobox`, ex.: Greenhouse) são
   preenchidas desde 2026-10-24. Outros seletores feitos com `div`, sem `role=combobox`, ainda ficam com a pessoa:
   ajustar por portal quando aparecerem.
 - **Formulário dentro de iframe** (ex.: Greenhouse embutido no site da empresa): hoje só a página principal é lida;
   a pessoa pode abrir o endereço do iframe direto na janela.
-- **"Atualizar candidaturas" no meio de uma candidatura** navega a aba da janela para a área do portal: abrir a
-  leitura numa aba própria.
 
 ## Faixa salarial (spec 028)
 
