@@ -21,6 +21,7 @@ import {
 import type { Vaga, Senioridade, Versao } from "../types/api"
 import { useFerramenta, AvisoSoLeitura } from "../contexto/Ferramenta"
 import { ScreenPreferencesService } from "../services/storage"
+import { SeloIntegridade } from "./Integridade"
 import {
   getPlataformaStyle,
   getAderenciaBadge,
@@ -367,6 +368,7 @@ export default function TriageReport({
                       >
                         {vaga.titulo}
                       </h3>
+                      <SeloIntegridade vaga={vaga} />
                       {linkVaga && (
                         <a
                           href={linkVaga}

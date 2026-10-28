@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import type { CamposEditaveis, Vaga, Etapa } from "../types/api"
 import JobCard from "./JobCard"
+import { SeloIntegridade } from "./Integridade"
 import {
   getEtapaInfo,
   getPlataformaStyle,
@@ -381,6 +382,9 @@ export default function KanbanBoard({
                         </div>
                         <div className="text-xs text-slate-500">
                           {vaga.empresa}
+                        </div>
+                        <div className="flex items-center gap-1 flex-wrap mt-1 empty:hidden">
+                          <SeloIntegridade vaga={vaga} />
                         </div>
                       </td>
                       <td className="py-3.5 px-4">

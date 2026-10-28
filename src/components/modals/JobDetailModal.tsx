@@ -37,6 +37,7 @@ import {
 import { AUTORIZACAO, CONTRATACAO, ESTADOS_KIT, ETAPAS, INGLES, PEDE, RESULTADOS, RISCOS, TIPOS_EMPREGO } from "../../utils/rotulos"
 import { useFerramenta, AvisoSoLeitura } from "../../contexto/Ferramenta"
 import TextoDaVaga from "../TextoDaVaga"
+import { BlocoIntegridade, LembreteNota, OrigemDoLink, SeloIntegridade } from "../Integridade"
 import { KitDaVaga, Lembrete } from "../kit/Kit"
 import { GerarCurriculo, SecaoCurriculos } from "../curriculo/Curriculos"
 
@@ -140,6 +141,7 @@ export default function JobDetailModal({
               <span className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${platStyle.bg} ${platStyle.text} ${platStyle.border}`}>
                 {vaga.plataforma}
               </span>
+              <SeloIntegridade vaga={vaga} />
               {estaNoQuadro && (
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${etapaInfo.badgeBg} ${etapaInfo.badgeText}`}>
                   {etapaInfo.label}
@@ -247,6 +249,9 @@ export default function JobDetailModal({
                 </p>
               )}
 
+              <OrigemDoLink vaga={vaga} />
+              <BlocoIntegridade vaga={vaga} />
+
               <div className="space-y-2">
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white">Texto do anúncio</h4>
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
@@ -293,6 +298,7 @@ export default function JobDetailModal({
                       Nota provisória, dada sem o texto da vaga; ela é refeita quando a descrição chegar.
                     </p>
                   )}
+                  <LembreteNota vaga={vaga} />
                   {vaga.resumo && (
                     <div className="bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 rounded-2xl p-4 sm:p-5 space-y-2">
                       <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold text-sm">

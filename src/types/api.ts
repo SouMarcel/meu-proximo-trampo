@@ -98,6 +98,18 @@ export interface LembretePendente {
   base: string
 }
 
+export interface Integridade {
+  veredito: "limpo" | "atencao"
+  contagens: Partial<Record<"invisiveis" | "adulteracao" | "instrucoes" | "alfabetos" | "ocultos" | "links_ocultos", number>>
+  citacoes: { tipo: "instrucao" | "alfabetos" | "adulteracao" | "oculto" | "link_oculto"; trecho: string }[]
+}
+
+export interface OrigemLink {
+  tipo: "portal" | "ats" | "nao_verificada"
+  dominio: string
+  nome?: string
+}
+
 export interface Vaga {
   // identidade e origem
   id: string // ^[A-Za-z0-9_.:-]{1,64}$
@@ -134,6 +146,10 @@ export interface Vaga {
   pais_vaga?: string
   restricao_local?: string
   sinais?: string[]
+  /** Filtro de integridade do texto (spec 034): o que foi tirado ou apontado na descrição. */
+  integridade?: Integridade
+  /** De quem é o domínio do link (spec 034), nas vagas do Adicionar Vaga. */
+  origem_link?: OrigemLink
   // triagem e quadro
   triagem: Triagem
   triada_em?: string | null

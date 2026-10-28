@@ -19,6 +19,7 @@ import { Lembrete } from "./kit/Kit"
 import { useFerramenta } from "../contexto/Ferramenta"
 import CandidaturaModal from "./modals/CandidaturaModal"
 import SalarioModal from "./modals/SalarioModal"
+import { SeloIntegridade } from "./Integridade"
 import {
   getPlataformaStyle,
   getAderenciaBadge,
@@ -88,6 +89,7 @@ export default function JobCard({
                 {vaga.ats}
               </span>
             )}
+            <SeloIntegridade vaga={vaga} />
           </div>
 
           {/* Adherence Score Pill */}

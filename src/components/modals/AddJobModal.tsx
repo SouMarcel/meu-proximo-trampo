@@ -38,12 +38,25 @@ const ROTULO_ETAPA: Record<Etapa, string> = {
   encerrada: "Encerrada",
 }
 
+/** Origem do link e texto suspeito (spec 034): vão junto do aviso de vaga adicionada. Só avisam. */
+function avisoSeguranca(v: Vaga): string {
+  const partes: string[] = []
+  if (v.origem_link?.tipo === "nao_verificada")
+    partes.push(`⚠ Fonte não verificada (${v.origem_link.dominio}): confira se o site é mesmo da empresa antes de passar seus dados.`)
+  if (v.integridade?.veredito === "atencao")
+    partes.push("⚠ O texto da vaga parece mirar a IA: veja o que foi achado na aba Descrição da vaga.")
+  return partes.length ? " " + partes.join(" ") : ""
+}
+
 function avisoAdicionada(v: Vaga, automatica?: boolean): string {
-  if (v.triagem === "fora") return "Vaga adicionada em Fora dos critérios: " + (v.motivo_fora || []).join("; ")
-  if (v.analise_status !== "pendente") return noQuadro(v) ? "Vaga adicionada ao quadro." : "Vaga adicionada ao relatório."
-  return automatica
-    ? "Vaga adicionada. A IA está analisando a aderência (cerca de 1 minuto)."
-    : "Vaga adicionada. Para a nota, escolha uma IA no botão IA ou peça a análise no chat."
+  if (v.triagem === "fora") return "Vaga adicionada em Fora dos critérios: " + (v.motivo_fora || []).join("; ") + avisoSeguranca(v)
+  if (v.analise_status !== "pendente")
+    return (noQuadro(v) ? "Vaga adicionada ao quadro." : "Vaga adicionada ao relatório.") + avisoSeguranca(v)
+  return (
+    (automatica
+      ? "Vaga adicionada. A IA está analisando a aderência (cerca de 1 minuto)."
+      : "Vaga adicionada. Para a nota, escolha uma IA no botão IA ou peça a análise no chat.") + avisoSeguranca(v)
+  )
 }
 
 function jaEstava(v: Vaga): string {
