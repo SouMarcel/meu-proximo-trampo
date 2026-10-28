@@ -21,4 +21,9 @@
 - [x] T019 Greenhouse: captcha invisível não para; listas com busca (react-select) lidas e escolhidas pelo teclado (seta, Esc, Tab); campos escondidos de validação ignorados; aba visível
 - [x] T020 (2026-10-27) Captcha só no envio (JazzHR, `applytojob.com`): preenche e avisa, sem tocar no captcha; param
   o pedido de código, a tela de espera, o desafio aberto e o captcha sem formulário (constituição 5.0.1)
-- [ ] T016 (usuário) Conferir os termos de candidato da Gupy e fazer a prova real na Gupy e num ATS externo. Entregue na `master` em 2026-10-24 com o OK do usuário, antes dessa prova (decisão dele); os dois pontos seguem pendentes
+- [ ] T016 (usuário) Conferir os termos de candidato da Gupy. Entregue na `master` em 2026-10-24 com o OK do usuário,
+  antes da prova real (decisão dele).
+  - Prova real feita em 2026-10-27: FullStack (`talent.fullstack.com`) e Learntastic (JazzHR, `applytojob.com`).
+  - Termos, nova tentativa em 2026-10-27: o "Aviso de Privacidade … para Pessoas Candidatas" (versão de 26/06/2025)
+    não trata de automação; a central de suporte de candidatos não carrega para leitura automática; nenhum termo de
+    uso de candidato foi encontrado. Falta o usuário ver, na tela de cadastro da Gupy, se há link para os termos.
