@@ -33,6 +33,7 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 import conferir  # noqa: E402
 import curriculo  # noqa: E402
+import integridade  # noqa: E402
 
 
 class GeracaoErro(ValueError):
@@ -80,7 +81,8 @@ def cargos_alvo(perfil: str) -> list[str]:
 def texto_da_vaga(vaga: dict | None) -> str:
     if not vaga:
         return ""
-    return "\n".join(str(x) for x in (vaga.get("titulo"), vaga.get("empresa"), vaga.get("local"), vaga.get("descricao")) if x)
+    partes = (vaga.get("titulo"), vaga.get("empresa"), vaga.get("local"), integridade.limpar(vaga.get("descricao")))
+    return "\n".join(str(x) for x in partes if x)
 
 
 def montar_pedido(perfil: str, vaga: dict | None, tecnicas: dict) -> str:

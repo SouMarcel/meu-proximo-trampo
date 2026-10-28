@@ -33,6 +33,8 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlsplit
 
+import integridade  # integridade.py, na raiz: o que está oculto e de quem é o domínio (spec 034)
+
 from . import _comum, ats, gupy, startupjobs
 
 NL = chr(10)
@@ -41,6 +43,11 @@ TEMPO = 20
 NAVEGADOR = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
 VAZIOS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
 BLOCOS = {"p", "div", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "section", "article"}
+SEM_TEXTO = {"script", "style", "noscript", "template"}  # nunca é texto da vaga
+# nomes que a plataforma de um link pode ter no banco (os outros portais e ATS conhecidos ficam como "Outra")
+PLATAFORMAS_LINK = {"Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Nerdin", "InfoJobs", "Vagas.com",
+                    "JobGether", "Remotive", "Himalayas", "RemoteOK", "Jobicy", "We Work Remotely", "Get on Board",
+                    "Greenhouse", "Lever", "Ashby"}
 
 
 class LinkErro(Exception):
@@ -52,18 +59,10 @@ class LinkErro(Exception):
 
 
 def plataforma(host: str) -> str:
-    host = (host or "").lower()
-    for chave, nome in (("indeed.", "Indeed"), ("linkedin.", "LinkedIn"), ("gupy.io", "Gupy"),
-                        ("inhire", "InHire"), ("catho.", "Catho"), ("startup.jobs", "Startup Jobs"),
-                        ("nerdin.", "Nerdin"), ("infojobs.com.br", "InfoJobs"), ("vagas.com.br", "Vagas.com"),
-                        ("jobgether.", "JobGether"),
-                        ("remotive.", "Remotive"), ("himalayas.app", "Himalayas"),
-                        ("remoteok.", "RemoteOK"), ("jobicy.", "Jobicy"), ("weworkremotely.", "We Work Remotely"), ("getonbrd.", "Get on Board"),
-                        ("getonboard.", "Get on Board"), ("greenhouse.io", "Greenhouse"), ("lever.co", "Lever"),
-                        ("ashbyhq.com", "Ashby")):
-        if chave in host:
-            return nome
-    return "Outra"
+    """Nome da plataforma pelo domínio exato ou subdomínio: "evil-greenhouse.io" ou "gupy.io.exemplo.com" ficam como
+    "Outra", nunca com o nome do portal que imitam (spec 034)."""
+    achado = integridade.portal_do_host(host)
+    return achado[1] if achado and achado[1] in PLATAFORMAS_LINK else "Outra"
 
 
 # ---------------------------------------------------------------- rede
@@ -112,27 +111,70 @@ def _baixar(url: str, dados: bytes | None = None, cabecalhos: dict | None = None
 
 # ---------------------------------------------------------------- HTML
 
+def _escondido(attrs) -> bool:
+    """O elemento não aparece para quem olha a página: atributo hidden ou style que esconde (spec 034, research R2).
+    O aria-hidden fica: ele esconde o trecho só do leitor de tela, não da pessoa."""
+    a = {k.lower(): v for k, v in attrs}
+    return "hidden" in a or integridade.estilo_oculto(a.get("style"))
+
+
 class _Texto(HTMLParser):
+    """Texto visível: o que está oculto (e script, style, noscript, template) não entra. O trecho oculto que tinha
+    instrução para a IA, texto invisível ou link deixa uma marca no lugar (integridade.MARCA), sem o conteúdo."""
+
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.partes: list[str] = []
+        self._oculto: list[str] = []  # tags abertas do trecho oculto em curso
+        self._trecho: list[str] = []  # texto do trecho oculto: só para procurar sinal, nunca vai para a saída
+        self._links: list[str] = []
 
     def handle_starttag(self, tag, attrs):
+        if self._oculto:
+            if tag == "a":
+                self._links.append(dict(attrs).get("href") or "")
+            if tag not in VAZIOS:
+                self._oculto.append(tag)
+            return
+        if tag in SEM_TEXTO or (tag not in VAZIOS and _escondido(attrs)):
+            self._oculto = [tag]
+            self._links = [dict(attrs).get("href") or ""] if tag == "a" else []
+            return
         if tag == "li":
             self.partes.append(NL + "- ")
         elif tag == "br" or tag in BLOCOS:
             self.partes.append(NL)
 
     def handle_endtag(self, tag):
+        if self._oculto:
+            if tag in self._oculto:
+                while self._oculto.pop() != tag:
+                    pass
+                if not self._oculto:
+                    self._fechar_oculto(tag)
+            return
         if tag in BLOCOS and tag != "li":  # o próximo <li> já começa linha nova
             self.partes.append(NL)
 
     def handle_data(self, data):
-        self.partes.append(data)
+        (self._trecho if self._oculto else self.partes).append(data)
+
+    def _fechar_oculto(self, tag: str) -> None:
+        sinal = integridade.sinal_oculto("".join(self._trecho), self._links, com_links=tag not in SEM_TEXTO)
+        if sinal:
+            self.partes.append(f"{NL}{integridade.MARCA}{sinal}]{NL}")
+        self._trecho, self._links = [], []
+
+    def close(self):
+        super().close()
+        if self._oculto:  # sem fechamento: como no navegador, o trecho oculto vai até o fim
+            tag = self._oculto[0]
+            self._oculto = []
+            self._fechar_oculto(tag)
 
 
 def texto_de_html(trecho: str) -> str:
-    """Texto legível de um trecho HTML: uma linha por bloco, '- ' nos itens de lista."""
+    """Texto legível de um trecho HTML: uma linha por bloco, '- ' nos itens de lista, sem o que está oculto."""
     if "&lt;" in (trecho or "") and "<" not in trecho:
         trecho = html.unescape(trecho)  # HTML que veio escapado dentro do JSON
     p = _Texto()

@@ -27,6 +27,7 @@ for _p in (str(RAIZ), str(RAIZ / "dash")):
         sys.path.insert(0, _p)
 import banco  # noqa: E402  (dash/banco.py)
 import conferir  # noqa: E402
+import integridade  # noqa: E402
 
 PASTA = RAIZ / "entrevistas"
 MAX_HISTORIAS, TAM_CAMPO, TAM_TITULO = 60, 1200, 120
@@ -146,7 +147,8 @@ def _vaga(vid: str) -> dict:
 
 
 def _texto_vaga(v: dict) -> str:
-    return "\n".join(str(x) for x in (v.get("titulo"), v.get("empresa"), v.get("local"), v.get("descricao")) if x)
+    partes = (v.get("titulo"), v.get("empresa"), v.get("local"), integridade.limpar(v.get("descricao")))
+    return "\n".join(str(x) for x in partes if x)
 
 
 # ---------------------------------------------------------------- dossiê e perguntas

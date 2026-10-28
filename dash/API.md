@@ -103,6 +103,8 @@ Fontes: banco.py:498-604, vagas.py:719-739, kit.py.
 | `pais_vaga` | string | país da vaga internacional |
 | `restricao_local` | string | onde a vaga aceita, informado pelo portal |
 | `sinais` | string[] | sinais positivos lidos no anúncio (patrocínio de visto, relocation, frases da pessoa) |
+| `integridade` | `{veredito: "limpo"\|"atencao", contagens: {invisiveis?, adulteracao?, instrucoes?, alfabetos?, ocultos?, links_ocultos?}, citacoes: [{tipo: instrucao\|alfabetos\|adulteracao\|oculto\|link_oculto, trecho}]}` | filtro de integridade do texto (spec 034): ausente = nada a apontar; `atencao` = o texto parece mirar a IA (selo "Texto suspeito"); até 5 citações de até 120 caracteres; o conteúdo oculto tirado nunca vem |
+| `origem_link` | `{tipo: "portal"\|"ats"\|"nao_verificada", dominio, nome?}` | de quem é o domínio do link, nas vagas do Adicionar Vaga (spec 034); `nao_verificada` = selo "Fonte não verificada" |
 
 **Triagem e quadro (o que a pessoa decide)**
 
