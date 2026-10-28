@@ -23,9 +23,10 @@
   o pedido de código, a tela de espera, o desafio aberto e o captcha sem formulário (constituição 5.0.1)
 - [x] T021 (2026-10-27) "Atualizar candidaturas" com a janela aberta lê numa aba própria, em segundo plano, e fecha só
   ela no fim: não tira a pessoa de um formulário de candidatura nem minimiza a janela (`navegador.abrir_para_leitura`)
-- [ ] T016 (usuário) Conferir os termos de candidato da Gupy. Entregue na `master` em 2026-10-24 com o OK do usuário,
+- [x] T016 (usuário) Conferir os termos de candidato da Gupy. Entregue na `master` em 2026-10-24 com o OK do usuário,
   antes da prova real (decisão dele).
   - Prova real feita em 2026-10-27: FullStack (`talent.fullstack.com`) e Learntastic (JazzHR, `applytojob.com`).
   - Termos, nova tentativa em 2026-10-27: o "Aviso de Privacidade … para Pessoas Candidatas" (versão de 26/06/2025)
     não trata de automação; a central de suporte de candidatos não carrega para leitura automática; nenhum termo de
-    uso de candidato foi encontrado. Falta o usuário ver, na tela de cadastro da Gupy, se há link para os termos.
+    uso de candidato foi encontrado.
+  - Conferidos pelo usuário em 2026-10-27, sem impedimento: a Gupy segue entre os portais conhecidos.
