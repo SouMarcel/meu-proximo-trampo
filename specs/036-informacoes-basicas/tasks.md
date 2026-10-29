@@ -236,13 +236,13 @@ linhas no formato `Idioma — Sigla (Nome)`.
   do front. Depois, commit na `front-036-informacoes-basicas`.
 - [X] T024 Procurar dados pessoais no diff do backend e do front (nomes, empresas, números). Depois, commit na
   `036-informacoes-basicas`.
-- [ ] T025 Na pasta principal (branch pessoal):
+- [X] T025 Na pasta principal (branch pessoal):
   - `git merge 036-informacoes-basicas`;
   - copiar o `dist/` do front para `dash/front/`, sem commit;
   - rodar os testes;
   - reiniciar o dashboard com `--sem-navegador`;
   - pedir o teste do usuário pelo [quickstart.md](quickstart.md).
-- [ ] T026 Com o OK do usuário:
+- [X] T026 Com o OK do usuário:
   1. `git checkout -- dash/front` na branch pessoal e apagar os assets novos;
   2. merge `--no-ff` da `036-informacoes-basicas` na `master` e `git push origin master`, só com os testes passando;
   3. merge da `front-036-informacoes-basicas` na `frontend-react` e push;
