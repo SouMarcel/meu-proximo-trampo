@@ -400,12 +400,20 @@ def moldura_da_carta(idioma: str) -> tuple[str, str, str | None]:
     pais = PAIS.get(idioma, {}).get(_sem_acento(pais), pais)
     local = ", ".join(x for x in (d.get("cidade"), d.get("estado"), pais) if x)
     linkedin = re.sub(r"^https?://(www\.)?", "", d.get("linkedin") or "").rstrip("/")
-    linha = " | ".join(x for x in (local, d.get("email"), d.get("telefone"), linkedin) if x)
+    linha = " | ".join(x for x in (local, d.get("email"), telefone_legivel(d.get("telefone")), linkedin) if x)
     cabecalho = "\n".join(x for x in (nome, linha) if x)
     despedida = DESPEDIDA.get(idioma, DESPEDIDA["en"]) + (f"\n{nome}" if nome else "")
     aviso = None if nome else ("Sem os seus dados de contato, a carta saiu sem cabeçalho e sem o seu nome na despedida: "
                                "salve-os em Atualizar candidaturas → Candidatura assistida → Seus dados de contato.")
     return cabecalho, despedida, aviso
+
+
+def telefone_legivel(telefone) -> str:
+    """O celular ou fixo brasileiro guardado só com dígitos ("+5511988115533") escrito para ler: "+55 11 98811-5533".
+    Outro formato fica como a pessoa salvou."""
+    t = str(telefone or "").strip()
+    m = re.fullmatch(r"\+?55(\d{2})(\d{4,5})(\d{4})", t)
+    return f"+55 {m.group(1)} {m.group(2)}-{m.group(3)}" if m else t
 
 
 def _juntar(cabecalho: str, corpo: str, despedida: str) -> str:
