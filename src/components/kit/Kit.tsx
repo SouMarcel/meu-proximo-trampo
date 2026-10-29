@@ -394,7 +394,7 @@ export function KitDaVaga({
                 m.tipo === "respostas" ? (
                   <ItemRespostas key={m.nome} m={m} onAbrir={() => setDialogo({ modo: "ver", doc: m })} />
                 ) : (
-                  <ItemCarta key={m.nome} m={m} onCopiar={() => copiar(m.texto || "", onAviso)} />
+                  <ItemCarta key={m.nome} m={m} vagaId={vaga.id} onAviso={onAviso} onCopiar={() => copiar(m.texto || "", onAviso)} />
                 ),
               )}
             </ul>
@@ -416,11 +416,43 @@ export function KitDaVaga({
   )
 }
 
-function ItemCarta({ m, onCopiar }: { m: DocumentoCarta; onCopiar: () => void }) {
+function ItemCarta({
+  m,
+  vagaId,
+  onCopiar,
+  onAviso,
+}: {
+  m: DocumentoCarta
+  vagaId: string
+  onCopiar: () => void
+  onAviso: (m: string, t?: "info" | "erro") => void
+}) {
+  const { podeGravar, ia, tratarErro } = useFerramenta()
+  const { comecou } = useGeracao()
+  const [editando, setEditando] = useState(false)
+  const [texto, setTexto] = useState(m.texto || "")
+  const [guardar, setGuardar] = useState(true)
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState("")
   const c = m.conferencia || {}
   const pontos = c.pontos || []
+  const pc = c.palavras_chave
   const msg = m.formato === "mensagem"
   const d = m.disponivel || {}
+  const verificar = async () => {
+    setErro("")
+    setEnviando(true)
+    try {
+      comecou(await kitApi.verificar(vagaId, m.nome, texto, guardar))
+      setEditando(false)
+      onAviso("Verificando: a versão revisada aparece nesta lista quando ficar pronta; esta continua aqui.")
+    } catch (e) {
+      tratarErro(e)
+      setErro(mensagemDeErro(e))
+    } finally {
+      setEnviando(false)
+    }
+  }
   return (
     <li className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs">
       <div className="flex items-center gap-2 flex-wrap">
@@ -431,7 +463,13 @@ function ItemCarta({ m, onCopiar }: { m: DocumentoCarta; onCopiar: () => void })
         <span className={DICA}>
           {msg ? `${m.caracteres || 0} de ${m.limite} caracteres · ${(m.idioma || "").toUpperCase()}` : `${m.palavras || 0} palavras`} · tom{" "}
           {(TONS[String(m.respostas?.tom || "")] || "").toLowerCase()}
+          {pc && pc.total > 0 && ` · palavras-chave da vaga: ${pc.citadas} de ${pc.total}`}
         </span>
+        {m.origem === "verificada" && (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">
+            Revisada da sua edição
+          </span>
+        )}
         <span className="flex gap-1.5 ml-auto">
           {d.docx && <LinkArquivo arquivo={m.arquivos.docx} rotulo=".docx" />}
           {d.txt && <LinkArquivo arquivo={m.arquivos.txt} rotulo=".txt" />}
@@ -460,12 +498,60 @@ function ItemCarta({ m, onCopiar }: { m: DocumentoCarta; onCopiar: () => void })
           </ul>
         </details>
       )}
-      <details>
-        <summary className="cursor-pointer font-semibold">Ler {msg ? "a mensagem" : "a carta"}</summary>
-        <div className="mt-1 p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
-          <TextoDaVaga texto={m.texto} />
+      {(m.mudancas || []).length > 0 && (
+        <details>
+          <summary className="cursor-pointer font-semibold">O que a IA ajustou na sua edição</summary>
+          <ul className="list-disc pl-5 mt-1">
+            {(m.mudancas || []).map((x, i) => (
+              <li key={i}>{x}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {pc && pc.faltando.length > 0 && (
+        <p className={DICA}>Requisitos que o seu perfil sustenta e a carta não usa: {pc.faltando.slice(0, 5).join("; ")}</p>
+      )}
+      {editando ? (
+        <div className="space-y-1.5">
+          <p className={DICA}>
+            Edite à vontade: o que você mudar ou acrescentar vale como fato seu. <b>Verificar</b> pede à IA para incorporar as
+            suas mudanças, corrigir gramática e ortografia e manter a estrutura, as palavras-chave e o tamanho. Sai uma versão
+            nova, e esta continua aqui.
+          </p>
+          <textarea rows={14} className={CAMPO} value={texto} maxLength={12000} onChange={(ev) => setTexto(ev.target.value)} />
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={guardar} onChange={(ev) => setGuardar(ev.target.checked)} />
+            <span className={DICA}>Guardar o que eu acrescentar como relato (Meu perfil → Seus relatos)</span>
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="px-3 py-1 rounded-lg text-[11px] font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+              disabled={enviando || !texto.trim() || !ia?.disponivel}
+              title={ia?.disponivel ? textoCustoIA(ia) : "Verificar precisa de uma IA: escolha uma no botão IA"}
+              onClick={verificar}
+            >
+              {enviando ? "Enviando…" : "Verificar"}
+            </button>
+            <button type="button" className={BTN_MINI} disabled={enviando} onClick={() => (setEditando(false), setTexto(m.texto || ""))}>
+              Cancelar
+            </button>
+          </div>
+          {erro && <p role="alert" className="text-rose-600 dark:text-rose-400">{erro}</p>}
         </div>
-      </details>
+      ) : (
+        <details>
+          <summary className="cursor-pointer font-semibold">Ler {msg ? "a mensagem" : "a carta"}</summary>
+          <div className="mt-1 p-2 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
+            <TextoDaVaga texto={m.texto} />
+            {podeGravar && (
+              <button type="button" className={BTN_MINI} onClick={() => (setTexto(m.texto || ""), setEditando(true))}>
+                Editar e verificar
+              </button>
+            )}
+          </div>
+        </details>
+      )}
     </li>
   )
 }

@@ -14,12 +14,21 @@ export interface DocumentoCarta {
   idioma?: string
   palavras?: number
   caracteres?: number
-  conferencia?: { veredito?: "ok" | "conferir" | "bloquear"; pontos?: PontoConferencia[] }
+  conferencia?: {
+    veredito?: "ok" | "conferir" | "bloquear"
+    pontos?: PontoConferencia[]
+    /** Requisitos da vaga que o perfil sustenta e quantos a carta usa (ATS, spec 035). */
+    palavras_chave?: { citadas: number; total: number; faltando: string[] }
+  }
   pronto?: boolean
   arquivos: { txt?: string; docx?: string | null }
   disponivel: { txt?: boolean; docx?: boolean }
   texto?: string
   criado_em: string
+  /** "verificada": versão revisada pela IA a partir da edição da pessoa (botão Verificar, spec 035). */
+  origem?: "verificada"
+  base?: string
+  mudancas?: string[]
 }
 
 export interface ItemResposta {
@@ -59,6 +68,10 @@ export const lista = (vagaId: string) =>
 
 export const carta = (vagaId: string, respostas: RespostasCarta) =>
   pedir<EstadoGeracao>("POST", "/api/kit/carta", { vaga_id: vagaId, respostas })
+
+/** A carta editada pela pessoa: a IA incorpora as mudanças, corrige a língua e grava uma versão nova (spec 035). */
+export const verificar = (vagaId: string, nome: string, texto: string, guardar_relatos = true) =>
+  pedir<EstadoGeracao>("POST", "/api/kit/verificar", { vaga_id: vagaId, nome, texto, guardar_relatos })
 
 /** perguntas: uma por linha, até 30. */
 export const respostas = (vagaId: string, perguntas: string) =>

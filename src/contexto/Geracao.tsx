@@ -21,7 +21,12 @@ interface ValorGeracao {
 
 const Contexto = createContext<ValorGeracao | null>(null)
 
-const NOMES: Record<string, string> = { carta: "A carta", respostas: "As respostas" }
+const NOMES: Record<string, string> = { carta: "A carta", respostas: "As respostas", verificar: "A carta revisada" }
+const PRONTO: Record<string, string> = {
+  respostas: " estão prontas: confira e responda as que são só suas.",
+  carta: " saiu e foi conferida.",
+  verificar: " saiu e foi conferida: a versão anterior continua na lista.",
+}
 
 export function GeracaoProvider({
   children,
@@ -50,9 +55,7 @@ export function GeracaoProvider({
         const nome = NOMES[j.tipo || ""] || "O currículo"
         if (j.situacao === "pronto") {
           if (j.pronto) {
-            aviso.current(
-              nome + (j.tipo === "respostas" ? " estão prontas: confira e responda as que são só suas." : " saiu e foi conferido."),
-            )
+            aviso.current(nome + (PRONTO[j.tipo || ""] || " saiu e foi conferido."))
           } else {
             aviso.current(nome + " saiu, mas a conferência bloqueou: veja os pontos.", "erro")
           }

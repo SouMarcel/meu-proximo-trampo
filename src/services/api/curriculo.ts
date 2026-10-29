@@ -14,7 +14,7 @@ export type SituacaoGeracao = "ociosa" | "escrevendo" | "gerando" | "conferindo"
 
 export interface EstadoGeracao {
   situacao: SituacaoGeracao
-  tipo?: "curriculo" | "carta" | "respostas"
+  tipo?: "curriculo" | "carta" | "respostas" | "verificar"
   alvo?: { vaga_id?: string; titulo?: string; empresa?: string; base?: boolean }
   tecnicas?: Record<string, unknown>
   inicio?: string
