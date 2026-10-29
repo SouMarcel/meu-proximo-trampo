@@ -409,7 +409,7 @@ def moldura_da_carta(idioma: str) -> tuple[str, str, str | None]:
 
 
 def telefone_legivel(telefone) -> str:
-    """O celular ou fixo brasileiro guardado só com dígitos ("+5511988115533") escrito para ler: "+55 11 98811-5533".
+    """O celular ou fixo brasileiro guardado só com dígitos ("+5511900000000") escrito para ler: "+55 11 90000-0000".
     Outro formato fica como a pessoa salvou."""
     t = str(telefone or "").strip()
     m = re.fullmatch(r"\+?55(\d{2})(\d{4,5})(\d{4})", t)
