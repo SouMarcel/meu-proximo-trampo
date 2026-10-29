@@ -237,13 +237,13 @@ OCR.
 - [X] T031 Rodar `tsc --noEmit` e `vite build --base ./` no front e commitar na `front-037-materiais-por-area`.
 - [X] T032 Procurar dados pessoais nos diffs (nomes, cursos ou arquivos do usuário nos testes e na spec) e commitar
   na `037-materiais-por-area`.
-- [ ] T033 Na pasta principal (branch pessoal):
+- [X] T033 Na pasta principal (branch pessoal):
   - `git merge 037-materiais-por-area`;
   - copiar o `dist/` para `dash/front/`, sem commit;
   - rodar os testes;
   - reiniciar o dashboard;
   - pedir o teste do usuário pelo [quickstart.md](quickstart.md).
-- [ ] T034 Com o OK do usuário:
+- [X] T034 Com o OK do usuário:
   1. `git checkout -- dash/front` e apagar os assets novos;
   2. merge `--no-ff` na `master` e push (com os testes passando);
   3. merge da branch do front na `frontend-react` e push;

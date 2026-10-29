@@ -24,6 +24,11 @@ para as vagas".
 4. Pedido seguinte, no mesmo dia: os PDFs de certificado que são só imagem (sem texto) devem ser lidos. A leitura usa
    o **OCR que o Windows já traz**, entra **nesta spec** (User Story 5) e não instala nada.
 5. Os PDFs já enviados sem texto ganham o botão **OCR**. Os novos são lidos sozinhos, no envio.
+6. No teste (29/10), para a área **Perfil do LinkedIn**, que é um perfil só:
+   - com arquivo na área, o envio some, e cada arquivo ganha **Alterar documento**;
+   - o arquivo novo entra, e o antigo sai só depois que o novo foi lido sem erro;
+   - sem arquivo, o envio volta;
+   - Currículos e Documentos continuam aceitando vários arquivos.
 
 ## Contexto
 
