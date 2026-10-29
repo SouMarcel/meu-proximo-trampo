@@ -362,11 +362,14 @@ que você marca (a fazer, pronto, não se aplica); dá para tirar e acrescentar 
 análise só acrescenta. Cada item tem o seu botão, e nada acontece sem o clique:
 
 - **Gerar currículo**: o mesmo da seção Currículo.
-- **Escrever carta**: antes, quatro perguntas obrigatórias (por que esta vaga, que problema você
-  resolveria, o primeiro movimento no cargo e o tom). A IA escreve de 350 a 420 palavras no idioma
-  da vaga, só com fatos do perfil e das suas respostas, e a conferência bloqueia número ou data fora
-  do perfil e aponta texto genérico. A carta fica em `curriculos/` (.docx e .txt) para baixar ou
-  copiar.
+- **Escrever carta**: as perguntas (por que esta vaga, que problema você resolveria, o primeiro
+  movimento no cargo) são opcionais. A que ficar em branco a IA responde pelo seu perfil, pelos seus
+  relatos e pela vaga; o que você escrever vale como relato e fica no que a ferramenta sabe de você. A
+  carta tem de 350 a 420 palavras, no idioma da vaga, e vende você logo no primeiro parágrafo: quem
+  você é, o problema da empresa que você ajuda a resolver e a sua prova mais forte. Depois vêm os
+  parágrafos de solução e um fechamento objetivo, em formato que o ATS lê. A conferência bloqueia
+  número ou data fora do perfil e aponta texto genérico. A carta fica em `curriculos/` (.docx e .txt)
+  para baixar ou copiar.
 - **Preparar respostas**: cole as perguntas do formulário. As de autorização de trabalho, visto,
   cidadania, salário, deficiência, relocação e diversidade **nunca vão para a IA**: ficam para você
   responder. As outras são rascunhadas com o perfil e conferidas.

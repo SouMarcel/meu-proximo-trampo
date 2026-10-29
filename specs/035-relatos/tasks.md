@@ -34,3 +34,11 @@ description: "Tarefas da feature 035: Relatos — a candidatura assistida aprend
   build; build de teste na branch pessoal, sem commit.
 - [X] T012 API.md, README, AGENTS.md, skills (+ `sincronizar_skills.py`).
 - [ ] T013 Suíte inteira; dados pessoais; commit; merge na branch pessoal; dashboard reiniciado; teste do usuário.
+
+## Phase 6: US4 — carta que vende a pessoa (P1; pedido do usuário no teste, 28/10)
+
+- [X] T014 `candidatura_ia`: perguntas opcionais (`validar_respostas`), pedido com primeiro parágrafo que vende,
+  solução, fechamento e ATS (`montar_pedido_carta`), respostas escritas guardadas como relato
+  (`guardar_relatos_da_carta`).
+- [X] T015 Testes em `tests/test_candidatura.py`, com a pasta dos dados isolada; front (`Kit.tsx`: perguntas
+  opcionais, "Guardar o que eu escrever como relato"); README, API.md e skill `gerar-curriculo`.

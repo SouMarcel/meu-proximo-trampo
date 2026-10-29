@@ -99,6 +99,25 @@ sua mãe?" num campo de texto longo é cadastral.
    ele é dado cadastral: não vai à IA e não vira relato.
 4. **Given** uma pergunta sensível ou cadastral, **When** a pessoa responde, **Then** a resposta vai literal, sem IA.
 
+### User Story 4 - A carta vende a pessoa sem exigir respostas (Priority: P1)
+
+Pedido do usuário no teste (28/10): a carta exigia as três perguntas antes de escrever. Agora ela é gerada direto, pelo
+perfil, pelos relatos e pela vaga, e responde às perguntas da melhor forma possível. O que a pessoa escrever vale como
+relato. O texto vende quem se candidata já no primeiro parágrafo, com foco no problema da empresa que ela ajuda a
+resolver e nas habilidades e no histórico vindos da anamnese, de forma objetiva e em formato que o ATS lê.
+
+**Independent Test**: gerar a carta sem nenhuma resposta funciona, e o pedido traz a estrutura (primeiro parágrafo
+que vende, solução, fechamento) e manda a IA responder às perguntas em branco. As respostas escritas viram relatos.
+
+**Acceptance Scenarios**:
+
+1. **Given** nenhuma resposta, **When** a pessoa clica em Escrever, **Then** a carta é gerada pelo perfil, pelos
+   relatos e pela vaga.
+2. **Given** a resposta "que problema você resolveria", **When** a carta é gerada, **Then** a resposta entra no pedido
+   como fato e fica guardada como relato.
+3. **Given** "Guardar o que eu escrever como relato" desmarcado, **When** a carta é gerada, **Then** nada vai para os
+   relatos.
+
 ### Edge Cases
 
 - **Relato vazio**: a pergunta continua no painel.
@@ -138,6 +157,18 @@ sua mãe?" num campo de texto longo é cadastral.
   confirmado.
 - **FR-010**: Documentação: `dash/API.md`, README, AGENTS.md, skills `analisar-perfil`, `gerar-curriculo` e
   `preparar-entrevista` (o assistente lê os relatos com `PY relatos.py lista`).
+- **FR-011** (US4): As perguntas da carta e da mensagem curta MUST ser opcionais. A que ficar em branco, a IA responde
+  pelo perfil, pelos relatos e pela vaga, sem afirmar fatos ou sentimentos que eles não sustentam. O que a pessoa
+  escrever MUST valer como relato e ser guardado (opção "Guardar o que eu escrever como relato", padrão sim).
+- **FR-012** (US4): O pedido da carta MUST pedir:
+  - primeiro parágrafo de até 60 palavras que vende a pessoa: quem ela é, o problema ou objetivo da vaga que ela ajuda
+    a resolver e a prova mais forte do perfil;
+  - parágrafos de solução, com cada necessidade do anúncio ligada a um fato do perfil ou dos relatos;
+  - motivação, primeiro movimento e um fechamento objetivo;
+  - dois requisitos do anúncio ligados a fatos, com os termos do anúncio quando forem verdade;
+  - formato que o ATS lê.
+
+  A mensagem curta MUST vender já na primeira frase.
 
 ### Key Entities
 

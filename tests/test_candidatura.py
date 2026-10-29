@@ -1,5 +1,6 @@
 """Carta de apresentação e respostas de formulário (candidatura_ia.py e conferir.py), com perfil e vaga fictícios
-e uma IA falsa: perguntas obrigatórias, conferência de fatos (SC-003) e perguntas sensíveis só com a pessoa (SC-002)."""
+e uma IA falsa: perguntas da carta opcionais e guardadas como relato (spec 035), pedido que vende a pessoa no
+primeiro parágrafo, conferência de fatos (SC-003) e perguntas sensíveis só com a pessoa (SC-002)."""
 import json
 import shutil
 import sys
@@ -10,9 +11,11 @@ from unittest import mock
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(RAIZ), str(RAIZ / "dash")]
+import banco  # noqa: E402
 import candidatura_ia  # noqa: E402
 import conferir  # noqa: E402
 import curriculo_ia  # noqa: E402
+import relatos  # noqa: E402
 
 DADOS = Path(__file__).resolve().parent / "dados" / "kit"
 PERFIL = (DADOS / "perfil-ficticio.md").read_text(encoding="utf-8")
@@ -69,7 +72,7 @@ class TestConferirCarta(unittest.TestCase):
         (tmp / "carta.txt").write_text(carta("I grew revenue by 45%."), encoding="utf-8")
         (tmp / "perfil.md").write_text(PERFIL, encoding="utf-8")
         (tmp / "vaga.txt").write_text(TEXTO_VAGA, encoding="utf-8")
-        with mock.patch("sys.stdout"):
+        with mock.patch("sys.stdout"), mock.patch.object(banco, "ARQUIVO", tmp / "banco.db"):  # sem os relatos reais
             codigo = conferir.main(["--carta", str(tmp / "carta.txt"), "--perfil", str(tmp / "perfil.md"),
                                     "--vaga", str(tmp / "vaga.txt"), "--empresa", "Acme Analytics"])
         self.assertEqual(codigo, 3)
@@ -81,6 +84,7 @@ class ComPasta(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.pedidos = []
         for p in (mock.patch.object(curriculo_ia, "CURRICULOS", self.tmp),
+                  mock.patch.object(banco, "ARQUIVO", self.tmp / "dados" / "banco.db"),  # os relatos ficam aqui
                   mock.patch.object(candidatura_ia, "_marca_ia", return_value={"provedor": "teste", "modelo": "x"})):
             p.start()
             self.addCleanup(p.stop)
@@ -93,18 +97,41 @@ class ComPasta(unittest.TestCase):
 
 
 class TestCarta(ComPasta):
-    def test_respostas_obrigatorias(self):
-        for falta in ("por_que", "problema", "primeiro_movimento", "tom"):
-            with self.assertRaisesRegex(candidatura_ia.GeracaoErro, candidatura_ia.PERGUNTAS_CARTA[falta].rstrip("?")):
-                candidatura_ia.validar_respostas({**RESPOSTAS, falta: " "})
+    def test_respostas_opcionais(self):  # spec 035: a que ficar em branco a IA responde pelo perfil
+        r = candidatura_ia.validar_respostas({})
+        self.assertEqual((r["formato"], r["tom"], r["por_que"], r["guardar_relatos"]), ("carta", "direto", "", True))
+        self.assertFalse(candidatura_ia.validar_respostas({"guardar_relatos": False})["guardar_relatos"])
         with self.assertRaises(candidatura_ia.GeracaoErro):
             candidatura_ia.validar_respostas({**RESPOSTAS, "tom": "engraçado"})
+
+    def test_pedido_vende_no_primeiro_paragrafo(self):
+        sem = candidatura_ia.montar_pedido_carta(PERFIL, VAGA, candidatura_ia.validar_respostas({}))
+        self.assertIn("Primeiro parágrafo, até 60 palavras", sem)
+        self.assertIn("problema", sem)
+        self.assertIn("ATS", sem)
+        self.assertIn("Ela não respondeu a: Por que esta vaga?", sem)
+        self.assertIn("(nenhuma: responda você, pelo perfil e pela vaga)", sem)
+        com = candidatura_ia.montar_pedido_carta(PERFIL, VAGA, candidatura_ia.validar_respostas(RESPOSTAS))
+        self.assertNotIn("Ela não respondeu", com)
+        self.assertIn("Relatórios que demoram a fechar.", com)
+
+    def test_respostas_viram_relatos(self):
+        with self.ia(json.dumps({"texto": carta()})):
+            meta = candidatura_ia.gerar_carta(VAGA, {**RESPOSTAS, "primeiro_movimento": ""}, perfil=PERFIL)
+        self.assertEqual(meta["relatos"], 2)
+        guardados = {x["relato"] for x in relatos.listar()}
+        self.assertEqual(guardados, {RESPOSTAS["por_que"], RESPOSTAS["problema"]})
+        self.assertTrue(all("Acme Analytics" in x["pergunta"] for x in relatos.listar()))
+        with self.ia(json.dumps({"texto": carta()})):
+            meta = candidatura_ia.gerar_carta(VAGA, {"tom": "direto", "problema": "Outro fato.", "guardar_relatos": False},
+                                              perfil=PERFIL)
+        self.assertEqual((meta["relatos"], len(relatos.listar())), (0, 2))
 
     def test_mensagem_curta(self):
         r = candidatura_ia.validar_respostas({"formato": "mensagem", "por_que": "Quero relatórios de vendas.", "tom": "direto",
                                               "idioma": "pt"})
         self.assertEqual((r["formato"], r["limite"], r["idioma"]), ("mensagem", 400, "pt"))  # só por que e tom são obrigatórias
-        for ruim in ({"limite": 10}, {"limite": "x"}, {"idioma": "jp"}, {"por_que": ""}):
+        for ruim in ({"limite": 10}, {"limite": "x"}, {"idioma": "jp"}, {"tom": "engraçado"}):
             with self.assertRaises(candidatura_ia.GeracaoErro, msg=ruim):
                 candidatura_ia.validar_respostas({"formato": "mensagem", "por_que": "Quero.", "tom": "direto", **ruim})
         curta = ("Acme Analytics: I write advanced SQL for the sales team and my Power BI dashboards are used by 1,500 "

@@ -464,8 +464,12 @@ O checklist vem no próprio objeto vaga (`checklist`) e é marcado com `PATCH /a
   conferir?: string[]}], arquivos: {txt}, disponivel, ia|null, criado_em, atualizado_em}` (candidatura_ia.py:305-324).
 
 **`POST /api/kit/carta`** **[local]** — "Escrever". Corpo `{vaga_id*, respostas: {formato: "carta"|"mensagem",
-tom*: direto|caloroso|formal, por_que*, problema, primeiro_movimento (os dois obrigatórios na carta),
-limite? (20-3000, padrão 400, só mensagem), idioma? (pt, en, es, fr, de, it)}}`. 202 = estado de geração (§3.8).
+tom?: direto|caloroso|formal (padrão direto), por_que?, problema?, primeiro_movimento?, limite? (20-3000, padrão 400,
+só mensagem), idioma? (pt, en, es, fr, de, it), guardar_relatos? (padrão true)}}`. As perguntas são opcionais (spec
+035): a que ficar em branco a IA responde pelo perfil, pelos relatos e pela vaga; o que a pessoa escrever vale como
+relato e, com `guardar_relatos`, fica em `dash/dados/relatos.json` (a carta pronta traz `relatos`: quantos guardou).
+A carta vende a pessoa no primeiro parágrafo, com foco no problema da empresa que ela ajuda a resolver, em formato que
+o ATS lê. 202 = estado de geração (§3.8).
 
 **`POST /api/kit/respostas`** **[local]** — "Preparar respostas". Corpo `{vaga_id*, perguntas*: string}` (uma por
 linha, até 30). Perguntas sensíveis (autorização de trabalho, visto ou patrocínio, cidadania, salário ou
