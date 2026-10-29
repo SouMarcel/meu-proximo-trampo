@@ -50,6 +50,8 @@ export interface RespostasCarta {
   primeiro_movimento: string
   limite?: number // 20-3000, padrão 400 (só mensagem)
   idioma?: string // pt, en, es, fr, de, it (só mensagem)
+  /** As perguntas são opcionais; o que a pessoa escrever fica nos relatos dela (spec 035), padrão sim. */
+  guardar_relatos?: boolean
 }
 
 export const lista = (vagaId: string) =>

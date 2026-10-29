@@ -513,6 +513,7 @@ function DialogoKit({
   const [limite, setLimite] = useState(400)
   const [idioma, setIdioma] = useState(idiomaVaga)
   const [resp, setResp] = useState({ por_que: "", problema: "", primeiro_movimento: "" })
+  const [guardarRelatos, setGuardarRelatos] = useState(true)
   const [perguntas, setPerguntas] = useState("")
   const [pessoa, setPessoa] = useState<Record<string, string>>(() => {
     const p: Record<string, string> = {}
@@ -528,18 +529,15 @@ function DialogoKit({
     setErro("")
     try {
       if (modo === "carta") {
-        const falta = PERGUNTAS.filter(([k]) => !resp[k].trim() && (formato === "carta" || k === "por_que"))
-        if (falta.length) {
-          setErro("Antes de escrever, responda: " + falta.map(([, r]) => r).join(" "))
-          return
-        }
+        // as perguntas são opcionais (spec 035): a que ficar em branco a IA responde pelo perfil e pelos relatos
         setEnviando(true)
         const r: RespostasCarta = {
           formato,
           tom,
           por_que: resp.por_que.trim(),
-          problema: resp.problema.trim(),
-          primeiro_movimento: resp.primeiro_movimento.trim(),
+          problema: formato === "carta" ? resp.problema.trim() : "",
+          primeiro_movimento: formato === "carta" ? resp.primeiro_movimento.trim() : "",
+          guardar_relatos: guardarRelatos,
           ...(formato === "mensagem" ? { limite: Math.min(3000, Math.max(20, limite || 400)), idioma } : {}),
         }
         comecou(await kitApi.carta(vaga.id, r))
@@ -563,7 +561,7 @@ function DialogoKit({
   const titulo = modo === "carta" ? "Escrever carta ou mensagem" : modo === "respostas" ? "Preparar respostas do formulário" : "Respostas do formulário"
   const desc =
     modo === "carta"
-      ? "A IA escreve só com os fatos do seu perfil e das suas respostas, e a ferramenta confere antes de você usar."
+      ? "A IA escreve para vender você logo no primeiro parágrafo, com foco no problema da empresa que você ajuda a resolver, só com os fatos do seu perfil, dos seus relatos e das suas respostas, em formato que o ATS lê. A ferramenta confere antes de você usar."
       : modo === "respostas"
         ? "Cole as perguntas do formulário de candidatura, uma por linha. As perguntas sobre autorização de trabalho, visto, salário, deficiência, relocação e diversidade ficam para você responder: elas não vão para a IA."
         : "Rascunhos com os fatos do seu perfil. As marcadas são só suas: escreva você. Nada é enviado; copie e cole no formulário."
@@ -629,12 +627,23 @@ function DialogoKit({
                   </span>
                 </div>
               )}
+              <p className={DICA}>
+                As perguntas abaixo são opcionais. Deixe em branco e a ferramenta responde pelo seu perfil, pelos seus relatos e
+                pela vaga. Se escrever, conte com as suas palavras: vale como relato, entra nesta carta e fica no que a
+                ferramenta sabe de você.
+              </p>
               {PERGUNTAS.filter(([k]) => formato === "carta" || k === "por_que").map(([k, rotulo, dica]) => (
                 <div key={k} className="space-y-1">
-                  <label htmlFor={`kc-${k}`} className="font-semibold block">{rotulo}</label>
+                  <label htmlFor={`kc-${k}`} className="font-semibold block">
+                    {rotulo} <span className={DICA}>(opcional)</span>
+                  </label>
                   <textarea id={`kc-${k}`} rows={3} maxLength={800} placeholder={dica} value={resp[k]} onChange={(ev) => setResp((r) => ({ ...r, [k]: ev.target.value }))} className={CAMPO} />
                 </div>
               ))}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={guardarRelatos} onChange={(ev) => setGuardarRelatos(ev.target.checked)} />
+                <span className={DICA}>Guardar o que eu escrever como relato (Meu perfil → Seus relatos)</span>
+              </label>
               <div className="space-y-1.5">
                 <b>Tom da carta</b>
                 <div className="flex gap-3 flex-wrap">
