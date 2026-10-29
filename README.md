@@ -67,8 +67,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   - As suas respostas ficam guardadas no seu computador (`dash/dados/`, fora do Git) e são
     reaproveitadas nas próximas vagas, inclusive a remuneração atual e o nome da mãe, também quando a
     pergunta vem com outra redação; a pretensão salarial e a relocação ela pergunta a cada vaga. Você vê e
-    apaga as guardadas em "Atualizar candidaturas" → Candidatura assistida. Os logins guardados e os sites liberados
-  ficam em "Atualizar candidaturas" → Candidatura assistida: logins e sites.
+    apaga as guardadas em **Meu perfil → Informações básicas**, onde também ficam os seus dados de contato e os
+    sites liberados (com Revogar). Os logins guardados ficam em "Atualizar candidaturas", junto dos portais.
   - A IA nunca responde perguntas sensíveis (salário, visto, autorização de trabalho, deficiência,
     relocação, diversidade) nem dados cadastrais (nome da mãe, documentos): eles vão exatamente como você
     escrever. Aceite de termos, anexos e testes do
@@ -78,7 +78,7 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
     Um captcha que só protege o envio (a caixa "não sou um robô" no fim do formulário) também não: a
     ferramenta preenche os campos e não toca nele, e você resolve o captcha e clica em Enviar. Pedido
     de código ou tela de verificação antes do formulário fazem a ferramenta parar até você resolver.
-  - **Seus dados de contato** (Contas conectadas → Candidatura assistida): nome, e-mail, telefone,
+  - **Seus dados de contato** (Meu perfil → Informações básicas): nome, e-mail, telefone,
     cidade, LinkedIn e portfólio. "Propor a partir do currículo" lê o seu currículo base e propõe os
     valores, e nada é gravado até você salvar. Depois, a ferramenta preenche esses campos em qualquer
     formulário, mesmo escritos de outro jeito ("Full name", "Celular", "LinkedIn profile"), sem IA e
@@ -207,10 +207,16 @@ O caminho completo monta com você o seu perfil de carreira, a base da nota de a
    cidade, pretensão, o que não aceita, a maior conquista dos últimos cargos e como foi medida
    (número só se você tiver certeza), ferramentas, idiomas e, se quiser, trabalho no exterior
    (remoto, morar fora, passaporte, visto, patrocínio de visto, fuso e forma de contratação).
+   Os idiomas vêm em linhas de idioma e nível (A1 a C2 do Quadro Europeu, o CEFR, ou Nativo), com o
+   que cada nível quer dizer e o **+** para outro idioma; a lista já traz os idiomas do seu currículo,
+   e onde o nível escrito não tem equivalente no CEFR (ex.: "fluente") você escolhe.
 5. **Diagnóstico** do que falta ou está fraco, com a pergunta que completa cada ponto.
 6. **Revisão**: você edita o texto e só então grava. Com perfil existente, a página mostra antes
    o que muda, e a versão anterior fica em `anexos/perfis-anteriores/`.
 7. **Filtros da busca** propostos a partir das respostas, que você confere antes de gravar.
+
+A aba **Informações básicas** (com ou sem perfil) reúne os seus dados de contato, as respostas
+que você já deu em formulários e os sites onde a candidatura assistida preenche.
 
 Dá para parar e continuar depois. CPF, RG e data de nascimento são retirados do texto antes de
 qualquer envio à IA e nunca entram no perfil. Aberta de outro aparelho (`--rede`), a página só
@@ -375,8 +381,8 @@ análise só acrescenta. Cada item tem o seu botão, e nada acontece sem o cliqu
   - base técnica, certificações e formação, com o fechamento;
   - despedida com o seu nome.
 
-  O cabeçalho e a despedida vêm dos seus dados de contato (Atualizar candidaturas → Candidatura
-  assistida) e nunca vão para a IA. Formato que o ATS lê: a IA recebe as
+  O cabeçalho e a despedida vêm dos seus dados de contato (Meu perfil → Informações básicas) e nunca
+  vão para a IA. Formato que o ATS lê: a IA recebe as
   palavras-chave da vaga que o seu perfil sustenta (com o trecho do perfil que as prova) e as usa com
   o termo exato do anúncio. A carta mostra quantas delas usou. A conferência bloqueia número ou data
   fora do perfil e aponta texto genérico. A carta fica em `curriculos/` em .pdf, .docx e .txt, para

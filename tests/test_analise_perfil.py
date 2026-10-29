@@ -163,6 +163,13 @@ class TestProntidao(ComDados):
             itens = {i["item"]: i for i in ap.prontidao("# Perfil sem idiomas", cfg)}
         self.assertEqual((itens["linkedin_en"]["situacao"], itens["ingles"]["situacao"], itens["curriculo_en"]["situacao"]),
                          ("pronto", "nao_informado", "falta"))  # SC-005
+        # spec 036: o nível no formato da pergunta de idiomas (CEFR ou Nativo)
+        with mock.patch("curriculo_base.marcados", return_value={"pt": None, "en": None}), mock.patch("curriculo_ia.listar", return_value=[]):
+            for linha, situacao in (("- Inglês — B2 (Intermediário superior)", "pronto"), ("- Inglês — B1 (Intermediário)", "pronto"),
+                                    ("- Inglês — C1 (Avançado)", "pronto"), ("- Inglês — Nativo", "pronto"),
+                                    ("- Inglês — A2 (Básico)", "falta"), ("- Inglês — A1 (Iniciante)", "falta")):
+                itens = {i["item"]: i for i in ap.prontidao(f"## Idiomas\n{linha}\n", cfg)}
+                self.assertEqual(itens["ingles"]["situacao"], situacao, linha)
 
 
 class TestLinhaDeComando(ComDados):

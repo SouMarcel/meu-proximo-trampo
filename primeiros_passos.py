@@ -479,6 +479,60 @@ def _opcoes(*pares):
     return [{"valor": v, "rotulo": r} for v, r in pares]
 
 
+# idiomas com nível (spec 036): a página mostra linhas de idioma e nível; cada linha é gravada como texto
+# "Inglês — B2 (Intermediário superior)" na resposta "idiomas" (a mesma lista de textos de antes)
+IDIOMAS_PERFIL = ("Inglês", "Português (BR)", "Francês", "Alemão", "Espanhol")
+NIVEIS_IDIOMA = [
+    {"valor": "A1", "rotulo": "A1 (Iniciante)", "descricao": "Frases básicas do cotidiano, apresentações simples"},
+    {"valor": "A2", "rotulo": "A2 (Básico)", "descricao": "Textos curtos e informações previsíveis"},
+    {"valor": "B1", "rotulo": "B1 (Intermediário)", "descricao": "Textos claros sobre assuntos familiares"},
+    {"valor": "B2", "rotulo": "B2 (Intermediário superior)",
+     "descricao": "Textos complexos, inclusive técnicos da própria área"},
+    {"valor": "C1", "rotulo": "C1 (Avançado)", "descricao": "Textos longos e implícitos, uso flexível do idioma"},
+    {"valor": "C2", "rotulo": "C2 (Proficiência plena)", "descricao": "Compreende com facilidade praticamente tudo"},
+    {"valor": "Nativo", "rotulo": "Nativo", "descricao": "Língua materna"},
+]
+SINONIMOS_IDIOMA = {"ingles": "Inglês", "english": "Inglês", "portugues": "Português (BR)",
+                    "portuguese": "Português (BR)", "frances": "Francês", "french": "Francês", "francais": "Francês",
+                    "alemao": "Alemão", "german": "Alemão", "deutsch": "Alemão", "espanhol": "Espanhol",
+                    "spanish": "Espanhol", "castelhano": "Espanhol", "espanol": "Espanhol"}
+SEPARADOR_IDIOMA = re.compile(r"\s+-\s+|\s*[—–:,]\s*")
+MAX_OUTRO_IDIOMA = 60
+
+
+def ler_idioma(texto) -> dict:
+    """Uma resposta de idioma em texto livre → {idioma, outro, nivel, original}, sem estimar nível (constituição IV):
+    o nível só vem da sigla do CEFR (A1 a C2, uma só) ou de "nativo"; fora isso fica vazio, com o texto em `original`."""
+    texto = " ".join(str(texto or "").split())
+    nome = SEPARADOR_IDIOMA.split(texto, 1)[0].strip()
+    base, chave = _chave(nome.split("(")[0]), _chave(texto)
+    idioma = next((v for k, v in SINONIMOS_IDIOMA.items() if base == k or base.startswith(k + " ")), "Outro")
+    if idioma == "Português (BR)" and re.search(r"\b(portugal|europeu)\b", chave):
+        idioma = "Outro"  # português de Portugal não vira BR à força
+    siglas = {s.upper() for s in re.findall(r"\b([abc][12])\b", chave)}
+    nivel = siglas.pop() if len(siglas) == 1 else ""
+    if not nivel and re.search(r"\b(nativ[oa]|native|lingua materna)\b", chave):
+        nivel = "Nativo"
+    return {"idioma": idioma, "outro": nome[:MAX_OUTRO_IDIOMA] if idioma == "Outro" else "", "nivel": nivel,
+            "original": "" if nivel else texto}
+
+
+def ler_idiomas(lista) -> list[dict]:
+    """As respostas de idiomas (lista de textos, ou texto com uma por linha) → as linhas da pergunta."""
+    if isinstance(lista, str):
+        lista = lista.splitlines()
+    return [ler_idioma(x) for x in lista or [] if str(x or "").strip()]
+
+
+def _chave_idioma(x: dict) -> str:
+    return _chave(x["outro"] if x["idioma"] == "Outro" else x["idioma"])
+
+
+def _ingles_no_formato_novo(lista) -> bool:
+    """A lista de idiomas tem o inglês com nível (CEFR ou Nativo): a resposta antiga "Qual o seu nível de inglês?" sai."""
+    return any(x["idioma"] == "Inglês" and x["nivel"] for x in ler_idiomas(lista))
+
+
 EXTERIOR = "interesse_exterior"
 PERGUNTAS = [
     {"id": "cargos_alvo", "tipo": "lista", "texto": "Quais cargos você busca? Um por linha (ex.: Analista de Dados)."},
@@ -495,10 +549,9 @@ PERGUNTAS = [
     {"id": "nao_aceita", "tipo": "texto", "texto": "O que você não aceita? (ex.: PJ, plantão, mudança de cidade)"},
     {"id": "ferramentas", "tipo": "lista",
      "texto": "Quais ferramentas e métodos você domina e em que nível? Um por linha (ex.: Jira — avançado)."},
-    {"id": "idiomas", "tipo": "lista", "texto": "Quais idiomas você fala e em que nível? Um por linha."},
-    {"id": "ingles", "tipo": "opcoes", "texto": "Qual o seu nível de inglês?",
-     "opcoes": _opcoes(("nenhum", "Não falo"), ("basico", "Básico"), ("intermediario", "Intermediário"),
-                       ("avancado", "Avançado"), ("fluente", "Fluente"))},
+    # tipo "lista": a página sem os campos novos continua com a caixa de texto, um por linha
+    {"id": "idiomas", "tipo": "lista", "texto": "Quais idiomas você fala e em que nível?",
+     "idiomas": list(IDIOMAS_PERFIL), "niveis": NIVEIS_IDIOMA},
     {"id": EXTERIOR, "tipo": "sim_nao", "texto": "Você tem interesse em vagas de empresas do exterior?"},
     {"id": "exterior_remoto", "tipo": "sim_nao", "condicao": EXTERIOR,
      "texto": "Trabalhando remoto, morando no Brasil?"},
@@ -530,11 +583,16 @@ def perguntas_para(estado: dict) -> list[dict]:
              "texto": "Como ela foi medida? Escreva o número só se tiver certeza (ex.: o prazo caiu de 10 para 6 dias). "
                       "Deixe vazio se não houve medida."},
         ]
-    corte = next(i for i, p in enumerate(PERGUNTAS) if p["id"] == "nao_aceita") + 1
-    return PERGUNTAS[:corte] + por_cargo + PERGUNTAS[corte:]
+    # sem resposta, as linhas de idioma vêm do que saiu do currículo ou do LinkedIn (spec 036, decisão 5)
+    idiomas = (estado.get("respostas") or {}).get("idiomas") or \
+        [CONFLITO.sub("", i.get("texto") or "") for i in (estado.get("rascunho") or {}).get("idiomas") or []]
+    catalogo = [dict(p, linhas=ler_idiomas(idiomas)) if p["id"] == "idiomas" else p for p in PERGUNTAS]
+    corte = next(i for i, p in enumerate(catalogo) if p["id"] == "nao_aceita") + 1
+    return catalogo[:corte] + por_cargo + catalogo[corte:]
 
 
-IDS = {p["id"] for p in PERGUNTAS} | {f"{t}:{n}" for t in ("conquista", "medida") for n in range(3)}
+# "ingles" (nível de inglês) saiu da anamnese na spec 036; a resposta antiga continua aceita no progresso
+IDS = {p["id"] for p in PERGUNTAS} | {f"{t}:{n}" for t in ("conquista", "medida") for n in range(3)} | {"ingles"}
 
 
 def validar_respostas(dados) -> dict:
@@ -729,8 +787,10 @@ def montar_perfil(rascunho: dict | None, respostas: dict | None, contato: dict |
     L += ["", "## Habilidades e ferramentas (com nível)", *[f"- {x}" for x in resp.get("ferramentas") or []]]
     L += [f"- {txt(i['texto'])}" for i in r.get("habilidades") or []]
     L += ["", "## Idiomas", *[f"- {x}" for x in resp.get("idiomas") or []]]
-    L += [f"- {txt(i['texto'])}" for i in r.get("idiomas") or []]
-    if resp.get("ingles"):
+    respondidos = {_chave_idioma(x) for x in ler_idiomas(resp.get("idiomas"))}  # a resposta substitui o do material
+    L += [f"- {txt(i['texto'])}" for i in r.get("idiomas") or []
+          if _chave_idioma(ler_idioma(txt(i["texto"]))) not in respondidos]
+    if resp.get("ingles") and not _ingles_no_formato_novo(resp.get("idiomas")):
         L.append(f"- Inglês (nível declarado): {resp['ingles']}")
     contato = [f"- {rot}: {ct[k]}" for k, rot in (("email", "E-mail"), ("telefone", "Telefone"), ("linkedin", "LinkedIn"))
                if ct.get(k)]

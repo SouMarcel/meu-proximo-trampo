@@ -112,7 +112,10 @@ Uma por vez, na ordem da lista `PERGUNTAS` do `primeiros_passos.py` (a mesma da 
   presencial); cidade e estado; pretensão salarial e forma de contratação; o que não aceita;
 - para cada um dos 3 cargos mais recentes: a maior conquista e como foi medida (só o número que
   ela tiver certeza);
-- ferramentas e métodos, com o nível; idiomas e o nível de inglês;
+- ferramentas e métodos, com o nível;
+- idiomas, cada um com o nível: A1 a C2 do CEFR ou nativo. No perfil, o formato é
+  "Inglês — B2 (Intermediário superior)". Não há pergunta separada de inglês. Não converta "fluente",
+  "avançado" ou a escala do LinkedIn em nível do CEFR: pergunte;
 - interesse em vagas do exterior. **Só se sim**: remoto morando no Brasil, países de interesse,
   se aceitaria morar fora (e onde), passaporte válido, visto ou autorização de trabalho já
   liberados (e para onde), se precisaria de patrocínio de visto (sponsor), fuso aceito e formas

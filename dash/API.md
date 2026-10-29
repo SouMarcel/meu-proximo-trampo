@@ -382,7 +382,23 @@ arquivo}], rascunho: null|{objetivo, resumo, formacao, certificacoes, habilidade
 experiencias: [{cargo, empresa, inicio, fim, itens, fonte}], conflitos: [{campo, opcoes: [{valor, fonte}], escolha}],
 origem: "ia"|"sem_ia"}, respostas: {id: valor}, contato: {email?, telefone?, linkedin?},
 contatos_achados: {emails, telefones, linkedin}, perguntas: [{id, tipo: texto|lista|multi|opcoes|sim_nao, texto,
-opcoes?: [{valor, rotulo}], condicao?}], ia_disponivel, pode_alterar}` (primeiros_passos.py:869-895, 483-534).
+opcoes?: [{valor, rotulo}], condicao?, idiomas?, niveis?, linhas?}], ia_disponivel, pode_alterar}`
+(primeiros_passos.py: `estado_para_pagina`, `PERGUNTAS`, `perguntas_para`).
+
+**Pergunta de idiomas** (spec 036). Ela continua `tipo: "lista"`; a página que não conhece os campos novos mostra a
+caixa de texto "um por linha". Campos novos:
+- `idiomas`: `["Inglês", "Português (BR)", "Francês", "Alemão", "Espanhol"]`; a opção "Outro" é da página.
+- `niveis`: `[{valor: "A1"…"C2"|"Nativo", rotulo: "B2 (Intermediário superior)"|"Nativo", descricao}]`.
+- `linhas`: `[{idioma (um dos idiomas ou "Outro"), outro, nivel ("" = a pessoa escolhe), original}]`. Vêm das
+  respostas já dadas ou, sem resposta, dos idiomas do rascunho. O nível só é reconhecido pela sigla do CEFR ou por
+  "nativo"; fora isso, vem vazio, com o texto em `original`.
+
+A resposta continua uma lista de textos, `"{idioma} — {rotulo}"` (ex.: `Inglês — B2 (Intermediário superior)`).
+Na montagem do perfil:
+- a resposta substitui a linha do rascunho do mesmo idioma;
+- "Inglês (nível declarado)" só entra se a lista não tiver o inglês com nível.
+
+A pergunta `ingles` ("Qual o seu nível de inglês?") saiu; a resposta antiga continua aceita.
 
 | Rota | Corpo | Resposta | Botão |
 |---|---|---|---|
@@ -551,7 +567,11 @@ marcado: bool}` (sincronia.py:32-86).
 
 Erros de navegador ou portal: 409 com a mensagem.
 
-### 3.11b Candidatura assistida (detalhe da vaga → Candidatura; card → Candidatar com ajuda; Contas conectadas → logins e sites)
+### 3.11b Candidatura assistida (detalhe da vaga → Candidatura; card → Candidatar com ajuda; Meu perfil → Informações básicas → contato, respostas e sites; Atualizar candidaturas → logins)
+
+A página lê `GET /api/candidatura` em dois lugares (spec 036):
+- **Meu perfil → Informações básicas**: dados de contato, respostas guardadas (`memoria`) e sites (`dominios`);
+- **Atualizar candidaturas**: o login guardado de cada portal (`credenciais`).
 
 Spec 027. Todas **[local]**. A ferramenta **preenche campos** da página aberta na janela dela (a mesma das contas
 conectadas). Ela **nunca clica** em botão ou link, nunca aperta Enter e nunca envia: quem avança e envia é a pessoa.
