@@ -134,8 +134,10 @@ def remover_historia(hid: str) -> None:
 
 
 def perfil_texto() -> str:
+    """O perfil.md com os relatos da pessoa que ainda não foram para ele (spec 035)."""
+    import relatos
     p = conferir.perfil_padrao()
-    return p.read_text(encoding="utf-8", errors="replace") if p.exists() else ""
+    return relatos.com_relatos(p.read_text(encoding="utf-8", errors="replace") if p.exists() else "")
 
 
 def _vaga(vid: str) -> dict:

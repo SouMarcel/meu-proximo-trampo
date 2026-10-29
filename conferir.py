@@ -534,6 +534,12 @@ def texto(r: dict) -> str:
     return "\n".join(linhas)
 
 
+def _com_relatos(perfil_txt: str) -> str:
+    """O perfil com os relatos da pessoa (spec 035), que também contam como fato confirmado."""
+    import relatos
+    return relatos.com_relatos(perfil_txt)
+
+
 def perfil_padrao() -> Path:
     """O perfil apontado no config.json (padrão perfil.md)."""
     if str(RAIZ) not in sys.path:
@@ -585,7 +591,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         cv = json.loads(Path(args.arquivo).read_text(encoding="utf-8"))
         perfil = Path(args.perfil) if args.perfil else perfil_padrao()
-        perfil_txt = perfil.read_text(encoding="utf-8") if perfil.exists() else ""
+        perfil_txt = _com_relatos(perfil.read_text(encoding="utf-8") if perfil.exists() else "")
         vaga = Path(args.vaga).read_text(encoding="utf-8") if args.vaga else vaga_do_dashboard(args.vaga_id) if args.vaga_id else None
     except (OSError, ValueError) as e:
         print(f"erro: {e}", file=sys.stderr)
@@ -601,7 +607,7 @@ def _main_carta(args) -> int:
     try:
         carta = Path(args.carta).read_text(encoding="utf-8")
         perfil = Path(args.perfil) if args.perfil else perfil_padrao()
-        perfil_txt = perfil.read_text(encoding="utf-8") if perfil.exists() else ""
+        perfil_txt = _com_relatos(perfil.read_text(encoding="utf-8") if perfil.exists() else "")
         respostas = json.loads(Path(args.respostas).read_text(encoding="utf-8")) if args.respostas else {}
         if args.vaga_id:
             v = vaga_do_banco(args.vaga_id)

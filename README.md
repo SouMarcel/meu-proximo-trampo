@@ -58,12 +58,20 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   você (os seus dados de contato, as respostas que você já deu e, nas perguntas comuns, os fatos do seu perfil), mostra o que
   preencheu e de onde veio, e pergunta o resto. Você responde no painel e ela preenche. **Quem
   confere na janela e clica em Entrar, Continuar e Enviar é sempre você.**
+  - **Relatos:** nas perguntas abertas que o perfil não responde, conte com as suas palavras o que
+    aconteceu (sem se preocupar com o limite do formulário). O relato vale como verdade: a IA o
+    transforma na melhor resposta para aquela pergunta, sem acrescentar fatos, e ele fica guardado no
+    que a ferramenta sabe de você. A partir daí entra nas respostas, no currículo, na carta, nas
+    histórias STAR e na nota das vagas. Em **Meu perfil → Seus relatos** você corrige, apaga ou leva o
+    relato ao `perfil.md` (a versão anterior fica guardada). Sem IA, o relato vai como você escreveu.
   - As suas respostas ficam guardadas no seu computador (`dash/dados/`, fora do Git) e são
-    reaproveitadas nas próximas vagas; salário e relocação ela pergunta a cada vaga. Você vê e
+    reaproveitadas nas próximas vagas, inclusive a remuneração atual e o nome da mãe, também quando a
+    pergunta vem com outra redação; a pretensão salarial e a relocação ela pergunta a cada vaga. Você vê e
     apaga as guardadas em "Atualizar candidaturas" → Candidatura assistida. Os logins guardados e os sites liberados
   ficam em "Atualizar candidaturas" → Candidatura assistida: logins e sites.
   - A IA nunca responde perguntas sensíveis (salário, visto, autorização de trabalho, deficiência,
-    relocação, diversidade): elas vão com a sua resposta. Aceite de termos, anexos e testes do
+    relocação, diversidade) nem dados cadastrais (nome da mãe, documentos): eles vão exatamente como você
+    escrever. Aceite de termos, anexos e testes do
     portal ficam com você, na janela.
   - Listas com busca (como as do Greenhouse) também são preenchidas: a ferramenta abre a lista, lê
     as opções e escolhe pelo teclado, sem clicar. O reCAPTCHA invisível desses sites não atrapalha.

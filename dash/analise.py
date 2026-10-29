@@ -101,7 +101,9 @@ def montar_pedido(vagas: list[dict], sem_descricao=frozenset()) -> str:
     cfg = f.ler_config()
     efet = f.efetivos(cfg)
     perfil = RAIZ / (cfg.get("perfil") or "perfil.md")
-    texto_perfil = (perfil.read_text(encoding="utf-8", errors="replace")[:LIMITE_PERFIL] if perfil.exists() else
+    import relatos  # os relatos da pessoa também são fatos do perfil (spec 035)
+    texto_perfil = (relatos.com_relatos(perfil.read_text(encoding="utf-8", errors="replace"))[:LIMITE_PERFIL]
+                    if perfil.exists() else
                     "(o usuário ainda não tem perfil: avalie só pelo que a vaga pede e diga no resumo que falta o perfil)")
     skill = SKILL.read_text(encoding="utf-8") if SKILL.exists() else ""
     campos = _secao(skill, "   `modelo_trabalho`:", "4. **Gravar.**")

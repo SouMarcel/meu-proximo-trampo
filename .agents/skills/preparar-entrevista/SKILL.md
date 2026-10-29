@@ -15,7 +15,8 @@ Linux). Rode tudo a partir da raiz do projeto.
 ## Regras
 
 - **Só fatos do perfil.** Histórias, respostas sugeridas e a "resposta mais forte" da simulação
-  usam só o que está no perfil (`perfil.md`) e nas histórias que a pessoa salvou. Número, empresa e
+  usam só o que está no perfil (`perfil.md`), nos relatos dela (`PY relatos.py lista`, fatos que ela contou na
+  candidatura assistida; spec 035) e nas histórias que a pessoa salvou. Número, empresa e
   data só se estiverem lá; nada de detalhe de bastidor inventado. Na dúvida, pergunte.
 - **Sem pesquisa na internet por conta própria.** O dossiê usa a vaga, a análise, as anotações e o
   texto que a pessoa colar sobre a empresa. Se ela pedir para ler um link, leia (WebFetch no Claude
