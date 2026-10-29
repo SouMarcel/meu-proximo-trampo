@@ -95,9 +95,10 @@ def limpar(texto) -> str:
 # ---------------------------------------------------------------- linhas com cara de instrução (research R5)
 
 def _norm(s: str) -> str:
-    s = unicodedata.normalize("NFKD", s)
-    s = "".join(c for c in s if not unicodedata.combining(c)).lower()
-    return " ".join(s.split())
+    """Sem acento, em minúsculas e com espaços simples (os padrões de instrução são só ASCII)."""
+    if not s.isascii():
+        s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    return " ".join(s.lower().split())
 
 
 _IA_EN = r"(?:ai|a\.i\.|llm|large language model|language model|ai (?:model|assistant|agent|screener|recruiter|system)|chatbot|bot|chatgpt|gpt|claude|gemini)"
@@ -141,12 +142,23 @@ COM_ACENTO = [re.compile(p) for p in (  # sobre o texto em minúsculas com acent
 )]
 
 
+INSTRUCAO = re.compile("|".join(f"(?:{p.pattern})" for p in INSTRUCOES))  # uma busca por linha
+# palavras sem as quais nenhum padrão casa: o filtro barato que poupa a busca completa na maioria das linhas
+GATILHO = re.compile(r"ignor|disregard|forget|override|bypass|desconsider|esquec|if you|se voce|you are|voce e |"
+                     r"voce agora|give|assign|award|rate|score|grade|rank|system|developer|assistant|prompt|inst\]|<\||"
+                     r"do not|nao (?:mencione|revele|conte|diga)|note|attention|message|instruc|notice|atencao|aviso|"
+                     r"nota|mensagem|hey|dear")
+GATILHO_ACENTO = re.compile(r"nota|aderência|pontuação", re.I)
+
+
 def _instrucao(linha: str) -> bool:
     n = _norm(linha)
     if not n:
         return False
-    if any(p.search(n) for p in INSTRUCOES):
+    if GATILHO.search(n) and INSTRUCAO.search(n):
         return True
+    if not GATILHO_ACENTO.search(linha):
+        return False
     baixa = " ".join(unicodedata.normalize("NFC", linha).lower().split())
     return any(p.search(baixa) for p in COM_ACENTO)
 
@@ -154,6 +166,7 @@ def _instrucao(linha: str) -> bool:
 # ---------------------------------------------------------------- alfabetos misturados (research R6)
 
 PALAVRA = re.compile(r"\w{4,}")
+OUTRO_ALFABETO = re.compile("[Ͱ-ӿ]")  # grego ou cirílico: sem eles, não há mistura a procurar
 
 
 def _misturada(palavra: str) -> bool:
@@ -252,6 +265,8 @@ def verificar(texto) -> tuple[str, dict | None]:
 
     if not limpo.strip() and not (invisiveis or adulteracao):
         return limpo, None
+    # sem nenhuma palavra-gatilho no texto todo, nenhuma linha pode ter cara de instrução
+    procurar = bool(GATILHO.search(_norm(limpo)) or GATILHO_ACENTO.search(limpo))
     for linha in limpo.split(NL):
         marcas = MARCA_RE.findall(linha)
         for o_que in marcas:
@@ -266,10 +281,10 @@ def verificar(texto) -> tuple[str, dict | None]:
                     cont["adulteracao"] += 1
                 citar("oculto", f"trecho oculto com {o_que} (tirado)")
         resto = MARCA_RE.sub("", linha) if marcas else linha
-        if _instrucao(resto):
+        if procurar and _instrucao(resto):
             cont["instrucoes"] += 1
             citar("instrucao", resto.strip())
-        for palavra in PALAVRA.findall(resto):
+        for palavra in PALAVRA.findall(resto) if OUTRO_ALFABETO.search(resto) else ():
             if _misturada(palavra):
                 cont["alfabetos"] += 1
                 citar("alfabetos", palavra)
