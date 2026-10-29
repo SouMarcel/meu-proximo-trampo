@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Carta de apresentação e respostas de formulário escritas pela IA escolhida, para a página (dash/gerador.py).
 
-  gerar_carta(vaga, respostas)        as quatro respostas da pessoa → IA → conferência → .txt, .docx, .meta.json
+  gerar_carta(vaga, respostas)        as respostas da pessoa → IA → conferência → .txt, .docx, .pdf, .meta.json
+  pdf_da_carta(nome)                  o PDF de uma carta que ficou sem ele (carta antiga ou conversão que falhou)
                                       (ou a mensagem curta, com limite de caracteres: por que esta vaga e o tom)
   gerar_respostas(vaga, perguntas)    perguntas coladas → sensíveis separadas → IA só nas outras → .txt, .meta.json
   gravar_da_pessoa(nome, respostas)   as respostas que a pessoa escreveu, gravadas como ela escreveu
@@ -314,26 +315,30 @@ def gerar_carta(vaga: dict, respostas: dict, progresso=None, perfil: str | None 
     avisar("conferindo")
     conf = conferir.conferir_carta(texto, perfil, curriculo_ia.texto_da_vaga(vaga), vaga.get("empresa") or "",
                                    _so_respostas(respostas), limite=respostas.get("limite"))
+    avisar("gerando")
     meta = _gravar_carta(vaga, texto, conf, respostas)
     meta["relatos"] = guardar_relatos_da_carta(vaga, respostas)
     return meta
 
 
 def _gravar_carta(vaga: dict, texto: str, conf: dict, respostas: dict, extra: dict | None = None) -> dict:
-    """Grava .txt, .docx (só na carta) e .meta.json com um nome novo; em falha, nada fica pela metade."""
+    """Grava .txt, .docx e .pdf (só na carta) e .meta.json com um nome novo; em falha, nada fica pela metade. O PDF
+    sai do .docx pelo LibreOffice ou pelo Word (curriculo.para_pdf); sem eles, a carta fica sem PDF e com o motivo."""
     mensagem = respostas.get("formato") == "mensagem"
     curriculo_ia.CURRICULOS.mkdir(parents=True, exist_ok=True)
     nome = _nome(vaga, "mensagem" if mensagem else "carta")
     pasta = curriculo_ia.CURRICULOS
-    criados = [pasta / f"{nome}{ext}" for ext in (".txt", ".docx", ".meta.json")]
+    criados = [pasta / f"{nome}{ext}" for ext in (".txt", ".docx", ".pdf", ".meta.json")]
     try:
         (pasta / f"{nome}.txt").write_text(texto + "\n", encoding="utf-8")
         tem_docx = False if mensagem else _docx_carta(texto, pasta / f"{nome}.docx")  # a mensagem é para copiar e colar
+        pdf, aviso_pdf = _pdf(pasta / f"{nome}.docx") if tem_docx else (None, None)
         meta = {"nome": nome, "tipo": "carta", "formato": respostas.get("formato") or "carta", "limite": respostas.get("limite"),
                 "alvo": _alvo(vaga), "respostas": respostas, "idioma": respostas.get("idioma") or _idioma(vaga),
                 "palavras": conf["palavras"], "caracteres": len(texto), "conferencia": conf, "pronto": conf["veredito"] != "bloquear",
-                "arquivos": {"txt": f"{nome}.txt", "docx": f"{nome}.docx" if tem_docx else None},
-                "texto": texto, "ia": _marca_ia(), "criado_em": datetime.now().isoformat(timespec="seconds"), **(extra or {})}
+                "arquivos": {"txt": f"{nome}.txt", "docx": f"{nome}.docx" if tem_docx else None, "pdf": pdf},
+                "texto": texto, "ia": _marca_ia(), "criado_em": datetime.now().isoformat(timespec="seconds"),
+                **({"aviso_pdf": aviso_pdf} if aviso_pdf else {}), **(extra or {})}
         _gravar_meta(nome, meta)
     except PermissionError:
         curriculo_ia._apagar(criados)
@@ -341,6 +346,36 @@ def _gravar_carta(vaga: dict, texto: str, conf: dict, respostas: dict, extra: di
     except Exception:
         curriculo_ia._apagar(criados)
         raise
+    return meta
+
+
+def _pdf(docx: Path) -> tuple[str | None, str | None]:
+    """(nome do .pdf, None) ou (None, o motivo de não ter saído)."""
+    import curriculo
+    try:
+        pdf, motivo = curriculo.para_pdf(docx)
+    except Exception as e:  # LibreOffice ou Word travados: a carta sai sem PDF, com o motivo
+        return None, f"não deu para gerar o PDF ({e})"
+    return (pdf.name, None) if pdf else (None, motivo or "não deu para gerar o PDF")
+
+
+def pdf_da_carta(nome: str) -> dict:
+    """O PDF de uma carta que ficou sem ele (carta de antes desta versão ou conversão que falhou). Refaz o .docx a partir
+    do texto, se faltar. Levanta GeracaoErro com o motivo, se não sair."""
+    meta = _ler_meta(nome)
+    if meta.get("tipo") != "carta" or meta.get("formato") == "mensagem":
+        raise GeracaoErro("só a carta completa tem PDF; a mensagem curta é para copiar e colar")
+    pasta = curriculo_ia.CURRICULOS
+    docx = pasta / f"{nome}.docx"
+    if not docx.exists() and not _docx_carta(meta.get("texto") or "", docx):
+        raise GeracaoErro("falta o python-docx para montar a carta")
+    pdf, motivo = _pdf(docx)
+    if not pdf:
+        raise GeracaoErro(motivo)
+    meta.setdefault("arquivos", {}).update(docx=docx.name, pdf=pdf)
+    meta.pop("aviso_pdf", None)
+    _gravar_meta(nome, meta)
+    meta["disponivel"] = {k: bool(v) and (pasta / v).exists() for k, v in meta["arquivos"].items()}
     return meta
 
 
@@ -422,6 +457,7 @@ def verificar_carta(nome: str, editado: str, guardar_relatos: bool = True, progr
     mudancas = [str(m)[:200] for m in (resposta.get("mudancas") or []) if str(m).strip()][:10]
     avisar("conferindo")
     respostas = {**(meta.get("respostas") or {}), "formato": meta.get("formato") or "carta", "limite": meta.get("limite")}
+    avisar("gerando")
     novas = acrescimos(meta.get("texto") or "", editado)
     conf = conferir.conferir_carta(texto, perfil, curriculo_ia.texto_da_vaga(vaga), vaga.get("empresa") or "",
                                    {**_so_respostas(respostas), "edicao": editado}, limite=meta.get("limite"))

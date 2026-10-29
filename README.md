@@ -370,8 +370,9 @@ análise só acrescenta. Cada item tem o seu botão, e nada acontece sem o cliqu
   parágrafos de solução e um fechamento objetivo, em formato que o ATS lê: a IA recebe as
   palavras-chave da vaga que o seu perfil sustenta (com o trecho do perfil que as prova) e as usa com
   o termo exato do anúncio. A carta mostra quantas delas usou. A conferência bloqueia número ou data
-  fora do perfil e aponta texto genérico. A carta fica em `curriculos/` (.docx e .txt) para baixar ou
-  copiar.
+  fora do perfil e aponta texto genérico. A carta fica em `curriculos/` em .pdf, .docx e .txt, para
+  exportar ou copiar (o PDF sai pelo LibreOffice ou pelo Word; se não sair, o botão **Gerar PDF** tenta
+  de novo).
   - **Editar e verificar**: em "Ler a carta", edite o texto à vontade e clique em **Verificar**. A IA
     incorpora as suas mudanças, corrige gramática e ortografia e mantém a estrutura, as palavras-chave
     e o tamanho. Sai uma versão nova, com a lista do que ela ajustou, e a anterior continua. O que você

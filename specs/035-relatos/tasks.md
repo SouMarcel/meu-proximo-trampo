@@ -52,3 +52,9 @@ description: "Tarefas da feature 035: Relatos — a candidatura assistida aprend
   `POST /api/kit/verificar`; testes em `tests/test_candidatura.py`.
 - [X] T018 Front: "Editar e verificar" na carta, palavras-chave usadas e faltando, "O que a IA ajustou", aviso de fim
   da geração com o tipo `verificar` (e a concordância "a carta … conferida"); README, API.md e skill.
+
+## Phase 8: US6 — carta em PDF (P2; pedido do usuário, 28/10)
+
+- [X] T019 `_gravar_carta` com o PDF (`_pdf`), `pdf_da_carta` e a rota `POST /api/kit/carta/{nome}/pdf`; testes com o
+  PDF simulado; conversão real conferida com o Word (texto com acentos extraído pelo pypdf).
+- [X] T020 Front: "Exportar: .pdf .docx .txt", "Gerar PDF" e o motivo quando o PDF não sai; README, API.md e spec.

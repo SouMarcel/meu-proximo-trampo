@@ -14,6 +14,7 @@ sys.path[:0] = [str(RAIZ), str(RAIZ / "dash")]
 import banco  # noqa: E402
 import candidatura_ia  # noqa: E402
 import conferir  # noqa: E402
+import curriculo  # noqa: E402
 import curriculo_ia  # noqa: E402
 import relatos  # noqa: E402
 
@@ -78,12 +79,20 @@ class TestConferirCarta(unittest.TestCase):
         self.assertEqual(codigo, 3)
 
 
+def pdf_falso(docx):
+    """O PDF sem LibreOffice nem Word: o teste nunca abre programa nenhum."""
+    pdf = docx.with_suffix(".pdf")
+    pdf.write_bytes(b"%PDF-1.4 teste")
+    return pdf, ""
+
+
 class ComPasta(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.pedidos = []
         for p in (mock.patch.object(curriculo_ia, "CURRICULOS", self.tmp),
+                  mock.patch.object(curriculo, "para_pdf", side_effect=pdf_falso),
                   mock.patch.object(banco, "ARQUIVO", self.tmp / "dados" / "banco.db"),  # os relatos ficam aqui
                   mock.patch.object(candidatura_ia, "_marca_ia", return_value={"provedor": "teste", "modelo": "x"})):
             p.start()
@@ -153,6 +162,8 @@ class TestCarta(ComPasta):
             meta = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
         self.assertEqual((meta["conferencia"]["veredito"], meta["pronto"], meta["idioma"]), ("ok", True, "en"))
         self.assertTrue((self.tmp / f"{meta['nome']}.txt").exists() and (self.tmp / f"{meta['nome']}.docx").exists())
+        self.assertEqual(meta["arquivos"]["pdf"], f"{meta['nome']}.pdf")  # a carta também sai em PDF (spec 035)
+        self.assertTrue((self.tmp / f"{meta['nome']}.pdf").exists())
         self.assertTrue(meta["nome"].endswith("-acme-analytics-senior-data-analyst-carta"))
         self.assertIn("Relatórios que demoram a fechar.", self.pedidos[0])  # as respostas vão no pedido
         self.assertIn("inglês", self.pedidos[0])
@@ -201,6 +212,25 @@ class TestCarta(ComPasta):
         self.assertEqual(sem["relatos"], 0)
         with self.assertRaisesRegex(candidatura_ia.GeracaoErro, "vazio"):
             candidatura_ia.verificar_carta(meta["nome"], "  ", perfil=PERFIL)
+
+    def test_pdf_que_falha_e_gerar_depois(self):
+        with self.ia(json.dumps({"texto": carta()})), \
+                mock.patch.object(curriculo, "para_pdf", return_value=(None, "instale o LibreOffice para gerar o PDF")):
+            meta = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
+        self.assertEqual((meta["arquivos"]["pdf"], meta["aviso_pdf"]), (None, "instale o LibreOffice para gerar o PDF"))
+        with mock.patch.object(curriculo, "para_pdf", return_value=(None, "instale o LibreOffice para gerar o PDF")), \
+                self.assertRaisesRegex(candidatura_ia.GeracaoErro, "LibreOffice"):
+            candidatura_ia.pdf_da_carta(meta["nome"])
+        (self.tmp / f"{meta['nome']}.docx").unlink()  # o .docx some: refeito a partir do texto
+        nova = candidatura_ia.pdf_da_carta(meta["nome"])
+        self.assertEqual((nova["arquivos"]["pdf"], nova["disponivel"]["pdf"], "aviso_pdf" in nova),
+                         (f"{meta['nome']}.pdf", True, False))
+        self.assertEqual(candidatura_ia.listar(VAGA["id"])[0]["arquivos"]["pdf"], f"{meta['nome']}.pdf")
+        with self.ia(json.dumps({"texto": "Acme Analytics: SQL and Power BI for your sales reports."})):
+            msg = candidatura_ia.gerar_carta(VAGA, {"formato": "mensagem", "limite": 400}, perfil=PERFIL)
+        self.assertIsNone(msg["arquivos"]["pdf"])  # a mensagem curta é para copiar e colar
+        with self.assertRaisesRegex(candidatura_ia.GeracaoErro, "mensagem"):
+            candidatura_ia.pdf_da_carta(msg["nome"])
 
     def test_acrescimos(self):
         self.assertEqual(candidatura_ia.acrescimos("Eu fiz A. Eu fiz B.", "Eu fiz A. Eu fiz C. Eu fiz B."), ["Eu fiz C."])

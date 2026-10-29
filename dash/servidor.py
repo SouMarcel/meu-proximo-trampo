@@ -533,6 +533,14 @@ class Handler(BaseHTTPRequestHandler):
                          "verificar": {k: corpo.get(k) for k in ("nome", "texto", "guardar_relatos")}}[tipo]
                 vaga_id = str(corpo.get("vaga_id") or "").strip()
                 return self._json(202, {**gerador.GERACAO.iniciar_kit(tipo, vaga_id, dados), "pode_alterar": True})
+            if metodo == "POST" and caminho.startswith("/api/kit/carta/") and caminho.endswith("/pdf") and caminho.count("/") == 5:
+                import candidatura_ia  # o PDF de uma carta que ficou sem ele (spec 035)
+                self._corpo()
+                try:
+                    meta = candidatura_ia.pdf_da_carta(caminho.split("/")[4])
+                except candidatura_ia.GeracaoErro as e:
+                    return self._erro(400, str(e))
+                return self._json(200, {"documento": meta})
             if metodo == "PUT" and caminho.startswith("/api/kit/respostas/"):
                 import candidatura_ia
                 try:

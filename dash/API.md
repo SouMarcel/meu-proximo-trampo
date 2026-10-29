@@ -473,6 +473,10 @@ o ATS lê. O pedido leva as palavras-chave da vaga que o perfil sustenta (`confe
 da carta traz `palavras_chave: {citadas, total, faltando}` e aponta quando a carta usa menos da metade delas. 202 =
 estado de geração (§3.8).
 
+**`POST /api/kit/carta/{nome}/pdf`** **[local]** — o PDF de uma carta que ficou sem ele (carta antiga ou conversão que
+falhou), a partir do .docx, pelo LibreOffice ou pelo Word (spec 035). `{documento}` com `arquivos.pdf` e `disponivel.pdf`;
+400 com o motivo (mensagem curta, sem LibreOffice nem Word). A carta nova já sai com `arquivos.pdf` (ou `aviso_pdf`).
+
 **`POST /api/kit/verificar`** **[local]** — "Verificar" a carta editada pela pessoa (spec 035). Corpo `{vaga_id*, nome*
 (a carta de base), texto* (o texto editado), guardar_relatos? (padrão true)}`. A IA incorpora as mudanças, corrige
 gramática e ortografia e mantém estrutura, palavras-chave e tamanho; a conferência conta o que a pessoa escreveu como

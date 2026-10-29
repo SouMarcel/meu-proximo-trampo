@@ -140,6 +140,12 @@ Pedidos do usuário no teste (28/10):
 3. **Given** uma carta editada pela pessoa, **When** ela clica em Verificar, **Then** sai uma versão nova revisada, com a
    lista do que a IA ajustou, e a anterior continua na lista.
 
+### User Story 6 - Exportar a carta em PDF (Priority: P2)
+
+Pedido do usuário (28/10): exportar a carta também em PDF. A carta completa sai em .pdf, .docx e .txt; o PDF vem do
+.docx pelo LibreOffice ou pelo Word, como o do currículo, com texto selecionável (o ATS lê). Carta antiga ou com
+conversão que falhou ganha o botão **Gerar PDF**. A mensagem curta continua só para copiar e colar.
+
 ### Edge Cases
 
 - **Relato vazio**: a pergunta continua no painel.
@@ -200,6 +206,8 @@ Pedidos do usuário no teste (28/10):
   e ortografia e mantém estrutura, palavras-chave e tamanho, sem acrescentar fatos. Grava uma versão nova
   (`origem: "verificada"`, `base`, `mudancas`), e a anterior fica. O texto da pessoa conta como fato dela na
   conferência, e o que ela acrescentou vira relato (opção, padrão sim).
+- **FR-015** (US6): A carta completa MUST sair também em PDF (`curriculo.para_pdf`), com `aviso_pdf` quando não sair, e
+  `POST /api/kit/carta/{nome}/pdf` MUST gerar o PDF depois.
 
 ### Key Entities
 
