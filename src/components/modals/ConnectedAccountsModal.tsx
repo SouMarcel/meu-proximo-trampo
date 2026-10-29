@@ -13,13 +13,15 @@ import { useConsulta } from "../../hooks/useConsulta"
 import { ETAPAS, RESULTADOS } from "../../utils/rotulos"
 import { linkSeguro } from "../../utils/formatters"
 import { BTN_MINI } from "../curriculo/Curriculos"
-import ConfigCandidatura from "./ConfigCandidatura"
+import LoginGuardado from "./LoginGuardado"
 
 interface Props {
   onClose: () => void
   onAviso: (m: string, t?: "info" | "erro") => void
   /** O quadro mudou (aplicadas ou importadas): relê as vagas. */
   onQuadroMudou: () => void
+  /** Fecha este diálogo e abre Meu perfil → Informações básicas (spec 036). */
+  onAbrirInformacoes: () => void
 }
 
 const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
@@ -42,7 +44,7 @@ function Icone({ svg }: { svg: string }) {
   return <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`} alt="" className="w-5 h-5" aria-hidden="true" />
 }
 
-export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou }: Props) {
+export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou, onAbrirInformacoes }: Props) {
   const { podeGravar, tratarErro } = useFerramenta()
   const [c, setC] = useState<Contas | null>(null)
   const [e, setE] = useState<EstadoCandidaturas | null>(null)
@@ -249,7 +251,18 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
             </section>
           )}
 
-          {c && <ConfigCandidatura onAviso={onAviso} />}
+          {c && <LoginGuardado onAviso={onAviso} />}
+          {c && (
+            <p className="flex items-center gap-2 flex-wrap">
+              <span className={DICA}>
+                Seus dados de contato, respostas guardadas e sites da candidatura assistida ficam em Meu perfil → Informações
+                básicas.
+              </span>
+              <button type="button" onClick={onAbrirInformacoes} className={BTN_MINI}>
+                Abrir
+              </button>
+            </p>
+          )}
 
           {e?.situacao === "lendo" && (
             <p role="status" className="flex items-center gap-2 p-3 rounded-xl bg-slate-100 dark:bg-slate-800">

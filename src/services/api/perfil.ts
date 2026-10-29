@@ -46,6 +46,28 @@ export interface Pergunta {
   texto: string
   opcoes?: { valor: string; rotulo: string }[]
   condicao?: string
+  /** Pergunta de idiomas (spec 036): as opções de idioma, sem "Outro" (que é da página). */
+  idiomas?: string[]
+  /** Níveis do CEFR (A1 a C2) e Nativo; o `rotulo` vai no texto gravado ("Inglês — B2 (Intermediário superior)"). */
+  niveis?: NivelIdioma[]
+  /** As respostas já dadas (ou os idiomas do currículo), convertidas em linhas; nível vazio = escolher. */
+  linhas?: LinhaIdioma[]
+}
+
+export interface NivelIdioma {
+  valor: string
+  rotulo: string
+  descricao: string
+}
+
+export interface LinhaIdioma {
+  /** Um dos `idiomas` ou "Outro". */
+  idioma: string
+  /** Nome do idioma quando `idioma` é "Outro". */
+  outro: string
+  nivel: string
+  /** O texto antigo, quando o nível ou o idioma não foi reconhecido (só para mostrar). */
+  original: string
 }
 
 export interface Contato {

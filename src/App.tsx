@@ -121,7 +121,7 @@ function Pagina({
   const [filtrosProposta, setFiltrosProposta] = useState<Filtros | null>(null)
   const filtrosDepois = useRef<(() => void) | null>(null) // o que fazer depois de salvar a proposta (primeiros passos)
   // Meu perfil: null = fechado; senão, a tela em que abre (undefined = onde a pessoa parou)
-  const [perfilAberto, setPerfilAberto] = useState<{ tela?: "analises" } | null>(null)
+  const [perfilAberto, setPerfilAberto] = useState<{ tela?: "analises" | "basicas" } | null>(null)
   const [isAccountsModalOpen, setIsAccountsModalOpen] = useState(false)
 
   // Avisos
@@ -676,6 +676,10 @@ function Pagina({
           onClose={() => setIsAccountsModalOpen(false)}
           onAviso={showToast}
           onQuadroMudou={() => carregarVagas().catch(() => undefined)}
+          onAbrirInformacoes={() => {
+            setIsAccountsModalOpen(false)
+            setPerfilAberto({ tela: "basicas" })
+          }}
         />
       )}
 

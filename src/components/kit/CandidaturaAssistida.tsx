@@ -296,7 +296,7 @@ export default function CandidaturaAssistida({
             <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 space-y-1">
               <p>
                 Este endereço (<b>{pag.dominio.host}</b>) não está na lista de sites de candidatura. Liberar o preenchimento
-                nele? Você pode revogar depois em Contas conectadas.
+                nele? Você pode revogar depois em Meu perfil → Informações básicas.
               </p>
               <button
                 type="button"

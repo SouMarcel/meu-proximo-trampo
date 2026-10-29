@@ -5,7 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { X, User, Loader2, AlertTriangle, Upload, Trash2, Sparkles } from "lucide-react"
 import * as perfilApi from "../../services/api/perfil"
-import type { EstadoPerfil, EtapaPerfil, FiltrosPropostos, Previa, PropostaDoCurriculo, CurriculosDaPasta, Pergunta } from "../../services/api/perfil"
+import type { EstadoPerfil, EtapaPerfil, FiltrosPropostos, Previa, PropostaDoCurriculo, CurriculosDaPasta, Pergunta, LinhaIdioma } from "../../services/api/perfil"
 import * as configApi from "../../services/api/config"
 import type { Filtros } from "../../services/api/config"
 import { mensagemDeErro } from "../../services/api"
@@ -13,12 +13,17 @@ import { useFerramenta } from "../../contexto/Ferramenta"
 import { diaMes } from "../../utils/formatters"
 import Analises from "./Analises"
 import Relatos from "./Relatos"
+import InformacoesBasicas from "./InformacoesBasicas"
+import PerguntaIdiomas, { LINHA_VAZIA, respostaIdiomas } from "./PerguntaIdiomas"
 import { GerarCurriculo, SecaoCurriculos } from "../curriculo/Curriculos"
 
-type Tela = EtapaPerfil | "do-curriculo" | "analises" | "curriculos"
+type Tela = EtapaPerfil | "do-curriculo" | "analises" | "curriculos" | "basicas"
+/** Telas fora do passo a passo: não gravam a etapa do perfil e não mostram Recomeçar. */
+const FORA_DOS_PASSOS: Tela[] = ["do-curriculo", "analises", "curriculos", "basicas"]
+const ehPasso = (t: Tela): t is EtapaPerfil => !FORA_DOS_PASSOS.includes(t)
 
 interface Props {
-  /** Abre direto numa tela (ex.: "analises", vindo do painel internacional). */
+  /** Abre direto numa tela (ex.: "analises", vindo do painel internacional; "basicas", de Atualizar candidaturas). */
   telaInicial?: Tela
   onClose: () => void
   onAviso: (mensagem: string, tipo?: "info" | "erro") => void
@@ -172,7 +177,7 @@ export default function MeuPerfil({
     if (t === "diagnostico") setPrev(null)
     if (t === "filtros") setFp(null)
     if (t !== "revisao") setDica("")
-    if (!so && t !== "do-curriculo" && t !== "analises" && t !== "curriculos") {
+    if (!so && ehPasso(t)) {
       perfilApi.progresso({ etapa: t }).then(setE).catch(() => undefined)
     }
     corpoRef.current?.scrollTo(0, 0)
@@ -885,6 +890,9 @@ export default function MeuPerfil({
       </>
     )
     pe = botaoIr(e.etapa && e.etapa !== "concluido" ? e.etapa : "concluido", "Voltar ao perfil")
+  } else if (tela === "basicas") {
+    corpo = <InformacoesBasicas so={so} onAviso={onAviso} />
+    pe = botaoIr(e.etapa && e.etapa !== "concluido" ? e.etapa : "concluido", "Voltar ao perfil")
   } else if (tela === "analises") {
     corpo = (
       <Analises
@@ -903,7 +911,7 @@ export default function MeuPerfil({
     )
   }
 
-  const mostraRecomecar = e && !["concluido", "do-curriculo", "analises", "curriculos"].includes(tela)
+  const mostraRecomecar = e && tela !== "concluido" && !FORA_DOS_PASSOS.includes(tela)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={onClose}>
@@ -941,6 +949,21 @@ export default function MeuPerfil({
                   {p.label}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setErro("")
+                  setTela("basicas")
+                }}
+                aria-current={tela === "basicas" ? "step" : undefined}
+                className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                  tela === "basicas"
+                    ? "bg-indigo-600 text-white"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                Informações básicas
+              </button>
               {e.existe_perfil && (
                 <button
                   type="button"
@@ -1233,6 +1256,17 @@ function PerguntaAtual({
     p.tipo === "multi" ? (Array.isArray(valor) ? valor : []) : p.tipo === "sim_nao" ? (valor === true ? ["sim"] : valor === false ? ["nao"] : []) : valor ? [valor] : [],
   )
   const opcoes = p.tipo === "sim_nao" ? [{ valor: "sim", rotulo: "Sim" }, { valor: "nao", rotulo: "Não" }] : p.opcoes || []
+  // idiomas com nível (spec 036): linhas de idioma e nível; sem os campos novos, continua a caixa de texto
+  const ehIdiomas = Boolean(p.idiomas?.length && p.niveis?.length)
+  const [linhas, setLinhas] = useState<LinhaIdioma[]>(() => (p.linhas?.length ? p.linhas : [{ ...LINHA_VAZIA }]))
+  const [aviso, setAviso] = useState("")
+
+  const proxima = () => {
+    if (!ehIdiomas) return onResponder(ler())
+    const r = respostaIdiomas(linhas, p.niveis || [])
+    if (r.erro) return setAviso(r.erro)
+    onResponder(r.valor ?? null)
+  }
 
   const ler = (): unknown => {
     if (p.tipo === "texto") return texto.trim() || null
@@ -1251,16 +1285,34 @@ function PerguntaAtual({
         Pergunta {n + 1} de {total}
       </p>
       <div className="space-y-2">
-        <label htmlFor="pf-resp" id="pf-perg" className="block font-semibold text-sm text-slate-900 dark:text-white">
+        <label htmlFor={ehIdiomas ? undefined : "pf-resp"} id="pf-perg" className="block font-semibold text-sm text-slate-900 dark:text-white">
           {p.texto}
         </label>
+        {ehIdiomas && (
+          <div role="group" aria-labelledby="pf-perg" className="space-y-2">
+            <PerguntaIdiomas
+              idiomas={p.idiomas || []}
+              niveis={p.niveis || []}
+              linhas={linhas}
+              onMudar={(l) => {
+                setLinhas(l)
+                setAviso("")
+              }}
+            />
+            {aviso && (
+              <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">
+                {aviso}
+              </p>
+            )}
+          </div>
+        )}
         {p.tipo === "texto" &&
           (textoLongo ? (
             <textarea id="pf-resp" rows={4} maxLength={2000} value={texto} onChange={(ev) => setTexto(ev.target.value)} className={CAMPO} />
           ) : (
             <input id="pf-resp" maxLength={300} autoComplete="off" value={texto} onChange={(ev) => setTexto(ev.target.value)} className={CAMPO} />
           ))}
-        {p.tipo === "lista" && (
+        {p.tipo === "lista" && !ehIdiomas && (
           <>
             <textarea id="pf-resp" rows={5} maxLength={2000} value={texto} onChange={(ev) => setTexto(ev.target.value)} className={CAMPO} />
             <p className={DICA}>Um por linha.</p>
@@ -1296,7 +1348,7 @@ function PerguntaAtual({
         <button type="button" onClick={() => onResponder(null)} className={BTN_SEC}>
           Pular
         </button>
-        <button type="button" onClick={() => onResponder(ler())} className={BTN_PRI}>
+        <button type="button" onClick={proxima} className={BTN_PRI}>
           {n + 1 >= total ? "Concluir" : "Próxima"}
         </button>
       </div>
