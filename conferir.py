@@ -37,7 +37,9 @@ vivencia vivencias pratica dominio familiaridade habilidade habilidades capacida
 basico desejavel desejaveis diferencial diferenciais obrigatorio requisito requisitos ano anos mes meses minimo area
 the an of in on at to for with without and or as is are be have has strong solid good great excellent knowledge
 experience experienced proven ability skills skill familiarity understanding hands years year plus preferred required
-nice must using use etc e/ou tipo tipos atuacao atuar trabalhar trabalho saber ter possuir""".split())
+nice must using use etc e/ou tipo tipos atuacao atuar trabalhar trabalho saber ter possuir
+time team equipe work working hours hour horas overlap least fluent fluente fluencia within across including
+""".split())  # da última linha: não são habilidades, e "time" (inglês) bate com "time" (equipe) do português
 CABECALHOS_REQ = ("requisitos", "qualificacoes", "o que buscamos", "o que esperamos", "o que voce precisa",
                   "o que procuramos", "para se candidatar", "desejavel", "desejaveis", "diferenciais", "competencias",
                   "requirements", "qualifications", "must have", "nice to have", "what you'll need", "what you need",
@@ -56,7 +58,11 @@ FAMILIAS = [{"jira", "azure boards", "azure devops", "trello", "clickup", "asana
             {"sql", "postgresql", "mysql", "sql server", "oracle"},
             {"aws", "azure", "gcp", "google cloud"},
             {"figma", "sketch", "adobe xd"},
-            {"excel", "google sheets", "planilhas", "spreadsheets"}]
+            {"excel", "google sheets", "planilhas", "spreadsheets"},
+            # a mesma coisa em inglês e em português (vaga num idioma, perfil no outro; spec 035)
+            {"english", "ingles"}, {"spanish", "espanhol"}, {"portuguese", "portugues"}, {"french", "frances"},
+            {"german", "alemao"}, {"dashboards", "dashboard", "paineis", "painel"},
+            {"reports", "reporting", "relatorios", "relatorio"}, {"data modeling", "modelagem de dados"}]
 NUMEROS_PALAVRAS = {"um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "quatro": 4, "cinco": 5, "seis": 6, "sete": 7,
                     "oito": 8, "nove": 9, "dez": 10, "onze": 11, "doze": 12, "treze": 13, "quatorze": 14, "catorze": 14,
                     "quinze": 15, "dezesseis": 16, "dezessete": 17, "dezoito": 18, "dezenove": 19, "vinte": 20,
@@ -293,19 +299,18 @@ def _familia(req_n: str, perfil_n: str) -> str | None:
     return None
 
 
-def conferir_requisitos(cv: dict, perfil: str, vaga: str) -> tuple[list[dict], dict, list[dict]]:
-    """(requisitos com situação, cobertura das palavras-chave, pontos de bloqueio por lacuna em Competências)."""
-    perfil_n, cv_n = norm(perfil), norm(" ".join(t for _, t in trechos(cv)))
-    comp_n = norm(" ".join(t for s, t in trechos(cv) if s == "competencias"))
+def avaliar_requisitos(perfil: str, vaga: str) -> list[dict]:
+    """Cada requisito do anúncio contra o perfil: {texto, situacao (tem, sustentado, lacuna), evidencia, termos,
+    achados}. "achados" são os termos do requisito que o perfil já usa: as palavras-chave que a carta e o currículo
+    podem usar com verdade (spec 035)."""
+    perfil_n = norm(perfil)
     linhas_perfil = [l for l in str(perfil).splitlines() if l.strip()]
-    saida, pontos, chaves = [], [], []
+    saida = []
     for req in requisitos_da_vaga(vaga):
         ts = termos(req)
-        chaves += [t for t in ts if t not in chaves]
         achados = [t for t in ts if _contem(perfil_n, t)]
-        ratio = len(achados) / len(ts)
         equivalente = _familia(norm(req), perfil_n)
-        if ratio >= 0.6:
+        if len(achados) / len(ts) >= 0.6:
             situacao = "tem"
         elif achados or equivalente:
             situacao = "sustentado"
@@ -315,8 +320,35 @@ def conferir_requisitos(cv: dict, perfil: str, vaga: str) -> tuple[list[dict], d
         if achados:
             evid = max(linhas_perfil, key=lambda l: sum(_contem(norm(l), t) for t in achados)).strip()[:160]
         elif equivalente:
-            evid = f"equivalente no perfil: {equivalente}"
-        saida.append({"texto": req[:200], "situacao": situacao, "evidencia": evid})
+            linha = next((l.strip() for l in linhas_perfil if _contem(norm(l), equivalente)), "")
+            evid = f"equivalente no perfil: {equivalente}" + (f" ({linha[:140]})" if linha else "")
+        saida.append({"texto": req[:200], "situacao": situacao, "evidencia": evid, "termos": ts, "achados": achados})
+    return saida
+
+
+def _citado(texto_n: str, termos_req: list[str]) -> bool:
+    """O texto usa o requisito: pelo menos 60% dos termos significativos dele."""
+    ts = [t for t in termos_req if len(t) > 2 and t not in VAZIAS_EN] or termos_req
+    return bool(ts) and sum(_contem(texto_n, t) for t in ts) >= max(1, round(0.6 * len(ts)))
+
+
+def cobertura_palavras_chave(texto: str, perfil: str, vaga: str) -> dict:
+    """Quantos requisitos da vaga que o perfil sustenta (tem ou sustentado) o texto usa: {citadas, total, faltando}."""
+    texto_n = norm(texto)
+    apoiados = [r for r in avaliar_requisitos(perfil, vaga) if r["situacao"] != "lacuna"]
+    faltando = [r["texto"] for r in apoiados if not _citado(texto_n, r["termos"])]
+    return {"citadas": len(apoiados) - len(faltando), "total": len(apoiados), "faltando": faltando[:10]}
+
+
+def conferir_requisitos(cv: dict, perfil: str, vaga: str) -> tuple[list[dict], dict, list[dict]]:
+    """(requisitos com situação, cobertura das palavras-chave, pontos de bloqueio por lacuna em Competências)."""
+    cv_n = norm(" ".join(t for _, t in trechos(cv)))
+    comp_n = norm(" ".join(t for s, t in trechos(cv) if s == "competencias"))
+    saida, pontos, chaves = [], [], []
+    for r in avaliar_requisitos(perfil, vaga):
+        req, ts, situacao = r["texto"], r["termos"], r["situacao"]
+        chaves += [t for t in ts if t not in chaves]
+        saida.append({k: r[k] for k in ("texto", "situacao", "evidencia")})
         if situacao == "lacuna":
             na_lista = [t for t in ts if len(t) >= 3 and _contem(comp_n, t)]
             if na_lista:
@@ -479,6 +511,12 @@ def conferir_carta(carta: str, perfil: str, vaga: str = "", empresa: str = "", r
     if reqs and not any(sum(_contem(carta_n, t) for t in r) >= max(1, round(0.6 * len(r))) for r in reqs):
         pontos.append({"tipo": "requisito", "valor": "", "nivel": "conferir",
                        "mensagem": "a carta não cita nenhum requisito do anúncio: pode servir para qualquer vaga"})
+    # ATS (spec 035): as palavras-chave da vaga que o perfil sustenta precisam aparecer no texto
+    cobertura = cobertura_palavras_chave(carta, base, vaga) if vaga else {"citadas": 0, "total": 0, "faltando": []}
+    if cobertura["total"] >= 2 and cobertura["citadas"] * 2 < cobertura["total"]:
+        pontos.append({"tipo": "palavras_chave", "valor": "; ".join(cobertura["faltando"][:5]), "nivel": "conferir",
+                       "mensagem": f"a carta usa {cobertura['citadas']} de {cobertura['total']} requisitos da vaga que o "
+                                   "seu perfil sustenta: o ATS procura esses termos"})
     for e in EXPRESSOES_VAZIAS:
         if _contem(carta_n, norm(e)):
             pontos.append({"tipo": "vazia", "valor": e, "nivel": "conferir",
@@ -490,7 +528,7 @@ def conferir_carta(carta: str, perfil: str, vaga: str = "", empresa: str = "", r
                            "mensagem": "nome que não aparece no perfil nem na vaga (empresa, cargo ou lugar?)"})
     pior = max((NIVEIS[p["nivel"]] for p in pontos), default=0)
     return {"veredito": {0: "ok", 1: "conferir", 2: "bloquear"}[pior], "pontos": pontos, "palavras": n,
-            "caracteres": len(carta.strip())}
+            "caracteres": len(carta.strip()), "palavras_chave": cobertura}
 
 
 def conferir_respostas(itens: list[dict], perfil: str) -> list[dict]:
@@ -505,6 +543,10 @@ def conferir_respostas(itens: list[dict], perfil: str) -> list[dict]:
 def texto_carta(r: dict) -> str:
     rot = {"ok": "OK", "conferir": "CONFERIR", "bloquear": "BLOQUEAR"}
     linhas = [f"Veredito: {rot[r['veredito']]} · {r['palavras']} palavras · {r['caracteres']} caracteres"]
+    pc = r.get("palavras_chave") or {}
+    if pc.get("total"):
+        linhas.append(f"Palavras-chave da vaga que o perfil sustenta, usadas: {pc['citadas']} de {pc['total']}"
+                      + (f" (faltam: {'; '.join(pc['faltando'][:5])})" if pc["faltando"] else ""))
     linhas += [f"  [{p['nivel']}] {p['mensagem']}" + (f": {p['valor']}" if p["valor"] else "") for p in r["pontos"]]
     return "\n".join(linhas)
 

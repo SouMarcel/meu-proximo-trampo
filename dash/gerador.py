@@ -40,7 +40,7 @@ def _candidatura_ia():
     return candidatura_ia
 
 
-NOMES = {"curriculo": "o currículo", "carta": "a carta", "respostas": "as respostas"}
+NOMES = {"curriculo": "o currículo", "carta": "a carta", "respostas": "as respostas", "verificar": "a carta revisada"}
 
 
 class GeracaoOcupada(Exception):
@@ -111,7 +111,7 @@ class Geracao:
     def iniciar_kit(self, tipo: str, vaga_id: str, dados) -> dict:
         """Carta (dados = as quatro respostas) ou respostas de formulário (dados = as perguntas coladas)."""
         cand, ia = _candidatura_ia(), _ia()
-        if tipo not in ("carta", "respostas"):
+        if tipo not in ("carta", "respostas", "verificar"):
             raise ValueError("tipo de documento inválido")
         with self._trava:
             if self.rodando():
@@ -120,7 +120,14 @@ class Geracao:
         if not vaga:
             raise ValueError("vaga não encontrada")
         try:  # o que falta a pessoa responder vem antes da IA e do perfil
-            dados = cand.validar_respostas(dados) if tipo == "carta" else str(dados or "")
+            if tipo == "verificar":  # a carta editada pela pessoa (spec 035): {nome, texto, guardar_relatos}
+                dados = dados if isinstance(dados, dict) else {}
+                if not str(dados.get("texto") or "").strip():
+                    raise cand.GeracaoErro("o texto da carta está vazio")
+                if (cand._ler_meta(str(dados.get("nome") or "")).get("alvo") or {}).get("id") != vaga_id:
+                    raise cand.GeracaoErro("esta carta não é desta vaga")
+            else:
+                dados = cand.validar_respostas(dados) if tipo == "carta" else str(dados or "")
             if tipo == "respostas" and not cand.separar(dados):
                 raise cand.GeracaoErro("cole as perguntas do formulário, uma por linha")
         except cand.GeracaoErro as e:
@@ -149,9 +156,13 @@ class Geracao:
     def _rodar_kit(self, tipo: str, vaga: dict, dados):
         cand = _candidatura_ia()
         try:
-            gerar = cand.gerar_carta if tipo == "carta" else cand.gerar_respostas
-            meta = gerar(vaga, dados, progresso=lambda etapa: self._set(situacao=etapa))
-            banco.registrar_documento(vaga["id"], tipo, meta["nome"])
+            if tipo == "verificar":
+                meta = cand.verificar_carta(str(dados["nome"]), str(dados["texto"]), dados.get("guardar_relatos") is not False,
+                                            progresso=lambda etapa: self._set(situacao=etapa))
+            else:
+                gerar = cand.gerar_carta if tipo == "carta" else cand.gerar_respostas
+                meta = gerar(vaga, dados, progresso=lambda etapa: self._set(situacao=etapa))
+            banco.registrar_documento(vaga["id"], "carta" if tipo == "verificar" else tipo, meta["nome"])
             veredito = (meta.get("conferencia") or {}).get("veredito")
             self._set(situacao="pronto", nome=meta["nome"], veredito=veredito, pronto=meta.get("pronto", True),
                       fim=datetime.now().isoformat(timespec="seconds"))

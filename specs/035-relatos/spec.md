@@ -118,6 +118,28 @@ que vende, solução, fechamento) e manda a IA responder às perguntas em branco
 3. **Given** "Guardar o que eu escrever como relato" desmarcado, **When** a carta é gerada, **Then** nada vai para os
    relatos.
 
+### User Story 5 - Palavras-chave da vaga e Verificar a carta editada (Priority: P1)
+
+Pedidos do usuário no teste (28/10):
+1. O formato ATS deve focar nas palavras-chave da vaga que se ligam ao perfil profissional.
+2. Quando a pessoa editar a carta, um botão **Verificar** faz a IA incorporar as melhorias dela ao texto gerado,
+   corrigindo gramática e ortografia.
+
+**Independent Test**:
+- O pedido da carta lista os requisitos da vaga que o perfil sustenta, com a evidência, e separa os que não achou.
+  "Fluent English" com "Inglês" no perfil conta; "Eastern Time" não casa com "time" (equipe).
+- Verificar uma carta editada grava uma versão nova, com as mudanças da IA. A anterior continua, e o que a pessoa
+  acrescentou não bloqueia a conferência e vira relato.
+
+**Acceptance Scenarios**:
+
+1. **Given** uma vaga com requisitos, **When** a carta é pedida, **Then** a IA recebe as palavras-chave que o perfil
+   sustenta, cada uma com o trecho do perfil, e a regra de usar o termo exato do anúncio.
+2. **Given** uma carta pronta, **When** a pessoa a lê, **Then** vê quantas dessas palavras-chave a carta usou e quais
+   faltam.
+3. **Given** uma carta editada pela pessoa, **When** ela clica em Verificar, **Then** sai uma versão nova revisada, com a
+   lista do que a IA ajustou, e a anterior continua na lista.
+
 ### Edge Cases
 
 - **Relato vazio**: a pergunta continua no painel.
@@ -169,6 +191,15 @@ que vende, solução, fechamento) e manda a IA responder às perguntas em branco
   - formato que o ATS lê.
 
   A mensagem curta MUST vender já na primeira frase.
+- **FR-013** (US5): O pedido da carta MUST trazer os requisitos da vaga que o perfil e os relatos sustentam (termos e
+  evidência) e os que a ferramenta não achou. Estes últimos só podem ser citados com um fato que os sustente. A
+  equivalência entre idiomas (english/inglês, dashboards/painéis, reports/relatórios) MUST contar, e palavras que não são
+  habilidade ("time", "hours", "fluent") MUST ser ignoradas. A conferência da carta MUST trazer `palavras_chave` e
+  apontar quando a carta usa menos da metade delas.
+- **FR-014** (US5): Uma carta pronta MUST poder ser editada e verificada. A IA incorpora as mudanças, corrige gramática
+  e ortografia e mantém estrutura, palavras-chave e tamanho, sem acrescentar fatos. Grava uma versão nova
+  (`origem: "verificada"`, `base`, `mudancas`), e a anterior fica. O texto da pessoa conta como fato dela na
+  conferência, e o que ela acrescentou vira relato (opção, padrão sim).
 
 ### Key Entities
 

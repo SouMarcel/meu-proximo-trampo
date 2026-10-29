@@ -42,3 +42,13 @@ description: "Tarefas da feature 035: Relatos — a candidatura assistida aprend
   (`guardar_relatos_da_carta`).
 - [X] T015 Testes em `tests/test_candidatura.py`, com a pasta dos dados isolada; front (`Kit.tsx`: perguntas
   opcionais, "Guardar o que eu escrever como relato"); README, API.md e skill `gerar-curriculo`.
+
+## Phase 7: US5 — palavras-chave e Verificar (P1; pedidos do usuário no teste, 28/10)
+
+- [X] T016 `conferir.avaliar_requisitos` (extraída de `conferir_requisitos`), `cobertura_palavras_chave`; equivalência
+  entre idiomas em `FAMILIAS`; palavras que não são habilidade em `VAZIAS`; pedido da carta com as palavras-chave e os
+  requisitos não achados; `palavras_chave` na conferência da carta.
+- [X] T017 `candidatura_ia.verificar_carta` (com `_gravar_carta` e `acrescimos`); gerador com o tipo `verificar`; rota
+  `POST /api/kit/verificar`; testes em `tests/test_candidatura.py`.
+- [X] T018 Front: "Editar e verificar" na carta, palavras-chave usadas e faltando, "O que a IA ajustou", aviso de fim
+  da geração com o tipo `verificar` (e a concordância "a carta … conferida"); README, API.md e skill.

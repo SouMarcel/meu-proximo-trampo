@@ -526,10 +526,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(202, {**gerador.GERACAO.iniciar(vaga_id, corpo.get("tecnicas") or {}), "pode_alterar": True})
             if metodo == "POST" and caminho == "/api/curriculo/tentar":
                 return self._json(202, {**gerador.GERACAO.tentar(), "pode_alterar": True})
-            if metodo == "POST" and caminho in ("/api/kit/carta", "/api/kit/respostas"):
+            if metodo == "POST" and caminho in ("/api/kit/carta", "/api/kit/respostas", "/api/kit/verificar"):
                 corpo = self._corpo()
                 tipo = caminho.rsplit("/", 1)[1]
-                dados = corpo.get("respostas") if tipo == "carta" else corpo.get("perguntas")
+                dados = {"carta": corpo.get("respostas"), "respostas": corpo.get("perguntas"),
+                         "verificar": {k: corpo.get(k) for k in ("nome", "texto", "guardar_relatos")}}[tipo]
                 vaga_id = str(corpo.get("vaga_id") or "").strip()
                 return self._json(202, {**gerador.GERACAO.iniciar_kit(tipo, vaga_id, dados), "pode_alterar": True})
             if metodo == "PUT" and caminho.startswith("/api/kit/respostas/"):

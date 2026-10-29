@@ -166,6 +166,45 @@ class TestCarta(ComPasta):
         with self.assertRaisesRegex(candidatura_ia.GeracaoErro, "perfil"):
             candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil="")
 
+    def test_pedido_traz_palavras_chave_que_o_perfil_sustenta(self):  # ATS (spec 035)
+        pedido = candidatura_ia.montar_pedido_carta(PERFIL, VAGA, candidatura_ia.validar_respostas({}))
+        chave = pedido[pedido.index("## Palavras-chave"):pedido.index("## Requisitos que a ferramenta")]
+        self.assertIn("Advanced SQL", chave)
+        self.assertIn("Fluent English", chave)  # "Inglês" no perfil: a mesma coisa em outro idioma
+        self.assertNotIn("Eastern Time", chave)  # "time" (inglês) não é "time" (equipe) do perfil
+        self.assertIn("o termo exato do anúncio", pedido)
+        conf = conferir.conferir_carta("Dear Acme Analytics team, I write reports.", PERFIL, TEXTO_VAGA, "Acme Analytics", {})
+        self.assertEqual(conf["palavras_chave"]["citadas"], 0)
+        self.assertIn("palavras_chave", {p["tipo"] for p in conf["pontos"]})
+
+    def test_verificar_incorpora_a_edicao(self):  # o botão Verificar (spec 035)
+        with self.ia(json.dumps({"texto": carta()})):
+            meta = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
+        acrescimo = "In 2024 I led the migration of 40 reports to the cloud."
+        editado = meta["texto"] + "\n\n" + acrescimo
+        revisado = carta(acrescimo)
+        with self.ia(json.dumps({"texto": revisado, "mudancas": ["corrigi a concordância no segundo parágrafo"]})):
+            nova = candidatura_ia.verificar_carta(meta["nome"], editado, perfil=PERFIL)
+        pedido = self.pedidos[-1]
+        self.assertIn("## O que a pessoa escreveu ou mudou (manter)", pedido)
+        self.assertIn(acrescimo, pedido)
+        self.assertIn("Corrija gramática", pedido)
+        self.assertEqual((nova["origem"], nova["base"], nova["mudancas"]),
+                         ("verificada", meta["nome"], ["corrigi a concordância no segundo parágrafo"]))
+        self.assertNotEqual(nova["nome"], meta["nome"])  # versão nova; a anterior continua
+        self.assertEqual({m["nome"] for m in candidatura_ia.listar(VAGA["id"])}, {meta["nome"], nova["nome"]})
+        self.assertNotEqual(nova["conferencia"]["veredito"], "bloquear")  # o 2024 e o 40 são da pessoa
+        self.assertEqual(nova["relatos"], 1)
+        self.assertTrue(any("led the migration of 40 reports" in x["relato"] for x in relatos.listar()))
+        with self.ia(json.dumps({"texto": revisado})):
+            sem = candidatura_ia.verificar_carta(meta["nome"], editado + " More.", guardar_relatos=False, perfil=PERFIL)
+        self.assertEqual(sem["relatos"], 0)
+        with self.assertRaisesRegex(candidatura_ia.GeracaoErro, "vazio"):
+            candidatura_ia.verificar_carta(meta["nome"], "  ", perfil=PERFIL)
+
+    def test_acrescimos(self):
+        self.assertEqual(candidatura_ia.acrescimos("Eu fiz A. Eu fiz B.", "Eu fiz A. Eu fiz C. Eu fiz B."), ["Eu fiz C."])
+
 
 SENSIVEIS = [
     "Are you legally authorized to work in the United States?", "Will you now or in the future require visa sponsorship?",

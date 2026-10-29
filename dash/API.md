@@ -469,7 +469,15 @@ só mensagem), idioma? (pt, en, es, fr, de, it), guardar_relatos? (padrão true)
 035): a que ficar em branco a IA responde pelo perfil, pelos relatos e pela vaga; o que a pessoa escrever vale como
 relato e, com `guardar_relatos`, fica em `dash/dados/relatos.json` (a carta pronta traz `relatos`: quantos guardou).
 A carta vende a pessoa no primeiro parágrafo, com foco no problema da empresa que ela ajuda a resolver, em formato que
-o ATS lê. 202 = estado de geração (§3.8).
+o ATS lê. O pedido leva as palavras-chave da vaga que o perfil sustenta (`conferir.avaliar_requisitos`); a conferência
+da carta traz `palavras_chave: {citadas, total, faltando}` e aponta quando a carta usa menos da metade delas. 202 =
+estado de geração (§3.8).
+
+**`POST /api/kit/verificar`** **[local]** — "Verificar" a carta editada pela pessoa (spec 035). Corpo `{vaga_id*, nome*
+(a carta de base), texto* (o texto editado), guardar_relatos? (padrão true)}`. A IA incorpora as mudanças, corrige
+gramática e ortografia e mantém estrutura, palavras-chave e tamanho; a conferência conta o que a pessoa escreveu como
+fato dela. Grava uma versão nova (`origem: "verificada"`, `base`, `mudancas: string[]`); a anterior fica. O que a pessoa
+acrescentou vira relato. 202 = estado de geração (§3.8, `tipo: "verificar"`); 400 texto vazio ou carta de outra vaga.
 
 **`POST /api/kit/respostas`** **[local]** — "Preparar respostas". Corpo `{vaga_id*, perguntas*: string}` (uma por
 linha, até 30). Perguntas sensíveis (autorização de trabalho, visto ou patrocínio, cidadania, salário ou

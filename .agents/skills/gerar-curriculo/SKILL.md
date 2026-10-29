@@ -235,7 +235,13 @@ Isso protege o usuário: o recrutador confere, e data é a coisa mais fácil de 
 
    Cite a empresa e ligue pelo menos dois requisitos do anúncio a fatos do perfil, com os
    termos do anúncio quando forem verdade. Formato que o ATS lê: parágrafos curtos, sem tabelas
-   nem símbolos. Só conquistas escritas no perfil, nos relatos ou nas respostas, com as palavras
+   nem símbolos. **Palavras-chave**: liste os requisitos do anúncio que o perfil e os relatos
+   sustentam e use o máximo deles com o termo exato do anúncio, cada um ligado ao fato que o
+   prova, começando pelos mais importantes no primeiro parágrafo; requisito que o perfil não
+   sustenta não se afirma.
+   Se a pessoa **editar a carta** e pedir para conferir: mantenha tudo o que ela mudou ou
+   acrescentou (é fato dela), corrija gramática e ortografia, mantenha estrutura,
+   palavras-chave e tamanho e mostre o que você ajustou. Só conquistas escritas no perfil, nos relatos ou nas respostas, com as palavras
    de lá. Nada de expressões vazias ("apaixonado", "proativo", "team player", "fora da caixa");
    nada sobre autorização de trabalho, visto, salário, deficiência ou relocação.
 3. **Confira** antes de entregar: grave a carta em `.cache/carta.txt` e as respostas em

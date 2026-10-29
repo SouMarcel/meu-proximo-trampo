@@ -367,9 +367,15 @@ análise só acrescenta. Cada item tem o seu botão, e nada acontece sem o cliqu
   relatos e pela vaga; o que você escrever vale como relato e fica no que a ferramenta sabe de você. A
   carta tem de 350 a 420 palavras, no idioma da vaga, e vende você logo no primeiro parágrafo: quem
   você é, o problema da empresa que você ajuda a resolver e a sua prova mais forte. Depois vêm os
-  parágrafos de solução e um fechamento objetivo, em formato que o ATS lê. A conferência bloqueia
-  número ou data fora do perfil e aponta texto genérico. A carta fica em `curriculos/` (.docx e .txt)
-  para baixar ou copiar.
+  parágrafos de solução e um fechamento objetivo, em formato que o ATS lê: a IA recebe as
+  palavras-chave da vaga que o seu perfil sustenta (com o trecho do perfil que as prova) e as usa com
+  o termo exato do anúncio. A carta mostra quantas delas usou. A conferência bloqueia número ou data
+  fora do perfil e aponta texto genérico. A carta fica em `curriculos/` (.docx e .txt) para baixar ou
+  copiar.
+  - **Editar e verificar**: em "Ler a carta", edite o texto à vontade e clique em **Verificar**. A IA
+    incorpora as suas mudanças, corrige gramática e ortografia e mantém a estrutura, as palavras-chave
+    e o tamanho. Sai uma versão nova, com a lista do que ela ajustou, e a anterior continua. O que você
+    acrescentou vale como fato seu e vira relato.
 - **Preparar respostas**: cole as perguntas do formulário. As de autorização de trabalho, visto,
   cidadania, salário, deficiência, relocação e diversidade **nunca vão para a IA**: ficam para você
   responder. As outras são rascunhadas com o perfil e conferidas.
