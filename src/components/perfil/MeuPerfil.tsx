@@ -3,9 +3,9 @@
  * (currículos e LinkedIn) e de perguntas; nada é gravado no perfil.md sem ela conferir e confirmar.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { X, User, Loader2, AlertTriangle, Upload, Trash2, Sparkles } from "lucide-react"
+import { X, User, Loader2, AlertTriangle, Sparkles } from "lucide-react"
 import * as perfilApi from "../../services/api/perfil"
-import type { EstadoPerfil, EtapaPerfil, FiltrosPropostos, Previa, PropostaDoCurriculo, CurriculosDaPasta, Pergunta, LinhaIdioma } from "../../services/api/perfil"
+import type { AreaMaterial, EstadoPerfil, EtapaPerfil, FiltrosPropostos, Previa, PropostaDoCurriculo, CurriculosDaPasta, Pergunta, LinhaIdioma } from "../../services/api/perfil"
 import * as configApi from "../../services/api/config"
 import type { Filtros } from "../../services/api/config"
 import { mensagemDeErro } from "../../services/api"
@@ -13,6 +13,7 @@ import { useFerramenta } from "../../contexto/Ferramenta"
 import { diaMes } from "../../utils/formatters"
 import Analises from "./Analises"
 import Relatos from "./Relatos"
+import Materiais from "./Materiais"
 import InformacoesBasicas from "./InformacoesBasicas"
 import PerguntaIdiomas, { LINHA_VAZIA, respostaIdiomas } from "./PerguntaIdiomas"
 import { GerarCurriculo, SecaoCurriculos } from "../curriculo/Curriculos"
@@ -46,13 +47,6 @@ const PASSOS: { k: EtapaPerfil; label: string }[] = [
   { k: "revisao", label: "Revisão" },
   { k: "filtros", label: "Filtros" },
 ]
-const TIPOS_MATERIAL: Record<string, string> = {
-  curriculo_pdf: "Currículo (PDF)",
-  curriculo_docx: "Currículo (Word)",
-  linkedin_pdf: "LinkedIn (PDF do perfil)",
-  linkedin_zip: "LinkedIn (exportação de dados)",
-  texto: "Texto colado",
-}
 const SECOES: [keyof perfilApi.Rascunho, string][] = [
   ["objetivo", "Objetivo"],
   ["resumo", "Resumo"],
@@ -235,7 +229,7 @@ export default function MeuPerfil({
   }, [tela, e, prev, md, sujo, editado, fp, cvs, carregando, erro, pedirPrevia])
 
   // ---------- materiais ----------
-  const enviarArquivos = async (files: FileList | File[] | null) => {
+  const enviarArquivos = async (files: FileList | File[] | null, area: AreaMaterial) => {
     for (const f of Array.from(files || [])) {
       if (f.size > 10 * 1024 * 1024) {
         onAviso(`${f.name}: arquivo grande demais (o limite é 10 MB).`, "erro")
@@ -244,11 +238,12 @@ export default function MeuPerfil({
       try {
         const b64 = await lerArquivo(f)
         onAviso(`Lendo ${f.name}…`)
-        const j = await perfilApi.enviarMaterial({ nome: f.name, base64: b64 })
+        const j = await perfilApi.enviarMaterial({ nome: f.name, base64: b64, area })
         setE(j.estado)
         setSujo(true)
         setPrev(null)
-        onAviso(`${f.name} lido${j.material.avisos.length ? ", com aviso." : "."}`, j.material.avisos.length ? "erro" : "info")
+        const comAviso = j.material.avisos.length > 0 && !j.material.ocr // texto lido por OCR: aviso de conferir, não erro
+        onAviso(`${f.name} lido${j.material.ocr ? " da imagem (OCR): confira o texto." : comAviso ? ", com aviso." : "."}`, comAviso ? "erro" : "info")
       } catch (err) {
         tratarErro(err)
         onAviso(`${f.name}: ${mensagemDeErro(err)}`, "erro")
@@ -1036,200 +1031,6 @@ export default function MeuPerfil({
 }
 
 // ---------- partes ----------
-
-function Materiais({
-  e,
-  cvs,
-  so,
-  onEnviar,
-  onUsar,
-  onEstado,
-  onErro,
-  onAviso,
-  onLinkedin,
-}: {
-  e: EstadoPerfil
-  cvs: CurriculosDaPasta | null
-  so: boolean
-  onEnviar: (files: FileList | File[] | null) => Promise<void>
-  onUsar: (arquivo: string) => void
-  onEstado: (e: EstadoPerfil) => void
-  onErro: (err: unknown) => void
-  onAviso: (m: string, t?: "info" | "erro") => void
-  onLinkedin: (li: string) => void
-}) {
-  const [colado, setColado] = useState("")
-  const [linkedin, setLinkedin] = useState(e.contato?.linkedin || "")
-  const [sobre, setSobre] = useState(false)
-  const [enviando, setEnviando] = useState(false)
-  const ms = e.materiais
-  const usados = ms.map((m) => m.arquivo)
-  const noAnexos = (cvs?.curriculos || []).filter((c) => !usados.includes(c.arquivo))
-
-  const enviar = async (files: FileList | File[] | null) => {
-    setEnviando(true)
-    await onEnviar(files)
-    setEnviando(false)
-  }
-
-  return (
-    <>
-      <section className={SEC}>
-        <h4 className={H}>Arquivos</h4>
-        <label
-          className={`flex flex-col items-center gap-1 p-6 rounded-2xl border-2 border-dashed text-center cursor-pointer transition ${
-            sobre ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40" : "border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-          } ${so ? "opacity-60 pointer-events-none" : ""}`}
-          onDragOver={(ev) => {
-            ev.preventDefault()
-            setSobre(true)
-          }}
-          onDragLeave={() => setSobre(false)}
-          onDrop={(ev) => {
-            ev.preventDefault()
-            setSobre(false)
-            enviar(ev.dataTransfer.files)
-          }}
-        >
-          <input
-            type="file"
-            accept=".pdf,.docx,.zip"
-            multiple
-            hidden
-            disabled={so}
-            onChange={(ev) => {
-              enviar(ev.target.files)
-              ev.target.value = ""
-            }}
-          />
-          {enviando ? <Loader2 className="w-6 h-6 animate-spin text-indigo-500" /> : <Upload className="w-6 h-6 text-indigo-500" />}
-          <b className="text-slate-800 dark:text-slate-200">Escolher ou arrastar arquivos</b>
-          <span className={DICA}>
-            Currículo em PDF ou Word (.docx), o PDF do seu perfil do LinkedIn ou o ZIP da exportação de dados do LinkedIn.
-            Até 10 MB cada.
-          </span>
-        </label>
-        <details className="text-xs">
-          <summary className={`cursor-pointer ${DICA}`}>Como baixar do LinkedIn</summary>
-          <ul className="list-disc pl-5 space-y-1 mt-1">
-            <li><b>PDF do perfil</b>: abra o seu perfil, clique em <i>Mais</i> e depois em <i>Salvar como PDF</i>.</li>
-            <li>
-              <b>Exportação de dados</b> (mais completa): <i>Eu → Configurações e privacidade → Privacidade de dados → Obter uma cópia dos seus dados</i>. O LinkedIn manda o ZIP por e-mail.
-            </li>
-            <li>A ferramenta não abre o LinkedIn: lê só os arquivos que você enviar. Eles ficam na pasta anexos, neste computador.</li>
-          </ul>
-        </details>
-        {ms.length ? (
-          <ul className="space-y-2">
-            {ms.map((m) => (
-              <li key={m.id} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
-                <div className="flex items-start justify-between gap-2 flex-wrap">
-                  <p>
-                    <b>{m.nome}</b> <span className={DICA}>{TIPOS_MATERIAL[m.tipo] || m.tipo}</span>
-                  </p>
-                  <span className="flex gap-1.5 flex-wrap">
-                    {/\.(pdf|docx)$/i.test(m.arquivo || "") && m.tem_texto && (
-                      <button type="button" disabled={so} onClick={() => onUsar(m.arquivo)} className={BTN_MINI}>
-                        Usar este currículo e ir para as vagas
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      disabled={so}
-                      onClick={() => perfilApi.removerMaterial(m.id).then(onEstado).catch(onErro)}
-                      className={`${BTN_MINI} flex items-center gap-1`}
-                    >
-                      <Trash2 className="w-3 h-3" /> Remover
-                    </button>
-                  </span>
-                </div>
-                {m.avisos.length > 0 && <p className="text-[11px] text-amber-700 dark:text-amber-300">{m.avisos.join(" · ")}</p>}
-                {m.trecho && (
-                  <details>
-                    <summary className={`cursor-pointer ${DICA}`}>Texto lido</summary>
-                    <pre className="whitespace-pre-wrap text-[11px] p-2 rounded-lg bg-slate-50 dark:bg-slate-800 max-h-48 overflow-y-auto">
-                      {m.trecho}
-                      {m.trecho.length >= 600 ? "…" : ""}
-                    </pre>
-                  </details>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={DICA}>Nenhum material ainda.</p>
-        )}
-      </section>
-
-      {noAnexos.length > 0 && (
-        <section className={SEC}>
-          <h4 className={H}>Currículos que já estão na pasta anexos</h4>
-          <ul className="space-y-1.5">
-            {noAnexos.map((c) => (
-              <li key={c.arquivo} className="flex items-center justify-between gap-2 flex-wrap">
-                <span>
-                  <b>{c.nome}</b>{" "}
-                  <span className={DICA}>
-                    {c.arquivo} · {c.idioma === "en" ? "inglês" : "português"}
-                  </span>
-                </span>
-                <button type="button" disabled={so} onClick={() => onUsar(c.arquivo)} className={BTN_MINI}>
-                  Usar este currículo e ir para as vagas
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className={SEC}>
-        <h4 className={H}>Ou cole um texto</h4>
-        <label htmlFor="pf-colar" className={ROTULO}>Texto do currículo ou do perfil</label>
-        <textarea id="pf-colar" rows={5} maxLength={60000} value={colado} disabled={so} onChange={(ev) => setColado(ev.target.value)} className={CAMPO} />
-        <button
-          type="button"
-          disabled={so || !colado.trim()}
-          onClick={async () => {
-            try {
-              const j = await perfilApi.enviarMaterial({ texto: colado.trim(), nome: "texto colado" })
-              onEstado(j.estado)
-              setColado("")
-              onAviso("Texto adicionado.")
-            } catch (err) {
-              onErro(err)
-            }
-          }}
-          className={BTN_SEC}
-        >
-          Adicionar texto
-        </button>
-      </section>
-
-      <section className={SEC}>
-        <h4 className={H}>Link do seu LinkedIn (opcional)</h4>
-        <label htmlFor="pf-linkedin" className={ROTULO}>Endereço do perfil</label>
-        <input
-          id="pf-linkedin"
-          maxLength={200}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="linkedin.com/in/seu-nome"
-          value={linkedin}
-          disabled={so}
-          onChange={(ev) => setLinkedin(ev.target.value)}
-          className={CAMPO}
-        />
-        <p className={DICA}>Entra só como contato no perfil. A ferramenta não abre a página.</p>
-      </section>
-
-      <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={() => onLinkedin(linkedin.trim())} className={BTN_PRI}>
-          {ms.length ? "Continuar" : "Continuar sem materiais"}
-        </button>
-      </div>
-    </>
-  )
-}
 
 function PerguntaAtual({
   p,

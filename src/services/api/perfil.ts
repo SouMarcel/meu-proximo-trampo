@@ -13,14 +13,22 @@ export type EtapaPerfil =
   | "filtros"
   | "concluido"
 
+/** Área do material (spec 037): sai do tipo; o arquivo vale como a área em que foi enviado ou para onde foi movido. */
+export type AreaMaterial = "linkedin" | "curriculo" | "documento"
+
 export interface Material {
   id: string
-  tipo: "curriculo_pdf" | "curriculo_docx" | "linkedin_pdf" | "linkedin_zip" | "texto"
+  tipo: "curriculo_pdf" | "curriculo_docx" | "linkedin_pdf" | "linkedin_zip" | "texto" | "documento_pdf" | "documento_docx"
   nome: string
   avisos: string[]
   trecho: string
   tem_texto: boolean
   arquivo: string
+  area: AreaMaterial
+  /** O aviso de área trocada: a ferramenta só sugere, quem move é a pessoa. */
+  sugestao: { area: AreaMaterial; motivo: string } | null
+  /** O texto veio do OCR do Windows (PDF só de imagem). */
+  ocr: boolean
 }
 
 export interface ItemComFonte {
@@ -87,6 +95,8 @@ export interface EstadoPerfil {
   contatos_achados: { emails?: string[]; telefones?: string[]; linkedin?: string }
   perguntas: Pergunta[]
   ia_disponivel: boolean
+  /** O OCR do Windows está disponível (botão OCR nos PDFs sem texto). */
+  ocr_disponivel?: boolean
   pode_alterar: boolean
 }
 
@@ -138,8 +148,16 @@ export const progresso = (corpo: {
 
 export const recomecar = () => pedir<EstadoPerfil>("DELETE", "/api/perfil/progresso")
 
-export const enviarMaterial = (corpo: { nome: string; base64?: string; texto?: string }) =>
+export const enviarMaterial = (corpo: { nome: string; base64?: string; texto?: string; area?: AreaMaterial }) =>
   pedir<{ material: Material; estado: EstadoPerfil }>("POST", "/api/perfil/material", corpo)
+
+/** Mover para (spec 037): só a área muda; `aviso` quando o arquivo era o Seu currículo e a marcação saiu. */
+export const moverMaterial = (id: string, area: AreaMaterial) =>
+  pedir<{ estado: EstadoPerfil; aviso: string | null }>("PUT", `/api/perfil/material/${encodeURIComponent(id)}`, { area })
+
+/** Botão OCR (spec 037): lê de novo o PDF que ficou sem texto, com o OCR do Windows. */
+export const ocrMaterial = (id: string) =>
+  pedir<{ material: Material; estado: EstadoPerfil }>("POST", `/api/perfil/material/${encodeURIComponent(id)}/ocr`, {})
 
 export const removerMaterial = (id: string) =>
   pedir<EstadoPerfil>("DELETE", `/api/perfil/material/${encodeURIComponent(id)}`)
