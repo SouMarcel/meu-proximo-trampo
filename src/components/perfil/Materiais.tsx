@@ -3,10 +3,11 @@
  * LinkedIn (PDF do perfil, ZIP da exportação, link), Currículos (PDF e Word, os da pasta anexos, texto colado) e
  * Outros documentos e certificações (PDF e Word; nunca viram currículo). O arquivo vale como a área em que foi enviado;
  * "Mover para" troca a área sem reenviar. O aviso de área trocada só sugere: quem move é a pessoa. PDF sem texto ganha
- * o botão OCR (OCR do Windows, no próprio computador).
+ * o botão OCR (OCR do Windows, no próprio computador). No LinkedIn, que é um perfil só, o envio some depois do
+ * primeiro arquivo e "Alterar documento" troca o arquivo (o antigo sai só depois que o novo for lido).
  */
-import React, { useState } from "react"
-import { Loader2, Upload, Trash2, ScanText } from "lucide-react"
+import React, { useRef, useState } from "react"
+import { Loader2, Upload, Trash2, ScanText, RefreshCw } from "lucide-react"
 import * as perfilApi from "../../services/api/perfil"
 import type { AreaMaterial, CurriculosDaPasta, EstadoPerfil, Material } from "../../services/api/perfil"
 import { mensagemDeErro } from "../../services/api"
@@ -82,7 +83,8 @@ export default function Materiais({
   e: EstadoPerfil
   cvs: CurriculosDaPasta | null
   so: boolean
-  onEnviar: (files: FileList | File[] | null, area: AreaMaterial) => Promise<void>
+  /** Devolve os materiais que entraram (os recusados já viram aviso). */
+  onEnviar: (files: FileList | File[] | null, area: AreaMaterial) => Promise<Material[]>
   onUsar: (arquivo: string) => void
   onEstado: (e: EstadoPerfil) => void
   onErro: (err: unknown) => void
@@ -94,6 +96,8 @@ export default function Materiais({
   const [sobre, setSobre] = useState<AreaMaterial | null>(null)
   const [enviando, setEnviando] = useState<AreaMaterial | null>(null)
   const [ocupado, setOcupado] = useState("")
+  const trocaRef = useRef<HTMLInputElement>(null)
+  const [aTrocar, setATrocar] = useState<Material | null>(null)
   const ms = e.materiais
   const usados = ms.map((m) => m.arquivo)
   const noAnexos = (cvs?.curriculos || []).filter((c) => !usados.includes(c.arquivo))
@@ -102,6 +106,24 @@ export default function Materiais({
     setEnviando(area)
     await onEnviar(files, area)
     setEnviando(null)
+  }
+
+  /** Alterar documento: o novo entra na mesma área; o antigo sai só se o novo foi lido sem erro. */
+  const trocar = async (antigo: Material, files: FileList | null) => {
+    const f = files?.[0]
+    if (!f) return
+    setOcupado(antigo.id)
+    try {
+      const novos = await onEnviar([f], areaDe(antigo))
+      if (novos.length) {
+        onEstado(await perfilApi.removerMaterial(antigo.id))
+        onAviso(`${antigo.nome} trocado por ${f.name}.`)
+      }
+    } catch (err) {
+      onErro(err)
+    } finally {
+      setOcupado("")
+    }
   }
 
   const mover = async (m: Material, area: AreaMaterial) => {
@@ -157,6 +179,20 @@ export default function Materiais({
                 title="Ler o texto da imagem do PDF com o OCR do Windows"
               >
                 {lendo ? <Loader2 className="w-3 h-3 animate-spin" /> : <ScanText className="w-3 h-3" />} OCR
+              </button>
+            )}
+            {area === "linkedin" && m.arquivo && (
+              <button
+                type="button"
+                disabled={so || Boolean(ocupado)}
+                onClick={() => {
+                  setATrocar(m)
+                  trocaRef.current?.click()
+                }}
+                className={`${BTN_MINI} flex items-center gap-1`}
+                title="Escolher outro PDF do perfil ou ZIP da exportação no lugar deste"
+              >
+                {lendo ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Alterar documento
               </button>
             )}
             {destinos.length > 0 && (
@@ -251,6 +287,7 @@ export default function Materiais({
   }
 
   const [li, cv, doc] = AREAS
+  const temLinkedin = ms.some((m) => areaDe(m) === "linkedin")
   return (
     <>
       <p className="text-slate-700 dark:text-slate-300">
@@ -260,7 +297,19 @@ export default function Materiais({
 
       <section className={SEC}>
         <h4 className={H}>{li.titulo}</h4>
-        {envio(li)}
+        {/* um perfil só: com arquivo, o envio some e cada arquivo tem "Alterar documento" */}
+        {!temLinkedin && envio(li)}
+        <input
+          ref={trocaRef}
+          type="file"
+          accept={li.aceita}
+          hidden
+          onChange={(ev) => {
+            if (aTrocar) trocar(aTrocar, ev.target.files)
+            ev.target.value = ""
+            setATrocar(null)
+          }}
+        />
         <details className="text-xs">
           <summary className={`cursor-pointer ${DICA}`}>Como baixar do LinkedIn</summary>
           <ul className="list-disc pl-5 space-y-1 mt-1">

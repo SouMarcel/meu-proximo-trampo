@@ -229,7 +229,9 @@ export default function MeuPerfil({
   }, [tela, e, prev, md, sujo, editado, fp, cvs, carregando, erro, pedirPrevia])
 
   // ---------- materiais ----------
-  const enviarArquivos = async (files: FileList | File[] | null, area: AreaMaterial) => {
+  /** Envia os arquivos para a área; devolve os materiais que entraram (os recusados já viram aviso). */
+  const enviarArquivos = async (files: FileList | File[] | null, area: AreaMaterial): Promise<perfilApi.Material[]> => {
+    const novos: perfilApi.Material[] = []
     for (const f of Array.from(files || [])) {
       if (f.size > 10 * 1024 * 1024) {
         onAviso(`${f.name}: arquivo grande demais (o limite é 10 MB).`, "erro")
@@ -244,11 +246,13 @@ export default function MeuPerfil({
         setPrev(null)
         const comAviso = j.material.avisos.length > 0 && !j.material.ocr // texto lido por OCR: aviso de conferir, não erro
         onAviso(`${f.name} lido${j.material.ocr ? " da imagem (OCR): confira o texto." : comAviso ? ", com aviso." : "."}`, comAviso ? "erro" : "info")
+        novos.push(j.material)
       } catch (err) {
         tratarErro(err)
         onAviso(`${f.name}: ${mensagemDeErro(err)}`, "erro")
       }
     }
+    return novos
   }
 
   const usarCurriculo = async (arquivo: string) => {
