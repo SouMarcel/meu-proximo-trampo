@@ -242,8 +242,14 @@ Quando o PDF não tem texto, a ferramenta lê a imagem das páginas com o OCR do
 
 - **FR-008**: A ferramenta MUST mostrar o aviso de área trocada nos três casos da User Story 3, com o botão da área
   sugerida, e MUST NOT mudar a área sem o clique.
-- **FR-009**: O aviso de certificado MUST exigir texto curto e marca de certificado, para não acusar currículo longo
-  que cita "certificado". O aviso de LinkedIn MUST usar a mesma regra que já reconhece o PDF do LinkedIn.
+- **FR-009**: O aviso de documento aparece em três casos, para não acusar um currículo longo que cita "certificado":
+  - texto curto com marca de certificado, ou com nome de arquivo de certificado, diploma, declaração ou histórico;
+  - texto bem curto com só a carga horária;
+  - marca forte de documento acadêmico (histórico escolar, colação de grau), em qualquer tamanho.
+
+  O aviso de LinkedIn MUST usar a mesma regra que já reconhece o PDF do LinkedIn. A regra foi ajustada na
+  implementação com os arquivos reais do teste: os 44 materiais com texto passaram a ter aviso, e nenhum currículo de
+  teste recebeu aviso.
 
 **Uso dos documentos**
 

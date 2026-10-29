@@ -40,12 +40,21 @@ com a mesma mensagem. O texto colado é sempre currículo e não se move.
     `curriculo` quando não tem;
   - **sem texto**: sem sugestão.
 
-  As marcas de certificado são comparadas sem acento e sem maiúsculas:
-  - "certificado", "certificamos", "certifica que", "carga horaria", "concluiu o curso", "concluiu com sucesso",
-    "concluido em", "horas de duracao";
-  - "certificate of completion", "certificate of achievement", "has successfully completed".
-- **Rationale**: com os arquivos do teste, os certificados têm entre 70 e 1.900 caracteres e os currículos passam de
-  3.000. O limite de tamanho evita acusar um currículo que cita "certificado" na seção de certificações.
+  As marcas são comparadas sem acento e sem maiúsculas (`tipo_de_documento`):
+  - **certificado** (texto de até 3.000 caracteres):
+    - "certificado", "certificamos", "certifica que", "carga horaria", "concluiu", "concluido em", "horas de
+      duracao", "declaracao de participacao";
+    - "certificate of completion", "certificate of achievement", "has successfully completed";
+    - ou o nome do arquivo com "certificad", "certificate", "diploma", "declarac" ou "historico";
+  - **certificado bem curto** (até 600 caracteres): só a carga horária ("32 horas", "80h");
+  - **acadêmico** (qualquer tamanho): "historico escolar", "curriculo escolar", "colacao de grau", "confere o
+    titulo", "confere o grau". O motivo é "Parece um diploma ou histórico escolar.".
+- **Rationale**:
+  - nos arquivos do teste, os certificados têm entre 70 e 1.900 caracteres, e os currículos passam de 3.000;
+  - o limite de tamanho evita acusar um currículo que cita "certificado" na seção de certificações;
+  - a primeira versão só com as marcas de certificado deixou 11 de 44 sem aviso: declarações ("declaração de
+    participação"), certificados que só trazem nome, curso e horas, e diplomas e históricos longos. As regras de nome
+    de arquivo, carga horária e marca acadêmica cobriram os 44.
 - **Alternatives considered**:
   - **pedir à IA para classificar**: seria lento, dependeria de IA e mandaria o texto à toa;
   - **classificar sozinho no envio**: contraria a decisão 2 (avisar, sem mudar).

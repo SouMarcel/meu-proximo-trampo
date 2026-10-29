@@ -246,6 +246,21 @@ class TestAreas(Base):
         self.assertIsNone(sug("texto", cert, ""))
         m = pp.sugestao_de_area({"tipo": "curriculo_pdf", "texto": cert, "arquivo": "anexos/a.pdf"})
         self.assertEqual(m["motivo"], "Parece um certificado.")
+        # sinais vistos em certificados reais: declaração, "concluiu", só a carga horária, o nome do arquivo
+        self.assertEqual(sug("curriculo_pdf", "DECLARAÇÃO\nconfere a ANA EXEMPLO declaração de participação no curso"),
+                         "documento")
+        self.assertEqual(sug("curriculo_pdf", "ANA EXEMPLO\nConcluiu todos os módulos, totalizando 5 horas"), "documento")
+        self.assertEqual(sug("curriculo_pdf", "Ana Exemplo\n5/11/19 4/11/20\n32 horas\nCurso Exemplo"), "documento")
+        com_nome = lambda nome, texto: (pp.sugestao_de_area(
+            {"tipo": "curriculo_pdf", "texto": texto, "arquivo": "anexos/a.pdf", "nome": nome}) or {}).get("area")
+        self.assertEqual(com_nome("Escola - Certificado_Curso.pdf", "ANA EXEMPLO\nFUNDAMENTOS\n16 08 2022"), "documento")
+        self.assertEqual(com_nome("Faculdade_diploma.pdf", "Ana Exemplo"), "documento")
+        self.assertIsNone(com_nome("Curriculo Ana.pdf", "Ana Exemplo\nAnalista de dados"))
+        # marca forte de documento acadêmico vale em qualquer tamanho (diploma com histórico tem muitas páginas)
+        historico = "HISTÓRICO ESCOLAR\nCurso: Tecnologia\n" + "Disciplina Exemplo 80h aprovado\n" * 300
+        m = pp.sugestao_de_area({"tipo": "curriculo_pdf", "texto": historico, "arquivo": "anexos/h.pdf"})
+        self.assertEqual((m["area"], m["motivo"]), ("documento", "Parece um diploma ou histórico escolar."))
+        self.assertIsNone(sug("curriculo_pdf", cv_longo + "\nhoras extras em projetos de 40 horas"))  # longo: horas não basta
 
     def test_material_para_pagina(self):
         e = pp.estado_vazio()

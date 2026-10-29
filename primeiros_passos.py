@@ -249,10 +249,15 @@ RECUSA_AREA = {
 }
 SUFIXO = {".pdf": "pdf", ".docx": "docx", ".zip": "zip"}
 # o aviso de certificado: texto curto (os currículos passam disso) com uma destas marcas, sem acento e minúsculas
-MARCAS_CERTIFICADO = ("certificado", "certificamos", "certifica que", "carga horaria", "concluiu o curso",
-                      "concluiu com sucesso", "concluido em", "horas de duracao", "certificate of completion",
+MARCAS_CERTIFICADO = ("certificado", "certificamos", "certifica que", "carga horaria", "concluiu", "concluido em",
+                      "horas de duracao", "declaracao de participacao", "certificate of completion",
                       "certificate of achievement", "has successfully completed")
 LIMITE_CERTIFICADO = 3000
+# diploma e histórico escolar: marca forte, vale em qualquer tamanho (um diploma com histórico tem várias páginas)
+MARCAS_ACADEMICO = ("historico escolar", "curriculo escolar", "colacao de grau", "confere o titulo", "confere o grau")
+NOME_DOCUMENTO = re.compile(r"certificad|certificate|diploma|declarac|historico")  # no nome do arquivo, sem acento
+HORAS = re.compile(r"\b\d+\s*(?:horas|hrs?|h)\b")  # certificado bem curto às vezes só traz a carga horária
+LIMITE_CURTO = 600
 
 
 def area_de(tipo: str) -> str:
@@ -272,9 +277,18 @@ def parece_linkedin(texto: str) -> bool:
         s in texto for s in ("Top Skills", "Principais competências", "Experience", "Experiência"))
 
 
-def parece_certificado(texto: str) -> bool:
+def tipo_de_documento(texto: str, nome: str = "") -> str | None:
+    """"academico" (diploma, histórico: marca forte, em qualquer tamanho), "certificado" (texto curto com marca de
+    certificado, nome de arquivo de certificado, ou só a carga horária num texto bem curto) ou None."""
     texto = str(texto or "")
-    return len(texto) <= LIMITE_CERTIFICADO and any(m in _chave(texto) for m in MARCAS_CERTIFICADO)
+    t = _chave(texto)
+    if any(m in t for m in MARCAS_ACADEMICO):
+        return "academico"
+    if len(texto) <= LIMITE_CERTIFICADO and (any(m in t for m in MARCAS_CERTIFICADO) or NOME_DOCUMENTO.search(_chave(nome))):
+        return "certificado"
+    if len(texto) <= LIMITE_CURTO and HORAS.search(t):
+        return "certificado"
+    return None
 
 
 def sugestao_de_area(m: dict) -> dict | None:
@@ -283,16 +297,16 @@ def sugestao_de_area(m: dict) -> dict | None:
     texto, tipo = str(m.get("texto") or ""), str(m.get("tipo") or "")
     if not texto.strip() or tipo in ("texto", "linkedin_zip"):
         return None
-    area, li = area_de(tipo), parece_linkedin(texto)
+    area, li, doc = area_de(tipo), parece_linkedin(texto), tipo_de_documento(texto, str(m.get("nome") or ""))
     if area == "curriculo" and li:
         s = {"area": "linkedin", "motivo": "Parece o PDF do seu perfil do LinkedIn."}
-    elif area == "curriculo" and parece_certificado(texto):
-        s = {"area": "documento", "motivo": "Parece um certificado."}
+    elif area == "curriculo" and doc:
+        s = {"area": "documento",
+             "motivo": "Parece um diploma ou histórico escolar." if doc == "academico" else "Parece um certificado."}
     elif area == "documento" and li:
         s = {"area": "linkedin", "motivo": "Parece o PDF do seu perfil do LinkedIn."}
     elif area == "linkedin" and not li:
-        s = {"area": "documento" if parece_certificado(texto) else "curriculo",
-             "motivo": "Não parece o PDF do perfil do LinkedIn."}
+        s = {"area": "documento" if doc else "curriculo", "motivo": "Não parece o PDF do perfil do LinkedIn."}
     else:
         return None
     return s if Path(str(m.get("arquivo") or "")).suffix.lower() in AREAS[s["area"]] else None
