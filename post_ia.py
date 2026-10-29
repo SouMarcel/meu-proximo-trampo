@@ -12,6 +12,7 @@ import json
 import re
 
 import ia
+import integridade
 
 TEMPO_IA = 120
 LIMITE_TEXTO = 20000
@@ -85,7 +86,8 @@ def pedido(texto: str, autor: str = "", autor_tipo: str = "") -> str:
 
 def extrair(texto: str, autor: str = "", autor_tipo: str = "") -> dict:
     """Campos para o formulário, mais "provedor" e "modelo" (qual IA leu). Levanta ExtracaoErro."""
-    texto = str(texto or "").replace(ABRE, "").replace(FECHA, "").strip()[:LIMITE_TEXTO]
+    # sem os caracteres invisíveis: a IA não lê o que a pessoa não vê (spec 034)
+    texto = integridade.limpar(texto).replace(ABRE, "").replace(FECHA, "").strip()[:LIMITE_TEXTO]
     if not texto:
         raise ExtracaoErro("cole o texto do post ou da mensagem")
     try:
