@@ -75,7 +75,8 @@ class Base(unittest.TestCase):
         self.patches = [mock.patch.object(pp, "ANEXOS", self.tmp / "anexos" / "primeiros-passos"),
                         mock.patch.object(pp, "ANTERIORES", self.tmp / "anexos" / "perfis-anteriores"),
                         mock.patch.object(pp, "PROGRESSO", self.tmp / ".cache" / "primeiros-passos.json"),
-                        mock.patch.object(pp, "RAIZ", self.tmp)]
+                        mock.patch.object(pp, "RAIZ", self.tmp),
+                        mock.patch.object(pp.ocr, "disponivel", return_value=False)]  # sem OCR real nos testes
         for p in self.patches:
             p.start()
         shutil.copy(Path(__file__).resolve().parent.parent / "perfil.exemplo.md", self.tmp / "perfil.exemplo.md")
@@ -162,6 +163,164 @@ class TestExtracao(Base):
             pp.extrair(self.arquivo("quebrado.zip", b"PK nada"))
 
 
+CERTIFICADO = ["CERTIFICADO DE PARTICIPACAO", "Certificamos que Ana Exemplo", "concluiu o curso Introducao ao SQL",
+               "Carga horaria: 12 horas"]
+
+
+class TestAreas(Base):
+    """Spec 037: materiais em três áreas (LinkedIn, currículo, documento), Mover para e o aviso de área trocada."""
+
+    def test_area_de(self):
+        esperado = {"linkedin_pdf": "linkedin", "linkedin_zip": "linkedin", "curriculo_pdf": "curriculo",
+                    "curriculo_docx": "curriculo", "texto": "curriculo", "documento_pdf": "documento",
+                    "documento_docx": "documento"}
+        self.assertEqual({t: pp.area_de(t) for t in esperado}, esperado)
+
+    def test_extrair_com_area(self):
+        pdf = self.arquivo("cert.pdf", pdf_minimo(CERTIFICADO))
+        self.assertEqual(pp.extrair(pdf, area="documento")["tipo"], "documento_pdf")
+        self.assertEqual(pp.extrair(pdf, area="linkedin")["tipo"], "linkedin_pdf")  # vale a área escolhida
+        self.assertEqual(pp.extrair(pdf)["tipo"], "curriculo_pdf")  # sem área, a adivinhação de hoje
+        docx = self.arquivo("carta.docx", docx_bytes(["Carta de recomendação"]))
+        self.assertEqual(pp.extrair(docx, area="documento")["tipo"], "documento_docx")
+        li = self.arquivo("Profile.pdf", pdf_minimo(["www.linkedin.com/in/ana-exemplo", "Experience"]))
+        self.assertEqual(pp.extrair(li, area="curriculo")["tipo"], "curriculo_pdf")
+
+    def test_formatos_por_area(self):
+        z = self.arquivo("linkedin.zip", zip_linkedin())
+        with self.assertRaisesRegex(pp.PerfilErro, "ZIP do LinkedIn vai na área do LinkedIn"):
+            pp.extrair(z, area="curriculo")
+        with self.assertRaisesRegex(pp.PerfilErro, "ZIP do LinkedIn vai na área do LinkedIn"):
+            pp.extrair(z, area="documento")
+        self.assertEqual(pp.extrair(z, area="linkedin")["tipo"], "linkedin_zip")
+        with self.assertRaisesRegex(pp.PerfilErro, "PDF do perfil do LinkedIn ou o ZIP"):
+            pp.extrair(self.arquivo("cv.docx", docx_bytes(["Ana"])), area="linkedin")
+        with self.assertRaisesRegex(pp.PerfilErro, "área inválida"):
+            pp.extrair(z, area="x")
+        with self.assertRaisesRegex(pp.PerfilErro, ".doc antigo"):
+            pp.extrair(self.arquivo("antigo.doc", b"x"), area="documento")
+
+    def test_adicionar_e_mover(self):
+        e = pp.estado_vazio()
+        doc = pp.adicionar_material(e, "cert.pdf", pdf_minimo(CERTIFICADO), area="documento")
+        self.assertEqual(doc["tipo"], "documento_pdf")
+        with self.assertRaises(pp.PerfilErro):
+            pp.adicionar_material(e, "cv.docx", docx_bytes(["Ana"]), area="linkedin")
+        self.assertEqual(len(e["materiais"]), 1)
+        self.assertFalse(list(pp.ANEXOS.glob("*.docx")))  # recusado antes de gravar o arquivo
+        cv = pp.adicionar_material(e, "cv.docx", docx_bytes(["Ana"]))
+        antes = dict(cv)
+        movido = pp.mover_material(e, cv["id"], "documento")
+        self.assertEqual(movido["tipo"], "documento_docx")
+        self.assertEqual({k: movido[k] for k in ("id", "arquivo", "texto")}, {k: antes[k] for k in ("id", "arquivo", "texto")})
+        self.assertEqual(pp.mover_material(e, doc["id"], "linkedin")["tipo"], "linkedin_pdf")
+        with self.assertRaisesRegex(pp.PerfilErro, "PDF do perfil do LinkedIn ou o ZIP"):
+            pp.mover_material(e, cv["id"], "linkedin")  # Word não vai para o LinkedIn
+        colado = pp.adicionar_material(e, "", texto="Sou analista.")
+        with self.assertRaisesRegex(pp.PerfilErro, "texto colado fica em Currículos"):
+            pp.mover_material(e, colado["id"], "documento")
+        with self.assertRaises(pp.PerfilErro):
+            pp.mover_material(e, "m99", "documento")
+        with self.assertRaisesRegex(pp.PerfilErro, "área inválida"):
+            pp.mover_material(e, cv["id"], None)
+
+    def test_sugestao(self):
+        sug = lambda tipo, texto, arquivo="anexos/a.pdf": (pp.sugestao_de_area(
+            {"tipo": tipo, "texto": texto, "arquivo": arquivo}) or {}).get("area")
+        cert = "\n".join(CERTIFICADO)
+        li = "Ana Exemplo\nwww.linkedin.com/in/ana-exemplo\nExperience\nAnalista"
+        cv_longo = "Ana Exemplo\nExperiência\n" + "Analista de dados, painéis e relatórios. " * 100 + "\nCertificado em SQL"
+        self.assertEqual(sug("curriculo_pdf", cert), "documento")
+        self.assertEqual(sug("curriculo_pdf", "CERTIFICAMOS que Ana concluiu. Carga Horária: 8 horas"), "documento")
+        self.assertEqual(sug("curriculo_pdf", "Certificate of Completion — Ana Example"), "documento")
+        self.assertIsNone(sug("curriculo_pdf", cv_longo))  # currículo longo que cita "certificado"
+        self.assertEqual(sug("curriculo_pdf", li), "linkedin")
+        self.assertEqual(sug("documento_pdf", li), "linkedin")
+        self.assertIsNone(sug("documento_pdf", cert))
+        self.assertIsNone(sug("documento_docx", li, "anexos/a.docx"))  # Word não vai para o LinkedIn
+        self.assertEqual(sug("linkedin_pdf", cert), "documento")
+        self.assertEqual(sug("linkedin_pdf", "Ana Exemplo\nAnalista de dados"), "curriculo")
+        self.assertIsNone(sug("linkedin_pdf", li))
+        self.assertIsNone(sug("curriculo_pdf", ""))
+        self.assertIsNone(sug("linkedin_zip", "qualquer", "anexos/a.zip"))
+        self.assertIsNone(sug("texto", cert, ""))
+        m = pp.sugestao_de_area({"tipo": "curriculo_pdf", "texto": cert, "arquivo": "anexos/a.pdf"})
+        self.assertEqual(m["motivo"], "Parece um certificado.")
+        # sinais vistos em certificados reais: declaração, "concluiu", só a carga horária, o nome do arquivo
+        self.assertEqual(sug("curriculo_pdf", "DECLARAÇÃO\nconfere a ANA EXEMPLO declaração de participação no curso"),
+                         "documento")
+        self.assertEqual(sug("curriculo_pdf", "ANA EXEMPLO\nConcluiu todos os módulos, totalizando 5 horas"), "documento")
+        self.assertEqual(sug("curriculo_pdf", "Ana Exemplo\n5/11/19 4/11/20\n32 horas\nCurso Exemplo"), "documento")
+        com_nome = lambda nome, texto: (pp.sugestao_de_area(
+            {"tipo": "curriculo_pdf", "texto": texto, "arquivo": "anexos/a.pdf", "nome": nome}) or {}).get("area")
+        self.assertEqual(com_nome("Escola - Certificado_Curso.pdf", "ANA EXEMPLO\nFUNDAMENTOS\n16 08 2022"), "documento")
+        self.assertEqual(com_nome("Faculdade_diploma.pdf", "Ana Exemplo"), "documento")
+        self.assertIsNone(com_nome("Curriculo Ana.pdf", "Ana Exemplo\nAnalista de dados"))
+        # marca forte de documento acadêmico vale em qualquer tamanho (diploma com histórico tem muitas páginas)
+        historico = "HISTÓRICO ESCOLAR\nCurso: Tecnologia\n" + "Disciplina Exemplo 80h aprovado\n" * 300
+        m = pp.sugestao_de_area({"tipo": "curriculo_pdf", "texto": historico, "arquivo": "anexos/h.pdf"})
+        self.assertEqual((m["area"], m["motivo"]), ("documento", "Parece um diploma ou histórico escolar."))
+        self.assertIsNone(sug("curriculo_pdf", cv_longo + "\nhoras extras em projetos de 40 horas"))  # longo: horas não basta
+
+    def test_material_para_pagina(self):
+        e = pp.estado_vazio()
+        m = pp.adicionar_material(e, "cert.pdf", pdf_minimo(CERTIFICADO))
+        p = pp.material_para_pagina(m)
+        self.assertEqual((p["area"], p["ocr"], p["sugestao"]["area"]), ("curriculo", False, "documento"))
+        pp.mover_material(e, m["id"], "documento")
+        p = pp.material_para_pagina(m)
+        self.assertEqual((p["tipo"], p["area"], p["sugestao"]), ("documento_pdf", "documento", None))
+
+
+class TestOcrNoPdf(Base):
+    """Spec 037: PDF só de imagem lido pelo OCR do Windows (simulado aqui)."""
+
+    def com_ocr(self, texto, avisos=()):
+        ler = mock.patch.object(pp.ocr, "ler_pdf", return_value=(texto, list(avisos)))
+        disp = mock.patch.object(pp.ocr, "disponivel", return_value=True)
+        return ler, disp
+
+    def test_pdf_sem_texto_lido_por_ocr(self):
+        ler, disp = self.com_ocr(f"CERTIFICADO\nCertificamos que Ana Exemplo, CPF {CPF}, concluiu o curso Scrum")
+        with ler as chamado, disp:
+            r = pp.extrair(self.arquivo("scan.pdf", pdf_minimo([])), area="documento")
+        chamado.assert_called_once()
+        self.assertTrue(r["ocr"])
+        self.assertIn("concluiu o curso Scrum", r["texto"])
+        self.assertNotIn(CPF, r["texto"])
+        self.assertEqual(r["avisos"], [pp.AVISO_OCR])
+        self.assertEqual(r["tipo"], "documento_pdf")
+
+    def test_ocr_vazio_e_pdf_com_texto(self):
+        ler, disp = self.com_ocr("", ["OCR do Windows não leu o arquivo (x)"])
+        with ler, disp:
+            r = pp.extrair(self.arquivo("scan.pdf", pdf_minimo([])))
+        self.assertFalse(r["ocr"])
+        self.assertTrue(any("imagem" in a for a in r["avisos"]))
+        self.assertIn("OCR do Windows não leu o arquivo (x)", r["avisos"])
+        ler, disp = self.com_ocr("não devia")
+        with ler as chamado, disp:
+            r = pp.extrair(self.arquivo("cv.pdf", pdf_minimo(["Ana Exemplo", "Analista"])))
+        chamado.assert_not_called()
+        self.assertFalse(r["ocr"])
+
+    def test_reler_material(self):
+        e = pp.estado_vazio()
+        m = pp.adicionar_material(e, "scan.pdf", pdf_minimo([]), area="documento")
+        self.assertEqual(m["texto"], "")
+        ler, disp = self.com_ocr("Certificado de Conclusão\nCertificamos que Ana Exemplo concluiu o curso")
+        with ler, disp:
+            pp.reler_material(e, m["id"])
+        self.assertTrue(m["ocr"])
+        self.assertIn("Certificamos", m["texto"])
+        self.assertEqual(m["tipo"], "documento_pdf")  # a área fica
+        with self.assertRaisesRegex(pp.PerfilErro, "só para PDF sem texto"):
+            pp.reler_material(e, m["id"])  # já tem texto
+        cv = pp.adicionar_material(e, "cv.docx", docx_bytes(["Ana"]))
+        with self.assertRaisesRegex(pp.PerfilErro, "só para PDF sem texto"):
+            pp.reler_material(e, cv["id"])
+
+
 class TestMateriais(Base):
     def test_guarda_sem_sobrescrever_e_remove(self):
         e = pp.estado_vazio()
@@ -229,6 +388,18 @@ class TestRascunho(Base):
         self.assertEqual([x["cargo"] for x in r["experiencias"]], ["Analista de Dados"])
         self.assertEqual(len(r["conflitos"][0]["opcoes"]), 2)
         self.assertIsNone(r["conflitos"][0]["escolha"])
+
+    def test_pedido_com_area_e_ocr(self):
+        e = self.estado()
+        doc = pp.adicionar_material(e, "cert.pdf", pdf_minimo(CERTIFICADO), area="documento")
+        doc["ocr"] = True
+        pedido = pp.pedido_rascunho(e)
+        self.assertIn("### Fonte: cv.docx\nÁrea: currículo\n", pedido)
+        self.assertIn("### Fonte: linkedin.zip\nÁrea: LinkedIn\n", pedido)
+        self.assertIn("### Fonte: cert.pdf\nÁrea: certificado ou documento; texto lido por OCR, pode ter erros de leitura\n",
+                      pedido)
+        self.assertIn("nunca como experiência", pedido)
+        self.assertIn("não use número, data ou nome que pareça mal lido", pedido)
 
     def test_com_ia_erros(self):
         with mock.patch.object(ia, "responder", side_effect=ia.IAErro("sem conexão")):
@@ -513,6 +684,10 @@ class TestLinhaDeComando(Base):
             self.assertEqual(pp.main(["extrair", str(cv)]), 0)
         self.assertNotIn(CPF, saida.getvalue())
         self.assertEqual(json.loads(saida.getvalue())["tipo"], "curriculo_docx")
+        saida = io.StringIO()
+        with mock.patch("sys.stdout", saida):
+            self.assertEqual(pp.main(["extrair", str(cv), "--area", "documento"]), 0)
+        self.assertEqual(json.loads(saida.getvalue())["tipo"], "documento_docx")
         perfil = self.tmp / "perfil.md"
         perfil.write_text("# Meu perfil\n\n## Objetivo\n- Cargos que procuro: Analista\n\n## Experiência\n\n"
                           "### Analista — Alfa (2019–atual)\n", encoding="utf-8")

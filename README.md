@@ -196,10 +196,22 @@ perfil oferece **Completar com a anamnese**.
 O caminho completo monta com você o seu perfil de carreira, a base da nota de aderência:
 
 1. **IA**: escolha a IA ou siga sem ela.
-2. **Materiais**: currículo em PDF ou Word (.docx), o PDF do seu perfil do LinkedIn (**Mais →
-   Salvar como PDF**) e/ou a exportação de dados do LinkedIn (o ZIP de **Configurações e
-   privacidade → Privacidade de dados → Obter uma cópia dos seus dados**), até 10 MB cada, ou
-   texto colado. O link do seu LinkedIn entra só como contato: a ferramenta não abre o LinkedIn.
+2. **Materiais**, em três áreas, até 10 MB cada arquivo:
+   - **Perfil do LinkedIn**: o PDF do seu perfil (**Mais → Salvar como PDF**) e/ou a exportação de dados (o ZIP de
+     **Configurações e privacidade → Privacidade de dados → Obter uma cópia dos seus dados**). O link do seu
+     LinkedIn entra só como contato: a ferramenta não abre o LinkedIn.
+   - **Currículos**: PDF ou Word (.docx), os que já estão na pasta `anexos/` ou o texto colado. Só aqui aparece
+     **Usar este currículo e ir para as vagas**.
+   - **Outros documentos e certificações**: certificados, diplomas e cartas de recomendação. A IA usa esses
+     arquivos em Formação e Certificações; eles nunca viram currículo e não aparecem em **Seu currículo**.
+
+   O arquivo vale como a área em que você o enviou. **Mover para** troca a área sem reenviar, e um aviso amarelo
+   aponta o arquivo que parece de outra área (um certificado em Currículos, por exemplo).
+
+   **PDF que é só imagem** (certificado gerado como figura, documento escaneado): no Windows, a ferramenta lê o
+   texto da imagem com o OCR do próprio sistema, no seu computador e sem instalar nada. O que foi enviado antes
+   ganha o botão **OCR**. O texto lido assim vem marcado para você conferir nomes, datas e números. No macOS e no
+   Linux, cole o texto.
 3. **Rascunho**: com IA, o perfil proposto, com a fonte de cada item; quando os arquivos
    discordam (uma data, um cargo), você escolhe o valor certo. Sem IA, entra o que a exportação
    do LinkedIn tiver, e o texto dos arquivos fica ao lado para você copiar.

@@ -83,18 +83,28 @@ houver nada, peça para a pessoa deixar ali o que tiver:
 - currículo em PDF ou Word (`.docx`; `.doc` antigo: peça para salvar como `.docx` ou PDF);
 - o PDF do perfil do LinkedIn: no perfil, **Mais → Salvar como PDF**;
 - a exportação de dados do LinkedIn (mais completa): **Eu → Configurações e privacidade →
-  Privacidade de dados → Obter uma cópia dos seus dados**; o LinkedIn manda o ZIP por e-mail.
+  Privacidade de dados → Obter uma cópia dos seus dados**; o LinkedIn manda o ZIP por e-mail;
+- certificados, diplomas e cartas de recomendação (PDF ou Word): servem para formação e certificações, nunca
+  como currículo nem como experiência.
 
-Leia cada arquivo com:
+Se não estiver claro o que é cada arquivo (currículo, LinkedIn ou certificado/documento), pergunte. Leia cada um
+com a área:
 
 ```text
-PY primeiros_passos.py extrair <arquivo>
+PY primeiros_passos.py extrair <arquivo> [--area linkedin|curriculo|documento]
 ```
 
-A saída é um JSON com `tipo`, `texto` (já sem CPF, RG e data de nascimento), `campos` (no ZIP do
-LinkedIn: perfil, cargos, formação, competências, certificações e idiomas, organizados),
-`avisos` (PDF só com imagem, planilha que faltou) e `contato` (achados, para confirmar). Conte
-os avisos à pessoa; PDF só com imagem não tem texto: peça outro formato ou que ela cole o texto.
+A saída é um JSON com:
+- `tipo` (`documento_pdf` e `documento_docx` são da área documento);
+- `texto`, já sem CPF, RG e data de nascimento;
+- `campos`: no ZIP do LinkedIn, perfil, cargos, formação, competências, certificações e idiomas, organizados;
+- `avisos`: PDF só com imagem, planilha que faltou;
+- `contato`: os dados achados, para a pessoa confirmar;
+- `ocr`.
+
+Conte os avisos à pessoa. No Windows, um PDF só de imagem é lido pelo OCR do sistema (`ocr: true`, com o aviso
+para conferir nomes, datas e números): use esse texto com cuidado e deixe de fora o que parecer mal lido. Fora do
+Windows, o PDF só de imagem não tem texto: peça outro formato ou que a pessoa cole o texto.
 
 ## 2. Rascunho
 

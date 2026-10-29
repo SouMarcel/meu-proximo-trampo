@@ -72,11 +72,12 @@ def idioma_do_texto(texto: str) -> str:
     return "en" if conta["en"] > conta["pt"] else "pt"
 
 
-def ler(arquivo) -> dict:
-    """Texto do currículo (com documentos escondidos), idioma e avisos."""
+def ler(arquivo, com_ocr: bool = True) -> dict:
+    """Texto do currículo (com documentos escondidos), idioma e avisos. PDF só de imagem passa pelo OCR do Windows
+    (spec 037), salvo com com_ocr=False (a lista de candidatos, que só quer o idioma)."""
     p = _no_anexos(arquivo)
     try:
-        lido = pp.extrair(p)
+        lido = pp.extrair(p, com_ocr=com_ocr)
     except pp.PerfilErro as e:
         raise CurriculoErro(str(e)) from None
     texto = lido["texto"].strip()
@@ -88,16 +89,25 @@ def ler(arquivo) -> dict:
             "avisos": avisos}
 
 
+def _fora_dos_curriculos() -> set[str]:
+    """Os arquivos que estão nos materiais do perfil como documento ou LinkedIn (spec 037): não são currículo."""
+    return {m.get("arquivo") for m in pp.carregar().get("materiais") or []
+            if m.get("arquivo") and pp.area_de(m.get("tipo")) != "curriculo"}
+
+
 def candidatos() -> list[dict]:
-    """Os currículos (PDF e DOCX) da pasta anexos/, mais recentes primeiro."""
+    """Os currículos (PDF e DOCX) da pasta anexos/, mais recentes primeiro, sem os documentos e os PDFs do LinkedIn
+    que estão nos materiais do perfil."""
     if not ANEXOS.is_dir():
         return []
-    achados = [p for p in ANEXOS.rglob("*") if p.is_file() and p.suffix.lower() in FORMATOS and "perfis-anteriores" not in p.parts]
+    fora = _fora_dos_curriculos()
+    achados = [p for p in ANEXOS.rglob("*") if p.is_file() and p.suffix.lower() in FORMATOS
+               and "perfis-anteriores" not in p.parts and _rel(p) not in fora]
     achados.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     saida = []
     for p in achados[:MAX_CANDIDATOS]:
         try:
-            idioma = ler(_rel(p))["idioma"]
+            idioma = ler(_rel(p), com_ocr=False)["idioma"]
         except (CurriculoErro, OSError):
             idioma = None
         saida.append({"arquivo": _rel(p), "nome": p.name, "idioma": idioma,
@@ -135,6 +145,15 @@ def marcar(idioma: str, arquivo) -> dict:
     cfg["curriculo_base"] = {**{k: v for k, v in base.items() if k in IDIOMAS and v}, idioma: rel}
     _gravar_config(cfg)
     return marcados(cfg)
+
+
+def desmarcar_arquivo(arquivo) -> list[str]:
+    """Tira a marcação de Seu currículo desse arquivo (spec 037: ele foi movido para documento ou LinkedIn).
+    Devolve os idiomas desmarcados."""
+    idiomas = [i for i, atual in marcados().items() if atual and atual == arquivo]
+    for i in idiomas:
+        desmarcar(i)
+    return idiomas
 
 
 def desmarcar(idioma: str) -> dict:
