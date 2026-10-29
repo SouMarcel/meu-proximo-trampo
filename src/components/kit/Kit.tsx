@@ -536,6 +536,7 @@ function ItemCarta({
         </details>
       )}
       {!msg && !d.pdf && m.aviso_pdf && <p className={DICA}>O PDF não saiu: {m.aviso_pdf}</p>}
+      {!msg && m.aviso_cabecalho && <p className="text-amber-700 dark:text-amber-300">{m.aviso_cabecalho}</p>}
       {erro && !editando && <p role="alert" className="text-rose-600 dark:text-rose-400">{erro}</p>}
       {(m.mudancas || []).length > 0 && (
         <details>
@@ -686,7 +687,7 @@ function DialogoKit({
   const titulo = modo === "carta" ? "Escrever carta ou mensagem" : modo === "respostas" ? "Preparar respostas do formulário" : "Respostas do formulário"
   const desc =
     modo === "carta"
-      ? "A IA escreve para vender você logo no primeiro parágrafo, com foco no problema da empresa que você ajuda a resolver, só com os fatos do seu perfil, dos seus relatos e das suas respostas, em formato que o ATS lê. A ferramenta confere antes de você usar."
+      ? "Cabeçalho com o seu nome e contatos, saudação, introdução com a vaga, o primeiro movimento e o problema que você ataca, o que a vaga pede e a sua experiência que cobre isso, a sua trajetória, a base técnica e o fechamento. Só com os fatos do seu perfil, dos seus relatos e das suas respostas, em formato que o ATS lê. A ferramenta confere antes de você usar."
       : modo === "respostas"
         ? "Cole as perguntas do formulário de candidatura, uma por linha. As perguntas sobre autorização de trabalho, visto, salário, deficiência, relocação e diversidade ficam para você responder: elas não vão para a IA."
         : "Rascunhos com os fatos do seu perfil. As marcadas são só suas: escreva você. Nada é enviado; copie e cole no formulário."

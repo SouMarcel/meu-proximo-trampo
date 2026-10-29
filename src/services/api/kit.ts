@@ -23,6 +23,8 @@ export interface DocumentoCarta {
   pronto?: boolean
   arquivos: { txt?: string; docx?: string | null; pdf?: string | null }
   disponivel: { txt?: boolean; docx?: boolean; pdf?: boolean }
+  /** Sem os dados de contato salvos, a carta sai sem cabeçalho e sem o nome na despedida (spec 035). */
+  aviso_cabecalho?: string
   /** Por que o PDF não saiu (sem LibreOffice nem Word, arquivo aberto…); "Gerar PDF" tenta de novo. */
   aviso_pdf?: string
   texto?: string
