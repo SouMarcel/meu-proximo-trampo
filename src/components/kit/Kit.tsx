@@ -394,7 +394,14 @@ export function KitDaVaga({
                 m.tipo === "respostas" ? (
                   <ItemRespostas key={m.nome} m={m} onAbrir={() => setDialogo({ modo: "ver", doc: m })} />
                 ) : (
-                  <ItemCarta key={m.nome} m={m} vagaId={vaga.id} onAviso={onAviso} onCopiar={() => copiar(m.texto || "", onAviso)} />
+                  <ItemCarta
+                    key={m.nome}
+                    m={m}
+                    vagaId={vaga.id}
+                    onAviso={onAviso}
+                    onCopiar={() => copiar(m.texto || "", onAviso)}
+                    onMudou={() => kitApi.lista(vaga.id).then((j) => setDocs(j.documentos || [])).catch(() => undefined)}
+                  />
                 ),
               )}
             </ul>
@@ -421,11 +428,13 @@ function ItemCarta({
   vagaId,
   onCopiar,
   onAviso,
+  onMudou,
 }: {
   m: DocumentoCarta
   vagaId: string
   onCopiar: () => void
   onAviso: (m: string, t?: "info" | "erro") => void
+  onMudou: () => void
 }) {
   const { podeGravar, ia, tratarErro } = useFerramenta()
   const { comecou } = useGeracao()
@@ -433,12 +442,27 @@ function ItemCarta({
   const [texto, setTexto] = useState(m.texto || "")
   const [guardar, setGuardar] = useState(true)
   const [enviando, setEnviando] = useState(false)
+  const [gerandoPdf, setGerandoPdf] = useState(false)
   const [erro, setErro] = useState("")
   const c = m.conferencia || {}
   const pontos = c.pontos || []
   const pc = c.palavras_chave
   const msg = m.formato === "mensagem"
   const d = m.disponivel || {}
+  const gerarPdf = async () => {
+    setErro("")
+    setGerandoPdf(true)
+    try {
+      await kitApi.pdfDaCarta(m.nome)
+      onAviso("PDF da carta pronto.")
+      onMudou()
+    } catch (e) {
+      tratarErro(e)
+      setErro(mensagemDeErro(e))
+    } finally {
+      setGerandoPdf(false)
+    }
+  }
   const verificar = async () => {
     setErro("")
     setEnviando(true)
@@ -470,7 +494,20 @@ function ItemCarta({
             Revisada da sua edição
           </span>
         )}
-        <span className="flex gap-1.5 ml-auto">
+        <span className="flex gap-1.5 ml-auto items-center">
+          <span className={DICA}>Exportar:</span>
+          {d.pdf && <LinkArquivo arquivo={m.arquivos.pdf} rotulo=".pdf" />}
+          {!msg && !d.pdf && podeGravar && (
+            <button
+              type="button"
+              className={BTN_MINI}
+              disabled={gerandoPdf}
+              title="Monta o PDF a partir do .docx, pelo LibreOffice ou pelo Word"
+              onClick={gerarPdf}
+            >
+              {gerandoPdf ? "Gerando PDF…" : "Gerar PDF"}
+            </button>
+          )}
           {d.docx && <LinkArquivo arquivo={m.arquivos.docx} rotulo=".docx" />}
           {d.txt && <LinkArquivo arquivo={m.arquivos.txt} rotulo=".txt" />}
           <button type="button" onClick={onCopiar} className={BTN_MINI}>
@@ -498,6 +535,8 @@ function ItemCarta({
           </ul>
         </details>
       )}
+      {!msg && !d.pdf && m.aviso_pdf && <p className={DICA}>O PDF não saiu: {m.aviso_pdf}</p>}
+      {erro && !editando && <p role="alert" className="text-rose-600 dark:text-rose-400">{erro}</p>}
       {(m.mudancas || []).length > 0 && (
         <details>
           <summary className="cursor-pointer font-semibold">O que a IA ajustou na sua edição</summary>
@@ -684,7 +723,7 @@ function DialogoKit({
               <div className="space-y-1.5">
                 <b>Formato</b>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" checked={formato === "carta"} onChange={() => setFormato("carta")} /> Carta completa (350 a 420 palavras, .docx para anexar)
+                  <input type="radio" checked={formato === "carta"} onChange={() => setFormato("carta")} /> Carta completa (350 a 420 palavras, .pdf e .docx para anexar)
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" checked={formato === "mensagem"} onChange={() => setFormato("mensagem")} /> Mensagem curta (ex.: vaga preferencial no LinkedIn)

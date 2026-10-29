@@ -21,8 +21,10 @@ export interface DocumentoCarta {
     palavras_chave?: { citadas: number; total: number; faltando: string[] }
   }
   pronto?: boolean
-  arquivos: { txt?: string; docx?: string | null }
-  disponivel: { txt?: boolean; docx?: boolean }
+  arquivos: { txt?: string; docx?: string | null; pdf?: string | null }
+  disponivel: { txt?: boolean; docx?: boolean; pdf?: boolean }
+  /** Por que o PDF não saiu (sem LibreOffice nem Word, arquivo aberto…); "Gerar PDF" tenta de novo. */
+  aviso_pdf?: string
   texto?: string
   criado_em: string
   /** "verificada": versão revisada pela IA a partir da edição da pessoa (botão Verificar, spec 035). */
@@ -72,6 +74,10 @@ export const carta = (vagaId: string, respostas: RespostasCarta) =>
 /** A carta editada pela pessoa: a IA incorpora as mudanças, corrige a língua e grava uma versão nova (spec 035). */
 export const verificar = (vagaId: string, nome: string, texto: string, guardar_relatos = true) =>
   pedir<EstadoGeracao>("POST", "/api/kit/verificar", { vaga_id: vagaId, nome, texto, guardar_relatos })
+
+/** O PDF de uma carta que ficou sem ele (spec 035); a conversão pelo Word pode levar alguns segundos. */
+export const pdfDaCarta = (nome: string) =>
+  pedir<{ documento: DocumentoCarta }>("POST", `/api/kit/carta/${encodeURIComponent(nome)}/pdf`, {}, { timeoutMs: 5 * 60 * 1000 })
 
 /** perguntas: uma por linha, até 30. */
 export const respostas = (vagaId: string, perguntas: string) =>
