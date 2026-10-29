@@ -265,6 +265,12 @@ class TestCarta(ComPasta):
         self.assertTrue(nova["texto"].startswith("Ana Exemplo\nSão Paulo"))
         self.assertTrue(nova["texto"].endswith("Sincerely,\nAna Exemplo"))
 
+    def test_telefone_legivel(self):
+        self.assertEqual(candidatura_ia.telefone_legivel("+5511900000000"), "+55 11 90000-0000")
+        self.assertEqual(candidatura_ia.telefone_legivel("554133334444"), "+55 41 3333-4444")
+        for como_esta in ("(11) 90000-0000", "+1 512 555 0100", ""):
+            self.assertEqual(candidatura_ia.telefone_legivel(como_esta), como_esta)
+
     def test_sem_despedida(self):
         corpo = "Dear team,\n\nParagraph one.\n\nThank you."
         for fim in ("\n\nSincerely,\nAna Exemplo", "\n\nBest regards,\n\nAna Exemplo", "\nSincerely,"):
