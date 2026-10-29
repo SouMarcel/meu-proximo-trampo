@@ -377,12 +377,12 @@ Etapas: `ia, materiais, rascunho, conflitos, anamnese, diagnostico, revisao, fil
 gravado no `perfil.md` sem a confirmação da pessoa (`PUT /api/perfil`).
 
 **`GET /api/perfil/estado`** — `{existe_perfil, perfil_do_curriculo: {arquivo, data}|null, etapa, materiais:
-[{id, tipo: curriculo_pdf|curriculo_docx|linkedin_pdf|linkedin_zip|texto, nome, avisos, trecho (600), tem_texto,
-arquivo}], rascunho: null|{objetivo, resumo, formacao, certificacoes, habilidades, idiomas: [{texto, fonte}],
+[{id, tipo: curriculo_pdf|curriculo_docx|linkedin_pdf|linkedin_zip|texto|documento_pdf|documento_docx, nome, avisos,
+trecho (600), tem_texto, arquivo, area: linkedin|curriculo|documento, sugestao: {area, motivo}|null, ocr}], rascunho: null|{objetivo, resumo, formacao, certificacoes, habilidades, idiomas: [{texto, fonte}],
 experiencias: [{cargo, empresa, inicio, fim, itens, fonte}], conflitos: [{campo, opcoes: [{valor, fonte}], escolha}],
 origem: "ia"|"sem_ia"}, respostas: {id: valor}, contato: {email?, telefone?, linkedin?},
 contatos_achados: {emails, telefones, linkedin}, perguntas: [{id, tipo: texto|lista|multi|opcoes|sim_nao, texto,
-opcoes?: [{valor, rotulo}], condicao?, idiomas?, niveis?, linhas?}], ia_disponivel, pode_alterar}`
+opcoes?: [{valor, rotulo}], condicao?, idiomas?, niveis?, linhas?}], ia_disponivel, ocr_disponivel, pode_alterar}`
 (primeiros_passos.py: `estado_para_pagina`, `PERGUNTAS`, `perguntas_para`).
 
 **Pergunta de idiomas** (spec 036). Ela continua `tipo: "lista"`; a página que não conhece os campos novos mostra a
@@ -404,7 +404,9 @@ A pergunta `ingles` ("Qual o seu nível de inglês?") saiu; a resposta antiga co
 |---|---|---|---|
 | `PUT /api/perfil/progresso` [local] | `{etapa?, respostas?: {id: valor\|null}, escolhas?: {"<n>": opção}, contato?}` | estado | trocar de passo, responder/pular pergunta, escolher conflito, contato |
 | `DELETE /api/perfil/progresso` [local] | — | estado | Recomeçar / Atualizar o perfil (apaga só o progresso) |
-| `POST /api/perfil/material` [local] | `{nome, base64}` (PDF, DOCX, ZIP até 10 MB) ou `{nome, texto}` | 201 `{material, estado}` | escolher/arrastar arquivo, Adicionar texto |
+| `POST /api/perfil/material` [local] | `{nome, base64, area?: linkedin\|curriculo\|documento}` (PDF, DOCX, ZIP até 10 MB; a área decide o tipo e os formatos aceitos; sem ela, a ferramenta adivinha) ou `{nome, texto}` (sempre currículo) | 201 `{material, estado}` | envio de cada área, Adicionar texto |
+| `PUT /api/perfil/material/{id}` [local] | `{area*}` | `{estado, aviso: string\|null}` (aviso quando o arquivo era o Seu currículo e a marcação saiu) | Mover para; botão do aviso de área trocada |
+| `POST /api/perfil/material/{id}/ocr` [local] | `{}` | `{material, estado}` | OCR (PDF sem texto; OCR do Windows) |
 | `DELETE /api/perfil/material/{id}` [local] | — | estado | Remover material |
 | `POST /api/perfil/rascunho` [local] | `{sem_ia?: bool}` | estado (com `rascunho`) | Gerar rascunho com IA / Montar sem IA (com IA, até minutos) |
 | `POST /api/perfil/previa` [local] | `{markdown?}` | `{markdown, diagnostico: [{tipo: falta\|fraco\|info, mensagem, pergunta, ir}], textos: [{nome, texto}], diferencas: [{tipo: "+"\|"-", texto}]\|null, conflitos_pendentes}` | Diagnóstico, Revisão, "Ver o que muda" |

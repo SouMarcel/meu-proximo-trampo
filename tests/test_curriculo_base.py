@@ -69,7 +69,8 @@ class ComPasta(unittest.TestCase):
         for alvo, nome, valor in ((cb, "RAIZ", self.tmp), (cb, "ANEXOS", self.tmp / "anexos"), (pp, "RAIZ", self.tmp),
                                   (pp, "ANEXOS", self.tmp / "anexos" / "primeiros-passos"),
                                   (pp, "ANTERIORES", self.tmp / "anexos" / "perfis-anteriores"),
-                                  (pp, "PROGRESSO", self.tmp / ".cache" / "pp.json"), (filtros, "CONFIG", self.cfg)):
+                                  (pp, "PROGRESSO", self.tmp / ".cache" / "pp.json"), (filtros, "CONFIG", self.cfg),
+                                  (pp.ocr, "disponivel", lambda: False)):  # sem OCR real nos testes
             p = mock.patch.object(alvo, nome, valor)
             p.start()
             self.addCleanup(p.stop)
@@ -97,6 +98,31 @@ class TestBase(ComPasta):
                 cb.marcar("pt", ruim)
         self.pt.unlink()
         self.assertEqual(cb.marcados()["pt"], None)  # arquivo sumido conta como não marcado
+
+    def test_candidatos_sem_documentos_nem_linkedin(self):
+        """Spec 037: o que está nos materiais como documento ou LinkedIn não é candidato a currículo."""
+        pasta = self.tmp / "anexos" / "primeiros-passos"
+        pasta.mkdir(parents=True)
+        cert = criar_pdf(pasta / "certificado.pdf", ["Certificado de Conclusao"])
+        perfil_li = criar_pdf(pasta / "Profile.pdf", ["linkedin.com/in/ana", "Experience"])
+        cv2 = criar_pdf(pasta / "cv2.pdf", ["Ana Exemplo", "Analista"])
+        e = pp.estado_vazio()
+        e["materiais"] = [{"id": "m1", "tipo": "documento_pdf", "arquivo": cb._rel(cert)},
+                          {"id": "m2", "tipo": "linkedin_pdf", "arquivo": cb._rel(perfil_li)},
+                          {"id": "m3", "tipo": "curriculo_pdf", "arquivo": cb._rel(cv2)}]
+        pp.salvar(e)
+        arquivos = {c["arquivo"] for c in cb.candidatos()}
+        self.assertIn("anexos/primeiros-passos/cv2.pdf", arquivos)
+        self.assertNotIn("anexos/primeiros-passos/certificado.pdf", arquivos)
+        self.assertNotIn("anexos/primeiros-passos/Profile.pdf", arquivos)
+        self.assertIn("anexos/resume.pdf", arquivos)  # fora dos materiais, continua
+
+    def test_desmarcar_arquivo(self):
+        cb.marcar("en", "anexos/resume.pdf")
+        cb.marcar("pt", "anexos/cv/curriculo.docx")
+        self.assertEqual(cb.desmarcar_arquivo("anexos/resume.pdf"), ["en"])
+        self.assertEqual(cb.marcados(), {"pt": "anexos/cv/curriculo.docx", "en": None})
+        self.assertEqual(cb.desmarcar_arquivo("anexos/outro.pdf"), [])
 
     def test_perfil_mascarado_com_origem(self):
         lido = cb.ler("anexos/cv/curriculo.docx")

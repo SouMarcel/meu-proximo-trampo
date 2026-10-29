@@ -50,6 +50,15 @@ priorizado.
 - **Formulário dentro de iframe** (ex.: Greenhouse embutido no site da empresa): hoje só a página principal é lida;
   a pessoa pode abrir o endereço do iframe direto na janela.
 
+## Materiais do perfil (spec 037)
+
+- **OCR fora do Windows**: hoje só o Windows lê PDF que é só imagem (OCR do sistema, pelo PowerShell).
+  - **macOS**: pelo Vision, que já vem no sistema.
+  - **Linux**: com o Tesseract, se a pessoa tiver instalado.
+
+  Nos dois, sem dependência obrigatória e com a mesma saída de `ocr.ler_pdf`.
+- **Imagem solta** (JPG, PNG) como material: a mesma leitura do OCR, sem precisar converter em PDF.
+
 ## Faixa salarial (spec 028)
 
 - **Novo CAGED** (dado oficial: salário de admissão por ocupação e estado): os microdados são arquivos mensais

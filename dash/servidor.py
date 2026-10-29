@@ -461,13 +461,37 @@ class Handler(BaseHTTPRequestHandler):
                         dados = base64.b64decode(str(corpo.get("base64") or ""), validate=True)
                     except (binascii.Error, ValueError):
                         raise ValueError("arquivo inválido") from None
-                    material = pp.adicionar_material(estado, str(corpo.get("nome") or ""), dados)
+                    area = corpo.get("area")  # spec 037: linkedin, curriculo ou documento; sem ela, a ferramenta adivinha
+                    material = pp.adicionar_material(estado, str(corpo.get("nome") or ""), dados,
+                                                     area=str(area) if area is not None else None)
                 if estado["etapa"] == "ia":
                     estado["etapa"] = "materiais"
                 pp.salvar(estado)
                 pagina = pp.estado_para_pagina(True)
                 publico = next(m for m in pagina["materiais"] if m["id"] == material["id"])
                 return self._json(201, {"material": publico, "estado": pagina})
+            if metodo in ("PUT", "POST") and caminho.startswith("/api/perfil/material/"):
+                partes = [unquote(x) for x in caminho[len("/api/perfil/material/"):].split("/")]
+                if metodo == "PUT" and len(partes) == 1:  # Mover para (spec 037): só a área muda
+                    area = self._corpo().get("area")
+                    material = pp.mover_material(estado, partes[0], str(area) if area is not None else None)
+                    pp.salvar(estado)
+                    aviso = None
+                    if pp.area_de(material["tipo"]) != "curriculo" and material.get("arquivo"):
+                        import curriculo_base
+                        idiomas = curriculo_base.desmarcar_arquivo(material["arquivo"])
+                        if idiomas:
+                            nomes = " e ".join("português" if i == "pt" else "inglês" for i in idiomas)
+                            aviso = f"Este arquivo era o seu currículo em {nomes}; a marcação saiu."
+                    return self._json(200, {"estado": pp.estado_para_pagina(True), "aviso": aviso})
+                if metodo == "POST" and partes[1:] == ["ocr"]:  # botão OCR: lê de novo o PDF que ficou sem texto
+                    self._corpo()
+                    material = pp.reler_material(estado, partes[0])
+                    pp.salvar(estado)
+                    pagina = pp.estado_para_pagina(True)
+                    publico = next(m for m in pagina["materiais"] if m["id"] == material["id"])
+                    return self._json(200, {"material": publico, "estado": pagina})
+                return self._erro(405, "método não permitido")
             if metodo == "DELETE" and caminho.startswith("/api/perfil/material/"):
                 pp.remover_material(estado, unquote(caminho[len("/api/perfil/material/"):]))
                 pp.salvar(estado)
