@@ -404,7 +404,7 @@ def moldura_da_carta(idioma: str) -> tuple[str, str, str | None]:
     cabecalho = "\n".join(x for x in (nome, linha) if x)
     despedida = DESPEDIDA.get(idioma, DESPEDIDA["en"]) + (f"\n{nome}" if nome else "")
     aviso = None if nome else ("Sem os seus dados de contato, a carta saiu sem cabeçalho e sem o seu nome na despedida: "
-                               "salve-os em Atualizar candidaturas → Candidatura assistida → Seus dados de contato.")
+                               "salve-os em Meu perfil → Informações básicas → Seus dados de contato.")
     return cabecalho, despedida, aviso
 
 

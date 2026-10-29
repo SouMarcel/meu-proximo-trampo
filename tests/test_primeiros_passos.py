@@ -335,6 +335,89 @@ class TestAnamneseEPerfil(Base):
         self.assertNotIn("Contato", md)
 
 
+class TestIdiomas(unittest.TestCase):
+    """Spec 036: a pergunta de idiomas em linhas de idioma e nível (CEFR ou Nativo), sem estimar nível."""
+
+    def ler(self, texto):
+        x = pp.ler_idioma(texto)
+        return x["idioma"], x["outro"], x["nivel"], bool(x["original"])
+
+    def test_formato_novo_e_siglas(self):
+        self.assertEqual(pp.ler_idioma("Inglês — B2 (Intermediário superior)"),
+                         {"idioma": "Inglês", "outro": "", "nivel": "B2", "original": ""})
+        self.assertEqual(self.ler("English: C1"), ("Inglês", "", "C1", False))
+        self.assertEqual(self.ler("Espanhol - b1"), ("Espanhol", "", "B1", False))
+        self.assertEqual(self.ler("Francês — A1 (Iniciante)"), ("Francês", "", "A1", False))
+        self.assertEqual(self.ler("Alemão — C2 (Proficiência plena)"), ("Alemão", "", "C2", False))
+
+    def test_nativo(self):
+        self.assertEqual(self.ler("Português — nativo"), ("Português (BR)", "", "Nativo", False))
+        self.assertEqual(self.ler("Portuguese (Native or bilingual)"), ("Português (BR)", "", "Nativo", False))
+        self.assertEqual(self.ler("Português (BR) — Nativo"), ("Português (BR)", "", "Nativo", False))
+
+    def test_nivel_sem_equivalencia_fica_em_branco(self):
+        x = pp.ler_idioma("Inglês — Professional Working")
+        self.assertEqual((x["idioma"], x["nivel"]), ("Inglês", ""))
+        self.assertEqual(x["original"], "Inglês — Professional Working")
+        self.assertEqual(self.ler("Inglês fluente"), ("Inglês", "", "", True))
+        self.assertEqual(self.ler("Inglês — B2B e SaaS"), ("Inglês", "", "", True))  # sigla só como palavra solta
+
+    def test_outro(self):
+        self.assertEqual(self.ler("Italiano — A2 (Básico)"), ("Outro", "Italiano", "A2", False))
+        self.assertEqual(self.ler("Português (Portugal) — C2"), ("Outro", "Português (Portugal)", "C2", False))
+        self.assertEqual(self.ler("Libras — intermediário"), ("Outro", "Libras", "", True))
+        self.assertLessEqual(len(pp.ler_idioma("x" * 100 + " — A1")["outro"]), 60)
+
+    def test_lista(self):
+        self.assertEqual(pp.ler_idiomas(None), [])
+        self.assertEqual(pp.ler_idiomas([]), [])
+        self.assertEqual([x["idioma"] for x in pp.ler_idiomas(["Inglês — B2", "", "Alemão — A2"])], ["Inglês", "Alemão"])
+
+    def test_pergunta(self):
+        ps = {p["id"]: p for p in pp.perguntas_para({})}
+        p = ps["idiomas"]
+        self.assertEqual(p["tipo"], "lista")  # a página antiga continua com a caixa de texto
+        self.assertEqual(p["idiomas"], ["Inglês", "Português (BR)", "Francês", "Alemão", "Espanhol"])
+        self.assertEqual([n["valor"] for n in p["niveis"]], ["A1", "A2", "B1", "B2", "C1", "C2", "Nativo"])
+        rot = {n["valor"]: n["rotulo"] for n in p["niveis"]}
+        self.assertEqual((rot["B2"], rot["Nativo"]), ("B2 (Intermediário superior)", "Nativo"))
+        self.assertTrue(all(n["descricao"] for n in p["niveis"]))
+        self.assertEqual(p["linhas"], [])
+        p = {x["id"]: x for x in pp.perguntas_para({"respostas": {"idiomas": ["Inglês — B2", "Libras"]}})}["idiomas"]
+        self.assertEqual([(x["idioma"], x["nivel"]) for x in p["linhas"]], [("Inglês", "B2"), ("Outro", "")])
+        self.assertNotIn("linhas", next(x for x in pp.PERGUNTAS if x["id"] == "idiomas"))  # o catálogo não muda
+
+    def test_linhas_do_rascunho_sem_resposta(self):
+        rascunho = {"idiomas": [{"texto": "Português — nativo", "fonte": "zip"},
+                                {"texto": "Inglês — Professional Working", "fonte": "zip"}]}
+        p = {x["id"]: x for x in pp.perguntas_para({"rascunho": rascunho})}["idiomas"]
+        self.assertEqual([(x["idioma"], x["nivel"], bool(x["original"])) for x in p["linhas"]],
+                         [("Português (BR)", "Nativo", False), ("Inglês", "", True)])
+        p = {x["id"]: x for x in pp.perguntas_para({"rascunho": rascunho, "respostas": {"idiomas": ["Alemão — A2"]}})}
+        self.assertEqual([x["idioma"] for x in p["idiomas"]["linhas"]], ["Alemão"])  # a resposta vale
+
+    def test_resposta_substitui_o_idioma_do_rascunho(self):
+        rascunho = {"idiomas": [{"texto": "Inglês — Professional Working", "fonte": "zip"},
+                                {"texto": "Alemão — Elementary", "fonte": "zip"}]}
+        md = pp.montar_perfil(rascunho, {"idiomas": ["Inglês — B2 (Intermediário superior)"]})
+        self.assertIn("- Inglês — B2 (Intermediário superior)", md)
+        self.assertNotIn("Professional Working", md)
+        self.assertIn("- Alemão — Elementary", md)  # idioma fora da resposta continua
+
+    def test_sem_pergunta_de_ingles(self):
+        self.assertNotIn("ingles", [p["id"] for p in pp.perguntas_para({})])
+        self.assertEqual(pp.validar_respostas({"ingles": "avancado"}), {"ingles": "avancado"})  # id antigo aceito
+
+    def test_ingles_uma_vez_no_perfil(self):
+        md = pp.montar_perfil({}, {"idiomas": ["Inglês — B2 (Intermediário superior)"], "ingles": "avancado"})
+        self.assertIn("- Inglês — B2 (Intermediário superior)", md)
+        self.assertNotIn("nível declarado", md)
+        md = pp.montar_perfil({}, {"idiomas": ["Inglês — Professional Working"], "ingles": "avancado"})
+        self.assertIn("- Inglês (nível declarado): avancado", md)
+        md = pp.montar_perfil({}, {"ingles": "avancado"})
+        self.assertIn("- Inglês (nível declarado): avancado", md)
+
+
 class TestFiltros(unittest.TestCase):
     def test_propoe_a_partir_das_respostas(self):
         resp = {"cargos_alvo": ["Analista de Dados", "BI"], "cargos_alvo_en": ["Data Analyst"],
