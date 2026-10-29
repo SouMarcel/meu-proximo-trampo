@@ -24,14 +24,46 @@ interface Resposta {
   trocar: boolean
 }
 
-function Controle({ c, r, onChange, disabled }: { c: Campo; r: Resposta; onChange: (r: Resposta) => void; disabled: boolean }) {
+const LIMITE_RELATO = 4000
+
+function Controle({
+  c,
+  r,
+  onChange,
+  disabled,
+  relato = false,
+}: {
+  c: Campo
+  r: Resposta
+  onChange: (r: Resposta) => void
+  disabled: boolean
+  /** Pergunta comum de texto: a pessoa conta com as palavras dela e a ferramenta ajusta ao limite (spec 035). */
+  relato?: boolean
+}) {
   const set = (valor: string) => onChange({ ...r, valor })
   const opcoes = c.opcoes.filter((o) => !o.vazia)
+  if (relato)
+    return (
+      <>
+        <textarea
+          rows={4}
+          className={CAMPO}
+          value={r.valor}
+          maxLength={LIMITE_RELATO}
+          disabled={disabled}
+          placeholder="Conte com suas palavras: o que você fez, onde, quando, com que resultado. A ferramenta transforma o relato na resposta."
+          onChange={(e) => set(e.target.value)}
+        />
+        <span className={`block ${DICA}`}>
+          {r.valor.length} caracteres{c.limite > 0 ? ` · a resposta é ajustada ao limite de ${c.limite} do formulário` : ""}
+        </span>
+      </>
+    )
   if (c.tipo === "area")
     return (
       <>
         <textarea rows={3} className={CAMPO} value={r.valor} maxLength={c.limite || undefined} disabled={disabled} onChange={(e) => set(e.target.value)} />
-        {c.limite > 0 && <span className={DICA}>{r.valor.length} de {c.limite} caracteres</span>}
+        {c.limite > 0 && <span className={`block ${DICA}`}>{r.valor.length} de {c.limite} caracteres</span>}
       </>
     )
   if (c.tipo === "texto")
@@ -106,6 +138,7 @@ export default function CandidaturaAssistida({
   const [auto, setAuto] = useState<AutoPreenchimento | null>(null)
   const [respostas, setRespostas] = useState<Record<string, Resposta>>({})
   const [lembrar, setLembrar] = useState(true)
+  const [guardarRelatos, setGuardarRelatos] = useState(true)
   const [resultado, setResultado] = useState<Preenchimento | null>(null)
   const [ocupado, setOcupado] = useState("")
   const [erro, setErro] = useState("")
@@ -302,6 +335,13 @@ export default function CandidaturaAssistida({
           {auto && auto.perguntas.length > 0 && (
             <div className="space-y-3">
               <span className="font-semibold text-slate-800 dark:text-slate-200">Preciso da sua resposta ({auto.perguntas.length}):</span>
+              {auto.perguntas.some((c) => c.relato) && (
+                <p className={DICA}>
+                  Nas perguntas abertas, conte com as suas palavras: o relato vale como verdade, a ferramenta o transforma na
+                  melhor resposta e aprende com ele (currículo, histórias STAR e próximas candidaturas). Dados cadastrais e
+                  perguntas sensíveis vão exatamente como você escrever.
+                </p>
+              )}
               <ul className="space-y-3">
                 {auto.perguntas.map((c) => {
                   const r = respostas[c.chave] || { valor: "", trocar: false }
@@ -311,8 +351,14 @@ export default function CandidaturaAssistida({
                         {c.rotulo || "(pergunta sem texto)"}
                         {c.obrigatorio && <span className="text-rose-600"> *</span>}
                       </span>
-                      <Controle c={c} r={r} disabled={!podeGravar} onChange={(n) => setRespostas((x) => ({ ...x, [c.chave]: n }))} />
-                      <span className={DICA}>
+                      <Controle
+                        c={c}
+                        r={r}
+                        relato={Boolean(c.relato)}
+                        disabled={!podeGravar}
+                        onChange={(n) => setRespostas((x) => ({ ...x, [c.chave]: n }))}
+                      />
+                      <span className={`block ${DICA}`}>
                         {c.motivo}
                         {!c.lembrar && " · esta resposta não fica guardada: muda de vaga para vaga"}
                       </span>
@@ -322,8 +368,14 @@ export default function CandidaturaAssistida({
               </ul>
               <label className={`flex items-center gap-1.5 ${DICA}`}>
                 <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} />
-                Lembrar estas respostas para as próximas vagas (salário e relocação nunca ficam guardados)
+                Lembrar estas respostas para as próximas vagas (pretensão salarial e relocação nunca ficam guardadas)
               </label>
+              {auto.perguntas.some((c) => c.relato) && (
+                <label className={`flex items-center gap-1.5 ${DICA}`}>
+                  <input type="checkbox" checked={guardarRelatos} onChange={(e) => setGuardarRelatos(e.target.checked)} />
+                  Guardar meus relatos no que a ferramenta sabe de mim (Meu perfil → Seus relatos)
+                </label>
+              )}
               <button
                 type="button"
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
@@ -335,10 +387,15 @@ export default function CandidaturaAssistida({
                       pag.assinatura,
                       aResponder.map((c) => ({ chave: c.chave, valor: respostas[c.chave].valor })),
                       lembrar,
+                      guardarRelatos,
                     )
                     setResultado(j)
                     setAuto((a) => (a ? { ...a, perguntas: a.perguntas.filter((c) => !j.preenchidos.some((p) => p.chave === c.chave)) } : a))
-                    onAviso(`${j.preenchidos.length} resposta(s) sua(s) preenchida(s). ${j.aviso}`)
+                    onAviso(
+                      `${j.preenchidos.length} resposta(s) sua(s) preenchida(s).` +
+                        (j.relatos ? ` ${j.relatos} relato(s) guardado(s) no que a ferramenta sabe de você.` : "") +
+                        ` ${j.aviso}`,
+                    )
                   })
                 }
               >
@@ -365,6 +422,23 @@ export default function CandidaturaAssistida({
               {auto.aviso} Na próxima etapa do formulário, clique em Preencher esta página de novo.
             </p>
           )}
+        </div>
+      )}
+
+      {resultado && resultado.preenchidos.length > 0 && !ocupado && (
+        <div className="space-y-1 text-xs">
+          <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+            Preenchi com as suas respostas ({resultado.preenchidos.length}):
+          </span>
+          {resultado.aviso_ia && <p className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40">{resultado.aviso_ia}</p>}
+          <ul className="space-y-0.5">
+            {resultado.preenchidos.map((x) => (
+              <li key={x.chave}>
+                {x.rotulo}: <b>{x.texto.length > 300 ? x.texto.slice(0, 300) + "…" : x.texto}</b>
+                {x.fonte && <span className={DICA}> ({x.fonte})</span>}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

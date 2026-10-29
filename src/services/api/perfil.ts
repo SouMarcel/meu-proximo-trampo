@@ -149,3 +149,22 @@ export const confirmarCurriculo = (corpo: {
 
 export const marcarCurriculoBase = (idioma: "pt" | "en", arquivo: string | null) =>
   pedir<{ curriculo_base: { pt: string | null; en: string | null } }>("PUT", "/api/curriculo-base", { idioma, arquivo })
+
+/** Relato da pessoa (spec 035): o que ela contou com as próprias palavras na candidatura assistida; vale como fato. */
+export interface Relato {
+  id: string
+  pergunta: string
+  relato: string
+  resposta: string
+  vaga: { id: string; titulo: string; empresa: string } | null
+  em: string
+  no_perfil: boolean
+}
+
+export const relatos = () => pedir<{ relatos: Relato[] }>("GET", "/api/perfil/relatos")
+export const editarRelato = (id: string, relato: string) =>
+  pedir<{ relatos: Relato[] }>("PUT", `/api/perfil/relatos/${encodeURIComponent(id)}`, { relato })
+export const apagarRelato = (id: string) =>
+  pedir<{ relatos: Relato[] }>("DELETE", `/api/perfil/relatos/${encodeURIComponent(id)}`, {})
+export const levarRelatoAoPerfil = (id: string) =>
+  pedir<{ relatos: Relato[]; anterior: string | null }>("POST", `/api/perfil/relatos/${encodeURIComponent(id)}/perfil`, {})

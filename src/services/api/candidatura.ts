@@ -27,7 +27,7 @@ export interface EstadoCandidatura {
   navegador: boolean
   dominios: Dominios
   credenciais: Credencial[]
-  /** As respostas que a pessoa já deu, reaproveitadas nas próximas vagas (salvo salário e relocação). */
+  /** As respostas que a pessoa já deu, reaproveitadas nas próximas vagas (salvo pretensão salarial e relocação). */
   memoria: { chave: string; pergunta: string; resposta: string; categoria: string | null; em: string }[]
   /** Os dados de contato salvos (spec 033): preenchem os campos de contato em qualquer formulário, sem IA. */
   contato?: DadosContato
@@ -99,7 +99,8 @@ export interface Leitura {
 export interface AutoPreenchimento {
   pagina: Leitura["pagina"]
   preenchidos: { chave: string; rotulo: string; texto: string; fonte: string; conferir: string[] }[]
-  perguntas: (Campo & { lembrar: boolean })[]
+  /** relato: pergunta comum de texto; a resposta é um relato que a IA transforma na resposta (spec 035). */
+  perguntas: (Campo & { lembrar: boolean; relato?: boolean })[]
   na_janela: { chave: string; rotulo: string; motivo: string }[]
   aviso_ia: string | null
   aviso: string
@@ -107,11 +108,15 @@ export interface AutoPreenchimento {
 }
 
 export interface Preenchimento {
-  preenchidos: { chave: string; rotulo: string; valor: string; texto: string }[]
+  /** fonte: "seu relato (adaptado pela IA)", "seu relato" (sem IA) ou "sua resposta" (spec 035). */
+  preenchidos: { chave: string; rotulo: string; valor: string; texto: string; fonte?: string }[]
   ficaram: { chave: string; rotulo: string; motivo: string }[]
   aviso: string
   documento?: string
   lembradas?: number
+  /** Quantos relatos ficaram guardados no que a ferramenta sabe da pessoa. */
+  relatos?: number
+  aviso_ia?: string | null
 }
 
 const p = (s: string) => encodeURIComponent(s)
@@ -143,6 +148,13 @@ export const preencher = (
   assinatura: string,
   respostas: { chave: string; valor: string; trocar?: boolean }[],
   lembrar = true,
-) => pedir<Preenchimento>("POST", `/api/candidatura/vaga/${p(vagaId)}/preencher`, { assinatura, respostas, lembrar }, LONGO)
+  guardar_relatos = true,
+) =>
+  pedir<Preenchimento>(
+    "POST",
+    `/api/candidatura/vaga/${p(vagaId)}/preencher`,
+    { assinatura, respostas, lembrar, guardar_relatos },
+    LONGO,
+  )
 export const apagarMemoria = (chave: string) =>
   pedir<{ memoria: EstadoCandidatura["memoria"] }>("DELETE", `/api/candidatura/memoria/${p(chave)}`, {})

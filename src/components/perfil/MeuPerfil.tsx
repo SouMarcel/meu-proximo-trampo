@@ -12,6 +12,7 @@ import { mensagemDeErro } from "../../services/api"
 import { useFerramenta } from "../../contexto/Ferramenta"
 import { diaMes } from "../../utils/formatters"
 import Analises from "./Analises"
+import Relatos from "./Relatos"
 import { GerarCurriculo, SecaoCurriculos } from "../curriculo/Curriculos"
 
 type Tela = EtapaPerfil | "do-curriculo" | "analises" | "curriculos"
@@ -839,6 +840,7 @@ export default function MeuPerfil({
         </ul>
         <SeuCurriculo cvs={cvs} so={so} onMudou={(base) => cvs && setCvs({ ...cvs, curriculo_base: base })} onAviso={onAviso} onErro={falhou} />
         <SecaoCurriculos vagaId={null} onGerar={() => setGerarBase(true)} />
+        <Relatos so={so} onAviso={onAviso} onErro={falhou} onPerfilMudou={onPerfilMudou} />
       </>
     )
     pe = (
