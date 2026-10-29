@@ -404,6 +404,10 @@ Erros: 400 com a mensagem (ex.: conflito sem escolha no texto, arquivo .doc, IA 
 |---|---|---|
 | `GET /api/perfil/curriculos` [local] | — | `{curriculos: [{arquivo, nome, idioma: "pt"\|"en"\|null, data}], curriculo_base: {pt, en: caminho\|null}, existe_perfil}` |
 | `POST /api/perfil/do-curriculo` [local] | `{arquivo}` ou `{material_id}` | proposta, **não grava**: `{arquivo, nome, texto, idioma, avisos, perfil, dados: {..., origem?}, edicao: {cargos, cargos_en, cidade, estado, modelos}, filtros\|null, mudancas, existe_perfil, curriculo_base, ja_marcado}` (curriculo_base.py:291-305) |
+| `GET /api/perfil/relatos` [local] | — | `{relatos: [{id, pergunta, relato, resposta, vaga: {id, titulo, empresa}\|null, em, no_perfil}]}`: os relatos da pessoa (spec 035), mais recentes primeiro; valem como fato junto do perfil |
+| `PUT /api/perfil/relatos/{id}` [local] | `{relato}` | `{relatos}`; 400 relato vazio ou inexistente |
+| `DELETE /api/perfil/relatos/{id}` [local] | — | `{relatos}`; 400 inexistente |
+| `POST /api/perfil/relatos/{id}/perfil` [local] | — | `{relatos, anterior}`: acrescenta o relato à seção "Relatos" do perfil.md (a versão anterior fica em `anexos/perfis-anteriores/`) e o marca `no_perfil`; 400 sem perfil |
 | `POST /api/perfil/do-curriculo/confirmar` [local] | `{arquivo*, idioma, manter_perfil: bool, marcar_base: bool, perfil (markdown, se não mantém), edicao?: {cargos, cargos_en, cidade, estado, modelos: string[]}}` | `{perfil, anterior, filtros, curriculo_base}` |
 | `PUT /api/curriculo-base` [local] | `{idioma*: "pt"\|"en", arquivo: caminho\|null}` | `{curriculo_base: {pt, en}}` — marca/desmarca "Seu currículo" |
 
@@ -462,8 +466,29 @@ O checklist vem no próprio objeto vaga (`checklist`) e é marcado com `PATCH /a
   conferir?: string[]}], arquivos: {txt}, disponivel, ia|null, criado_em, atualizado_em}` (candidatura_ia.py:305-324).
 
 **`POST /api/kit/carta`** **[local]** — "Escrever". Corpo `{vaga_id*, respostas: {formato: "carta"|"mensagem",
-tom*: direto|caloroso|formal, por_que*, problema, primeiro_movimento (os dois obrigatórios na carta),
-limite? (20-3000, padrão 400, só mensagem), idioma? (pt, en, es, fr, de, it)}}`. 202 = estado de geração (§3.8).
+tom?: direto|caloroso|formal (padrão direto), por_que?, problema?, primeiro_movimento?, limite? (20-3000, padrão 400,
+só mensagem), idioma? (pt, en, es, fr, de, it), guardar_relatos? (padrão true)}}`. As perguntas são opcionais (spec
+035): a que ficar em branco a IA responde pelo perfil, pelos relatos e pela vaga; o que a pessoa escrever vale como
+relato e, com `guardar_relatos`, fica em `dash/dados/relatos.json` (a carta pronta traz `relatos`: quantos guardou).
+A carta vende a pessoa no primeiro parágrafo, com foco no problema da empresa que ela ajuda a resolver, em formato que
+o ATS lê. O pedido leva as palavras-chave da vaga que o perfil sustenta (`conferir.avaliar_requisitos`); a conferência
+da carta traz `palavras_chave: {citadas, total, faltando}` e aponta quando a carta usa menos da metade delas. 202 =
+estado de geração (§3.8).
+
+A carta segue o padrão da spec 035 (US7): o corpo vem da IA (saudação, introdução com a vaga, "a vaga pede…",
+"a vaga também destaca…", base técnica e fechamento), e o cabeçalho e a despedida vêm dos dados de contato salvos
+(`candidatura/contato.py`), sem passar pela IA. O meta guarda `cabecalho`, `despedida` e, sem dados de contato,
+`aviso_cabecalho`; a conferência e a contagem de palavras olham só o corpo.
+
+**`POST /api/kit/carta/{nome}/pdf`** **[local]** — o PDF de uma carta que ficou sem ele (carta antiga ou conversão que
+falhou), a partir do .docx, pelo LibreOffice ou pelo Word (spec 035). `{documento}` com `arquivos.pdf` e `disponivel.pdf`;
+400 com o motivo (mensagem curta, sem LibreOffice nem Word). A carta nova já sai com `arquivos.pdf` (ou `aviso_pdf`).
+
+**`POST /api/kit/verificar`** **[local]** — "Verificar" a carta editada pela pessoa (spec 035). Corpo `{vaga_id*, nome*
+(a carta de base), texto* (o texto editado), guardar_relatos? (padrão true)}`. A IA incorpora as mudanças, corrige
+gramática e ortografia e mantém estrutura, palavras-chave e tamanho; a conferência conta o que a pessoa escreveu como
+fato dela. Grava uma versão nova (`origem: "verificada"`, `base`, `mudancas: string[]`); a anterior fica. O que a pessoa
+acrescentou vira relato. 202 = estado de geração (§3.8, `tipo: "verificar"`); 400 texto vazio ou carta de outra vaga.
 
 **`POST /api/kit/respostas`** **[local]** — "Preparar respostas". Corpo `{vaga_id*, perguntas*: string}` (uma por
 linha, até 30). Perguntas sensíveis (autorização de trabalho, visto ou patrocínio, cidadania, salário ou
@@ -583,8 +608,8 @@ Formato da `proposta`, por tipo:
 | `POST /api/candidatura/vaga/{id}/login` | — | `{portal, rotulo, preenchidos: ["usuario","senha"], aviso}`; 409 fora do host exato de login, sem credencial ou com mais de um campo de senha |
 | `POST /api/candidatura/vaga/{id}/abrir` | — | `{ok, url, dominio}`; abre o link da vaga na janela e a traz para a frente |
 | `POST /api/candidatura/vaga/{id}/ler` | — | `{pagina: {url, dominio: {host, permitido, portal, origem, bloqueado, pode_liberar}, etapa: "perguntas"\|"login"\|"teste"\|"bloqueio"\|"desconhecida", aviso, assinatura}, itens, aviso_ia, ia}`. Os `itens` (com a proposta da IA) só vêm com `etapa: "perguntas"` e domínio permitido. Nada vai à IA antes disso |
-| `POST /api/candidatura/vaga/{id}/auto` | — | "Preencher esta página": `{pagina, preenchidos: [{chave, rotulo, texto, fonte: "seus dados de contato"\|"sua resposta anterior"\|"seu perfil", conferir}], perguntas: [item + {lembrar}], na_janela: [{chave, rotulo, motivo}], aviso_ia, aviso, documento}`. Preenche primeiro os campos de contato com os dados de contato salvos (spec 033, sem IA), depois com a memória (inclusive sensível) e com a IA (só campos comuns); `perguntas` é o que precisa da pessoa |
-| `POST /api/candidatura/vaga/{id}/preencher` | `{assinatura, respostas: [{chave, valor, trocar?}], lembrar?: bool (padrão true)}` | as respostas da pessoa (podem ir em pergunta sensível e dado cadastral, nunca em aceite, arquivo ou senha): `{preenchidos: [{chave, rotulo, valor, texto}], ficaram, aviso, lembradas, documento}`; 409 se a página mudou, se o domínio não está liberado ou se há bloqueio |
+| `POST /api/candidatura/vaga/{id}/auto` | — | "Preencher esta página": `{pagina, preenchidos: [{chave, rotulo, texto, fonte: "seus dados de contato"\|"sua resposta anterior"\|"seu perfil", conferir}], perguntas: [item + {lembrar, relato}], na_janela: [{chave, rotulo, motivo}], aviso_ia, aviso, documento}`. Preenche primeiro os campos de contato com os dados de contato salvos (spec 033, sem IA), depois com a memória (inclusive sensível) e com a IA (só campos comuns); `perguntas` é o que precisa da pessoa |
+| `POST /api/candidatura/vaga/{id}/preencher` | `{assinatura, respostas: [{chave, valor, trocar?}], lembrar?: bool (padrão true), guardar_relatos?: bool (padrão true)}` | as respostas da pessoa (podem ir em pergunta sensível e dado cadastral, nunca em aceite, arquivo ou senha): `{preenchidos: [{chave, rotulo, valor, texto, fonte: "seu relato (adaptado pela IA)"\|"seu relato"\|"sua resposta"}], ficaram, aviso, aviso_ia, ia, lembradas, relatos, documento}`. Na pergunta comum de texto (item com `relato: true` em `auto`), o valor é um relato: a IA o transforma na resposta (um pedido por clique; sem IA, vai o relato cortado no limite) e, com `guardar_relatos`, ele fica em `dash/dados/relatos.json` (spec 035); 409 se a página mudou, se o domínio não está liberado ou se há bloqueio |
 | `DELETE /api/candidatura/memoria/{chave}` | — | `{memoria}`; 404 se não existe |
 
 Regras do servidor:

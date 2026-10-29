@@ -1,5 +1,6 @@
 """Carta de apresentação e respostas de formulário (candidatura_ia.py e conferir.py), com perfil e vaga fictícios
-e uma IA falsa: perguntas obrigatórias, conferência de fatos (SC-003) e perguntas sensíveis só com a pessoa (SC-002)."""
+e uma IA falsa: perguntas da carta opcionais e guardadas como relato (spec 035), pedido que vende a pessoa no
+primeiro parágrafo, conferência de fatos (SC-003) e perguntas sensíveis só com a pessoa (SC-002)."""
 import json
 import shutil
 import sys
@@ -10,9 +11,12 @@ from unittest import mock
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(RAIZ), str(RAIZ / "dash")]
+import banco  # noqa: E402
 import candidatura_ia  # noqa: E402
 import conferir  # noqa: E402
+import curriculo  # noqa: E402
 import curriculo_ia  # noqa: E402
+import relatos  # noqa: E402
 
 DADOS = Path(__file__).resolve().parent / "dados" / "kit"
 PERFIL = (DADOS / "perfil-ficticio.md").read_text(encoding="utf-8")
@@ -69,10 +73,17 @@ class TestConferirCarta(unittest.TestCase):
         (tmp / "carta.txt").write_text(carta("I grew revenue by 45%."), encoding="utf-8")
         (tmp / "perfil.md").write_text(PERFIL, encoding="utf-8")
         (tmp / "vaga.txt").write_text(TEXTO_VAGA, encoding="utf-8")
-        with mock.patch("sys.stdout"):
+        with mock.patch("sys.stdout"), mock.patch.object(banco, "ARQUIVO", tmp / "banco.db"):  # sem os relatos reais
             codigo = conferir.main(["--carta", str(tmp / "carta.txt"), "--perfil", str(tmp / "perfil.md"),
                                     "--vaga", str(tmp / "vaga.txt"), "--empresa", "Acme Analytics"])
         self.assertEqual(codigo, 3)
+
+
+def pdf_falso(docx):
+    """O PDF sem LibreOffice nem Word: o teste nunca abre programa nenhum."""
+    pdf = docx.with_suffix(".pdf")
+    pdf.write_bytes(b"%PDF-1.4 teste")
+    return pdf, ""
 
 
 class ComPasta(unittest.TestCase):
@@ -81,6 +92,8 @@ class ComPasta(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.pedidos = []
         for p in (mock.patch.object(curriculo_ia, "CURRICULOS", self.tmp),
+                  mock.patch.object(curriculo, "para_pdf", side_effect=pdf_falso),
+                  mock.patch.object(banco, "ARQUIVO", self.tmp / "dados" / "banco.db"),  # os relatos ficam aqui
                   mock.patch.object(candidatura_ia, "_marca_ia", return_value={"provedor": "teste", "modelo": "x"})):
             p.start()
             self.addCleanup(p.stop)
@@ -93,18 +106,45 @@ class ComPasta(unittest.TestCase):
 
 
 class TestCarta(ComPasta):
-    def test_respostas_obrigatorias(self):
-        for falta in ("por_que", "problema", "primeiro_movimento", "tom"):
-            with self.assertRaisesRegex(candidatura_ia.GeracaoErro, candidatura_ia.PERGUNTAS_CARTA[falta].rstrip("?")):
-                candidatura_ia.validar_respostas({**RESPOSTAS, falta: " "})
+    def test_respostas_opcionais(self):  # spec 035: a que ficar em branco a IA responde pelo perfil
+        r = candidatura_ia.validar_respostas({})
+        self.assertEqual((r["formato"], r["tom"], r["por_que"], r["guardar_relatos"]), ("carta", "direto", "", True))
+        self.assertFalse(candidatura_ia.validar_respostas({"guardar_relatos": False})["guardar_relatos"])
         with self.assertRaises(candidatura_ia.GeracaoErro):
             candidatura_ia.validar_respostas({**RESPOSTAS, "tom": "engraçado"})
+
+    def test_pedido_segue_o_padrao(self):  # o padrão da carta do usuário (spec 035, US7)
+        sem = candidatura_ia.montar_pedido_carta(PERFIL, VAGA, candidatura_ia.validar_respostas({}))
+        self.assertIn('"Dear Acme Analytics Hiring Team,"', sem)
+        self.assertIn('"I am writing to apply for the Senior Data Analyst position at Acme Analytics."', sem)
+        self.assertIn('"The posting asks for..."', sem)
+        self.assertIn('"Your posting also highlights..."', sem)
+        self.assertIn("primeiro problema que ela atacaria", sem)
+        self.assertIn("Não escreva cabeçalho com nome e contatos, despedida nem assinatura", sem)
+        self.assertIn("ATS", sem)
+        self.assertIn("Ela não respondeu a: Por que esta vaga?", sem)
+        self.assertIn("(nenhuma: responda você, pelo perfil e pela vaga)", sem)
+        com = candidatura_ia.montar_pedido_carta(PERFIL, VAGA, candidatura_ia.validar_respostas(RESPOSTAS))
+        self.assertNotIn("Ela não respondeu", com)
+        self.assertIn("Relatórios que demoram a fechar.", com)
+
+    def test_respostas_viram_relatos(self):
+        with self.ia(json.dumps({"texto": carta()})):
+            meta = candidatura_ia.gerar_carta(VAGA, {**RESPOSTAS, "primeiro_movimento": ""}, perfil=PERFIL)
+        self.assertEqual(meta["relatos"], 2)
+        guardados = {x["relato"] for x in relatos.listar()}
+        self.assertEqual(guardados, {RESPOSTAS["por_que"], RESPOSTAS["problema"]})
+        self.assertTrue(all("Acme Analytics" in x["pergunta"] for x in relatos.listar()))
+        with self.ia(json.dumps({"texto": carta()})):
+            meta = candidatura_ia.gerar_carta(VAGA, {"tom": "direto", "problema": "Outro fato.", "guardar_relatos": False},
+                                              perfil=PERFIL)
+        self.assertEqual((meta["relatos"], len(relatos.listar())), (0, 2))
 
     def test_mensagem_curta(self):
         r = candidatura_ia.validar_respostas({"formato": "mensagem", "por_que": "Quero relatórios de vendas.", "tom": "direto",
                                               "idioma": "pt"})
         self.assertEqual((r["formato"], r["limite"], r["idioma"]), ("mensagem", 400, "pt"))  # só por que e tom são obrigatórias
-        for ruim in ({"limite": 10}, {"limite": "x"}, {"idioma": "jp"}, {"por_que": ""}):
+        for ruim in ({"limite": 10}, {"limite": "x"}, {"idioma": "jp"}, {"tom": "engraçado"}):
             with self.assertRaises(candidatura_ia.GeracaoErro, msg=ruim):
                 candidatura_ia.validar_respostas({"formato": "mensagem", "por_que": "Quero.", "tom": "direto", **ruim})
         curta = ("Acme Analytics: I write advanced SQL for the sales team and my Power BI dashboards are used by 1,500 "
@@ -126,6 +166,8 @@ class TestCarta(ComPasta):
             meta = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
         self.assertEqual((meta["conferencia"]["veredito"], meta["pronto"], meta["idioma"]), ("ok", True, "en"))
         self.assertTrue((self.tmp / f"{meta['nome']}.txt").exists() and (self.tmp / f"{meta['nome']}.docx").exists())
+        self.assertEqual(meta["arquivos"]["pdf"], f"{meta['nome']}.pdf")  # a carta também sai em PDF (spec 035)
+        self.assertTrue((self.tmp / f"{meta['nome']}.pdf").exists())
         self.assertTrue(meta["nome"].endswith("-acme-analytics-senior-data-analyst-carta"))
         self.assertIn("Relatórios que demoram a fechar.", self.pedidos[0])  # as respostas vão no pedido
         self.assertIn("inglês", self.pedidos[0])
@@ -138,6 +180,106 @@ class TestCarta(ComPasta):
             candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
         with self.assertRaisesRegex(candidatura_ia.GeracaoErro, "perfil"):
             candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil="")
+
+    def test_pedido_traz_palavras_chave_que_o_perfil_sustenta(self):  # ATS (spec 035)
+        pedido = candidatura_ia.montar_pedido_carta(PERFIL, VAGA, candidatura_ia.validar_respostas({}))
+        chave = pedido[pedido.index("## Palavras-chave"):pedido.index("## Requisitos que a ferramenta")]
+        self.assertIn("Advanced SQL", chave)
+        self.assertIn("Fluent English", chave)  # "Inglês" no perfil: a mesma coisa em outro idioma
+        self.assertNotIn("Eastern Time", chave)  # "time" (inglês) não é "time" (equipe) do perfil
+        self.assertIn("o termo exato do anúncio", pedido)
+        conf = conferir.conferir_carta("Dear Acme Analytics team, I write reports.", PERFIL, TEXTO_VAGA, "Acme Analytics", {})
+        self.assertEqual(conf["palavras_chave"]["citadas"], 0)
+        self.assertIn("palavras_chave", {p["tipo"] for p in conf["pontos"]})
+
+    def test_verificar_incorpora_a_edicao(self):  # o botão Verificar (spec 035)
+        with self.ia(json.dumps({"texto": carta()})):
+            meta = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
+        acrescimo = "In 2024 I led the migration of 40 reports to the cloud."
+        editado = meta["texto"] + "\n\n" + acrescimo
+        revisado = carta(acrescimo)
+        with self.ia(json.dumps({"texto": revisado, "mudancas": ["corrigi a concordância no segundo parágrafo"]})):
+            nova = candidatura_ia.verificar_carta(meta["nome"], editado, perfil=PERFIL)
+        pedido = self.pedidos[-1]
+        self.assertIn("## O que a pessoa escreveu ou mudou (manter)", pedido)
+        self.assertIn(acrescimo, pedido)
+        self.assertIn("Corrija gramática", pedido)
+        self.assertEqual((nova["origem"], nova["base"], nova["mudancas"]),
+                         ("verificada", meta["nome"], ["corrigi a concordância no segundo parágrafo"]))
+        self.assertNotEqual(nova["nome"], meta["nome"])  # versão nova; a anterior continua
+        self.assertEqual({m["nome"] for m in candidatura_ia.listar(VAGA["id"])}, {meta["nome"], nova["nome"]})
+        self.assertNotEqual(nova["conferencia"]["veredito"], "bloquear")  # o 2024 e o 40 são da pessoa
+        self.assertEqual(nova["relatos"], 1)
+        self.assertTrue(any("led the migration of 40 reports" in x["relato"] for x in relatos.listar()))
+        with self.ia(json.dumps({"texto": revisado})):
+            sem = candidatura_ia.verificar_carta(meta["nome"], editado + " More.", guardar_relatos=False, perfil=PERFIL)
+        self.assertEqual(sem["relatos"], 0)
+        with self.assertRaisesRegex(candidatura_ia.GeracaoErro, "vazio"):
+            candidatura_ia.verificar_carta(meta["nome"], "  ", perfil=PERFIL)
+
+    def test_pdf_que_falha_e_gerar_depois(self):
+        with self.ia(json.dumps({"texto": carta()})), \
+                mock.patch.object(curriculo, "para_pdf", return_value=(None, "instale o LibreOffice para gerar o PDF")):
+            meta = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
+        self.assertEqual((meta["arquivos"]["pdf"], meta["aviso_pdf"]), (None, "instale o LibreOffice para gerar o PDF"))
+        with mock.patch.object(curriculo, "para_pdf", return_value=(None, "instale o LibreOffice para gerar o PDF")), \
+                self.assertRaisesRegex(candidatura_ia.GeracaoErro, "LibreOffice"):
+            candidatura_ia.pdf_da_carta(meta["nome"])
+        (self.tmp / f"{meta['nome']}.docx").unlink()  # o .docx some: refeito a partir do texto
+        nova = candidatura_ia.pdf_da_carta(meta["nome"])
+        self.assertEqual((nova["arquivos"]["pdf"], nova["disponivel"]["pdf"], "aviso_pdf" in nova),
+                         (f"{meta['nome']}.pdf", True, False))
+        self.assertEqual(candidatura_ia.listar(VAGA["id"])[0]["arquivos"]["pdf"], f"{meta['nome']}.pdf")
+        with self.ia(json.dumps({"texto": "Acme Analytics: SQL and Power BI for your sales reports."})):
+            msg = candidatura_ia.gerar_carta(VAGA, {"formato": "mensagem", "limite": 400}, perfil=PERFIL)
+        self.assertIsNone(msg["arquivos"]["pdf"])  # a mensagem curta é para copiar e colar
+        with self.assertRaisesRegex(candidatura_ia.GeracaoErro, "mensagem"):
+            candidatura_ia.pdf_da_carta(msg["nome"])
+
+    def test_cabecalho_e_despedida_dos_dados_de_contato(self):
+        with self.ia(json.dumps({"texto": carta()})):
+            sem_contato = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
+        self.assertTrue(sem_contato["texto"].endswith("Sincerely,"))
+        self.assertIn("dados de contato", sem_contato["aviso_cabecalho"])
+        from candidatura import contato
+        contato.gravar({"nome": "Ana", "sobrenome": "Exemplo", "email": "ana@exemplo.com", "telefone": "(11) 90000-0000",
+                        "cidade": "São Paulo", "estado": "SP", "pais": "Brasil",
+                        "linkedin": "https://www.linkedin.com/in/ana-exemplo/"})
+        with self.ia(json.dumps({"texto": carta() + "\n\nSincerely,\nAna Exemplo"})):  # a IA escreveu a despedida
+            meta = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
+        texto = meta["texto"]
+        self.assertTrue(texto.startswith("Ana Exemplo\nSão Paulo, SP, Brazil | ana@exemplo.com | (11) 90000-0000 | "
+                                         "linkedin.com/in/ana-exemplo\n\nDear hiring team"), texto[:160])
+        self.assertTrue(texto.endswith("\n\nSincerely,\nAna Exemplo"))
+        self.assertEqual(texto.count("Sincerely"), 1)  # a despedida da IA sai; fica a da ferramenta
+        self.assertNotIn("ana@exemplo.com", self.pedidos[-1])  # os contatos nunca vão à IA
+        self.assertNotIn("aviso_cabecalho", meta)
+        import docx
+        d = docx.Document(self.tmp / f"{meta['nome']}.docx")
+        primeiro = d.paragraphs[0].runs
+        self.assertEqual((primeiro[0].text.strip(), bool(primeiro[0].bold)), ("Ana Exemplo", True))  # quebra de linha depois
+        self.assertEqual(primeiro[1].text.strip(), "São Paulo, SP, Brazil | ana@exemplo.com | (11) 90000-0000 | linkedin.com/in/ana-exemplo")
+        with self.ia(json.dumps({"texto": carta("I also mentor two analysts."), "mudancas": []})):
+            nova = candidatura_ia.verificar_carta(meta["nome"], texto + "", perfil=PERFIL)
+        self.assertNotIn("ana@exemplo.com", self.pedidos[-1])  # na revisão também não
+        self.assertTrue(nova["texto"].startswith("Ana Exemplo\nSão Paulo"))
+        self.assertTrue(nova["texto"].endswith("Sincerely,\nAna Exemplo"))
+
+    def test_telefone_legivel(self):
+        self.assertEqual(candidatura_ia.telefone_legivel("+5511900000000"), "+55 11 90000-0000")
+        self.assertEqual(candidatura_ia.telefone_legivel("554133334444"), "+55 41 3333-4444")
+        for como_esta in ("(11) 90000-0000", "+1 512 555 0100", ""):
+            self.assertEqual(candidatura_ia.telefone_legivel(como_esta), como_esta)
+
+    def test_sem_despedida(self):
+        corpo = "Dear team,\n\nParagraph one.\n\nThank you."
+        for fim in ("\n\nSincerely,\nAna Exemplo", "\n\nBest regards,\n\nAna Exemplo", "\nSincerely,"):
+            self.assertEqual(candidatura_ia._sem_despedida(corpo + fim), corpo, fim)
+        self.assertEqual(candidatura_ia._sem_despedida("Prezada equipe,\n\nTexto.\n\nAtenciosamente,\nAna"),
+                         "Prezada equipe,\n\nTexto.")
+
+    def test_acrescimos(self):
+        self.assertEqual(candidatura_ia.acrescimos("Eu fiz A. Eu fiz B.", "Eu fiz A. Eu fiz C. Eu fiz B."), ["Eu fiz C."])
 
 
 SENSIVEIS = [

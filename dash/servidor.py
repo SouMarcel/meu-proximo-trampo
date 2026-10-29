@@ -289,7 +289,8 @@ class Handler(BaseHTTPRequestHandler):
                                 r = auto.preencher_pagina(aba, vaga)
                             else:  # as respostas que a pessoa deu no painel
                                 r = auto.responder(aba, vaga, str(corpo.get("assinatura") or ""), corpo.get("respostas"),
-                                                   lembrar=corpo.get("lembrar") is not False)
+                                                   lembrar=corpo.get("lembrar") is not False,
+                                                   guardar_relatos=corpo.get("guardar_relatos") is not False)
                             meta = candidatura_ia.gravar_preenchidas(vaga, r["preenchidos"]) if r["preenchidos"] else {}
                             return self._json(200, {**r, "documento": meta.get("nome")})
                         pagina = formulario.ler(aba)
@@ -432,6 +433,23 @@ class Handler(BaseHTTPRequestHandler):
         if metodo == "POST" and caminho == "/api/perfil/filtros-propostos":
             sugerir = bool(self._corpo().get("sugerir_en")) and ia.disponivel()
             return self._json(200, pp.propor_filtros(pp.carregar()["respostas"], sugerir_en=sugerir))
+        if caminho.startswith("/api/perfil/relatos/"):  # relatos da pessoa (spec 035): corrigir, apagar, levar ao perfil
+            import relatos
+            partes = caminho[len("/api/perfil/relatos/"):].split("/")
+            rid = unquote(partes[0])
+            if metodo == "PUT" and len(partes) == 1:
+                relatos.editar(rid, str(self._corpo().get("relato") or ""))
+            elif metodo == "DELETE" and len(partes) == 1:
+                self._corpo()
+                relatos.apagar(rid)
+            elif metodo == "POST" and partes[1:] == ["perfil"]:
+                self._corpo()
+                with TRAVA_PERFIL:  # grava o perfil.md (a versão anterior fica guardada)
+                    r = relatos.levar_ao_perfil(rid)
+                return self._json(200, {"relatos": relatos.listar(), "anterior": r["anterior"]})
+            else:
+                return self._erro(405, "método não permitido")
+            return self._json(200, {"relatos": relatos.listar()})
         with TRAVA_PERFIL:
             estado = pp.carregar()
             if metodo == "POST" and caminho == "/api/perfil/material":
@@ -508,12 +526,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(202, {**gerador.GERACAO.iniciar(vaga_id, corpo.get("tecnicas") or {}), "pode_alterar": True})
             if metodo == "POST" and caminho == "/api/curriculo/tentar":
                 return self._json(202, {**gerador.GERACAO.tentar(), "pode_alterar": True})
-            if metodo == "POST" and caminho in ("/api/kit/carta", "/api/kit/respostas"):
+            if metodo == "POST" and caminho in ("/api/kit/carta", "/api/kit/respostas", "/api/kit/verificar"):
                 corpo = self._corpo()
                 tipo = caminho.rsplit("/", 1)[1]
-                dados = corpo.get("respostas") if tipo == "carta" else corpo.get("perguntas")
+                dados = {"carta": corpo.get("respostas"), "respostas": corpo.get("perguntas"),
+                         "verificar": {k: corpo.get(k) for k in ("nome", "texto", "guardar_relatos")}}[tipo]
                 vaga_id = str(corpo.get("vaga_id") or "").strip()
                 return self._json(202, {**gerador.GERACAO.iniciar_kit(tipo, vaga_id, dados), "pode_alterar": True})
+            if metodo == "POST" and caminho.startswith("/api/kit/carta/") and caminho.endswith("/pdf") and caminho.count("/") == 5:
+                import candidatura_ia  # o PDF de uma carta que ficou sem ele (spec 035)
+                self._corpo()
+                try:
+                    meta = candidatura_ia.pdf_da_carta(caminho.split("/")[4])
+                except candidatura_ia.GeracaoErro as e:
+                    return self._erro(400, str(e))
+                return self._json(200, {"documento": meta})
             if metodo == "PUT" and caminho.startswith("/api/kit/respostas/"):
                 import candidatura_ia
                 try:
@@ -826,6 +853,11 @@ class Handler(BaseHTTPRequestHandler):
                                     "existe_perfil": pp.caminho_perfil().exists()})
         if caminho == "/api/perfil/estado":
             return self._json(200, pp.estado_para_pagina(self._local()))
+        if caminho == "/api/perfil/relatos":  # relatos da pessoa (spec 035): só deste computador
+            if not self._local():
+                return self._erro(403, SO_LOCAL_PERFIL)
+            import relatos
+            return self._json(200, {"relatos": relatos.listar()})
         if caminho == "/api/perfil/filtros-propostos":
             return self._json(200, pp.propor_filtros(pp.carregar()["respostas"]))
         if caminho.startswith("/api/vagas/") and caminho.endswith("/salario"):

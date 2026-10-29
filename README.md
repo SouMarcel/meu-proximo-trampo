@@ -58,12 +58,20 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   você (os seus dados de contato, as respostas que você já deu e, nas perguntas comuns, os fatos do seu perfil), mostra o que
   preencheu e de onde veio, e pergunta o resto. Você responde no painel e ela preenche. **Quem
   confere na janela e clica em Entrar, Continuar e Enviar é sempre você.**
+  - **Relatos:** nas perguntas abertas que o perfil não responde, conte com as suas palavras o que
+    aconteceu (sem se preocupar com o limite do formulário). O relato vale como verdade: a IA o
+    transforma na melhor resposta para aquela pergunta, sem acrescentar fatos, e ele fica guardado no
+    que a ferramenta sabe de você. A partir daí entra nas respostas, no currículo, na carta, nas
+    histórias STAR e na nota das vagas. Em **Meu perfil → Seus relatos** você corrige, apaga ou leva o
+    relato ao `perfil.md` (a versão anterior fica guardada). Sem IA, o relato vai como você escreveu.
   - As suas respostas ficam guardadas no seu computador (`dash/dados/`, fora do Git) e são
-    reaproveitadas nas próximas vagas; salário e relocação ela pergunta a cada vaga. Você vê e
+    reaproveitadas nas próximas vagas, inclusive a remuneração atual e o nome da mãe, também quando a
+    pergunta vem com outra redação; a pretensão salarial e a relocação ela pergunta a cada vaga. Você vê e
     apaga as guardadas em "Atualizar candidaturas" → Candidatura assistida. Os logins guardados e os sites liberados
   ficam em "Atualizar candidaturas" → Candidatura assistida: logins e sites.
   - A IA nunca responde perguntas sensíveis (salário, visto, autorização de trabalho, deficiência,
-    relocação, diversidade): elas vão com a sua resposta. Aceite de termos, anexos e testes do
+    relocação, diversidade) nem dados cadastrais (nome da mãe, documentos): eles vão exatamente como você
+    escrever. Aceite de termos, anexos e testes do
     portal ficam com você, na janela.
   - Listas com busca (como as do Greenhouse) também são preenchidas: a ferramenta abre a lista, lê
     as opções e escolhe pelo teclado, sem clicar. O reCAPTCHA invisível desses sites não atrapalha.
@@ -354,11 +362,30 @@ que você marca (a fazer, pronto, não se aplica); dá para tirar e acrescentar 
 análise só acrescenta. Cada item tem o seu botão, e nada acontece sem o clique:
 
 - **Gerar currículo**: o mesmo da seção Currículo.
-- **Escrever carta**: antes, quatro perguntas obrigatórias (por que esta vaga, que problema você
-  resolveria, o primeiro movimento no cargo e o tom). A IA escreve de 350 a 420 palavras no idioma
-  da vaga, só com fatos do perfil e das suas respostas, e a conferência bloqueia número ou data fora
-  do perfil e aponta texto genérico. A carta fica em `curriculos/` (.docx e .txt) para baixar ou
-  copiar.
+- **Escrever carta**: as perguntas (por que esta vaga, que problema você resolveria, o primeiro
+  movimento no cargo) são opcionais. A que ficar em branco a IA responde pelo seu perfil, pelos seus
+  relatos e pela vaga; o que você escrever vale como relato e fica no que a ferramenta sabe de você. A
+  carta tem de 350 a 420 palavras, no idioma da vaga, neste padrão:
+  - cabeçalho com o seu nome e contatos;
+  - saudação à equipe da empresa;
+  - introdução com a vaga e a empresa, o que você traz, o primeiro movimento e o primeiro problema
+    que você atacaria;
+  - "a vaga pede…", com a sua experiência mais aderente e os resultados;
+  - "a vaga também destaca…", com a sua trajetória;
+  - base técnica, certificações e formação, com o fechamento;
+  - despedida com o seu nome.
+
+  O cabeçalho e a despedida vêm dos seus dados de contato (Atualizar candidaturas → Candidatura
+  assistida) e nunca vão para a IA. Formato que o ATS lê: a IA recebe as
+  palavras-chave da vaga que o seu perfil sustenta (com o trecho do perfil que as prova) e as usa com
+  o termo exato do anúncio. A carta mostra quantas delas usou. A conferência bloqueia número ou data
+  fora do perfil e aponta texto genérico. A carta fica em `curriculos/` em .pdf, .docx e .txt, para
+  exportar ou copiar (o PDF sai pelo LibreOffice ou pelo Word; se não sair, o botão **Gerar PDF** tenta
+  de novo).
+  - **Editar e verificar**: em "Ler a carta", edite o texto à vontade e clique em **Verificar**. A IA
+    incorpora as suas mudanças, corrige gramática e ortografia e mantém a estrutura, as palavras-chave
+    e o tamanho. Sai uma versão nova, com a lista do que ela ajustou, e a anterior continua. O que você
+    acrescentou vale como fato seu e vira relato.
 - **Preparar respostas**: cole as perguntas do formulário. As de autorização de trabalho, visto,
   cidadania, salário, deficiência, relocação e diversidade **nunca vão para a IA**: ficam para você
   responder. As outras são rascunhadas com o perfil e conferidas.

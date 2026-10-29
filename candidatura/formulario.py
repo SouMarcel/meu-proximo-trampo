@@ -285,6 +285,10 @@ CADASTRO = re.compile(r"\b(nome|name|sobrenome|first name|last name|full name|e-
                       r"cpf|rg|documento|passaporte|passport|endereco|address|cep|zip|postal|cidade|city|bairro|estado|pais|"
                       r"country|nascimento|birth|idade|linkedin|github|portfolio|website|site|url)\b")
 AUTOCOMPLETE_CADASTRO = re.compile(r"name|email|tel|address|postal|country|bday|street|locality|region|url|username")
+# dado pessoal de identificação: cadastro também em campo de texto longo (nunca vai à IA nem vira relato; spec 035)
+PESSOAL = re.compile(r"\b(nome (completo )?d[ao] (sua |seu )?(mae|pai)|filiacao|nome (materno|paterno)|"
+                     r"(mother|father)'?s? (full |maiden )?name|cpf|rg|passaporte|passport|data de nascimento|"
+                     r"date of birth)\b")
 MOTIVOS = {
     "sensivel": "responda você na página",
     "cadastro": "dado cadastral: confira ou preencha você",
@@ -320,6 +324,8 @@ def classificar_campo(c: dict) -> tuple[str, str]:
     if tipo in ("texto", "selecao", "lista") and (
             c.get("tipo_html") in ("email", "tel", "url") or CADASTRO.search(rotulo)
             or AUTOCOMPLETE_CADASTRO.search(_sem_acento(c.get("autocomplete")))):
+        return "cadastro", MOTIVOS["cadastro"]
+    if tipo == "area" and PESSOAL.search(rotulo):
         return "cadastro", MOTIVOS["cadastro"]
     if tipo not in ("texto", "area", "selecao", "lista", "unica", "multipla", "caixa"):
         return "outro", MOTIVOS["outro"]

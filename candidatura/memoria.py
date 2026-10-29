@@ -19,7 +19,10 @@ from datetime import date
 
 import banco
 
-NAO_LEMBRAR = {"salário ou pretensão", "relocação"}  # mudam de vaga para vaga: a ferramenta pergunta sempre
+NAO_LEMBRAR = {"pretensão salarial", "relocação"}  # mudam de vaga para vaga: a ferramenta pergunta sempre
+# fatos estáveis de texto livre: reaproveitados também quando a pergunta vem com outra redação (spec 035)
+FATOS = {"nome da mãe": re.compile(r"\b(mae|mother|materno|maiden)\b"),
+         "nome do pai": re.compile(r"\b(pai|father|paterno)\b")}
 MAX_RESPOSTAS, TAMANHO = 500, 2000
 TRAVA = threading.Lock()
 
@@ -60,6 +63,19 @@ def _categoria(campo: dict) -> str | None:
     return candidatura_ia.sensivel(campo.get("rotulo") or "") or candidatura_ia.sensivel(campo.get("nome") or "")
 
 
+def fato(campo: dict) -> str | None:
+    """O fato estável que a pergunta pede (remuneração atual, nome da mãe, nome do pai), para reaproveitar a resposta
+    também com outra redação; None para as outras perguntas."""
+    if campo.get("tipo") not in ("texto", "area"):
+        return None
+    if _categoria(campo) == "remuneração atual":
+        return "remuneração atual"
+    rotulo = _sem_acento(campo.get("rotulo"))
+    if "nome" in rotulo or "name" in rotulo:
+        return next((f for f, padrao in FATOS.items() if padrao.search(rotulo)), None)
+    return None
+
+
 def lembrar(campo: dict, texto: str) -> bool:
     """Guarda a resposta (o texto legível: o da opção, "sim"/"não" ou o digitado). Devolve se guardou."""
     categoria = _categoria(campo)
@@ -72,7 +88,7 @@ def lembrar(campo: dict, texto: str) -> bool:
         if k not in d and len(d) >= MAX_RESPOSTAS:
             return False
         d[k] = {"pergunta": str(campo.get("rotulo") or "")[:500], "resposta": texto, "categoria": categoria,
-                "em": date.today().isoformat()}
+                "fato": fato(campo), "em": date.today().isoformat()}
         _gravar(d)
     return True
 
@@ -86,7 +102,13 @@ def valor_para(campo: dict) -> str | None:
     (ex.: a opção guardada não existe nesta página)."""
     if _categoria(campo) in NAO_LEMBRAR:
         return None
-    r = _carregar().get(chave(campo.get("rotulo")))
+    guardadas = _carregar()
+    r = guardadas.get(chave(campo.get("rotulo")))
+    alvo = fato(campo)
+    if not r and alvo:  # outra redação do mesmo fato: a resposta mais recente dele (as antigas, sem "fato", pela pergunta)
+        iguais = [x for x in guardadas.values()
+                  if (x.get("fato") or fato({"rotulo": x.get("pergunta"), "tipo": "texto"})) == alvo]
+        r = max(iguais, key=lambda x: x.get("em") or "") if iguais else None
     if not r:
         return None
     texto, tipo = r["resposta"], campo.get("tipo")
