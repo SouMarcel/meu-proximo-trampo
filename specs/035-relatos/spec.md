@@ -146,6 +146,24 @@ Pedido do usuário (28/10): exportar a carta também em PDF. A carta completa sa
 .docx pelo LibreOffice ou pelo Word, como o do currículo, com texto selecionável (o ATS lê). Carta antiga ou com
 conversão que falhou ganha o botão **Gerar PDF**. A mensagem curta continua só para copiar e colar.
 
+### User Story 7 - O padrão de carta do usuário (Priority: P1)
+
+Pedido do usuário (28/10), com uma carta que ele reescreveu para uma vaga real (introdução, conteúdo ajustado e
+fechamento correto): as cartas devem seguir esse padrão.
+- **Cabeçalho**: nome e uma linha de contatos.
+- **Saudação** à equipe da empresa.
+- **Introdução**: a vaga e a empresa, o que a pessoa traz, o primeiro movimento e o primeiro problema que atacaria.
+- **"A vaga pede…"**: a experiência mais aderente, com resultados.
+- **"A vaga também destaca…"**: a trajetória.
+- **Base técnica**, certificações e formação, com o fechamento.
+- **Despedida e nome.**
+
+A carta de referência tinha 389 palavras de corpo, dentro da faixa de 350 a 420.
+
+**Independent Test**: o pedido traz a saudação, a abertura e as frases-guia no idioma da vaga, e proíbe cabeçalho e
+despedida. A carta gravada começa pelo cabeçalho dos dados de contato e termina com a despedida e o nome. Os contatos
+nunca vão à IA, nem na revisão.
+
 ### Edge Cases
 
 - **Relato vazio**: a pergunta continua no painel.
@@ -188,7 +206,7 @@ conversão que falhou ganha o botão **Gerar PDF**. A mensagem curta continua s�
 - **FR-011** (US4): As perguntas da carta e da mensagem curta MUST ser opcionais. A que ficar em branco, a IA responde
   pelo perfil, pelos relatos e pela vaga, sem afirmar fatos ou sentimentos que eles não sustentam. O que a pessoa
   escrever MUST valer como relato e ser guardado (opção "Guardar o que eu escrever como relato", padrão sim).
-- **FR-012** (US4): O pedido da carta MUST pedir:
+- **FR-012** (US4, ajustado pela US7 e pelo FR-016): O pedido da carta MUST pedir:
   - primeiro parágrafo de até 60 palavras que vende a pessoa: quem ela é, o problema ou objetivo da vaga que ela ajuda
     a resolver e a prova mais forte do perfil;
   - parágrafos de solução, com cada necessidade do anúncio ligada a um fato do perfil ou dos relatos;
@@ -206,6 +224,12 @@ conversão que falhou ganha o botão **Gerar PDF**. A mensagem curta continua s�
   e ortografia e mantém estrutura, palavras-chave e tamanho, sem acrescentar fatos. Grava uma versão nova
   (`origem: "verificada"`, `base`, `mudancas`), e a anterior fica. O texto da pessoa conta como fato dela na
   conferência, e o que ela acrescentou vira relato (opção, padrão sim).
+- **FR-016** (US7): A carta MUST seguir o padrão da US7. A IA escreve o corpo, da saudação ao fechamento, com as frases-guia
+  no idioma da vaga ("I am writing to apply for…", "The posting asks for…", "Your posting also highlights…"). A
+  ferramenta põe o cabeçalho e a despedida com o nome a partir dos dados de contato (`candidatura/contato.py`), sem IA,
+  e tira a despedida que a IA tenha escrito. A conferência e a contagem de palavras olham só o corpo. Sem dados de
+  contato, a carta sai com `aviso_cabecalho`. O .docx mantém uma informação por linha no cabeçalho e na despedida, com
+  o nome em negrito.
 - **FR-015** (US6): A carta completa MUST sair também em PDF (`curriculo.para_pdf`), com `aviso_pdf` quando não sair, e
   `POST /api/kit/carta/{nome}/pdf` MUST gerar o PDF depois.
 

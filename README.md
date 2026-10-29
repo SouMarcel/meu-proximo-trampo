@@ -365,9 +365,18 @@ análise só acrescenta. Cada item tem o seu botão, e nada acontece sem o cliqu
 - **Escrever carta**: as perguntas (por que esta vaga, que problema você resolveria, o primeiro
   movimento no cargo) são opcionais. A que ficar em branco a IA responde pelo seu perfil, pelos seus
   relatos e pela vaga; o que você escrever vale como relato e fica no que a ferramenta sabe de você. A
-  carta tem de 350 a 420 palavras, no idioma da vaga, e vende você logo no primeiro parágrafo: quem
-  você é, o problema da empresa que você ajuda a resolver e a sua prova mais forte. Depois vêm os
-  parágrafos de solução e um fechamento objetivo, em formato que o ATS lê: a IA recebe as
+  carta tem de 350 a 420 palavras, no idioma da vaga, neste padrão:
+  - cabeçalho com o seu nome e contatos;
+  - saudação à equipe da empresa;
+  - introdução com a vaga e a empresa, o que você traz, o primeiro movimento e o primeiro problema
+    que você atacaria;
+  - "a vaga pede…", com a sua experiência mais aderente e os resultados;
+  - "a vaga também destaca…", com a sua trajetória;
+  - base técnica, certificações e formação, com o fechamento;
+  - despedida com o seu nome.
+
+  O cabeçalho e a despedida vêm dos seus dados de contato (Atualizar candidaturas → Candidatura
+  assistida) e nunca vão para a IA. Formato que o ATS lê: a IA recebe as
   palavras-chave da vaga que o seu perfil sustenta (com o trecho do perfil que as prova) e as usa com
   o termo exato do anúncio. A carta mostra quantas delas usou. A conferência bloqueia número ou data
   fora do perfil e aponta texto genérico. A carta fica em `curriculos/` em .pdf, .docx e .txt, para

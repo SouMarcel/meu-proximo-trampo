@@ -57,4 +57,8 @@ description: "Tarefas da feature 035: Relatos — a candidatura assistida aprend
 
 - [X] T019 `_gravar_carta` com o PDF (`_pdf`), `pdf_da_carta` e a rota `POST /api/kit/carta/{nome}/pdf`; testes com o
   PDF simulado; conversão real conferida com o Word (texto com acentos extraído pelo pypdf).
+- [X] T021 (US7) `SAUDACAO`, `ABERTURA`, `PEDE`, `DESPEDIDA`; pedido da carta no padrão do usuário;
+  `moldura_da_carta` (cabeçalho e despedida dos dados de contato), `_sem_despedida`, `.docx` com linhas e nome em
+  negrito; Verificar sem mandar cabeçalho e despedida à IA; testes; front (aviso sem dados de contato, descrição); README,
+  API.md, skill e spec.
 - [X] T020 Front: "Exportar: .pdf .docx .txt", "Gerar PDF" e o motivo quando o PDF não sai; README, API.md e spec.

@@ -113,10 +113,14 @@ class TestCarta(ComPasta):
         with self.assertRaises(candidatura_ia.GeracaoErro):
             candidatura_ia.validar_respostas({**RESPOSTAS, "tom": "engraçado"})
 
-    def test_pedido_vende_no_primeiro_paragrafo(self):
+    def test_pedido_segue_o_padrao(self):  # o padrão da carta do usuário (spec 035, US7)
         sem = candidatura_ia.montar_pedido_carta(PERFIL, VAGA, candidatura_ia.validar_respostas({}))
-        self.assertIn("Primeiro parágrafo, até 60 palavras", sem)
-        self.assertIn("problema", sem)
+        self.assertIn('"Dear Acme Analytics Hiring Team,"', sem)
+        self.assertIn('"I am writing to apply for the Senior Data Analyst position at Acme Analytics."', sem)
+        self.assertIn('"The posting asks for..."', sem)
+        self.assertIn('"Your posting also highlights..."', sem)
+        self.assertIn("primeiro problema que ela atacaria", sem)
+        self.assertIn("Não escreva cabeçalho com nome e contatos, despedida nem assinatura", sem)
         self.assertIn("ATS", sem)
         self.assertIn("Ela não respondeu a: Por que esta vaga?", sem)
         self.assertIn("(nenhuma: responda você, pelo perfil e pela vaga)", sem)
@@ -231,6 +235,42 @@ class TestCarta(ComPasta):
         self.assertIsNone(msg["arquivos"]["pdf"])  # a mensagem curta é para copiar e colar
         with self.assertRaisesRegex(candidatura_ia.GeracaoErro, "mensagem"):
             candidatura_ia.pdf_da_carta(msg["nome"])
+
+    def test_cabecalho_e_despedida_dos_dados_de_contato(self):
+        with self.ia(json.dumps({"texto": carta()})):
+            sem_contato = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
+        self.assertTrue(sem_contato["texto"].endswith("Sincerely,"))
+        self.assertIn("dados de contato", sem_contato["aviso_cabecalho"])
+        from candidatura import contato
+        contato.gravar({"nome": "Ana", "sobrenome": "Exemplo", "email": "ana@exemplo.com", "telefone": "(11) 90000-0000",
+                        "cidade": "São Paulo", "estado": "SP", "pais": "Brasil",
+                        "linkedin": "https://www.linkedin.com/in/ana-exemplo/"})
+        with self.ia(json.dumps({"texto": carta() + "\n\nSincerely,\nAna Exemplo"})):  # a IA escreveu a despedida
+            meta = candidatura_ia.gerar_carta(VAGA, RESPOSTAS, perfil=PERFIL)
+        texto = meta["texto"]
+        self.assertTrue(texto.startswith("Ana Exemplo\nSão Paulo, SP, Brazil | ana@exemplo.com | (11) 90000-0000 | "
+                                         "linkedin.com/in/ana-exemplo\n\nDear hiring team"), texto[:160])
+        self.assertTrue(texto.endswith("\n\nSincerely,\nAna Exemplo"))
+        self.assertEqual(texto.count("Sincerely"), 1)  # a despedida da IA sai; fica a da ferramenta
+        self.assertNotIn("ana@exemplo.com", self.pedidos[-1])  # os contatos nunca vão à IA
+        self.assertNotIn("aviso_cabecalho", meta)
+        import docx
+        d = docx.Document(self.tmp / f"{meta['nome']}.docx")
+        primeiro = d.paragraphs[0].runs
+        self.assertEqual((primeiro[0].text.strip(), bool(primeiro[0].bold)), ("Ana Exemplo", True))  # quebra de linha depois
+        self.assertEqual(primeiro[1].text.strip(), "São Paulo, SP, Brazil | ana@exemplo.com | (11) 90000-0000 | linkedin.com/in/ana-exemplo")
+        with self.ia(json.dumps({"texto": carta("I also mentor two analysts."), "mudancas": []})):
+            nova = candidatura_ia.verificar_carta(meta["nome"], texto + "", perfil=PERFIL)
+        self.assertNotIn("ana@exemplo.com", self.pedidos[-1])  # na revisão também não
+        self.assertTrue(nova["texto"].startswith("Ana Exemplo\nSão Paulo"))
+        self.assertTrue(nova["texto"].endswith("Sincerely,\nAna Exemplo"))
+
+    def test_sem_despedida(self):
+        corpo = "Dear team,\n\nParagraph one.\n\nThank you."
+        for fim in ("\n\nSincerely,\nAna Exemplo", "\n\nBest regards,\n\nAna Exemplo", "\nSincerely,"):
+            self.assertEqual(candidatura_ia._sem_despedida(corpo + fim), corpo, fim)
+        self.assertEqual(candidatura_ia._sem_despedida("Prezada equipe,\n\nTexto.\n\nAtenciosamente,\nAna"),
+                         "Prezada equipe,\n\nTexto.")
 
     def test_acrescimos(self):
         self.assertEqual(candidatura_ia.acrescimos("Eu fiz A. Eu fiz B.", "Eu fiz A. Eu fiz C. Eu fiz B."), ["Eu fiz C."])

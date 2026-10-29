@@ -48,6 +48,27 @@ PERGUNTAS_CARTA = {"por_que": "Por que esta vaga?", "problema": "Que problema da
                    "primeiro_movimento": "Qual seria o seu primeiro movimento no cargo?", "tom": "Tom da carta"}
 TONS = {"direto": "direto e objetivo", "caloroso": "caloroso e próximo", "formal": "formal"}
 PERGUNTAS_RELATO = ("por_que", "problema", "primeiro_movimento")  # o que a pessoa escreve vale como relato (spec 035)
+# o padrão da carta (spec 035): a saudação e a abertura que a IA segue, e a despedida que a ferramenta põe
+SAUDACAO = {"pt": "Prezada equipe de recrutamento da {empresa},", "en": "Dear {empresa} Hiring Team,",
+            "es": "Estimado equipo de selección de {empresa}:", "fr": "Madame, Monsieur, l'équipe de recrutement de {empresa},",
+            "de": "Sehr geehrtes {empresa} Recruiting-Team,", "it": "Gentile team di selezione di {empresa},"}
+ABERTURA = {"pt": "Escrevo para me candidatar à vaga de {cargo} na {empresa}.",
+            "en": "I am writing to apply for the {cargo} position at {empresa}.",
+            "es": "Les escribo para postularme al puesto de {cargo} en {empresa}.",
+            "fr": "Je vous écris pour postuler au poste de {cargo} chez {empresa}.",
+            "de": "Hiermit bewerbe ich mich auf die Position {cargo} bei {empresa}.",
+            "it": "Vi scrivo per candidarmi alla posizione di {cargo} presso {empresa}."}
+PEDE = {"pt": ("A vaga pede", "A vaga também destaca"), "en": ("The posting asks for", "Your posting also highlights"),
+        "es": ("La vacante pide", "La vacante también destaca"), "fr": ("L'offre demande", "L'offre souligne aussi"),
+        "de": ("Die Stelle verlangt", "Die Ausschreibung betont außerdem"),
+        "it": ("L'annuncio richiede", "L'annuncio evidenzia anche")}
+DESPEDIDA = {"pt": "Atenciosamente,", "en": "Sincerely,", "es": "Atentamente,", "fr": "Cordialement,",
+             "de": "Mit freundlichen Grüßen,", "it": "Cordiali saluti,"}
+PAIS = {"en": {"brasil": "Brazil"}, "es": {"brasil": "Brasil"}, "fr": {"brasil": "Brésil"}, "de": {"brasil": "Brasilien"},
+        "it": {"brasil": "Brasile"}}
+FECHOS = re.compile(r"^(sincerely|best regards|kind regards|regards|yours (sincerely|truly)|atenciosamente|cordialmente|"
+                    r"abra[cç]os|um abra[cç]o|saludos|atentamente|cordialement|mit freundlichen gr[uü]ßen|cordiali saluti)\b",
+                    re.I)
 FORMATOS = ("carta", "mensagem")  # mensagem: curta, com limite de caracteres (ex.: 400 na vaga preferencial do LinkedIn)
 LIMITE_MENSAGEM = (20, 3000, 400)  # mínimo, máximo e padrão do limite de caracteres
 TAMANHO_RESPOSTA = 800
@@ -211,18 +232,25 @@ def montar_pedido_carta(perfil: str, vaga: dict, respostas: dict) -> str:
         ]
     else:
         o_que = "uma carta de apresentação"
+        cargo = vaga.get("titulo") or "a vaga"
+        pede, destaca = PEDE.get(idioma, PEDE["en"])
         estrutura = [
-            "Estrutura (obrigatória):",
-            "1. Primeiro parágrafo, até 60 palavras: quem a pessoa é profissionalmente (área, cargo e experiência do "
-            f"perfil), o principal problema ou objetivo que a vaga mostra em {empresa} e como ela vai ajudar a "
-            "resolvê-lo, com a prova mais forte do perfil (de preferência uma conquista com número que esteja lá). Sem "
-            "abertura genérica (como \"venho por meio desta\" ou \"gostaria de me candidatar\"): este parágrafo sozinho "
-            "tem de convencer quem lê a continuar.",
-            "2. Dois ou três parágrafos curtos de solução: para cada necessidade importante do anúncio, o que a pessoa faria "
-            "e o fato do perfil ou dos relatos que mostra que ela já fez algo parecido (habilidade, contexto e resultado).",
-            "3. Um parágrafo de motivação e primeiro movimento: por que esta vaga e o que ela faria nas primeiras semanas.",
-            "4. Fechamento de uma frase, objetivo, convidando para uma conversa.",
-            f"- Entre {minimo} e {maximo} palavras, em {IDIOMAS[idioma]}, tom {TONS[respostas['tom']]}.",
+            "Estrutura (obrigatória), em parágrafos separados por linha em branco:",
+            f"1. Saudação à equipe da empresa, numa linha só (ex.: \"{SAUDACAO.get(idioma, SAUDACAO['en']).format(empresa=empresa)}\").",
+            "2. Introdução, até 80 palavras, que convence quem lê a continuar: a primeira frase diz a vaga e a empresa "
+            f"(ex.: \"{ABERTURA.get(idioma, ABERTURA['en']).format(cargo=cargo, empresa=empresa)}\"); depois, em uma frase, "
+            f"o que a pessoa pode trazer para {empresa}; por fim, o primeiro movimento no cargo e o primeiro problema que "
+            "ela atacaria, ligado ao que a vaga mostra.",
+            f"3. O parágrafo mais forte: comece pelo que a vaga pede (\"{pede}...\"), com os termos do anúncio, e mostre a "
+            "experiência do perfil que mais cobre isso: cargo, empresa, o que a pessoa fez e os resultados com número que "
+            "estejam no perfil ou nos relatos.",
+            f"4. Os outros requisitos que a vaga destaca (\"{destaca}...\") e a trajetória que os cobre: tempo de "
+            "experiência, outras empresas e projetos do perfil e o trabalho atual.",
+            "5. A base técnica (as ferramentas do anúncio que o perfil tem), as certificações e a formação do perfil, e o "
+            f"fechamento numa frase: pronta para aplicar isso em {empresa} e com vontade de conversar sobre como pode "
+            "contribuir.",
+            f"- Entre {minimo} e {maximo} palavras (sem contar a saudação), em {IDIOMAS[idioma]}, tom {TONS[respostas['tom']]}.",
+            "- Não escreva cabeçalho com nome e contatos, despedida nem assinatura: a ferramenta acrescenta.",
         ]
     return "\n".join([
         f"Você escreve {o_que} para a ferramenta meu-proximo-trampo. Quem recebe decide nas primeiras linhas se continua "
@@ -287,14 +315,20 @@ def guardar_relatos_da_carta(vaga: dict, respostas: dict) -> int:
     return guardados
 
 
-def _docx_carta(texto: str, destino: Path) -> bool:
+def _docx_carta(texto: str, destino: Path, negrito_primeira: bool = False) -> bool:
     try:
         import docx
     except ImportError:
         return False
     d = docx.Document()
-    for paragrafo in re.split(r"\n\s*\n", texto.strip()):
-        d.add_paragraph(" ".join(paragrafo.split()))
+    for i, paragrafo in enumerate(re.split(r"\n\s*\n", texto.strip())):
+        p = d.add_paragraph()
+        linhas = [" ".join(l.split()) for l in paragrafo.splitlines() if l.strip()]
+        for j, linha in enumerate(linhas):  # o cabeçalho e a despedida têm uma informação por linha
+            run = p.add_run(linha)
+            run.bold = negrito_primeira and i == 0 and j == 0
+            if j < len(linhas) - 1:
+                run.add_break()
     d.save(destino)
     return True
 
@@ -313,10 +347,16 @@ def gerar_carta(vaga: dict, respostas: dict, progresso=None, perfil: str | None 
     if not texto:
         raise GeracaoErro("a resposta da IA veio sem o texto")
     avisar("conferindo")
-    conf = conferir.conferir_carta(texto, perfil, curriculo_ia.texto_da_vaga(vaga), vaga.get("empresa") or "",
+    corpo = texto if mensagem else _sem_despedida(texto)
+    conf = conferir.conferir_carta(corpo, perfil, curriculo_ia.texto_da_vaga(vaga), vaga.get("empresa") or "",
                                    _so_respostas(respostas), limite=respostas.get("limite"))
     avisar("gerando")
-    meta = _gravar_carta(vaga, texto, conf, respostas)
+    if mensagem:
+        meta = _gravar_carta(vaga, corpo, conf, respostas)
+    else:  # o cabeçalho e a despedida vêm dos dados de contato da pessoa, sem passar pela IA
+        cabecalho, despedida, aviso = moldura_da_carta(respostas.get("idioma") or _idioma(vaga))
+        meta = _gravar_carta(vaga, _juntar(cabecalho, corpo, despedida), conf, respostas,
+                             {"cabecalho": cabecalho, "despedida": despedida, **({"aviso_cabecalho": aviso} if aviso else {})})
     meta["relatos"] = guardar_relatos_da_carta(vaga, respostas)
     return meta
 
@@ -331,7 +371,8 @@ def _gravar_carta(vaga: dict, texto: str, conf: dict, respostas: dict, extra: di
     criados = [pasta / f"{nome}{ext}" for ext in (".txt", ".docx", ".pdf", ".meta.json")]
     try:
         (pasta / f"{nome}.txt").write_text(texto + "\n", encoding="utf-8")
-        tem_docx = False if mensagem else _docx_carta(texto, pasta / f"{nome}.docx")  # a mensagem é para copiar e colar
+        tem_docx = False if mensagem else _docx_carta(texto, pasta / f"{nome}.docx",  # a mensagem é para copiar e colar
+                                                      negrito_primeira=bool((extra or {}).get("cabecalho")))
         pdf, aviso_pdf = _pdf(pasta / f"{nome}.docx") if tem_docx else (None, None)
         meta = {"nome": nome, "tipo": "carta", "formato": respostas.get("formato") or "carta", "limite": respostas.get("limite"),
                 "alvo": _alvo(vaga), "respostas": respostas, "idioma": respostas.get("idioma") or _idioma(vaga),
@@ -347,6 +388,38 @@ def _gravar_carta(vaga: dict, texto: str, conf: dict, respostas: dict, extra: di
         curriculo_ia._apagar(criados)
         raise
     return meta
+
+
+def moldura_da_carta(idioma: str) -> tuple[str, str, str | None]:
+    """(cabeçalho, despedida, aviso): o nome e os contatos salvos pela pessoa (candidatura/contato.py, spec 033), no
+    padrão "Nome / Cidade, UF, País | e-mail | telefone | LinkedIn", e a despedida com o nome. Nada disso vai à IA."""
+    from candidatura import contato
+    d = contato.ler() or {}
+    nome = " ".join(x for x in (d.get("nome"), d.get("sobrenome")) if x).strip()
+    pais = d.get("pais") or ""
+    pais = PAIS.get(idioma, {}).get(_sem_acento(pais), pais)
+    local = ", ".join(x for x in (d.get("cidade"), d.get("estado"), pais) if x)
+    linkedin = re.sub(r"^https?://(www\.)?", "", d.get("linkedin") or "").rstrip("/")
+    linha = " | ".join(x for x in (local, d.get("email"), d.get("telefone"), linkedin) if x)
+    cabecalho = "\n".join(x for x in (nome, linha) if x)
+    despedida = DESPEDIDA.get(idioma, DESPEDIDA["en"]) + (f"\n{nome}" if nome else "")
+    aviso = None if nome else ("Sem os seus dados de contato, a carta saiu sem cabeçalho e sem o seu nome na despedida: "
+                               "salve-os em Atualizar candidaturas → Candidatura assistida → Seus dados de contato.")
+    return cabecalho, despedida, aviso
+
+
+def _juntar(cabecalho: str, corpo: str, despedida: str) -> str:
+    return "\n\n".join(x.strip() for x in (cabecalho, corpo, despedida) if x and x.strip())
+
+
+def _sem_despedida(texto: str) -> str:
+    """O corpo sem a despedida e a assinatura que a IA tenha escrito (a ferramenta põe as dela)."""
+    partes = [p for p in re.split(r"\n\s*\n", str(texto or "").strip()) if p.strip()]
+    while len(partes) > 1 and (FECHOS.match(partes[-1].strip()) or (len(partes[-1].split()) <= 4 and FECHOS.match(partes[-2].strip()))):
+        partes.pop()
+    if partes and FECHOS.match(partes[-1].splitlines()[-1].strip()):  # despedida colada no último parágrafo
+        partes[-1] = "\n".join(partes[-1].splitlines()[:-1]).strip()
+    return "\n\n".join(p.strip() for p in partes if p.strip())
 
 
 def _pdf(docx: Path) -> tuple[str | None, str | None]:
@@ -408,8 +481,10 @@ def montar_pedido_verificar(perfil: str, vaga: dict, meta: dict, editado: str) -
         "- Mantenha tudo o que a pessoa mudou ou acrescentou: são fatos e escolhas dela. Não tire nem enfraqueça nada disso.",
         f"- Corrija gramática, ortografia, pontuação, concordância e regência em {IDIOMAS.get(idioma, idioma)}, e melhore "
         "a fluidez sem mudar o sentido nem o tom.",
-        "- Mantenha a estrutura que vende a pessoa: o primeiro parágrafo diz quem ela é, o problema da empresa que ela ajuda "
-        "a resolver e a prova mais forte; depois a solução, a motivação e um fechamento objetivo.",
+        "- Mantenha a estrutura: saudação; introdução com a vaga e a empresa, o que a pessoa traz, o primeiro movimento e o "
+        "primeiro problema que ela atacaria; o que a vaga pede e a experiência que cobre isso, com resultados; os outros "
+        "requisitos e a trajetória; a base técnica, certificações e formação, e o fechamento. Não escreva cabeçalho, "
+        "despedida nem assinatura.",
         "- Mantenha as palavras-chave da vaga com o termo exato do anúncio e o formato que um ATS lê (parágrafos curtos, "
         "sem tabelas nem símbolos).",
         f"- {tamanho} Se precisar cortar, corte repetição, nunca o que a pessoa acrescentou.",
@@ -449,19 +524,30 @@ def verificar_carta(nome: str, editado: str, guardar_relatos: bool = True, progr
     vaga = banco.obter((meta.get("alvo") or {}).get("id") or "") or {
         k: (meta.get("alvo") or {}).get(k) for k in ("id", "titulo", "empresa")}
     perfil = curriculo_ia.perfil_texto() if perfil is None else perfil
+    # o cabeçalho e a despedida (dados de contato) não vão à IA: saem do texto e voltam depois, como a pessoa deixou
+    cabecalho, despedida = meta.get("cabecalho") or "", meta.get("despedida") or ""
+    corpo_editado = editado
+    if cabecalho and corpo_editado.startswith(cabecalho):
+        corpo_editado = corpo_editado[len(cabecalho):].strip()
+    if despedida and corpo_editado.endswith(despedida):
+        corpo_editado = corpo_editado[:-len(despedida)].strip()
     avisar("escrevendo")
-    resposta = _json(_ia_responder(montar_pedido_verificar(perfil, vaga, meta, editado)), "{", "}")
+    resposta = _json(_ia_responder(montar_pedido_verificar(perfil, vaga, meta, corpo_editado)), "{", "}")
     texto = str(resposta.get("texto") or "").strip() if isinstance(resposta, dict) else ""
     if not texto:
         raise GeracaoErro("a resposta da IA veio sem o texto")
+    texto = _sem_despedida(texto) if meta.get("formato") != "mensagem" else texto
     mudancas = [str(m)[:200] for m in (resposta.get("mudancas") or []) if str(m).strip()][:10]
     avisar("conferindo")
     respostas = {**(meta.get("respostas") or {}), "formato": meta.get("formato") or "carta", "limite": meta.get("limite")}
     avisar("gerando")
-    novas = acrescimos(meta.get("texto") or "", editado)
+    novas = acrescimos(meta.get("texto") or "", corpo_editado)
     conf = conferir.conferir_carta(texto, perfil, curriculo_ia.texto_da_vaga(vaga), vaga.get("empresa") or "",
-                                   {**_so_respostas(respostas), "edicao": editado}, limite=meta.get("limite"))
-    nova = _gravar_carta(vaga, texto, conf, respostas, {"origem": "verificada", "base": nome, "mudancas": mudancas})
+                                   {**_so_respostas(respostas), "edicao": corpo_editado}, limite=meta.get("limite"))
+    extra = {"origem": "verificada", "base": nome, "mudancas": mudancas}
+    if cabecalho or despedida:
+        extra.update(cabecalho=cabecalho, despedida=despedida)
+    nova = _gravar_carta(vaga, _juntar(cabecalho, texto, despedida), conf, respostas, extra)
     nova["relatos"] = 0
     if guardar_relatos and novas:
         import relatos

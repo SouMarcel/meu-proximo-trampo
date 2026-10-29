@@ -225,13 +225,21 @@ Isso protege o usuário: o recrutador confere, e data é a coisa mais fácil de 
    as perguntas; a que ela não quiser responder, responda você pelo perfil, pelos relatos
    (`PY relatos.py lista`) e pela vaga, sem afirmar sentimentos ou fatos que eles não
    sustentam. O que ela escrever vale como relato.
-2. **Escreva para vender a pessoa a esta vaga**, de 350 a 420 palavras, no idioma da vaga:
-   - **primeiro parágrafo** (até 60 palavras): quem ela é profissionalmente, o principal
-     problema ou objetivo que a vaga mostra na empresa e como ela vai ajudar a resolver, com a
-     prova mais forte do perfil. Quem lê decide aqui se continua;
-   - dois ou três parágrafos curtos de **solução**: cada necessidade do anúncio, o que ela
-     faria e o fato que mostra que ela já fez algo parecido;
-   - motivação e primeiro movimento, e um fechamento de uma frase convidando para conversar.
+2. **Escreva para vender a pessoa a esta vaga**, de 350 a 420 palavras de corpo, no idioma
+   da vaga, neste padrão:
+   - **cabeçalho**: nome e uma linha com cidade, estado e país, e-mail, telefone e LinkedIn
+     (dos dados de contato da pessoa);
+   - **saudação** à equipe da empresa ("Dear Acme Hiring Team,");
+   - **introdução** (até 80 palavras): a vaga e a empresa na primeira frase ("I am writing to
+     apply for the X position at Acme."), o que a pessoa traz, o primeiro movimento no cargo e
+     o primeiro problema que ela atacaria. Quem lê decide aqui se continua;
+   - **"a vaga pede…"**: os requisitos principais e a experiência mais aderente, com cargo,
+     empresa, o que ela fez e os resultados com número;
+   - **"a vaga também destaca…"**: os outros requisitos e a trajetória (tempo de experiência,
+     outras empresas, o trabalho atual);
+   - **base técnica**, certificações e formação, e o fechamento numa frase convidando para
+     conversar;
+   - **despedida** ("Sincerely," ou "Atenciosamente,") e o nome.
 
    Cite a empresa e ligue pelo menos dois requisitos do anúncio a fatos do perfil, com os
    termos do anúncio quando forem verdade. Formato que o ATS lê: parágrafos curtos, sem tabelas
