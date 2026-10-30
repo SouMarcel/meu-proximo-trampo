@@ -194,6 +194,11 @@ Resposta: `{vaga: Vaga}`. Erros: 400, 404. Combinações que o front manda:
 - Resultado (menu ou seletor): `{resultado}`; Salvar no detalhe: `{anotacao, email_candidatura, assunto_candidatura}`
 - Data da entrevista: `{entrevista_em}`; checklist: `{kit}`; lembrete Feito/Dispensar/Parar: `{lembretes}`
 O front faz uma escrita por vez por vaga (fila) e troca a vaga local pela devolvida.
+O servidor liga o item "Enviar a candidatura" ao quadro (spec 010, FR-017; `kit.apos_marcar`). Um `{kit}` que passa
+`candidatura` a `pronto` com a vaga em `salva` devolve a vaga em `aplicada`, com `etapa_em` de hoje e
+`resultado: null`; voltar a `a_fazer` não muda a etapa. Um `{etapa}` para `aplicada`, `entrevista` ou `proposta`
+devolve o `kit` com `candidatura: pronto`, a menos que esteja `nao_se_aplica`. Nessas etapas, o item vem `pronto` por
+padrão no `checklist`.
 
 **`DELETE /api/vagas/{id}`** — "Remover do quadro". Vaga `manual` é apagada; as outras só saem do quadro
 (viram `triagem: visitada`, `etapa: null`). Resposta `{ok: true}`. Erro 404.
