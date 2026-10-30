@@ -167,35 +167,43 @@ export default function TriageReport({
   const [modos, setModos] = useState<string[]>(Array.isArray(prefs.modos) ? prefs.modos : [])
   const [aderMin, setAderMin] = useState<number | null>(typeof prefs.ader === "number" ? prefs.ader : null)
   const [diasMax, setDiasMax] = useState<number | null>(typeof prefs.dias === "number" ? prefs.dias : null)
+  // Analisadas (spec 038): marcada, as vagas ainda sem nota somem de todas as abas (a nota provisória conta como nota)
+  const [soAnalisadas, setSoAnalisadas] = useState(prefs.analisadas === true)
   const [baixasAbertas, setBaixasAbertas] = useState(false)
 
   useEffect(() => {
-    ScreenPreferencesService.saveTriagePreferences({ triageOrdem: ordem, niveis, modos, ader: aderMin, dias: diasMax })
-  }, [ordem, niveis, modos, aderMin, diasMax])
+    ScreenPreferencesService.saveTriagePreferences({ triageOrdem: ordem, niveis, modos, ader: aderMin, dias: diasMax, analisadas: soAnalisadas })
+  }, [ordem, niveis, modos, aderMin, diasMax, soAnalisadas])
 
-  const filtrando = niveis.length > 0 || modos.length > 0 || aderMin != null || diasMax != null || Boolean(searchQuery)
+  const filtrando = niveis.length > 0 || modos.length > 0 || aderMin != null || diasMax != null || Boolean(searchQuery) || soAnalisadas
   const limparFiltros = () => {
     setNiveis([])
     setModos([])
     setAderMin(null)
     setDiasMax(null)
     setSearchQuery("")
+    setSoAnalisadas(false)
   }
   const alternar = (lista: string[], k: string) => (lista.includes(k) ? lista.filter((x) => x !== k) : [...lista, k])
+
+  // Com Analisadas marcada, os números das abas e o Marcar todas contam só as vagas com nota (spec 038)
+  const visivel = (v: Vaga) => !soAnalisadas || temNota(v)
 
   // Contagens por aba de triagem
   const counts = useMemo(() => {
     const res = { pendente: 0, seguir: 0, visitada: 0, fora: 0 }
     vagas.forEach((v) => {
-      if (v.triagem in res) {
+      if (v.triagem in res && (!soAnalisadas || temNota(v))) {
         res[(v.triagem as SubTab)]++
       }
     })
     return res
-  }, [vagas])
+  }, [vagas, soAnalisadas])
 
   // Filtragem e ordem da aba ativa (as regras do dashboard antigo; "ni" = não informado)
-  const daTriagem = useMemo(() => vagas.filter((v) => v.triagem === subTab), [vagas, subTab])
+  const naAba = useMemo(() => vagas.filter((v) => v.triagem === subTab), [vagas, subTab])
+  const daTriagem = useMemo(() => (soAnalisadas ? naAba.filter(temNota) : naAba), [naAba, soAnalisadas])
+  const ocultas = naAba.length - daTriagem.length
   const lista = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     const nota = (v: Vaga) => (temNota(v) ? (v.aderencia as number) : -1)
@@ -221,6 +229,9 @@ export default function TriageReport({
             Boolean(v.termos?.some((t) => t.toLowerCase().includes(q)))
           if (!achou) return false
         }
+        // vaga ainda sem nota (aguardando a IA, descrição pendente, falha): os outros filtros dependem da análise ou
+        // a escondiam sem aviso; ela aparece sempre, salvo com Analisadas marcada (spec 038)
+        if (!temNota(v)) return true
         if (niveis.length) {
           const nv = niveisDa(v)
           if (!(nv.length ? nv.some((x) => niveis.includes(x)) : niveis.includes("ni"))) return false
@@ -784,6 +795,15 @@ export default function TriageReport({
               />
               <span className="text-slate-500">dias</span>
             </label>
+            <label className="flex items-center gap-1.5 cursor-pointer" title="Oculta as vagas ainda sem análise">
+              <input
+                type="checkbox"
+                checked={soAnalisadas}
+                onChange={(e) => setSoAnalisadas(e.target.checked)}
+                className="w-3.5 h-3.5 accent-indigo-600"
+              />
+              <span className="font-semibold text-slate-500">Analisadas</span>
+            </label>
           </div>
         </div>
       </div>
@@ -793,7 +813,7 @@ export default function TriageReport({
         <div className="flex items-center justify-end gap-2 flex-wrap">
           <AvisoSoLeitura />
           <BotaoMarcarTodas
-            ids={vagas.filter((v) => v.triagem === "pendente").map((v) => v.id)}
+            ids={vagas.filter((v) => v.triagem === "pendente" && visivel(v)).map((v) => v.id)}
             rotulo="Marcar todas como não seguidas"
             podeGravar={podeGravar}
             onMarcar={onMarcarTodasNaoSeguidas}
@@ -803,9 +823,10 @@ export default function TriageReport({
 
       {/* Job Cards List */}
       <div className="space-y-3">
-        {filtrando && daTriagem.length > 0 && (
+        {filtrando && naAba.length > 0 && (
           <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
-            Mostrando {lista.length} de {daTriagem.length} {daTriagem.length === 1 ? "vaga" : "vagas"}.{" "}
+            Mostrando {lista.length} de {daTriagem.length} {daTriagem.length === 1 ? "vaga" : "vagas"}
+            {ocultas > 0 ? ` (${ocultas} sem análise ${ocultas === 1 ? "oculta" : "ocultas"})` : ""}.{" "}
             <button type="button" onClick={limparFiltros} className="underline font-semibold text-indigo-600 dark:text-indigo-400">
               Limpar filtros
             </button>
@@ -847,7 +868,7 @@ export default function TriageReport({
               Nenhuma vaga nesta seção
             </h4>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              {daTriagem.length && filtrando
+              {naAba.length && filtrando
                 ? "Nenhuma vaga passa nos filtros."
                 : subTab === "pendente"
                   ? "Nenhuma vaga esperando decisão. Clique em Buscar vagas, no topo, ou peça a busca no chat do seu assistente."

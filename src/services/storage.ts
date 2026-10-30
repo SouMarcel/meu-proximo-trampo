@@ -24,6 +24,8 @@ export interface ScreenPreferences {
   modos?: string[]
   ader?: number | null
   dias?: number | null
+  /** Caixa "Analisadas" (spec 038): marcada, o Relatório oculta as vagas ainda sem nota em todas as abas. */
+  analisadas?: boolean
 }
 
 export class ScreenPreferencesService {
