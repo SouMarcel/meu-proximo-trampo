@@ -60,11 +60,11 @@ usuário pelo quickstart.
   nota.
 - [X] T009 Rodar `tsc --noEmit` e `vite build`, depois commit na `front-038-vagas-analisadas`. Rodar a suíte Python
   e fazer o commit da spec e do README na `038-vagas-analisadas`, procurando dados pessoais antes.
-- [ ] T010 Na branch pessoal:
+- [X] T010 Na branch pessoal:
   - `git merge 038-vagas-analisadas`;
   - copiar o `dist/` para `dash/front/`, sem commit;
   - pedir o teste do usuário pelo quickstart.
-- [ ] T011 Com o OK do usuário:
+- [X] T011 Com o OK do usuário:
   1. `git checkout -- dash/front` e apagar os assets novos;
   2. merge `--no-ff` na `master` e push;
   3. merge do front na `frontend-react` e push;
