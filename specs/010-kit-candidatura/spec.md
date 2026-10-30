@@ -234,6 +234,10 @@ nada.
   vagas, nacionais e internacionais; os campos de autorização e contratação no exterior só aparecem em
   vaga internacional.
 - **FR-016**: Textos MUST estar em português do Brasil; a carta e as respostas, no idioma da vaga.
+- **FR-017** (ajuste de 30/10/2026): O item "Enviar a candidatura" e o quadro MUST andar juntos:
+  marcar o item Pronto com a vaga em Salva leva a vaga para Aplicação Enviada (com a data do dia, que
+  conta para os lembretes); voltar o item para A fazer não devolve a vaga; a vaga indo para Aplicação
+  Enviada, Entrevista ou Proposta deixa o item Pronto, a menos que a pessoa o tenha marcado "não se aplica".
 
 ### Key Entities
 

@@ -99,6 +99,54 @@ class TestAnaliseComIA(unittest.TestCase):
         self.assertEqual(v["autorizacao"]["frase"], "We sponsor visas for candidates who later relocate.")
         self.assertEqual([i["item"] for i in v["checklist"]], ["curriculo", "carta", "portfolio", "teste", "candidatura"])
 
+    def test_enviar_candidatura_move_o_card(self):
+        doc, _ = banco.criar_manual({"titulo": "Analista de Dados", "empresa": "Beta", "etapa": "salva", "descricao": "x"})
+        v = banco.atualizar_usuario(doc["id"], {"kit": {"estados": {"candidatura": "pronto"}}})
+        self.assertEqual((v["etapa"], v["etapa_em"], v["resultado"]), ("aplicada", banco.hoje(), None))
+        v = banco.atualizar_usuario(doc["id"], {"kit": {"estados": {"candidatura": "a_fazer"}}})
+        self.assertEqual(v["etapa"], "aplicada")  # voltar a A fazer não devolve o card
+        outra, _ = banco.criar_manual({"titulo": "Analista de BI", "empresa": "Gama", "etapa": "salva", "descricao": "x"})
+        v = banco.atualizar_usuario(outra["id"], {"etapa": "entrevista", "etapa_em": banco.hoje()})
+        self.assertEqual(v["kit"]["estados"], {"candidatura": "pronto"})
+        self.assertEqual(banco.com_kit(v)["checklist"][-1]["estado"], "pronto")
+
+
+class TestEnvioNoQuadro(unittest.TestCase):
+    DIA = "2026-10-30"
+    PRONTO = {"estados": {"candidatura": "pronto"}, "extras": [], "removidos": []}
+
+    def marcar(self, doc, **limpos):
+        return kit.apos_marcar(doc, limpos, self.DIA)
+
+    def test_pronto_leva_para_aplicacao_enviada(self):
+        self.assertEqual(self.marcar({"etapa": "salva"}, kit=self.PRONTO),
+                         {"etapa": "aplicada", "etapa_em": self.DIA, "resultado": None})
+        for doc in ({"etapa": "entrevista"}, {"etapa": None}, {"etapa": "salva", "kit": self.PRONTO}):
+            self.assertEqual(self.marcar(doc, kit=self.PRONTO), {})  # fora de Salva, ou já estava Pronto
+        self.assertEqual(self.marcar({"etapa": "salva"}, kit=self.PRONTO, etapa="salva"), {})  # a pessoa mandou a etapa
+        self.assertEqual(self.marcar({"etapa": "salva"}, kit={**self.PRONTO, "estados": {"carta": "pronto"}}), {})
+        a_fazer = {**self.PRONTO, "estados": {"candidatura": "a_fazer"}}
+        self.assertEqual(self.marcar({"etapa": "aplicada", "kit": self.PRONTO}, kit=a_fazer), {})  # não volta para Salva
+
+    def test_mover_marca_pronto(self):
+        self.assertEqual(self.marcar({"etapa": "salva"}, etapa="aplicada")["kit"]["estados"], {"candidatura": "pronto"})
+        guardado = {"estados": {"carta": "pronto", "candidatura": "a_fazer"}, "extras": ["Referências"], "removidos": []}
+        novo = self.marcar({"etapa": "salva", "kit": guardado}, etapa="entrevista")["kit"]
+        self.assertEqual(novo, {**guardado, "estados": {"carta": "pronto", "candidatura": "pronto"}})
+        self.assertEqual(guardado["estados"]["candidatura"], "a_fazer")  # não mexe no que foi lido
+        nao = {"estados": {"candidatura": "nao_se_aplica"}}
+        self.assertEqual(self.marcar({"etapa": "salva", "kit": nao}, etapa="aplicada"), {})
+        self.assertEqual(self.marcar({"etapa": "aplicada"}, etapa="aplicada"), {})  # mesma etapa
+        self.assertEqual(self.marcar({"etapa": "aplicada"}, etapa="encerrada"), {})
+
+    def test_card_que_ja_estava_enviado(self):
+        def estado(v):
+            return {i["item"]: i["estado"] for i in kit.checklist(v)}["candidatura"]
+        self.assertEqual(estado({**VAGAS["pt"], "etapa": "aplicada"}), "pronto")
+        self.assertEqual(estado({**VAGAS["pt"], "etapa": "salva"}), "a_fazer")
+        self.assertEqual(estado({**VAGAS["pt"], "etapa": "aplicada", "kit": {"estados": {"candidatura": "a_fazer"}}}),
+                         "a_fazer")  # o que a pessoa marcou vale mais
+
 
 class TestChecklist(unittest.TestCase):
     def test_sem_analise_pelas_palavras(self):

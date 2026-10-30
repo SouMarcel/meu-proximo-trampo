@@ -652,7 +652,7 @@ def atualizar_usuario(vid: str, campos: dict) -> dict:
         doc = _ler(con, vid)
         if doc is None:
             raise KeyError(vid)
-        doc.update(limpos)
+        doc.update({**kit.apos_marcar(doc, limpos, hoje()), **limpos})
         doc["atualizada_em"] = agora()
         _gravar(con, vid, doc)
     return doc

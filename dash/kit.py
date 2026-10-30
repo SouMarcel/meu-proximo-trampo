@@ -24,6 +24,7 @@ ESTADOS = {"a_fazer": "A fazer", "pronto": "Pronto", "nao_se_aplica": "Não se a
 LEMBRETES = {"follow1": "Hora do follow-up", "follow2": "2º follow-up", "agradecimento": "Agradecer a entrevista"}
 ESTADOS_LEMBRETE = ("feito", "dispensado")
 ACOES = {"curriculo": "curriculo", "carta": "carta", "formulario": "respostas", "candidatura": "candidatar"}
+ETAPAS_ENVIADA = ("aplicada", "entrevista", "proposta")  # o card nessas etapas já teve a candidatura enviada
 TAMANHO_FRASE = 200
 MAX_EXTRAS, TAMANHO_EXTRA = 10, 80
 DIAS_FOLLOW = (("follow1", 7), ("follow2", 14))
@@ -136,6 +137,23 @@ def validar_lembretes(d) -> dict:
     return limpos
 
 
+def apos_marcar(doc: dict, limpos: dict, hoje: str) -> dict:
+    """O que muda junto com o que a pessoa marcou, para o checklist e o quadro andarem juntos: "Enviar a candidatura"
+    passando a Pronto com a vaga em Salva leva a vaga para Aplicação Enviada (voltar a A fazer não a devolve); a vaga
+    indo para Aplicação Enviada, Entrevista ou Proposta deixa o item Pronto ("Não se aplica" fica). O que a pessoa
+    mandou na mesma alteração vale mais."""
+    marcado = doc.get("kit") if isinstance(doc.get("kit"), dict) else {}
+    antes = (marcado.get("estados") or {}).get("candidatura")
+    if "kit" in limpos and "etapa" not in limpos:
+        if doc.get("etapa") == "salva" and limpos["kit"]["estados"].get("candidatura") == "pronto" and antes != "pronto":
+            return {"etapa": "aplicada", "etapa_em": hoje, "resultado": None}
+    elif "etapa" in limpos and "kit" not in limpos:
+        if limpos["etapa"] in ETAPAS_ENVIADA and limpos["etapa"] != doc.get("etapa") and antes in (None, "a_fazer"):
+            novo = {"estados": {}, "extras": [], "removidos": [], **marcado}
+            return {"kit": {**novo, "estados": {**(novo["estados"] or {}), "candidatura": "pronto"}}}
+    return {}
+
+
 # ---------------------------------------------------------------- checklist
 
 def _no_anuncio(descricao) -> list[tuple[str, str]]:
@@ -182,7 +200,7 @@ def checklist(v: dict, base: dict | None = None) -> list[dict]:
         if itens[conhecido or _id_extra(texto)]["origem"] == "pessoa":
             itens[conhecido or _id_extra(texto)].setdefault("extra", texto)  # para tirar, sai da lista da pessoa
     por("candidatura", "vaga", "Enviar a candidatura")
-    padrao = {}
+    padrao = {"candidatura": "pronto"} if v.get("etapa") in ETAPAS_ENVIADA else {}
     if base and any(base.values()):
         idioma = "en" if (ingles or v.get("idioma") == "en") else "pt"
         if base.get(idioma):
