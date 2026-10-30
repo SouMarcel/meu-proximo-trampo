@@ -76,6 +76,20 @@ export function getPlataformaStyle(
         border: "border-sky-200 dark:border-sky-800",
         accent: "#0284c7",
       }
+    case "EY":
+      return {
+        bg: "bg-yellow-50 dark:bg-yellow-950/40",
+        text: "text-yellow-800 dark:text-yellow-300",
+        border: "border-yellow-200 dark:border-yellow-800",
+        accent: "#ca8a04",
+      }
+    case "FullStack":
+      return {
+        bg: "bg-fuchsia-50 dark:bg-fuchsia-950/40",
+        text: "text-fuchsia-700 dark:text-fuchsia-300",
+        border: "border-fuchsia-200 dark:border-fuchsia-800",
+        accent: "#c026d3",
+      }
     case "JobGether":
       return {
         bg: "bg-cyan-50 dark:bg-cyan-950/40",
@@ -386,6 +400,8 @@ export function plataformaDoLink(u: string): string {
     ["infojobs.com.br", "InfoJobs"],
     ["vagas.com.br", "Vagas.com"],
     ["jobgether.", "JobGether"],
+    ["careers.ey.com", "EY"],
+    ["talent.fullstack.com", "FullStack"],
     ["remotive.", "Remotive"],
     ["himalayas.app", "Himalayas"],
     ["remoteok.", "RemoteOK"],

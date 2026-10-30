@@ -15,7 +15,9 @@ export type Plataforma =
   | "Nerdin"
   | "InfoJobs"
   | "Vagas.com"
+  | "EY"
   | "JobGether"
+  | "FullStack"
   | "Remotive"
   | "Himalayas"
   | "RemoteOK"
@@ -37,7 +39,9 @@ export const PLATAFORMAS: Plataforma[] = [
   "Nerdin",
   "InfoJobs",
   "Vagas.com",
+  "EY",
   "JobGether",
+  "FullStack",
   "Remotive",
   "Himalayas",
   "RemoteOK",
