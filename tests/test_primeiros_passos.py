@@ -129,8 +129,13 @@ class TestExtracao(Base):
         self.assertNotIn(CPF, r["texto"])
 
     def test_pdf_do_linkedin(self):
-        r = pp.extrair(self.arquivo("Profile.pdf", pdf_minimo(["www.linkedin.com/in/ana-exemplo", "Experience"])))
+        r = pp.extrair(self.arquivo("Profile.pdf", pdf_minimo(["www.linkedin.com/in/ana-exemplo (LinkedIn)", "Top Skills",
+                                                               "Experience", "Page 1 of 2"])))
         self.assertEqual(r["tipo"], "linkedin_pdf")
+        # currículo com o link do LinkedIn e "Experiência" não é o PDF do perfil (quase todo currículo tem os dois)
+        cv = pp.extrair(self.arquivo("cv.pdf", pdf_minimo(["Ana Exemplo", "linkedin.com/in/ana-exemplo", "Experience",
+                                                         "Analista de Dados"])))
+        self.assertEqual(cv["tipo"], "curriculo_pdf")
 
     def test_pdf_sem_texto_avisa(self):
         r = pp.extrair(self.arquivo("scan.pdf", pdf_minimo([])))
@@ -183,7 +188,7 @@ class TestAreas(Base):
         self.assertEqual(pp.extrair(pdf)["tipo"], "curriculo_pdf")  # sem área, a adivinhação de hoje
         docx = self.arquivo("carta.docx", docx_bytes(["Carta de recomendação"]))
         self.assertEqual(pp.extrair(docx, area="documento")["tipo"], "documento_docx")
-        li = self.arquivo("Profile.pdf", pdf_minimo(["www.linkedin.com/in/ana-exemplo", "Experience"]))
+        li = self.arquivo("Profile.pdf", pdf_minimo(["www.linkedin.com/in/ana-exemplo (LinkedIn)", "Top Skills"]))
         self.assertEqual(pp.extrair(li, area="curriculo")["tipo"], "curriculo_pdf")
 
     def test_formatos_por_area(self):
@@ -228,13 +233,15 @@ class TestAreas(Base):
         sug = lambda tipo, texto, arquivo="anexos/a.pdf": (pp.sugestao_de_area(
             {"tipo": tipo, "texto": texto, "arquivo": arquivo}) or {}).get("area")
         cert = "\n".join(CERTIFICADO)
-        li = "Ana Exemplo\nwww.linkedin.com/in/ana-exemplo\nExperience\nAnalista"
+        li = "Contato\nwww.linkedin.com/in/ana-exemplo (LinkedIn)\nPrincipais competências\nExperiência\nPage 1 of 3"
+        cv_com_link = "Ana Exemplo\nlinkedin.com/in/ana-exemplo\nExperiência\nAnalista de dados"
         cv_longo = "Ana Exemplo\nExperiência\n" + "Analista de dados, painéis e relatórios. " * 100 + "\nCertificado em SQL"
         self.assertEqual(sug("curriculo_pdf", cert), "documento")
         self.assertEqual(sug("curriculo_pdf", "CERTIFICAMOS que Ana concluiu. Carga Horária: 8 horas"), "documento")
         self.assertEqual(sug("curriculo_pdf", "Certificate of Completion — Ana Example"), "documento")
         self.assertIsNone(sug("curriculo_pdf", cv_longo))  # currículo longo que cita "certificado"
         self.assertEqual(sug("curriculo_pdf", li), "linkedin")
+        self.assertIsNone(sug("curriculo_pdf", cv_com_link))  # o link e "Experiência" não bastam
         self.assertEqual(sug("documento_pdf", li), "linkedin")
         self.assertIsNone(sug("documento_pdf", cert))
         self.assertIsNone(sug("documento_docx", li, "anexos/a.docx"))  # Word não vai para o LinkedIn

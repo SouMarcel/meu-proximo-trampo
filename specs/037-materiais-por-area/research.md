@@ -32,8 +32,11 @@ com a mesma mensagem. O texto colado é sempre currículo e não se move.
 - **Decision**: a função é pura e roda sobre o texto mascarado do material, toda vez que a página pede o estado.
   Assim o aviso se atualiza depois de mover ou do OCR. Ela devolve `{area, motivo}` ou `None`:
   - **área currículo**:
-    - se o texto parece LinkedIn (a mesma regra de `extrair`: "linkedin.com/in/" + título de seção do LinkedIn),
-      sugere `linkedin`;
+    - se o texto parece LinkedIn (a mesma regra de `extrair`: "linkedin.com/in/" + uma marca que só o PDF do
+      LinkedIn tem: "(LinkedIn)", "Top Skills"/"Principais competências" ou "Page 1 of"), sugere `linkedin`.
+      Correção de 30/10: "Experience"/"Experiência" deixou de contar, porque quase todo currículo tem o link e essa
+      seção. No teste, isso dava o aviso do LinkedIn num currículo e o classificava como LinkedIn quando enviado sem
+      área;
     - se não, e o texto é curto (até 3.000 caracteres) e tem marca de certificado, sugere `documento`;
   - **área documento**: se o texto parece LinkedIn, sugere `linkedin`;
   - **área LinkedIn** (só PDF): se o texto não parece LinkedIn, sugere `documento` quando tem marca de certificado, ou

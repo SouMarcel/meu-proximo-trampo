@@ -271,10 +271,11 @@ def _conferir_area(area) -> None:
 
 
 def parece_linkedin(texto: str) -> bool:
-    """O PDF do perfil do LinkedIn (Mais → Salvar como PDF): o link do perfil e os títulos de seção dele."""
+    """O PDF do perfil do LinkedIn (Mais → Salvar como PDF): o link do perfil e uma marca que só o PDF do LinkedIn tem.
+    "Experiência" não basta: quase todo currículo tem o link do LinkedIn e essa seção."""
     texto = str(texto or "")
     return "linkedin.com/in/" in texto.lower() and any(
-        s in texto for s in ("Top Skills", "Principais competências", "Experience", "Experiência"))
+        s in texto for s in ("(LinkedIn)", "Top Skills", "Principais competências", "Page 1 of", "Página 1 de"))
 
 
 def tipo_de_documento(texto: str, nome: str = "") -> str | None:
