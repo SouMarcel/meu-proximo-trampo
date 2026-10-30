@@ -25,7 +25,11 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   **Fora dos critérios**, com o motivo, e ainda dá para seguir com ela. Dá para
   ordenar por aderência, plataforma, modo de trabalho ou data de publicação, filtrar
   por senioridade, modo de trabalho, aderência mínima e dias desde a publicação, e
-  cada vaga mostra o termo de busca que a encontrou.
+  cada vaga mostra o termo de busca que a encontrou. A vaga que ainda não tem nota
+  (esperando a IA, descrição pendente) aparece sempre, mesmo com esses filtros; só a
+  busca por texto vale para ela. Para ver só as que já têm nota, marque a caixa
+  **Analisadas**: as sem nota somem de todas as abas, e o "Marcar todas como não
+  seguidas" não pega vaga escondida.
 - **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
   Recebida → Encerrada, com anotações, resultado e filtro por plataforma.
 - **Adicionar Vaga pelo link:** cole o link de uma vaga que você achou em outro lugar
