@@ -1,6 +1,6 @@
 {
   "perfil": "perfil.md",
-  "fontes": ["indeed", "gupy", "nerdin", "infojobs", "vagascom", "jobgether"],
+  "fontes": ["indeed", "gupy", "nerdin", "infojobs", "vagascom", "ey", "jobgether"],
   "termos": ["\"product owner\"", "\"product manager\"", "\"analista de produto\""],
   "localidade": {"pais": "Brasil", "estado": "SP", "cidade": "São Paulo", "raio_km": 25},
   "modelos": {"remoto": true, "hibrido": false, "presencial": false},

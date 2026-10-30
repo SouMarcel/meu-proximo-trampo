@@ -1,6 +1,6 @@
 ---
 name: buscar-vagas
-description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin e JobGether; LinkedIn e startup.jobs se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
+description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, EY e JobGether; LinkedIn, startup.jobs e FullStack se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
 <!-- Cópia gerada de .agents/skills/buscar-vagas/ por sincronizar_skills.py: edite lá. -->
 
@@ -33,10 +33,11 @@ volta nas próximas buscas.
 - O arquivo de perfil apontado em `config.json` (padrão `perfil.md`): a única fonte
   sobre o usuário. Não complete lacunas com suposições.
 - `vagas.py`: `buscar`, `ver` e `gravar`. As buscas de cada portal ficam em `fontes/`
-  (`indeed.py`, `gupy.py`, `nerdin.py`, `infojobs.py`, `vagascom.py`, `linkedin.py`, `startupjobs.py`); os
+  (`indeed.py`, `gupy.py`, `nerdin.py`, `infojobs.py`, `vagascom.py`, `ey.py`, `linkedin.py`, `startupjobs.py`,
+  `jobgether.py`, `fullstack.py`); os
   portais usados vêm de `fontes` no `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais
-  (sem a chave, valem `indeed`, `gupy`, `nerdin`, `infojobs` e `vagascom`; o `linkedin` e o `startupjobs` só
-  entram se estiverem lá).
+  (sem a chave, valem `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey` e `jobgether`; o `linkedin`, o
+  `startupjobs` e o `fullstack` só entram se estiverem lá).
 - `dash/`: o dashboard. `servidor.py` (porta 8765), `front/` (a página), `banco.py` (dados
   em `dash/dados/candidaturas.db`, com comandos `quadro`, `pendentes` e `analisar`) e
   `README.md` (campos e valores).
@@ -84,7 +85,8 @@ servidor; ele só serve para ver e mexer no quadro.
    `--incluir-presencial`; "só na Gupy" → `--fontes gupy`; "procura também no
    startup.jobs" → `--fontes indeed gupy nerdin startupjobs`; "inclui o LinkedIn" →
    `--fontes indeed gupy nerdin linkedin`; "só vagas de TI da Nerdin" → `--fontes nerdin`; "só no InfoJobs" →
-   `--fontes infojobs`; "só no Vagas.com" → `--fontes vagascom`; "só no JobGether" → `--fontes jobgether`. Pedido
+   `--fontes infojobs`; "só no Vagas.com" → `--fontes vagascom`; "só na EY" → `--fontes ey`; "só no JobGether" → `--fontes jobgether`; "só na
+   FullStack" → `--fontes fullstack`. Pedido
    pontual não altera
    o `config.json`; para mudar o padrão, sugira o painel Filtros da busca (ou edite o
    arquivo, se ele pedir).
@@ -167,7 +169,11 @@ servidor; ele só serve para ver e mexer no quadro.
    outras, tire o modelo da descrição. As do JobGether vêm **sem descrição**: avalie pelo título, pelo local
    aceito (`restricao_local`), pelo contrato e pelo salário, deixe claro que a nota é provisória e não abra a
    página do JobGether por conta própria (os termos dele proíbem acesso automatizado); se a pessoa quiser, ela
-   cola o texto da vaga.
+   cola o texto da vaga. Nas da EY, o `tipo` traz "Banco de talentos" (cadastro para vagas futuras, não uma vaga
+   aberta naquele momento; diga isso na análise) e "Exclusiva para PCD" quando o título diz; a EY não informa o
+   modelo de trabalho, tire-o da descrição. As da FullStack vêm em inglês, remotas para a América Latina
+   (`restricao_local`), com a senioridade e o contrato no `tipo`; contratos por tempo determinado aparecem no título
+   ("3 month-long", "6 month engagement").
    `senioridade`: os níveis que a vaga aceita, entre `junior`, `pleno` e `senior`
    (pode ser mais de um, como em "PL/SR"), com `senioridade_origem`:
    - `declarada`: o título ou a descrição dizem o nível.
@@ -372,6 +378,20 @@ busca pública de cada site (`fontes/infojobs.py`, `fontes/vagascom.py`), sem lo
 - no primeiro bloqueio, o portal sai da busca e fica **24 horas em espera**, com a mesma pergunta do
   LinkedIn (código 5).
 
+A EY (`careers.ey.com`, o site de vagas da EY) é consultada pela busca pública do site (`fontes/ey.py`), sem login nem
+cookies: a lista de cada cargo no país da pessoa e, como a lista não traz data, a página de cada vaga que bate com o
+cargo (até 20 por busca; as já lidas ficam em `.cache/ey-datas.json` e não são abertas de novo). Pausa sorteada de 3
+a 7 segundos; no primeiro bloqueio, sai daquela busca, sem espera entre buscas.
+
+A FullStack (`talent.fullstack.com`, vagas remotas de tecnologia para a América Latina, em inglês) é consultada pelos
+mesmos pedidos públicos que a página do portal faz (`fontes/fullstack.py`), sem login nem cookies:
+- os termos de uso dela proíbem acesso automatizado e não há API oficial; ela vem **desligada por padrão** (spec 040).
+  Se a pessoa perguntar ou estiver configurando a busca, conte isso; ela liga no painel se concordar;
+- só para quem mora no Brasil; a lista do país é lida uma vez por busca para todos os cargos; cargo em português não
+  acha nada;
+- descrição pelo detalhe da vaga (até 30 por busca); não abra páginas da FullStack por conta própria fora dos scripts;
+- no primeiro bloqueio, sai da busca e fica **24 horas em espera** (código 5).
+
 O JobGether (vagas remotas de empresas do mundo todo, em inglês) é consultado pela API que o portal oferece a
 assistentes de IA (`fontes/jobgether.py`), sem chave, sem login e sem cookies:
 - os termos de uso dele proíbem acesso automatizado; ele vem **ligado por padrão** por decisão registrada na spec 030.
@@ -388,7 +408,8 @@ outras empresas dele ficam para a próxima busca. Para a pessoa acompanhar uma e
 Adicionar Vaga ou no detalhe de uma vaga com candidatura num desses sistemas) ou o painel Filtros da busca; não grave
 a lista por conta própria. O Greenhouse não tem busca pública entre empresas (exige login).
 
-**Pausa por portal:** `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA` e `JOBGETHER_PAUSA`
+**Pausa por portal:** `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`, `EY_PAUSA`,
+`FULLSTACK_PAUSA` e `JOBGETHER_PAUSA`
 no `.env` (de 3 a 60 segundos; a do JobGether, de 2 a 60; o `.env.exemplo` traz uma linha comentada para cada
 uma, com o padrão e o mínimo). Sugira aumentar só a do portal que estiver bloqueando e deixe a pessoa editar o arquivo.
 

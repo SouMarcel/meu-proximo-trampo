@@ -20,8 +20,9 @@ só entrega o arquivo.
   lista.
 - **Adicionar Vaga:** cole o link. O servidor lê a vaga (Indeed e LinkedIn pelas APIs
   públicas; Gupy pelo MCP público de candidatos dela; startup.jobs pelo MCP público do
-  site; Nerdin, InfoJobs e Vagas.com pela página pública da vaga, sem pedido durante a espera
-  do InfoJobs e do Vagas.com depois de um bloqueio; outros sites pelos dados
+  site; Nerdin, InfoJobs, Vagas.com e EY pela página pública da vaga, sem pedido durante a espera
+  do InfoJobs e do Vagas.com depois de um bloqueio; FullStack pelo detalhe público da vaga, com o id da busca e sem
+  pedido durante a espera; outros sites pelos dados
   estruturados JobPosting da página; o JobGether não é lido, porque a página recusa a ferramenta: o formulário abre
   para completar, com o id da busca), grava no Relatório de Vagas e, se houver uma IA ligada
   (botão **IA**), pede a análise em segundo plano (`analise.py`). Se a vaga já está
@@ -80,14 +81,14 @@ sozinha.
 O ID é o do portal nas vagas da busca e nas do Indeed adicionadas pelo link (o `jk` de 16
 caracteres), `gupy-…` nas da Gupy (busca e link),
 `startupjobs-…` nas do startup.jobs (busca e link), `li-…` nas do LinkedIn, `nerdin-…` nas da Nerdin (busca e link),
-`infojobs-…` nas do InfoJobs e `vagascom-…` nas do Vagas.com (busca e link), `jobgether-…` nas do JobGether (busca
-e formulário com o link), `web-…` nas de
+`infojobs-…` nas do InfoJobs e `vagascom-…` nas do Vagas.com (busca e link), `ey-…` nas da EY e `fullstack-…` nas
+da FullStack (busca e link), `jobgether-…` nas do JobGether (busca e formulário com o link), `web-…` nas de
 outros sites e `m-…` nas preenchidas à mão.
 
 | Campo | Valores |
 |---|---|
 | `origem` | `busca` (veio de `vagas.py`), `link` (Adicionar Vaga pelo link; fica no relatório como as da busca) ou `manual` (formulário, direto no quadro) |
-| `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Startup Jobs`, `Nerdin`, `InfoJobs`, `Vagas.com`, `JobGether`, `Outra` (e as fontes do exterior) |
+| `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Startup Jobs`, `Nerdin`, `InfoJobs`, `Vagas.com`, `EY`, `JobGether`, `FullStack`, `Outra` (e as fontes do exterior) |
 | `outras_plataformas` | outros portais onde a mesma vaga apareceu (na mesma busca, numa busca seguinte ou pelo Adicionar Vaga). O dashboard mostra uma etiqueta por plataforma, inclusive a do link de candidatura (vaga do Indeed com candidatura na Gupy também leva a etiqueta Gupy), e o filtro de plataforma acha a vaga por qualquer uma |
 | `titulo`, `empresa`, `local`, `url`, `descricao` | dados da vaga |
 | `publicada_em`, `encontrada_em` | `AAAA-MM-DD` |

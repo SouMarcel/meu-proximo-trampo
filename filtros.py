@@ -80,8 +80,9 @@ FONTES_INT = {"remotive": "Remotive", "himalayas": "Himalayas", "remoteok": "Rem
 GLOBAL = "internacional:global"
 # Portais da busca (config.json -> "fontes"), ligados no painel "Filtros da busca"; precisa = o que o portal exige
 FONTES_NAC = {"indeed": "Indeed", "gupy": "Gupy", "nerdin": "Nerdin", "infojobs": "InfoJobs", "vagascom": "Vagas.com",
-              "linkedin": "LinkedIn", "startupjobs": "startup.jobs", "jobgether": "JobGether"}
-FONTES_PADRAO = ["indeed", "gupy", "nerdin", "infojobs", "vagascom", "jobgether"]
+              "ey": "EY", "linkedin": "LinkedIn", "startupjobs": "startup.jobs", "jobgether": "JobGether",
+              "fullstack": "FullStack"}
+FONTES_PADRAO = ["indeed", "gupy", "nerdin", "infojobs", "vagascom", "ey", "jobgether"]
 # Portais da lista acima que também rodam na consulta internacional global ("mundo todo"; GLOBAL = True na fonte)
 FONTES_GLOBAIS = ("linkedin", "jobgether")
 PRECISA = {"startupjobs": "da chave MCP_STARTUP_JOBS no arquivo .env"}

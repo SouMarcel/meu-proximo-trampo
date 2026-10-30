@@ -1,0 +1,58 @@
+{
+ "id": "00000001-aaaa-4aaa-8aaa-000000000001",
+ "jobId": "11111111-bbbb-4bbb-8bbb-111111111111",
+ "jobTitle": "Senior Data Engineer (Python + AWS) - Remote - Latin America",
+ "formId": "22222222-cccc-4ccc-8ccc-222222222222",
+ "locationId": "33333333-dddd-4ddd-8ddd-333333333333",
+ "status": "44444444-eeee-4eee-8eee-444444444444",
+ "statusName": "Published",
+ "isPublished": true,
+ "startOn": null,
+ "endOn": null,
+ "authorId": "55555555-ffff-4fff-8fff-555555555555",
+ "createdAt": 1793181600000,
+ "updatedAt": 1793181600000,
+ "countryId": "1ae07c37-d911-413f-9160-8cd2a5d93257",
+ "city": "São Paulo",
+ "state": "São Paulo",
+ "region": "Brazil",
+ "regionGroup": "Latam",
+ "departmentName": "Client Services",
+ "trackName": "Engineering",
+ "linkedInJobType": "FULL_TIME",
+ "linkedInSeniority": "Senior",
+ "linkedInWorkplaceType": "Remote",
+ "isJobPublished": true,
+ "skillsNames": [
+  "Python",
+  "AWS",
+  "dbt"
+ ],
+ "ownerEmail": "recrutador1@exemplo.invalid",
+ "postOnLinkedIn": true,
+ "sections": [
+  {
+   "id": "66666666-aaaa-4aaa-8aaa-666666666661",
+   "title": "About FullStack",
+   "body": "<p>Consultoria fictícia de engenharia de software para a América Latina.</p>"
+  },
+  {
+   "id": "66666666-aaaa-4aaa-8aaa-666666666662",
+   "title": "The Role",
+   "body": "<p>Construir pipelines de dados com <strong>Python</strong>.</p><ul><li>AWS</li><li>dbt</li></ul>"
+  }
+ ],
+ "questions": [
+  {
+   "id": "77777777-aaaa-4aaa-8aaa-777777777777",
+   "name": "Resume/CV",
+   "description": "Resume/CV"
+  }
+ ],
+ "skills": [
+  {
+   "id": "88888888-aaaa-4aaa-8aaa-888888888888",
+   "name": "Python"
+  }
+ ]
+}

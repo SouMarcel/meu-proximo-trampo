@@ -46,7 +46,7 @@ BLOCOS = {"p", "div", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "tr"
 SEM_TEXTO = {"script", "style", "noscript", "template"}  # nunca é texto da vaga
 # nomes que a plataforma de um link pode ter no banco (os outros portais e ATS conhecidos ficam como "Outra")
 PLATAFORMAS_LINK = {"Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Nerdin", "InfoJobs", "Vagas.com",
-                    "JobGether", "Remotive", "Himalayas", "RemoteOK", "Jobicy", "We Work Remotely", "Get on Board",
+                    "EY", "JobGether", "FullStack", "Remotive", "Himalayas", "RemoteOK", "Jobicy", "We Work Remotely", "Get on Board",
                     "Greenhouse", "Lever", "Ashby"}
 
 
@@ -357,6 +357,12 @@ def _id_nerdin(url: str) -> str | None:
     return nerdin.id_do_link(url)
 
 
+def _id_ey(url: str) -> str | None:
+    from . import ey  # ey importa este módulo
+
+    return ey.id_do_link(url)
+
+
 def _portal_paginas(plat: str):
     """A fonte de um portal que lê páginas e tem espera (InfoJobs, Vagas.com; spec 026); None para os outros."""
     from . import infojobs, vagascom  # importam este módulo
@@ -472,6 +478,13 @@ def ler(url: str) -> dict:
         vaga = _ler_startupjobs(url, startupjobs.id_do_link(url))
     elif plat == "Nerdin" and _id_nerdin(url):
         vaga = {**extrair_jobposting(_baixar(url), plat), "id": _id_nerdin(url), "url": url}
+    elif plat == "FullStack":
+        from . import fullstack  # fullstack importa este módulo
+        vaga = fullstack.ler(url)
+    elif plat == "EY" and _id_ey(url):
+        from . import ey  # ey importa este módulo
+        vaga = {k: v for k, v in ey.ler_pagina(_baixar(url)).items() if k != "locais"}
+        vaga.update(id=_id_ey(url), url=url)
     elif _portal_paginas(plat) and _portal_paginas(plat).id_do_link(url):
         vaga = _ler_portal_paginas(_portal_paginas(plat), url)
     elif plat in ("Greenhouse", "Lever", "Ashby") and ats.vaga_do_link(url):
