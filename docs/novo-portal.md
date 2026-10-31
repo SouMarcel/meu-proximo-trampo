@@ -65,7 +65,8 @@ Faça poucos pedidos nessa pesquisa, espaçados, e só à parte pública. As amo
 ## 4. Pausa por portal no `.env`
 
 Cada portal que consulta páginas tem sua pausa, em segundos, ajustável pela variável `<NOME>_PAUSA` (o `NOME` da
-fonte em maiúsculas: `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`, `JOBGETHER_PAUSA`).
+fonte em maiúsculas: `LINKEDIN_PAUSA`, `NERDIN_PAUSA`, `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`, `EY_PAUSA`,
+`FULLSTACK_PAUSA`, `JOBGETHER_PAUSA`).
 - Sem a variável, vale o padrão do portal.
 - Um valor abaixo do mínimo dele vira o mínimo; acima de 60, vira 60.
 - Um valor que não é número é ignorado, com aviso no começo da busca.

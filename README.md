@@ -1,7 +1,7 @@
 # meu-proximo-trampo
 
 Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na
-Nerdin (vagas de tecnologia) e no JobGether (vagas remotas; e, se você quiser, no startup.jobs), monta um relatório para você decidir o que vale a pena e
+Nerdin (vagas de tecnologia), na EY e no JobGether (vagas remotas; e, se você quiser, no startup.jobs e na FullStack), monta um relatório para você decidir o que vale a pena e
 acompanha suas candidaturas num quadro kanban. Com IA (opcional), cada vaga recebe uma
 nota de aderência ao seu perfil, com o que bate, o que falta e o que o anúncio esconde.
 
@@ -11,9 +11,10 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ## O que ela faz
 
-- **Busca** vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na Nerdin, de tecnologia, e no JobGether, de vagas
-  remotas abertas a quem mora no Brasil (e no LinkedIn, no startup.jobs, de startups, e em portais de vagas remotas do
-  exterior, se você ligar) com
+- **Busca** vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na Nerdin, de tecnologia, no site de vagas da EY e
+  no JobGether, de vagas remotas abertas a quem mora no Brasil (e no LinkedIn, no startup.jobs, de startups, na
+  FullStack, de vagas remotas de tecnologia para a América Latina, e em portais de vagas remotas do exterior, se você
+  ligar) com
   os seus cargos e filtros, que você ajusta no painel **Filtros da busca** do dashboard:
   remoto no seu país (e, se quiser, em outros países), híbrido e presencial só na sua
   cidade, data de publicação, tipo de emprego, senioridade, moedas aceitas para vagas de
@@ -33,7 +34,7 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 - **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
   Recebida → Encerrada, com anotações, resultado e filtro por plataforma.
 - **Adicionar Vaga pelo link:** cole o link de uma vaga que você achou em outro lugar
-  (Indeed, LinkedIn, Gupy, InfoJobs, Vagas.com, Nerdin, startup.jobs, site da empresa…). O dashboard lê os dados, põe
+  (Indeed, LinkedIn, Gupy, InfoJobs, Vagas.com, Nerdin, EY, FullStack, startup.jobs, site da empresa…). O dashboard lê os dados, põe
   a vaga no relatório como as da busca e, com o Claude Code instalado, ela recebe a nota
   sozinha em cerca de 1 minuto. Se o site não deixar ler, o formulário pede o resto.
 - **Vaga publicada num post:** cole o link de um post do LinkedIn com uma vaga, ou use
@@ -146,7 +147,7 @@ skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`anal
 
 ```mermaid
 flowchart LR
-  A[Indeed, Gupy, InfoJobs, Vagas.com, Nerdin,<br/>LinkedIn, startup.jobs, JobGether e fontes do exterior] --> B[vagas.py buscar]
+  A[Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, EY,<br/>LinkedIn, startup.jobs, JobGether, FullStack e fontes do exterior] --> B[vagas.py buscar]
   B -->|sem IA| D[(banco local)]
   B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
   C --> D
@@ -513,7 +514,7 @@ funcionar, abra uma issue.
 | Campo | O que é |
 |---|---|
 | `perfil` | Arquivo do seu perfil de carreira (usado pela IA; montado nos primeiros passos). Padrão: `perfil.md` |
-| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `linkedin`, `startupjobs` e `jobgether` (padrão, quando o campo não existe: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom` e `jobgether`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `infojobs` e o `vagascom` trazem vagas de todas as áreas, muitas presenciais; veja os Avisos. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos. O `jobgether` traz vagas remotas de empresas do mundo todo, em inglês; os termos do JobGether proíbem acesso automatizado, e ele vem ligado por decisão registrada na spec 030: desligue no painel se não concordar (veja os Avisos) |
+| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey`, `linkedin`, `startupjobs`, `jobgether` e `fullstack` (padrão, quando o campo não existe: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey` e `jobgether`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `infojobs` e o `vagascom` trazem vagas de todas as áreas, muitas presenciais; veja os Avisos. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos. O `jobgether` traz vagas remotas de empresas do mundo todo, em inglês; os termos do JobGether proíbem acesso automatizado, e ele vem ligado por decisão registrada na spec 030: desligue no painel se não concordar (veja os Avisos). A `ey` traz as vagas do site de vagas da EY no seu país. A `fullstack` traz vagas remotas de tecnologia para a América Latina, em inglês; os termos da FullStack proíbem acesso automatizado, e ela vem desligada: ligue no painel se concordar (veja os Avisos) |
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
@@ -721,9 +722,36 @@ Para instalar à mão, no Claude Code:
     da busca. A candidatura assistida não funciona no `jobgether.com`.
 
   A candidatura é no site da empresa, pelo botão da vaga no JobGether.
-- **Pausa por portal:** cada portal que lê páginas (LinkedIn, Nerdin, InfoJobs, Vagas.com) tem a sua
+- A busca na EY (`careers.ey.com`, o site de vagas da EY) é uma consulta não oficial à busca pública do site, sem
+  login e sem cookies:
+  - a lista de cada cargo no seu país é lida uma vez por busca, das vagas mais novas para as mais antigas (até 2
+    páginas de 25); ficam só as vagas cujo título bate com o cargo;
+  - a lista não traz a data: a ferramenta abre a página de cada vaga que bateu (até 20 por busca), lê a data, os
+    locais e a descrição, e para na primeira vaga mais antiga que a janela de tempo;
+  - as vagas já lidas ficam numa memória (`.cache/ey-datas.json`, só número, data e cidades da vaga), para a página
+    não ser aberta de novo nas próximas buscas;
+  - "Banco de Talentos" e vaga exclusiva para PCD aparecem no tipo da vaga;
+  - pausa sorteada de 3 a 7 segundos; se a EY recusar ou limitar, ela sai daquela busca sem nova tentativa (sem
+    espera entre buscas, como a Nerdin).
+
+  A candidatura é sempre no próprio site da EY.
+- A busca na FullStack (`talent.fullstack.com`, vagas remotas de tecnologia para a América Latina, em inglês) é uma
+  consulta não oficial, sem login e sem cookies. **Os termos de uso da FullStack proíbem acesso automatizado**, e não
+  há API oficial: a ferramenta faz os mesmos pedidos públicos que a página do portal faz, por decisão registrada na
+  spec 040, e o portal vem **desligado**: ligue no painel "Filtros da busca" se concordar.
+  - Só para quem mora no Brasil: a lista do país é lida uma vez por busca, para todos os cargos (até 10 páginas de
+    30); a mesma vaga publicada em várias cidades aparece uma vez. Ficam só as vagas cujo título bate com o cargo e
+    que estão na janela de tempo. Inclua o cargo em inglês nos seus termos.
+  - A descrição vem do detalhe da vaga, só para as que vão para o relatório (até 30 por busca). O e-mail do
+    recrutador que o portal devolve não é guardado.
+  - Pausa sorteada de 3 a 7 segundos; se a FullStack recusar ou limitar, ela sai daquela busca sem nova tentativa
+    e fica **24 horas em espera**, como o JobGether.
+  - Um link `talent.fullstack.com/jobs/…` colado no Adicionar Vaga entra com o mesmo id da busca.
+
+  A candidatura é no próprio portal da FullStack.
+- **Pausa por portal:** cada portal que lê páginas (LinkedIn, Nerdin, InfoJobs, Vagas.com, EY, FullStack) tem a sua
   pausa, ajustável no arquivo `.env` da raiz com `<PORTAL>_PAUSA=N` (`LINKEDIN_PAUSA`, `NERDIN_PAUSA`,
-  `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`), em segundos, de 3 a 60. O `.env.exemplo` traz uma linha comentada
+  `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`, `EY_PAUSA`, `FULLSTACK_PAUSA`), em segundos, de 3 a 60. O `.env.exemplo` traz uma linha comentada
   para cada um, com o padrão e o mínimo: copie a linha e tire o `#` do começo. O JobGether, que usa a API
   oficial, tem `JOBGETHER_PAUSA`, de 2 a 60 (padrão 2). Aumente só a do portal
   que estiver bloqueando; vale a partir da busca seguinte, e o começo da busca mostra a pausa em uso.
@@ -772,6 +800,8 @@ O link e o QR code também ficam no canto de cima do dashboard.
   e empresas acompanhadas no Greenhouse, Lever e Ashby (também na busca nacional); opcionais
 - [x] LinkedIn (busca pública, sem login; opcional)
 - [x] JobGether (vagas remotas do mundo todo, pela API para assistentes; ligado por padrão, termos contrários)
+- [x] EY (site de vagas da EY, busca pública; ligada por padrão)
+- [x] FullStack (vagas remotas de tecnologia para a América Latina; desligada por padrão, termos contrários)
 - [ ] Mais portais do Brasil (ex.: InHire, Catho, Glassdoor), pelo roteiro `docs/novo-portal.md`
 - [x] Preparar e simular entrevista para as vagas na coluna Entrevista
 
