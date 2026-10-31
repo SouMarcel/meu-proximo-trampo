@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-23
 
-**Status**: Entregue em 2026-10-24. Prova real feita em 2026-10-27 (FullStack e JazzHR); os termos de candidato da Gupy foram conferidos pelo usuário no mesmo dia (T016)
+**Status**: Entregue em 2026-10-24. Prova real feita em 2026-10-27 (FullStack e JazzHR); os termos de candidato da Gupy foram conferidos pelo usuário no mesmo dia (T016). A Nerdin entrou na lista conhecida em 2026-10-31 (decisão do usuário)
 
 **Input**: User description: "Analise a possibilidade de a própria IA que estamos colocando no sistema via API
 fazer a aplicação na plataforma que homologamos. Ex.: quando clico em seguir com a vaga no Gupy, ela segue com o
@@ -65,6 +65,9 @@ clica** em Entrar, Continuar e Enviar é sempre a pessoa. Isso exige uma emenda 
 - Pesquisa (2026-10-23, research.md §1): os termos do Indeed e do Nerdin proíbem automação na candidatura. Os dois
   ficam bloqueados como o LinkedIn, sem opção de liberar (princípio VI: seguir os termos de cada fonte). Os termos
   de candidato da Gupy não foram encontrados; a Gupy fica na lista com essa pendência anotada.
+- Decisão (2026-10-31, usuário): a Nerdin sai dos bloqueados e entra na lista conhecida. Na leitura dele, os
+  termos proíbem a candidatura automática (preencher e avançar até a conclusão); a ferramenta só preenche
+  campos, e avançar e enviar ficam com a pessoa (FR-001). O Indeed segue bloqueado.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -135,7 +138,7 @@ ir para a ferramenta pública.
    sem pergunta extra.
 2. **Given** uma página num domínio fora da lista, **When** a pessoa pede o preenchimento, **Then** a ferramenta
    pergunta se libera aquele domínio e não preenche nada antes da resposta.
-3. **Given** um domínio bloqueado (LinkedIn, ou portal cujos termos proíbem automação, como Indeed e Nerdin),
+3. **Given** um domínio bloqueado (LinkedIn, ou portal cujos termos proíbem automação, como o Indeed),
    **When** a pessoa pede o preenchimento, **Then** a ferramenta recusa, explica o motivo e não oferece liberação.
 4. **Given** a lista de domínios liberados na configuração, **When** a pessoa revoga um deles, **Then** o próximo
    preenchimento naquele domínio pergunta de novo.
@@ -233,7 +236,7 @@ desligar a qualquer momento ("Desligar nesta vaga"); religar pede o aviso de nov
 - **FR-003**: Antes de escrever, a ferramenta MUST conferir que o endereço da página atual pertence a um domínio
   conhecido ou liberado pela pessoa. A comparação é pelo nome exato do domínio ou de um subdomínio dele, nunca por
   "contém". MUST ser sempre recusados: os domínios do LinkedIn e os de portais cujos termos proíbem automação
-  (Indeed e Nerdin, research.md §1).
+  (Indeed, research.md §1; a Nerdin saiu dessa lista em 2026-10-31).
 - **FR-004**: A ferramenta MUST NOT preencher campos de pergunta sensível (autorização de trabalho, visto,
   cidadania, salário ou pretensão, deficiência, relocação, diversidade), campos de arquivo nem campos de senha fora
   do login.

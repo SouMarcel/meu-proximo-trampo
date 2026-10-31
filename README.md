@@ -88,8 +88,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
     valores, e nada é gravado até você salvar. Depois, a ferramenta preenche esses campos em qualquer
     formulário, mesmo escritos de outro jeito ("Full name", "Celular", "LinkedIn profile"), sem IA e
     com a IA fora do ar. Eles ficam só no seu computador e nunca vão para a IA.
-  - Preenche só em sites de candidatura conhecidos (Gupy, Greenhouse, Lever, Workday) ou nos que
-    você liberar. Indeed e Nerdin ficam de fora porque os termos deles proíbem automação na
+  - Preenche só em sites de candidatura conhecidos (Gupy, Greenhouse, Lever, Workday, Nerdin) ou
+    nos que você liberar. O Indeed fica de fora porque os termos dele proíbem automação na
     candidatura, e o LinkedIn também.
   - Login opcional: usuário e senha da Gupy ou do Greenhouse podem ficar no `.env` (em texto,
     fora do Git). A ferramenta só os digita na página de login do próprio portal, e a senha nunca

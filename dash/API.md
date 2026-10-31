@@ -645,7 +645,7 @@ Regras do servidor:
 1. Só preenche campos `comum`, sem pisar em valor que já existe (salvo `trocar`).
 2. Perguntas sensíveis e credenciais nunca vão à IA.
 3. As respostas preenchidas viram um documento `respostas` no kit da vaga (`origem: "candidatura_assistida"`).
-4. Domínios bloqueados (LinkedIn, Indeed, Nerdin) não podem ser liberados.
+4. Domínios bloqueados (LinkedIn, Indeed, JobGether) não podem ser liberados.
 
 ### 3.12 Arquivos
 
