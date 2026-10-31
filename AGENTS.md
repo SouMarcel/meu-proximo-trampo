@@ -38,7 +38,7 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   a marcação dela. Nunca peça nem digite senha; nunca clique em botões dos portais. O LinkedIn
   fica desativado. **Candidatura assistida** (constituição VI, spec 027): desligada por padrão e ligada
   vaga a vaga pela pessoa, com o aviso de risco; no detalhe da vaga, "Candidatar com ajuda" preenche campos do formulário na janela da ferramenta
-  (`candidatura/`), só em domínio liberado (Indeed, Nerdin e LinkedIn bloqueados pelos termos), com
+  (`candidatura/`), só em domínio liberado (Indeed e LinkedIn bloqueados pelos termos), com
   o que ela sabe (respostas que a pessoa já deu, em `dash/dados/respostas_formulario.json`, e o perfil) e
   pergunta o resto; na pergunta aberta, a pessoa escreve um relato, que a IA transforma na resposta e que fica em
   `dash/dados/relatos.json` (spec 035): os relatos valem como fatos confirmados, junto do perfil (`PY relatos.py lista`);

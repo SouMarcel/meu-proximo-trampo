@@ -32,7 +32,7 @@ frontend-react: src/services/api/candidatura.ts, src/components/kit/CandidaturaA
 | III | Só a biblioteca padrão e o protocolo de depuração que já existe. Funciona com qualquer provedor de IA, porque a IA só escreve textos. |
 | IV | As perguntas sensíveis não vão para a IA e não são preenchidas. A conferência de fatos vale também aqui. |
 | V | Nada roda sozinho. A pessoa vê a proposta, edita e clica. O envio é dela. |
-| VI | Desligado por padrão. Só preenche em domínio liberado. Indeed, Nerdin e LinkedIn ficam bloqueados. Só campos, nunca botões. Para no bloqueio. A credencial só é digitada no host exato de login. |
+| VI | Desligado por padrão. Só preenche em domínio liberado. Indeed e LinkedIn ficam bloqueados (a Nerdin saiu em 2026-10-31, research.md §1). Só campos, nunca botões. Para no bloqueio. A credencial só é digitada no host exato de login. |
 
 ## Fluxo
 

@@ -7,7 +7,7 @@ Trechos literais das páginas oficiais. Isto não é parecer jurídico.
 | Portal | Página | O que diz | Decisão |
 |---|---|---|---|
 | Indeed | br.indeed.com/legal (Termos de Serviço, 01/04/2026), seção A, item 5 | "É proibido o uso de qualquer automação, script ou bots para automatizar o processo de candidatura do Indeed que não seja por meio dos fornecedores e ferramentas oficiais do Indeed." | **Bloqueado**, sem opção de liberar (constituição VI: "seguir os termos de cada fonte") |
-| Nerdin | nerdin.com.br/candidato_termo_plano_premium.php (21/09/2026), item 7 | "É proibido, sem autorização: … utilizar robôs, scraping, automações ou mecanismos de coleta/acesso não autorizados" | **Bloqueado**, sem opção de liberar |
+| Nerdin | nerdin.com.br/candidato_termo_plano_premium.php (21/09/2026), item 7 | "É proibido, sem autorização: … utilizar robôs, scraping, automações ou mecanismos de coleta/acesso não autorizados" | **Conhecido** desde 2026-10-31, por decisão do usuário: na leitura dele, o termo proíbe a candidatura automática (preencher e avançar até a conclusão), e a ferramenta só preenche campos; avançar e enviar ficam com a pessoa. Até então, bloqueado |
 | LinkedIn | (spec 018) | restringe contas que considera automatizadas | **Bloqueado**, sem opção de liberar |
 | Gupy | gupy.io/termos-de-uso e variações: HTTP 404; o aviso de privacidade institucional não trata do assunto | não foi possível ler termos para candidatos | **Conhecido**. Em 2026-10-27, o "Aviso de Privacidade … para Pessoas Candidatas" (26/06/2025) não trata de automação, e o suporte de candidatos não carrega para leitura automática; no mesmo dia, o usuário conferiu os termos na tela de cadastro, sem impedimento |
 | Greenhouse | greenhouse.com/legal: só documentos para clientes | não trata de candidatos | Conhecido |
@@ -22,8 +22,9 @@ Páginas de login de candidato encontradas:
 | Greenhouse | `my.greenhouse.io` |
 | Lever | sem login central de candidato |
 | Workday | login próprio de cada empresa, no mesmo endereço da vaga |
+| Nerdin | login no próprio `nerdin.com.br` (sem credencial guardada) |
 
-Decisão: só a Gupy e o Greenhouse ganham credencial guardada. No Lever e no Workday, a pessoa faz o login à mão.
+Decisão: só a Gupy e o Greenhouse ganham credencial guardada. No Lever, no Workday e na Nerdin, a pessoa faz o login à mão.
 
 **Desvio da spec.** A spec dizia que um portal com termos contrários ficaria fora da lista e a pessoa poderia
 liberá-lo. Foi trocado por bloqueio, porque liberar contraria o princípio VI, e a spec foi atualizada.

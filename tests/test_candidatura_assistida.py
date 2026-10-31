@@ -175,6 +175,7 @@ class TestDominios(Base):
         self.assertTrue(dominios.situacao("https://login.gupy.io/candidates/signin")["permitido"])
         self.assertTrue(dominios.situacao("https://boards.greenhouse.io/x/jobs/1")["permitido"])
         self.assertTrue(dominios.situacao("https://empresa.wd5.myworkdayjobs.com/pt-BR/x")["permitido"])
+        self.assertEqual(dominios.situacao("https://www.nerdin.com.br/vaga/1")["portal"], "nerdin")  # research §1
         for url in ("https://gupy.io.exemplo.com/jobs", "https://falsogupy.io/jobs", "https://exemplo.com/gupy.io"):
             s = dominios.situacao(url)
             self.assertFalse(s["permitido"], url)
@@ -185,7 +186,7 @@ class TestDominios(Base):
 
     def test_bloqueados_sem_liberar(self):  # research §1
         for url in ("https://br.indeed.com/viewjob?jk=1", "https://smartapply.indeed.com/x", "https://www.linkedin.com/jobs/1",
-                    "https://nerdin.com.br/vaga/1", "https://uk.indeed.co.uk/x"):
+                    "https://uk.indeed.co.uk/x"):
             s = dominios.situacao(url)
             self.assertFalse(s["permitido"], url)
             self.assertFalse(s["pode_liberar"], url)

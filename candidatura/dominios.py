@@ -1,6 +1,7 @@
 """Onde a candidatura assistida pode preencher (spec 027, research.md §1).
 
-  CONHECIDOS        portal → domínios de candidatura e hosts de login (só portais sem termos contrários)
+  CONHECIDOS        portal → domínios de candidatura e hosts de login (portais sem termos contrários ao
+                    preenchimento; a Nerdin entrou por decisão do usuário, research.md §1)
   BLOQUEADOS        domínio → motivo; nunca preenche, nem com liberação da pessoa
   host_de(url)      o host da URL, em minúsculas, só para https
   situacao(url)     {"host", "permitido", "portal", "origem": conhecido|liberado|None, "bloqueado": motivo|None,
@@ -24,13 +25,13 @@ CONHECIDOS = {
                    "credencial": "GREENHOUSE"},
     "lever": {"rotulo": "Lever", "dominios": ("jobs.lever.co",), "login": (), "credencial": None},
     "workday": {"rotulo": "Workday", "dominios": ("myworkdayjobs.com",), "login": (), "credencial": None},
+    "nerdin": {"rotulo": "Nerdin", "dominios": ("nerdin.com.br",), "login": (), "credencial": None},
 }
 BLOQUEADOS = {
     "linkedin.com": "o LinkedIn fica fora da ferramenta (restringe contas que considera automatizadas)",
     "lnkd.in": "o LinkedIn fica fora da ferramenta (restringe contas que considera automatizadas)",
     "indeed.com": "os termos do Indeed proíbem automação na candidatura",
     "indeed.com.br": "os termos do Indeed proíbem automação na candidatura",
-    "nerdin.com.br": "os termos do Nerdin proíbem robôs e automações",
     "jobgether.com": "os termos do JobGether proíbem acesso automatizado",
 }
 HOST_VALIDO = re.compile(r"^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
