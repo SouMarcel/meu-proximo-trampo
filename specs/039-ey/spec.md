@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Aprovada em 2026-10-30; implementada na worktree (aguarda o teste da pessoa)
+**Status**: Aprovada em 2026-10-30; concluída em 2026-10-31
 
 **Input**: User description: "adicionar novo portal de vagas. careers.ey.com e talent.fullstack.com". Depois da
 pesquisa, a pessoa escolheu "Dois portais novos" (em vez de pôr os dois em Empresas acompanhadas), uma spec por portal.
