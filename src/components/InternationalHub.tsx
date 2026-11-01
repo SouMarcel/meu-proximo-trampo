@@ -11,6 +11,8 @@ import {
   Building,
   CheckCircle2,
   ArrowUpRight,
+  X,
+  RotateCcw,
 } from "lucide-react"
 import type { Vaga, Etapa } from "../types/api"
 import { CONTRATACAO } from "../utils/rotulos"
@@ -22,11 +24,17 @@ import {
   areaDe,
   paisDe,
   linkSeguro,
+  diaMes,
 } from "../utils/formatters"
+import { useFerramenta } from "../contexto/Ferramenta"
 interface InternationalHubProps {
   vagas: Vaga[]
   onSelectVaga: (vaga: Vaga) => void
   onSeguirVaga: (id: string) => void
+  /** Marca como não seguida (a busca não traz de novo), como no Relatório nacional. */
+  onNaoSeguirVaga: (id: string) => void
+  /** Devolve uma vaga não seguida para Para decidir. */
+  onVoltarTriagem: (id: string) => void
   onOpenFiltersModal: () => void
   /** Prontidão internacional (Meu perfil → Análises). */
   onAbrirProntidao: () => void
@@ -36,15 +44,19 @@ export default function InternationalHub({
   vagas,
   onSelectVaga,
   onSeguirVaga,
+  onNaoSeguirVaga,
+  onVoltarTriagem,
   onOpenFiltersModal,
   onAbrirProntidao,
 }: InternationalHubProps) {
+  const { podeGravar } = useFerramenta()
   const [filtroMoeda, setFiltroMoeda] = useState<string>("todas")
   const [somenteVisto, setSomenteVisto] = useState<boolean>(false)
+  const [mostrarNaoSeguidas, setMostrarNaoSeguidas] = useState<boolean>(false)
   const [busca, setBusca] = useState<string>("")
 
   // Apenas vagas internacionais
-  const vagasInternacionais = useMemo(() => {
+  const filtradas = useMemo(() => {
     return vagas.filter((v) => {
       if (areaDe(v) !== "internacional") return false
       if (busca) {
@@ -79,6 +91,13 @@ export default function InternationalHub({
       return true
     })
   }, [vagas, busca, filtroMoeda, somenteVisto])
+
+  // não seguidas ficam escondidas até marcar a caixa; as estatísticas contam só o que está à vista
+  const naoSeguidas = useMemo(() => filtradas.filter((v) => v.triagem === "visitada").length, [filtradas])
+  const vagasInternacionais = useMemo(
+    () => (mostrarNaoSeguidas ? filtradas : filtradas.filter((v) => v.triagem !== "visitada")),
+    [filtradas, mostrarNaoSeguidas],
+  )
 
   // Estatísticas do Hub Internacional
   const stats = useMemo(() => {
@@ -193,6 +212,23 @@ export default function InternationalHub({
               <span>Patrocínio de Visto / Relocation</span>
             </button>
 
+            {/* Não seguidas: escondidas por padrão */}
+            <label
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                mostrarNaoSeguidas
+                  ? "bg-teal-50 text-teal-700 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800"
+                  : "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={mostrarNaoSeguidas}
+                onChange={(e) => setMostrarNaoSeguidas(e.target.checked)}
+                className="accent-teal-600"
+              />
+              <span>Mostrar não seguidas ({naoSeguidas})</span>
+            </label>
+
             <button
               onClick={onOpenFiltersModal}
               className="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 transition"
@@ -293,15 +329,39 @@ export default function InternationalHub({
               </div>
 
               {/* Footer Actions */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 mt-2">
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 mt-2 flex-wrap">
                 <span className="text-[11px] text-slate-400">
                   {formatarDataRelativa(vaga.publicada_em)}
+                  {vaga.triagem === "visitada" && vaga.triada_em && ` · não seguida em ${diaMes(vaga.triada_em)}`}
                 </span>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-2 flex-wrap">
+                  {vaga.triagem === "pendente" && (
+                    <button
+                      disabled={!podeGravar}
+                      onClick={() => onNaoSeguirVaga(vaga.id)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition disabled:opacity-50"
+                      title="Marca como não seguida (a busca não traz de novo)"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Não seguir</span>
+                    </button>
+                  )}
+                  {vaga.triagem === "visitada" && (
+                    <button
+                      disabled={!podeGravar}
+                      onClick={() => onVoltarTriagem(vaga.id)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition disabled:opacity-50"
+                      title="Devolve a vaga para Para decidir"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Voltar para Para decidir</span>
+                    </button>
+                  )}
                   <button
+                    disabled={!podeGravar}
                     onClick={() => onSeguirVaga(vaga.id)}
-                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-teal-600 hover:bg-teal-500 shadow-xs transition"
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-teal-600 hover:bg-teal-500 shadow-xs transition disabled:opacity-50"
                     title="Mover vaga para o Quadro Kanban"
                   >
                     Seguir Vaga
@@ -334,6 +394,11 @@ export default function InternationalHub({
             Ative mais fontes internacionais nas configurações de busca ou limpe
             os filtros de visto/moeda.
           </p>
+          {!mostrarNaoSeguidas && naoSeguidas > 0 && (
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              {naoSeguidas} vaga(s) não seguida(s) escondida(s): marque Mostrar não seguidas para vê-las.
+            </p>
+          )}
         </div>
       )}
     </div>

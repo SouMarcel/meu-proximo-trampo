@@ -557,6 +557,8 @@ function Pagina({
               vagas={vagasInternacional}
               onSelectVaga={(v) => setDetalheId(v.id)}
               onSeguirVaga={handleSeguirVaga}
+              onNaoSeguirVaga={handleNaoSeguirVaga}
+              onVoltarTriagem={handleVoltarTriagem}
               onOpenFiltersModal={() => setFiltrosModo("internacional")}
               onAbrirProntidao={() => setPerfilAberto({ tela: "analises" })}
             />
