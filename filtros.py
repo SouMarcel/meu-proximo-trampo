@@ -83,6 +83,8 @@ FONTES_NAC = {"indeed": "Indeed", "gupy": "Gupy", "nerdin": "Nerdin", "infojobs"
               "ey": "EY", "linkedin": "LinkedIn", "startupjobs": "startup.jobs", "jobgether": "JobGether",
               "fullstack": "FullStack"}
 FONTES_PADRAO = ["indeed", "gupy", "nerdin", "infojobs", "vagascom", "ey", "jobgether"]
+# Portais com login (spec 041), também em "fontes", desligados por padrão; ficam na seção "Portais com login" do painel
+FONTES_LOGIN = {"mygreenhouse": "MyGreenhouse Jobs"}
 # Portais da lista acima que também rodam na consulta internacional global ("mundo todo"; GLOBAL = True na fonte)
 FONTES_GLOBAIS = ("linkedin", "jobgether")
 PRECISA = {"startupjobs": "da chave MCP_STARTUP_JOBS no arquivo .env"}
@@ -421,9 +423,9 @@ def validar(e: dict) -> dict:
     if "fontes" in e:  # só quando o painel manda: quem não manda mantém a lista do config.json
         lista = e.get("fontes") if isinstance(e.get("fontes"), list) else []
         fontes = [k for k in FONTES_NAC if k in lista]  # nome desconhecido (de um config antigo) é ignorado
-        if not fontes:
+        if not fontes:  # um portal com login sozinho não basta: ele não roda na busca pelo terminal
             raise ValueError("marque pelo menos um portal")
-        portais["fontes"] = fontes
+        portais["fontes"] = fontes + [k for k in FONTES_LOGIN if k in lista]
     return {**portais,
         "termos": termos,
         "localidade": {"pais": pais, "estado": estado, "cidade": cidade, "raio_km": raio},
@@ -491,7 +493,8 @@ def opcoes() -> dict:
     return {"paises": sorted(PAISES, key=sem_acento), "modelos": MODELOS, "tipos_emprego": TIPOS_EMPREGO,
             "senioridades": SENIORIDADES, "moedas": MOEDAS, "moeda_do_pais": MOEDA_DO_PAIS,
             "janelas": JANELAS, "raios_km": RAIOS_KM, "idiomas": IDIOMAS, "regioes": REGIOES,
-            "contratacao": CONTRATACOES, "fontes_int": fontes_int(), "fontes_nac": fontes_nac()}
+            "contratacao": CONTRATACOES, "fontes_int": fontes_int(), "fontes_nac": fontes_nac(),
+            "fontes_login": fontes_login()}
 
 
 def fontes_nac() -> list[dict]:
@@ -500,6 +503,16 @@ def fontes_nac() -> list[dict]:
 
     return [{"nome": n, "rotulo": r, "termos": getattr(FONTES.get(n), "TERMOS", ""), "precisa": PRECISA.get(n, "")}
             for n, r in FONTES_NAC.items() if n in FONTES]
+
+
+def fontes_login() -> list[dict]:
+    """Os portais com login para o painel (spec 041): nome, rótulo, termos, o aviso de risco que a pessoa confirma ao
+    ligar e o aviso do login."""
+    from fontes import FONTES
+
+    return [{"nome": n, "rotulo": r, "termos": getattr(FONTES[n], "TERMOS", ""),
+             "aviso_risco": getattr(FONTES[n], "AVISO_RISCO", ""), "aviso_login": getattr(FONTES[n], "AVISO_LOGIN", "")}
+            for n, r in FONTES_LOGIN.items() if n in FONTES]
 
 
 def fontes_int() -> list[dict]:

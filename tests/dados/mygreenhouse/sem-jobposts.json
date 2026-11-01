@@ -1,0 +1,8 @@
+{
+ "component": "jobs",
+ "props": {
+  "browsing": false
+ },
+ "url": "/jobs/search",
+ "version": "versao-ficticia-1"
+}

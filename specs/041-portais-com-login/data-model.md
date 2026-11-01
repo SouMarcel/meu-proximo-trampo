@@ -15,7 +15,7 @@ Atributos de fonte comuns (`fontes/__init__.py`) mais os da área:
 | `ORIGENS_SSO` | `("https://www.linkedin.com", "https://linkedin.com")` | apagadas no Desconectar (o login pelo LinkedIn) |
 | `AVISO_RISCO` | os termos proíbem automação; a Greenhouse pode limitar, suspender ou encerrar a conta | confirmação ao ligar |
 | `AVISO_LOGIN` | pode entrar pelo LinkedIn, e a ferramenta não lê as páginas dele; o login por e-mail do MyGreenhouse é preferível | painel |
-| `logado(url)` | host em `DOMINIOS` e caminho fora de `/users/sign_in` | Pronto e espera de login, só pelo endereço |
+| `logado(url)` | host em `DOMINIOS` e caminho fora de `/users/` | Pronto e espera de login, só pelo endereço |
 
 ## Conexão (`.cache/portais-login.json`)
 

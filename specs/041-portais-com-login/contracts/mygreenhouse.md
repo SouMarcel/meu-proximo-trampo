@@ -18,7 +18,8 @@ Segue `fontes/__init__.py` e usa os atributos de portal com login (data-model.md
 
 ## Funções
 
-- `logado(url) -> bool`: host `my.greenhouse.io` e caminho fora de `/users/sign_in`.
+- `logado(url) -> bool`: host `my.greenhouse.io` e caminho fora de `/users/` (entrar, senha e o retorno do login pelo
+  LinkedIn, `/users/auth/…`).
 - `endereco(cargo, consulta, horas, pagina) -> str`: monta `URL_BUSCA` com `query` (sem aspas), `work_type[]=remote`,
   o local do país (consulta nacional), `date_posted` (janela de até 120 h) e `page` (a partir de 2).
 - `ler_resposta(dados) -> (vagas, mais: bool)`: `props.jobPosts` no formato comum (data-model.md), com os campos da conta
@@ -39,7 +40,9 @@ Segue `fontes/__init__.py` e usa os atributos de portal com login (data-model.md
     | `BLOQUEIOS` ou desafio | `_comum.gravar_espera`, `parada()` e aviso com o fim da espera |
     | captcha | aviso "resolva na janela e busque de novo" e a janela na frente |
     | "mudou" ou "janela" | aviso, e o portal fica fora do resto da busca |
-- `descrever(vaga) -> str`: `ats.ler(vaga["url"])["descricao"]`, pela API pública e sem a sessão. Em erro, devolve o
-  que a vaga já tinha.
+- `descrever(vaga) -> str`: `ats.ler(vaga["url"])["descricao"]`, pela API pública e sem a sessão. Se o link for do
+  site da empresa (não reconhecido por `ats.vaga_do_link`), usa o quadro pelo id da vaga
+  (`job-boards.greenhouse.io/<empresa>/jobs/<id>`). Na espera, depois de um bloqueio ou em erro, devolve o que a vaga
+  já tinha.
 - `pausa()`, `aviso_pausa(consultas)`, `espera()` e `parada()`: como na FullStack. `aviso_pausa` conta
   `MAX_PAGINAS × cargos + 1`.

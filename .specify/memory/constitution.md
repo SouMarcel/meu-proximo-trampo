@@ -1,5 +1,17 @@
 <!--
-Relatório de impacto da emenda (2026-10-28)
+Relatório de impacto da emenda (2026-11-01)
+- Versão: 5.2.0 → 5.3.0 (MINOR: seção nova no princípio VI)
+- Princípio VI: entra "Busca com login". Um portal que só mostra a busca de vagas depois do login pode entrar numa área
+  própria ("Portais com login"), portal por portal, desligado por padrão, com o login feito pela pessoa na janela da
+  ferramenta, só no clique do botão Buscar da página, só lendo os resultados da busca e parando no primeiro bloqueio. O
+  1º parágrafo do princípio passa a citar essa exceção à regra "só a busca pública, sem login".
+- Motivo: o usuário pediu a busca do MyGreenhouse Jobs, que exige login, e uma área para portais desse tipo (spec 041,
+  decisões de 31/10 e 01/11). Os termos do MyGreenhouse proíbem acesso automatizado: vale também "Termos contrários".
+- Arquivos atualizados: AGENTS.md (Respeite os portais), README.md, dash/README.md, dash/API.md, docs/novo-portal.md,
+  skill buscar-vagas.
+- Pendências: nenhuma.
+
+Emenda anterior (2026-10-28)
 - Versão: 5.1.2 → 5.2.0 (MINOR: princípio IV ampliado)
 - Princípio IV: a remuneração atual é um fato e pode ser guardada e reaproveitada (a pretensão salarial e a relocação
   continuam a cada vaga); o que a pessoa responde a pergunta sensível ou cadastral vai como ela escreveu. O relato que a
@@ -151,7 +163,7 @@ vaga original quando pedido); consultas espaçadas e só o necessário (ex.: des
 vagas que vão para o relatório). Em portais sem API aberta (ex.: Indeed, LinkedIn), só a busca
 pública de vagas: sem login e sem usar a conta, as senhas ou os cookies da pessoa, com pausa
 maior entre as consultas e parando no primeiro bloqueio (limite de consultas ou pedido de
-login), sem nova tentativa nem forma de contornar. O perfil da pessoa não é lido de portais:
+login), sem nova tentativa nem forma de contornar. A exceção é a busca com login (abaixo). O perfil da pessoa não é lido de portais:
 só dos arquivos que ela mesma baixa. Sem candidatura automática: a candidatura assistida (abaixo)
 preenche campos, e quem avança e envia é a pessoa.
 
@@ -179,6 +191,24 @@ só nestas condições:
   contornar; quem resolve é a pessoa, na janela.
 - **MCP oficial primeiro:** se um portal oferecer uma integração oficial com login (ex.: MCP com OAuth), ela
   substitui a leitura pela janela.
+
+**Busca com login.** Um portal que só mostra a busca de vagas depois do login pode entrar numa área própria da
+ferramenta ("Portais com login"), só nestas condições:
+
+- **Portal por portal:** cada um entra em spec própria, com análise de risco e a decisão da pessoa registrada. Vem
+  desligado por padrão, e a pessoa liga confirmando o aviso de risco da conta. A busca do LinkedIn fica de fora.
+- **Login da pessoa, na janela da ferramenta:** valem as regras da conta conectada: perfil só da ferramenta; nunca
+  pedir, ler ou digitar senha; os cookies não saem do navegador; nenhum clique em botão do portal. O login por outro
+  serviço (ex.: LinkedIn) é permitido, com aviso; a ferramenta não lê nem age nas páginas dele.
+- **Só no clique da página:** a leitura roda só na busca iniciada pelo botão da página. A busca pelo terminal ou pelo
+  chat não usa a sessão, e o assistente nunca a usa.
+- **Só leitura, só a busca:** a ferramenta lê só os resultados da busca e os dados públicos da vaga. Nada da conta
+  (vagas vistas, salvas, candidaturas) é guardado.
+- **Pouco e parando:** pausa e limite de páginas; no primeiro bloqueio, para e fica em espera; captcha ou verificação
+  param o portal, e quem resolve é a pessoa; com o login caído, a janela espera a pessoa por pouco tempo, e a busca
+  segue sem o portal se ela não entrar.
+- **Termos contrários:** se os termos do portal proíbem automação, vale também a regra de "Termos contrários".
+  Exemplo: MyGreenhouse Jobs (spec 041), desligado por padrão, por decisão de 2026-11-01.
 
 **Candidatura assistida.** Para tirar o trabalho repetitivo dos formulários, a ferramenta pode preencher os campos
 de uma candidatura na janela dela, só nestas condições:
@@ -233,4 +263,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 5.2.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-28
+**Version**: 5.3.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-11-01

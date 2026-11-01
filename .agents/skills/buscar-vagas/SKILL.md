@@ -1,6 +1,6 @@
 ---
 name: buscar-vagas
-description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, EY e JobGether; LinkedIn, startup.jobs e FullStack se estiverem ligados), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
+description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, EY e JobGether; LinkedIn, startup.jobs e FullStack se estiverem ligados; o MyGreenhouse Jobs, portal com login, só pela página), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
 
 # Buscar vagas
@@ -33,10 +33,11 @@ volta nas próximas buscas.
   sobre o usuário. Não complete lacunas com suposições.
 - `vagas.py`: `buscar`, `ver` e `gravar`. As buscas de cada portal ficam em `fontes/`
   (`indeed.py`, `gupy.py`, `nerdin.py`, `infojobs.py`, `vagascom.py`, `ey.py`, `linkedin.py`, `startupjobs.py`,
-  `jobgether.py`, `fullstack.py`); os
+  `jobgether.py`, `fullstack.py`, `mygreenhouse.py`); os
   portais usados vêm de `fontes` no `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais
   (sem a chave, valem `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey` e `jobgether`; o `linkedin`, o
-  `startupjobs` e o `fullstack` só entram se estiverem lá).
+  `startupjobs` e o `fullstack` só entram se estiverem lá; o `mygreenhouse` é portal com login e só roda no botão
+  Buscar da página).
 - `dash/`: o dashboard. `servidor.py` (porta 8765), `front/` (a página), `banco.py` (dados
   em `dash/dados/candidaturas.db`, com comandos `quadro`, `pendentes` e `analisar`) e
   `README.md` (campos e valores).
@@ -390,6 +391,16 @@ mesmos pedidos públicos que a página do portal faz (`fontes/fullstack.py`), se
   acha nada;
 - descrição pelo detalhe da vaga (até 30 por busca); não abra páginas da FullStack por conta própria fora dos scripts;
 - no primeiro bloqueio, sai da busca e fica **24 horas em espera** (código 5).
+
+O MyGreenhouse Jobs (`my.greenhouse.io`, a busca entre as empresas do Greenhouse) é um **portal com login**
+(`fontes/mygreenhouse.py`, spec 041; constituição VI, "Busca com login"):
+- roda só no botão Buscar da página, com o login que a pessoa fez na janela da ferramenta. Na busca pelo chat
+  (`vagas.py buscar`), ele fica de fora com o aviso "só pelo botão Buscar da página": isso é esperado, não é erro.
+  **Você nunca usa a sessão da pessoa**: não abra o MyGreenhouse, não leia a janela da ferramenta e não peça login;
+- os termos do MyGreenhouse proíbem acesso automatizado e a Greenhouse pode suspender a conta; ele vem **desligado**.
+  Se a pessoa perguntar, conte isso; ela liga e conecta em Filtros da busca → Portais com login;
+- as vagas têm o mesmo id das empresas acompanhadas, vêm sem descrição na lista (a descrição chega pela página
+  pública da vaga no Greenhouse) e oferecem "Acompanhar empresa".
 
 O JobGether (vagas remotas de empresas do mundo todo, em inglês) é consultado pela API que o portal oferece a
 assistentes de IA (`fontes/jobgether.py`), sem chave, sem login e sem cookies:

@@ -50,6 +50,10 @@ só entrega o arquivo.
   (remoto no país e no exterior, híbrido e presencial na cidade), data de publicação,
   tipo de emprego, senioridade, moedas aceitas para vagas de fora e empresas a excluir. Grava no `config.json` e vale a
   partir da próxima busca.
+  - **Portais com login** (spec 041): os portais que só mostram a busca depois do login (o MyGreenhouse Jobs), numa
+    seção própria, desligados por padrão. Ligar pede a confirmação do aviso de risco; Conectar abre a página de login
+    na janela da ferramenta, Pronto confere o login e Desconectar apaga a sessão. Rodam só no botão Buscar da página;
+    se o login caiu, a janela vem para a frente e a busca mostra "Aguardando login" por até 3 minutos.
 
 **A página:** é feita em React (branch `frontend-react`) e montada na nuvem pelo GitHub Actions, que grava o
 resultado pronto em `dash/front/`; quem usa continua só com o Python. O processo está em `specs/022-front-react/`
@@ -82,13 +86,13 @@ O ID é o do portal nas vagas da busca e nas do Indeed adicionadas pelo link (o 
 caracteres), `gupy-…` nas da Gupy (busca e link),
 `startupjobs-…` nas do startup.jobs (busca e link), `li-…` nas do LinkedIn, `nerdin-…` nas da Nerdin (busca e link),
 `infojobs-…` nas do InfoJobs e `vagascom-…` nas do Vagas.com (busca e link), `ey-…` nas da EY e `fullstack-…` nas
-da FullStack (busca e link), `jobgether-…` nas do JobGether (busca e formulário com o link), `web-…` nas de
+da FullStack (busca e link), `greenhouse-<empresa>-<id>` nas do MyGreenhouse (o mesmo id das empresas acompanhadas), `jobgether-…` nas do JobGether (busca e formulário com o link), `web-…` nas de
 outros sites e `m-…` nas preenchidas à mão.
 
 | Campo | Valores |
 |---|---|
 | `origem` | `busca` (veio de `vagas.py`), `link` (Adicionar Vaga pelo link; fica no relatório como as da busca) ou `manual` (formulário, direto no quadro) |
-| `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Startup Jobs`, `Nerdin`, `InfoJobs`, `Vagas.com`, `EY`, `JobGether`, `FullStack`, `Outra` (e as fontes do exterior) |
+| `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Startup Jobs`, `Nerdin`, `InfoJobs`, `Vagas.com`, `EY`, `JobGether`, `FullStack`, `MyGreenhouse`, `Outra` (e as fontes do exterior) |
 | `outras_plataformas` | outros portais onde a mesma vaga apareceu (na mesma busca, numa busca seguinte ou pelo Adicionar Vaga). O dashboard mostra uma etiqueta por plataforma, inclusive a do link de candidatura (vaga do Indeed com candidatura na Gupy também leva a etiqueta Gupy), e o filtro de plataforma acha a vaga por qualquer uma |
 | `titulo`, `empresa`, `local`, `url`, `descricao` | dados da vaga |
 | `publicada_em`, `encontrada_em` | `AAAA-MM-DD` |

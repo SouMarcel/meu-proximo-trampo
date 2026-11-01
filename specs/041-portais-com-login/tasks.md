@@ -18,7 +18,7 @@ abre o navegador:
 
 ## Phase 1: Setup
 
-- [ ] T001 Emenda da constituição em `.specify/memory/constitution.md` (5.2.0 → 5.3.0, MINOR), com o texto aprovado no
+- [X] T001 Emenda da constituição em `.specify/memory/constitution.md` (5.2.0 → 5.3.0, MINOR), com o texto aprovado no
   plan.md, seção "Emenda proposta":
   1. no 1º parágrafo do princípio VI, depois de "…sem nova tentativa nem forma de contornar.", a frase "A exceção é a
      busca com login (abaixo).";
@@ -26,9 +26,10 @@ abre o navegador:
      pessoa, na janela da ferramenta; só no clique da página; só leitura, só a busca; pouco e parando; termos
      contrários, com o exemplo do MyGreenhouse Jobs, spec 041, decisão de 2026-11-01);
   3. o relatório de impacto no topo, data 2026-11-01, com a lista de arquivos de documentação atualizados (T028 a T030).
-- [ ] T002 [P] Amostras fictícias em `tests/dados/mygreenhouse/`, no formato da research R2. Empresas, títulos, ids,
+- [X] T002 [P] Amostras fictícias em `tests/dados/mygreenhouse/`, no formato da research R2. Empresas, títulos, ids,
   `urlToken` e locais trocados, sem `currentUserEmail` nem dado de conta real:
-  - `pagina.html`: o `<div id="app" data-page="…">` com `component: "jobs"`, `version` e `deferredProps.jobPosts`;
+  - `data-page.json`: o `{component: "jobs", version}` que a leitura do `data-page` devolve (a aba falsa responde
+    com ele);
   - `pagina-1.json`: `props.jobPosts` com 12 vagas e `moreResultsAvailable: true`:
     - títulos que batem e que não batem com "scrum master";
     - uma remota só para os EUA, uma aberta ao Brasil, uma "LATAM" e uma `hybrid`;
@@ -39,7 +40,7 @@ abre o navegador:
 
 ## Phase 2: Foundational (bloqueia as histórias)
 
-- [ ] T003 Área comum em `fontes/_sessao.py`, pelo contrato `contracts/sessao.md`:
+- [X] T003 Área comum em `fontes/_sessao.py`, pelo contrato `contracts/sessao.md`:
   - `PortalComLoginErro(motivo, tipo)`, com `tipo` em `"login"`, `"captcha"`, `"bloqueio"`, `"mudou"` ou `"janela"`;
   - `na_pagina(esperar_login)` (contextmanager), `dentro_da_pagina()` e `aviso_fora(modulo)`:
     - o texto do aviso é `"<ROTULO>: só pelo botão Buscar da página (portal com login)"`;
@@ -65,7 +66,7 @@ abre o navegador:
 
   O único JavaScript que roda na aba é a leitura (`fetch` GET e consulta ao DOM). Nada de clique, digitação, `submit`
   ou leitura de campo de senha.
-- [ ] T004 Registro e listas comuns:
+- [X] T004 Registro e listas comuns:
   - `fontes/__init__.py`: o registro de `mygreenhouse` em `FONTES`, e na docstring os atributos de portal com login
     (`COM_LOGIN`, `ROTULO`, `URL_LOGIN`, `URL_BUSCA`, `DOMINIOS`, `ORIGENS`, `ORIGENS_SSO`, `AVISO_RISCO`,
     `AVISO_LOGIN`, `logado(url)`; data-model.md);
@@ -78,7 +79,7 @@ abre o navegador:
       `"fontes_login"`;
   - `dash/banco.py`: `"MyGreenhouse"` em `PLATAFORMAS`;
   - `integridade.py`: `"MyGreenhouse": ("my.greenhouse.io",)` em `PORTAIS`.
-- [ ] T005 Testes da área comum em `tests/test_sessao.py`, com `Aba` e `navegador` falsos:
+- [X] T005 Testes da área comum em `tests/test_sessao.py`, com `Aba` e `navegador` falsos:
   - fora do contexto, `dentro_da_pagina()` é falso; o contexto aninhado é erro;
   - `conectados` e `marcar`, inclusive com o arquivo ausente ou inválido;
   - `no_portal`: só os hosts de `DOMINIOS`. `pedir_json` fora do portal não chama `avaliar`;
@@ -100,14 +101,14 @@ abre o navegador:
 `URL_LOGIN` na frente. Pronto com sessão marca "conectado"; sem sessão, devolve `conectado: false`. Desconectar volta
 para "desconectado" e só apaga o perfil inteiro sem outra conexão.
 
-- [ ] T006 [US1] Constantes e `logado(url)` de `fontes/mygreenhouse.py`, pelo `contracts/mygreenhouse.md`:
+- [X] T006 [US1] Constantes e `logado(url)` de `fontes/mygreenhouse.py`, pelo `contracts/mygreenhouse.md`:
   - `NOME`, `PLATAFORMA`, `ROTULO`, `AREAS`, `POR_PAIS`, `GLOBAL`, `COM_LOGIN = True` e `TERMOS`;
   - `URL_LOGIN`, `URL_BUSCA`, `DOMINIOS`, `ORIGENS` e `ORIGENS_SSO`;
   - `AVISO_RISCO` e `AVISO_LOGIN`;
   - `logado(url)`: host `my.greenhouse.io` e caminho fora de `/users/sign_in`.
 
   O resto do módulo entra na US2.
-- [ ] T007 [US1] Rotas em `dash/servidor.py`, pelo `contracts/api.md`:
+- [X] T007 [US1] Rotas em `dash/servidor.py`, pelo `contracts/api.md`:
   - `GET /api/portais-login` devolve `{navegador, portais: [{nome, rotulo, termos, aviso_risco, aviso_login, ligado,
     conectado, situacao, espera}]}`. A `situacao` segue a ordem `desligado` → `em_espera` → `desconectado` →
     `conectado` (data-model.md);
@@ -121,16 +122,16 @@ para "desconectado" e só apaga o perfil inteiro sem outra conexão.
   - portal fora de `filtros.FONTES_LOGIN` recebe 404 "portal desconhecido";
   - erro de navegador recebe 409 com a mensagem;
   - `/api/portais-login` entra nas listas de prefixos onde `/api/contas` aparece hoje (perto das linhas 789 e 834).
-- [ ] T008 [US1] O Desconectar das contas em `dash/servidor.py` (`/api/contas/{portal}/desconectar`) troca
+- [X] T008 [US1] O Desconectar das contas em `dash/servidor.py` (`/api/contas/{portal}/desconectar`) troca
   `if not contas.conectados()` por `if not _sessao.algum_conectado()`. Assim, desconectar a Gupy não apaga a sessão
   do MyGreenhouse.
-- [ ] T009 [US1] Testes das rotas em `tests/test_sessao.py`, com o servidor de teste já usado em `tests/test_contas.py`
+- [X] T009 [US1] Testes das rotas em `tests/test_sessao.py`, com o servidor de teste já usado em `tests/test_contas.py`
   e o navegador falso:
   - situação desligado, em espera, desconectado e conectado;
   - Conectar, Pronto com e sem login, Desconectar;
   - 404 com portal desconhecido e 403 com pedido de fora;
   - o Desconectar das contas mantém o perfil quando há um portal com login conectado.
-- [ ] T010 [P] [US1] Front na `frontend-react` (worktree `../mpt-front-027b`):
+- [X] T010 [P] [US1] Front na `frontend-react` (worktree `../mpt-front-027b`):
   - `src/types/api.ts`: `PortalLogin` e `fontes_login` nas opções do painel;
   - `src/services/api/`: `portaisLogin()`, `conectarPortal`, `prontoPortal` e `desconectarPortal`;
   - `src/components/modals/SearchFiltersModal.tsx`: seção "Portais com login", separada dos portais de busca pública,
@@ -152,7 +153,7 @@ com a etiqueta "MyGreenhouse".
 **Independent Test**: com a `Aba` falsa e as amostras, `buscar` dentro de `na_pagina` devolve as vagas filtradas, no
 formato comum, sem os campos da conta. O id é o mesmo de `fontes/ats.py`. O desligado faz zero pedidos.
 
-- [ ] T011 [US2] Leitura em `fontes/mygreenhouse.py`:
+- [X] T011 [US2] Leitura em `fontes/mygreenhouse.py`:
   - `PAISES`, `POR_PAGINA = 12`, `MAX_PAGINAS = 3`, `MAX_DESCRICOES = 30`, `JANELA_5_DIAS = 120` e `PROPS`.
     `PROPS` vale `"browsing,page,moreResultsAvailable,jobPosts"`, nunca com `trackingData` nem `recentSearches`;
   - `endereco(cargo, consulta, horas, pagina)` monta o endereço com:
@@ -171,7 +172,7 @@ formato comum, sem os campos da conta. O id é o mesmo de `fontes/ats.py`. O des
   - a versão do Inertia vem do `data-page` da primeira carga da aba, uma vez por busca;
   - o pedido vai com os cabeçalhos `X-Inertia: true`, `X-Inertia-Version`, `X-Inertia-Partial-Component: jobs` e
     `X-Inertia-Partial-Data: PROPS`, por `_sessao.pedir_json`.
-- [ ] T012 [US2] `buscar(consulta, horas, por_termo)` em `fontes/mygreenhouse.py`:
+- [X] T012 [US2] `buscar(consulta, horas, por_termo)` em `fontes/mygreenhouse.py`:
   - fora de `na_pagina`, devolve `([], [aviso_fora])` uma vez por busca, sem tocar no navegador;
   - na área nacional, só o grupo remoto com país em `PAISES` faz pedido. Cidade, estado e país desconhecido devolvem
     `([], [])`;
@@ -180,21 +181,21 @@ formato comum, sem os campos da conta. O id é o mesmo de `fontes/ats.py`. O des
   - filtra pelo cargo (`_comum`), pela janela (`publicada_em`) e, no grupo remoto nacional, por
     `filtros.aberta_ao_pais`;
   - respeita `por_termo`.
-- [ ] T013 [US2] `descrever(vaga)` em `fontes/mygreenhouse.py`: `ats.ler(vaga["url"])["descricao"]`, pela API pública e
+- [X] T013 [US2] `descrever(vaga)` em `fontes/mygreenhouse.py`: `ats.ler(vaga["url"])["descricao"]`, pela API pública e
   sem a sessão. Em erro, devolve o que a vaga já tinha. Lê no máximo `MAX_DESCRICOES` por busca.
-- [ ] T014 [US2] Pausa e espera em `fontes/mygreenhouse.py`, como em `fontes/fullstack.py`:
+- [X] T014 [US2] Pausa e espera em `fontes/mygreenhouse.py`, como em `fontes/fullstack.py`:
   - `PAUSA = (3.0, 7.0)`, `VAR_PAUSA = "MYGREENHOUSE_PAUSA"`, `PAUSA_MIN = 3.0` e `PAUSA_FAIXA = 4.0`;
   - `ESPERA` de 24 h em `ARQ_ESPERA = .cache/mygreenhouse-espera.json`;
   - `pausa()`, `aviso_pausa(consultas)`, `espera()`, `parada()` e `_bloquear()`. `aviso_pausa` conta
     `MAX_PAGINAS × cargos + 1`.
-- [ ] T015 [US2] `dash/buscador.py`:
+- [X] T015 [US2] `dash/buscador.py`:
   - `_rodar` passa a chamar `vagas.executar` dentro de `_sessao.na_pagina(esperar_login=self._esperar_login)`.
     `vagas.executar` não muda de assinatura;
   - nesta história, `_esperar_login` só devolve `False` (o portal é pulado com aviso). A espera de verdade entra na
     US3;
   - `plano()` conta os pedidos do portal com login quando ele está ligado e conectado. Ligado e desconectado, avisa
     "conecte em Portais com login".
-- [ ] T016 [US2] Testes em `tests/test_mygreenhouse.py`, com a `Aba` falsa:
+- [X] T016 [US2] Testes em `tests/test_mygreenhouse.py`, com a `Aba` falsa:
   - `endereco`: aspas, remoto, país, `date_posted` até 120 h e não acima, `page`;
   - `ler_resposta`:
     - campos e descartados (nenhum `viewed`, `appliedAt` ou `saved` na vaga);
@@ -204,7 +205,7 @@ formato comum, sem os campos da conta. O id é o mesmo de `fontes/ats.py`. O des
   - os filtros de título, de janela e de `aberta_ao_pais`, com a vaga só dos EUA fora e a aberta ao Brasil dentro;
   - cidade e outro país sem pedido; internacional sem local; `por_termo`;
   - `descrever` com `ats.ler` trocado, inclusive em erro.
-- [ ] T017 [US2] Casos novos em `tests/test_busca.py`:
+- [X] T017 [US2] Casos novos em `tests/test_busca.py`:
   - a busca da página roda dentro de `na_pagina`;
   - com `"mygreenhouse"` fora de `fontes` (o padrão), zero pedidos e a mesma busca de antes;
   - a mesma vaga vinda de `ats` e de `mygreenhouse` aparece uma vez (junção pelo id);
@@ -226,20 +227,20 @@ formato comum, sem os campos da conta. O id é o mesmo de `fontes/ats.py`. O des
 - o tempo acabou: o portal é pulado com aviso em `erros`;
 - cancelar interrompe a espera.
 
-- [ ] T018 [US3] `_esperar_login(modulo, aba)` de verdade em `dash/buscador.py`:
+- [X] T018 [US3] `_esperar_login(modulo, aba)` de verdade em `dash/buscador.py`:
   1. `_set(situacao="aguardando_login", login={"portal", "rotulo", "ate"})` e `aba.frente()`;
   2. `_sessao.esperar(modulo, aba, cancelado=self._cancelar.is_set)`;
   3. no fim, minimiza a janela e volta para `situacao="consultando"` com `login=None`.
 
   `"aguardando_login"` entra na regra de `_set` que impede o "cancelando" de voltar atrás (linha 83).
-- [ ] T019 [US3] Em `fontes/mygreenhouse.py`, a resposta 401 ou o endereço de `/users/sign_in` chama
+- [X] T019 [US3] Em `fontes/mygreenhouse.py`, a resposta 401 ou o endereço de `/users/sign_in` chama
   `_sessao.garantir_login`. Com `tipo="login"`, o aviso diz que o portal foi pulado por falta de login, e ele fica fora
   do resto da busca.
-- [ ] T020 [US3] Testes:
+- [X] T020 [US3] Testes:
   - `tests/test_busca.py`: o estado durante a espera; logou e seguiu; o tempo acabou com o aviso e as vagas dos outros
     portais gravadas; o cancelamento durante a espera;
   - `tests/test_mygreenhouse.py`: 401 e redirecionamento chamam o callback; sem login, nenhum pedido depois.
-- [ ] T021 [P] [US3] Front na `frontend-react`:
+- [X] T021 [P] [US3] Front na `frontend-react`:
   - `src/types/api.ts`: `"aguardando_login"` na situação da busca e o campo `login`;
   - no progresso da busca, o texto `"Aguardando login no <rotulo>: entre na janela da ferramenta (faltam N s)"`.
 
@@ -258,7 +259,7 @@ página.
 - resposta sem `jobPosts` dá "o portal mudou";
 - `vagas.py buscar --fontes mygreenhouse` não abre a janela.
 
-- [ ] T022 [US4] Paradas em `fontes/mygreenhouse.py` (contrato, tabela "Parada no primeiro problema"):
+- [X] T022 [US4] Paradas em `fontes/mygreenhouse.py` (contrato, tabela "Parada no primeiro problema"):
   - `BLOQUEIOS` (403, 429, 503) ou página de desafio: `_bloquear()` com `_comum.gravar_espera`, `parada()` e aviso
     com o fim da espera;
   - na espera: aviso uma vez e nenhum pedido (busca e descrição);
@@ -266,12 +267,12 @@ página.
   - captcha (`_sessao.captcha_na_aba`): aviso "resolva na janela e busque de novo" e `aba.frente()`, sem espera;
   - "mudou" e "janela" (navegador ausente ou janela fechada): aviso, e o portal fica fora do resto da busca. As outras
     fontes seguem.
-- [ ] T023 [US4] `vagas.py`: `fontes_em_espera(nomes_fontes, pagina=False)` ignora as fontes com `COM_LOGIN` quando
+- [X] T023 [US4] `vagas.py`: `fontes_em_espera(nomes_fontes, pagina=False)` ignora as fontes com `COM_LOGIN` quando
   `pagina` é falso. `dash/buscador.py` passa `pagina=True` no `plano` e no `iniciar`, para perguntar antes de seguir
   sem o MyGreenhouse em espera. No terminal, a busca não pergunta por um portal que não vai rodar.
-- [ ] T024 [P] [US4] `.env.exemplo`: a linha
+- [X] T024 [P] [US4] `.env.exemplo`: a linha
   `# MYGREENHOUSE_PAUSA=3   # padrão 3 a 7 s (sorteado); mínimo 3 s para este portal`, perto da `FULLSTACK_PAUSA`.
-- [ ] T025 [US4] Testes em `tests/test_mygreenhouse.py`:
+- [X] T025 [US4] Testes em `tests/test_mygreenhouse.py`:
   - 403, 429 e 503 param no primeiro pedido, sem nova tentativa, e gravam a espera. Depois, zero pedidos e o aviso sai
     uma vez;
   - desafio; captcha com `frente()` e sem espera;
@@ -291,11 +292,11 @@ adicionadas pelo link.
 
 **Independent Test**: `ats.vaga_do_link(publicUrl)` reconhece o link da amostra, e a vaga tem `ats: "greenhouse"`.
 
-- [ ] T026 [US5] Conferir que o "Acompanhar empresa" do detalhe da vaga usa o campo `ats` ou o link da vaga
+- [X] T026 [US5] Conferir que o "Acompanhar empresa" do detalhe da vaga usa o campo `ats` ou o link da vaga
   (`ats.vaga_do_link`, `filtros.acompanhar`). Se o front decidir pela `plataforma`, incluir "MyGreenhouse" na regra da
   `frontend-react`. Caso de teste em `tests/test_mygreenhouse.py`: o `publicUrl` da amostra
   (`job-boards.greenhouse.io/<empresa>/jobs/<id>`) é reconhecido por `ats.vaga_do_link`, com o mesmo `urlToken`.
-- [ ] T027 [P] [US5] Front na `frontend-react`: em `src/utils/formatters.ts`, a etiqueta "MyGreenhouse" e o domínio
+- [X] T027 [P] [US5] Front na `frontend-react`: em `src/utils/formatters.ts`, a etiqueta "MyGreenhouse" e o domínio
   `my.greenhouse.io` no mapa de plataformas.
 
 **Checkpoint**: todas as histórias funcionando.
@@ -304,18 +305,18 @@ adicionadas pelo link.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T028 [P] Documentação:
+- [X] T028 [P] Documentação:
   - `README.md`: a área "Portais com login", o MyGreenhouse desligado por padrão, os termos contrários, o login na
     janela e "só pelo Buscar da página";
   - `dash/README.md`;
   - `dash/API.md`: as rotas `/api/portais-login`, o `aguardando_login` e o `login` no estado da busca, o `plano` e o
     Desconectar das contas;
   - `AGENTS.md`, em "Respeite os portais": a busca com login, só pelo botão da página, que o assistente nunca usa.
-- [ ] T029 [P] Roteiro e lista:
+- [X] T029 [P] Roteiro e lista:
   - `docs/novo-portal.md`: seção nova "Portal com login" (atributos, `_sessao`, testes com a `Aba` falsa, spec própria
     com análise de risco);
   - `specs/lista-de-desejos.md`: o item do Greenhouse como portal passa a "feito na spec 041".
-- [ ] T030 [P] Skill: `.agents/skills/buscar-vagas/SKILL.md` (portais com login: o assistente não usa a sessão; na busca
+- [X] T030 [P] Skill: `.agents/skills/buscar-vagas/SKILL.md` (portais com login: o assistente não usa a sessão; na busca
   pelo chat, o portal fica de fora com aviso), depois `python sincronizar_skills.py` e
   `python sincronizar_skills.py --conferir`.
 - [ ] T031 Front na `frontend-react`: `npm run build` sem erro de tipo. Commit local, e o push só com o OK da pessoa

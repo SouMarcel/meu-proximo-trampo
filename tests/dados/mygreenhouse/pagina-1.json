@@ -1,0 +1,266 @@
+{
+ "component": "jobs",
+ "props": {
+  "browsing": false,
+  "page": 1,
+  "moreResultsAvailable": true,
+  "jobPosts": [
+   {
+    "id": 5001,
+    "title": "Scrum Master",
+    "companyName": "Empresa Alfa",
+    "logoUrl": "https://exemplo.invalid/logo/empresaalfa.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresaalfa/jobs/5001",
+    "urlToken": "empresaalfa",
+    "departmentId": 901,
+    "viewJobPath": "/view_job?job_id=5001",
+    "firstPublished": "2026-10-31T12:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": true,
+    "appliedAt": "2026-10-31T10:00:00.000Z",
+    "saved": true
+   },
+   {
+    "id": 5002,
+    "title": "Senior Scrum Master",
+    "companyName": "Empresa Beta",
+    "logoUrl": "https://exemplo.invalid/logo/empresabeta.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresabeta/jobs/5002",
+    "urlToken": "empresabeta",
+    "departmentId": 902,
+    "viewJobPath": "/view_job?job_id=5002",
+    "firstPublished": "2026-10-31T09:00:00.000Z",
+    "locations": [
+     "Remote, United States"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5003,
+    "title": "Scrum Master (LATAM)",
+    "companyName": "Empresa Gama",
+    "logoUrl": "https://exemplo.invalid/logo/empresagama.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresagama/jobs/5003",
+    "urlToken": "empresagama",
+    "departmentId": 903,
+    "viewJobPath": "/view_job?job_id=5003",
+    "firstPublished": "2026-10-30T15:00:00.000Z",
+    "locations": [
+     "Latin America"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": true,
+    "appliedAt": "2026-10-31T10:00:00.000Z",
+    "saved": true
+   },
+   {
+    "id": 5004,
+    "title": "Agile Scrum Master",
+    "companyName": "Empresa Delta",
+    "logoUrl": "https://exemplo.invalid/logo/empresadelta.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresadelta/jobs/5004",
+    "urlToken": "empresadelta",
+    "departmentId": 904,
+    "viewJobPath": "/view_job?job_id=5004",
+    "firstPublished": "2026-10-30T11:00:00.000Z",
+    "locations": [
+     "São Paulo, Brazil"
+    ],
+    "workType": "hybrid",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5005,
+    "title": "Senior .NET Engineer",
+    "companyName": "Empresa Épsilon",
+    "logoUrl": "https://exemplo.invalid/logo/empresaepsilon.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresaepsilon/jobs/5005",
+    "urlToken": "empresaepsilon",
+    "departmentId": 905,
+    "viewJobPath": "/view_job?job_id=5005",
+    "firstPublished": "2026-10-30T10:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5006,
+    "title": "Scrum Master",
+    "companyName": "Empresa Zeta",
+    "logoUrl": "https://exemplo.invalid/logo/empresazeta.png",
+    "publicUrl": "https://carreiras.empresazeta.invalid/vagas?gh_jid=5006",
+    "urlToken": "empresazeta",
+    "departmentId": 906,
+    "viewJobPath": "/view_job?job_id=5006",
+    "firstPublished": "2026-10-29T10:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5007,
+    "title": "Product Designer",
+    "companyName": "Empresa Eta",
+    "logoUrl": "https://exemplo.invalid/logo/empresaeta.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresaeta/jobs/5007",
+    "urlToken": "empresaeta",
+    "departmentId": 907,
+    "viewJobPath": "/view_job?job_id=5007",
+    "firstPublished": "2026-10-29T09:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5008,
+    "title": "Data Analyst",
+    "companyName": "Empresa Teta",
+    "logoUrl": "https://exemplo.invalid/logo/empresateta.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresateta/jobs/5008",
+    "urlToken": "empresateta",
+    "departmentId": 908,
+    "viewJobPath": "/view_job?job_id=5008",
+    "firstPublished": "2026-10-28T09:00:00.000Z",
+    "locations": [
+     "Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5009,
+    "title": "Backend Engineer",
+    "companyName": "Empresa Iota",
+    "logoUrl": "https://exemplo.invalid/logo/empresaiota.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresaiota/jobs/5009",
+    "urlToken": "empresaiota",
+    "departmentId": 909,
+    "viewJobPath": "/view_job?job_id=5009",
+    "firstPublished": "2026-10-28T08:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5010,
+    "title": "Customer Success Manager",
+    "companyName": "Empresa Capa",
+    "logoUrl": "https://exemplo.invalid/logo/empresacapa.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresacapa/jobs/5010",
+    "urlToken": "empresacapa",
+    "departmentId": 910,
+    "viewJobPath": "/view_job?job_id=5010",
+    "firstPublished": "2026-10-27T08:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5011,
+    "title": "QA Engineer",
+    "companyName": "Empresa Lambda",
+    "logoUrl": "https://exemplo.invalid/logo/empresalambda.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresalambda/jobs/5011",
+    "urlToken": "empresalambda",
+    "departmentId": 911,
+    "viewJobPath": "/view_job?job_id=5011",
+    "firstPublished": "2026-10-27T07:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5012,
+    "title": "Engineering Manager",
+    "companyName": "Empresa Mi",
+    "logoUrl": "https://exemplo.invalid/logo/empresami.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresami/jobs/5012",
+    "urlToken": "empresami",
+    "departmentId": 912,
+    "viewJobPath": "/view_job?job_id=5012",
+    "firstPublished": "2026-10-26T07:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   }
+  ]
+ },
+ "url": "/jobs/search?query=scrum+master&page=1",
+ "version": "versao-ficticia-1",
+ "encryptHistory": false,
+ "clearHistory": false
+}

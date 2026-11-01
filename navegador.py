@@ -14,6 +14,7 @@ espaco), nunca em botões: quem chama confere antes qual é o elemento ativo.
                             em uso (ex.: um formulário de candidatura); Aba.fechar_aba() fecha só ela
   aba_atual()                a aba que a pessoa está vendo, sem navegar (candidatura assistida)
   Aba.ir(url) / .avaliar(js) / .url() / .origem() / .fechar()
+  Aba.endereco()            o endereço pelo histórico do navegador, sem rodar nada na página (portais com login)
   Aba.digitar(texto) / .espaco()   digitação no elemento focado (spec 027)
   fechar()                  fecha a janela da ferramenta
   desconectar()             fecha a janela e apaga o perfil (as sessões dos portais)
@@ -229,6 +230,15 @@ class Aba:
 
     def origem(self) -> str:
         return self.avaliar("location.origin") or ""
+
+    def endereco(self) -> str:
+        """O endereço da aba pelo histórico de navegação do navegador, sem rodar nada na página (portais com login,
+        spec 041: durante o login a página pode ser de outro serviço, como o LinkedIn, e não é lida)."""
+        h = self.sessao.pedir("Page.getNavigationHistory")
+        try:
+            return str(h["entries"][h["currentIndex"]].get("url") or "")
+        except (KeyError, IndexError, TypeError, AttributeError):
+            return ""
 
     def digitar(self, texto: str) -> None:
         """Digita no elemento focado, como um teclado (a página recebe os eventos de entrada normais). Quem chama
