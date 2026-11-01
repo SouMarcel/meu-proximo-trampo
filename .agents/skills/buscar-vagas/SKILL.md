@@ -1,6 +1,6 @@
 ---
 name: buscar-vagas
-description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, EY e JobGether; LinkedIn, startup.jobs e FullStack se estiverem ligados; o MyGreenhouse Jobs, portal com login, só pela página), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
+description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, JobGether e as empresas acompanhadas, como a EY; LinkedIn, startup.jobs e FullStack se estiverem ligados; o MyGreenhouse Jobs, portal com login, só pela página), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
 
 # Buscar vagas
@@ -35,7 +35,7 @@ volta nas próximas buscas.
   (`indeed.py`, `gupy.py`, `nerdin.py`, `infojobs.py`, `vagascom.py`, `ey.py`, `linkedin.py`, `startupjobs.py`,
   `jobgether.py`, `fullstack.py`, `mygreenhouse.py`); os
   portais usados vêm de `fontes` no `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais
-  (sem a chave, valem `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey` e `jobgether`; o `linkedin`, o
+  (sem a chave, valem `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom` e `jobgether`; o `linkedin`, o
   `startupjobs` e o `fullstack` só entram se estiverem lá; o `mygreenhouse` é portal com login e só roda no botão
   Buscar da página).
 - `dash/`: o dashboard. `servidor.py` (porta 8765), `front/` (a página), `banco.py` (dados
@@ -85,7 +85,7 @@ servidor; ele só serve para ver e mexer no quadro.
    `--incluir-presencial`; "só na Gupy" → `--fontes gupy`; "procura também no
    startup.jobs" → `--fontes indeed gupy nerdin startupjobs`; "inclui o LinkedIn" →
    `--fontes indeed gupy nerdin linkedin`; "só vagas de TI da Nerdin" → `--fontes nerdin`; "só no InfoJobs" →
-   `--fontes infojobs`; "só no Vagas.com" → `--fontes vagascom`; "só na EY" → `--fontes ey`; "só no JobGether" → `--fontes jobgether`; "só na
+   `--fontes infojobs`; "só no Vagas.com" → `--fontes vagascom`; "só no JobGether" → `--fontes jobgether`; "só na
    FullStack" → `--fontes fullstack`. Pedido
    pontual não altera
    o `config.json`; para mudar o padrão, sugira o painel Filtros da busca (ou edite o
@@ -378,8 +378,14 @@ busca pública de cada site (`fontes/infojobs.py`, `fontes/vagascom.py`), sem lo
 - no primeiro bloqueio, o portal sai da busca e fica **24 horas em espera**, com a mesma pergunta do
   LinkedIn (código 5).
 
-A EY (`careers.ey.com`, o site de vagas da EY) é consultada pela busca pública do site (`fontes/ey.py`), sem login nem
-cookies: a lista de cada cargo no país da pessoa e, como a lista não traz data, a página de cada vaga que bate com o
+As **empresas acompanhadas** (`fontes/ats.py`, specs 031 e 042) aceitam a página de vagas de qualquer empresa:
+Greenhouse, Lever, Ashby, Teamtailor (o feed público), o site da EY e a página própria, que a IA da ferramenta lê
+(só o texto público, só quando muda; sem IA ligada, a empresa fica de fora com aviso). Elas rodam pela fonte `ats`,
+que entra sozinha na busca quando há empresas na lista. A pessoa adiciona em Filtros da busca → Empresas que você
+acompanha. Não abra as páginas das empresas por conta própria fora dos scripts.
+
+A EY (`careers.ey.com`, o site de vagas da EY) deixou de ser portal: é uma empresa acompanhada (quem a tinha ligada
+passou a tê-la na lista). Ela é consultada pela busca pública do site (`fontes/ey.py`), sem login nem cookies: a lista de cada cargo no país da pessoa e, como a lista não traz data, a página de cada vaga que bate com o
 cargo (até 20 por busca; as já lidas ficam em `.cache/ey-datas.json` e não são abertas de novo). Pausa sorteada de 3
 a 7 segundos; no primeiro bloqueio, sai daquela busca, sem espera entre buscas.
 

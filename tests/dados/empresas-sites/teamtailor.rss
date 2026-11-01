@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:tt="https://teamtailor.com/locations">
+  <channel>
+    <title>LOJAS EXEMPLO BR</title>
+    <description>Vagas Abertas</description>
+    <link>https://carreiras.lojasexemplo.invalid/jobs</link>
+    <item>
+      <title>Scrum Master</title>
+      <description>&lt;p&gt;&lt;strong&gt;O que esperamos:&lt;/strong&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Experiência com times ágeis.&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 30 Oct 2026 10:00:00 -0300</pubDate>
+      <link>https://carreiras.lojasexemplo.invalid/jobs/1000001-scrum-master</link>
+      <remoteStatus>fully</remoteStatus>
+      <guid>00000000-0000-4000-8000-000000000001</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Escritório Central</tt:name>
+          <tt:city>Cidade Exemplo</tt:city>
+          <tt:country>Brazil</tt:country>
+        </tt:location>
+      </tt:locations>
+      <tt:department>Tecnologia</tt:department>
+      <tt:role>Scrum Master</tt:role>
+    </item>
+    <item>
+      <title>Scrum Master de Loja</title>
+      <description>&lt;p&gt;Atuação presencial.&lt;/p&gt;</description>
+      <pubDate>Thu, 29 Oct 2026 10:00:00 -0300</pubDate>
+      <link>https://carreiras.lojasexemplo.invalid/jobs/1000002-scrum-master-de-loja</link>
+      <remoteStatus>onsite</remoteStatus>
+      <guid>00000000-0000-4000-8000-000000000002</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Loja Outra Cidade - RS</tt:name>
+          <tt:city>Outra Cidade</tt:city>
+          <tt:country>Brazil</tt:country>
+        </tt:location>
+      </tt:locations>
+    </item>
+    <item>
+      <title>Agile Scrum Master</title>
+      <description>&lt;p&gt;Modelo híbrido.&lt;/p&gt;</description>
+      <pubDate>Wed, 28 Oct 2026 10:00:00 -0300</pubDate>
+      <link>https://carreiras.lojasexemplo.invalid/jobs/1000003-agile-scrum-master</link>
+      <remoteStatus>hybrid</remoteStatus>
+      <guid>00000000-0000-4000-8000-000000000003</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Escritório Curitiba - PR</tt:name>
+          <tt:city>Curitiba</tt:city>
+          <tt:country>Brazil</tt:country>
+        </tt:location>
+      </tt:locations>
+    </item>
+    <item>
+      <title>Scrum Master Pleno</title>
+      <description>&lt;p&gt;Sem modelo informado.&lt;/p&gt;</description>
+      <pubDate>Tue, 27 Oct 2026 10:00:00 -0300</pubDate>
+      <link>https://carreiras.lojasexemplo.invalid/jobs/1000004-scrum-master-pleno</link>
+      <remoteStatus>none</remoteStatus>
+      <guid>00000000-0000-4000-8000-000000000004</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:city>Curitiba</tt:city>
+          <tt:country>Brazil</tt:country>
+        </tt:location>
+      </tt:locations>
+    </item>
+    <item>
+      <title>Scrum Master Sênior</title>
+      <description>&lt;p&gt;Vaga antiga.&lt;/p&gt;</description>
+      <pubDate>Mon, 01 Sep 2026 10:00:00 -0300</pubDate>
+      <link>https://carreiras.lojasexemplo.invalid/jobs/1000005-scrum-master-senior</link>
+      <remoteStatus>fully</remoteStatus>
+      <guid>00000000-0000-4000-8000-000000000005</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:city>Cidade Exemplo</tt:city>
+          <tt:country>Brazil</tt:country>
+        </tt:location>
+      </tt:locations>
+    </item>
+  </channel>
+</rss>

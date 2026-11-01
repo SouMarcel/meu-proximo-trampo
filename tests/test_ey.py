@@ -339,13 +339,11 @@ class TestPausa(unittest.TestCase):
 
 
 class TestPadraoELink(SemRede):
-    def test_ligada_por_padrao(self):
-        self.assertIn("ey", FONTES)
-        self.assertIn("ey", filtros.efetivos({})["fontes"])
-        self.assertNotIn("ey", filtros.efetivos({"fontes": ["indeed"]})["fontes"])  # a escolha da pessoa vale
-        nomes = {o["nome"]: o for o in filtros.opcoes()["fontes_nac"]}
-        self.assertEqual(nomes["ey"]["rotulo"], "EY")
-        self.assertIn("pausa", nomes["ey"]["termos"])
+    def test_virou_empresa_acompanhada(self):  # spec 042: a EY é uma empresa, não um portal
+        self.assertIn("ey", FONTES)  # continua registrada: descrição, link e Adicionar Vaga
+        self.assertNotIn("ey", filtros.efetivos({})["fontes"])
+        self.assertNotIn("ey", {o["nome"] for o in filtros.opcoes()["fontes_nac"]})
+        self.assertNotIn("ey", filtros.efetivos({"fontes": ["indeed", "ey"], "termos": ["x"]})["fontes"])
         self.assertIn("EY", banco.PLATAFORMAS)
 
     def test_adicionar_vaga_pelo_link(self):

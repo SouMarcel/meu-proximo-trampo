@@ -260,14 +260,27 @@ preenche (`POST /api/vagas/extrair`), a pessoa confere o formulário e só entã
 - 422 post que não deu para ler: `{erro, sugestao: "colar", parcial: {url, plataforma, formato}}` → caixa "colar texto".
 - 400 link inválido.
 
-**`GET /api/empresas`** — `{empresas: [{sistema, id, nome, url}], maximo: 50}`: as empresas acompanhadas (spec 031).
+**`GET /api/empresas`** — `{empresas: [{sistema, id, nome, url}], maximo: 50}`: as empresas acompanhadas (specs 031 e
+042). `sistema`: `greenhouse`, `lever`, `ashby`, `teamtailor`, `ey` ou `pagina` (página própria, lida pela IA).
 
-**`POST /api/empresas`** — "Acompanhar". Corpo `{url*: string}` (até 1.000): link da página de vagas ou de uma vaga do
-Greenhouse, do Lever ou do Ashby (inclusive `embed/job_app?for=…`). Grava só a lista `empresas` do `config.json`, sem
-pedido ao sistema da empresa. Respostas: 201 `{empresa, nova: true, empresas}`; 200 com `nova: false` (já estava); 400
-link não reconhecido ou "a lista de empresas está cheia (50); remova uma no painel Filtros da busca".
+**`POST /api/empresas/reconhecer`** (spec 042) — o botão Adicionar do painel. Corpo `{url*: string}` (até 1.000): a
+página de vagas de qualquer empresa. Domínio conhecido (Greenhouse, Lever, Ashby, `*.teamtailor.com`, `careers.ey.com`):
+sem pedido; outro domínio: **um** pedido à página (o feed do Teamtailor anunciado faz dela Teamtailor; senão, página
+própria). Não grava nada. Resposta 200 `{empresa: {sistema, id, nome, url}, rotulo, ia_necessaria: bool, ia_ligada:
+bool}`; `rotulo`: "Greenhouse", "Lever", "Ashby", "Teamtailor", "Site de vagas da EY" ou "Página própria (lida pela
+IA)". 400 com a mensagem: portal de vagas ("… é um portal de vagas, não a página de uma empresa: ligue-o em Filtros da
+busca → Portais"), link inválido ou página que não abre.
 
-**`PUT /api/config`** e as empresas: o front manda `empresas` no nível de cima; sem essa chave (front antigo), vale
+**`POST /api/empresas`** — "Acompanhar". Corpo `{url*: string}` (até 1.000): link da página de vagas ou de uma vaga
+(inclusive `embed/job_app?for=…` do Greenhouse). Reconhece como o `reconhecer` (domínio desconhecido: um pedido à
+página) e grava só a lista `empresas` do `config.json`. Respostas: 201 `{empresa, nova: true, empresas}`; 200 com
+`nova: false` (já estava); 400 portal de vagas, link não reconhecido ou "a lista de empresas está cheia (50); remova
+uma no painel Filtros da busca".
+
+**`PUT /api/config`** e as empresas: a empresa com `sistema` (vinda do Adicionar) é conferida sem pedido; link solto de
+domínio desconhecido recebe 400 "adicione pelo botão Adicionar do painel". A EY saiu de `fontes` (spec 042): config com
+a EY ligada (ou sem `fontes` e com cargos) recebe a EY em `empresas` ao ler e grava assim no próximo salvamento. O front
+manda `empresas` no nível de cima; sem essa chave (front antigo), vale
 `internacional.empresas`. A lista é gravada sempre em cima.
 
 **`POST /api/vagas/extrair`** **[local]** — a IA tira os campos de um texto livre; nada é gravado.
@@ -337,7 +350,7 @@ cargos; o front mostra o aviso de primeira vez).
   frases_restricao, frases_positivas}, empresas: [{sistema, id, nome, url}] (até 50; nas duas áreas, spec 031),
   idiomas_aceitos, janela_horas,
   tipos_emprego, senioridades, moedas_aceitas, empresas_excluir, fontes: string[] (indeed, gupy, nerdin, infojobs,
-  vagascom, ey, linkedin,
+  vagascom, linkedin,
   startupjobs, jobgether, fullstack e o portal com login mygreenhouse)}` (filtros.py:231-273). O `PUT` recusa a lista
   só com portal com login ("marque pelo menos um portal" conta só os de busca pública).
 - `opcoes`: `{paises, modelos, tipos_emprego, senioridades, moedas, moeda_do_pais, janelas (chaves "24","72","168",

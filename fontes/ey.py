@@ -1,5 +1,6 @@
 """Fonte EY: a busca pública do site de vagas da EY (careers.ey.com, no SAP SuccessFactors), sem login e sem a
-conta, as senhas ou os cookies da pessoa (spec 039).
+conta, as senhas ou os cookies da pessoa (spec 039). Desde a spec 042, a EY é uma empresa acompanhada: fontes/ats.py
+chama buscar() quando ela está na lista de empresas, e ela não é mais um portal da busca.
 
 A lista de cada cargo (search/?q=<cargo>&locationsearch=<país>, das mais recentes para as mais antigas) é lida uma
 vez por busca, até MAX_PAGINAS páginas, e serve às consultas do mesmo cargo (remoto, país e cidade). A busca do site é
@@ -307,8 +308,10 @@ def _linhas(busca: str, pais: str) -> tuple[list[dict], str | None]:
         except _comum.FonteErro as e:
             return vagas, str(e)
         achadas = ler_lista(pagina)
-        if not achadas:
-            return vagas, ILEGIVEL if n == 0 and "data-row" in pagina else None
+        if not achadas:  # sem resultado é zero; aviso só se havia linha de vaga (no HTML, não no CSS) e nada foi lido
+            linhas = re.search(r"<tr\b[^>]*class=[\"'][^\"']*\bdata-row\b", pagina, re.I)
+            sem_resultado = "no open positions" in pagina.lower()
+            return vagas, ILEGIVEL if n == 0 and linhas and not sem_resultado else None
         ids = {v["id"] for v in vagas}
         vagas += [v for v in achadas if v["id"] not in ids]
         if len(achadas) < POR_PAGINA or f"startrow={inicio + POR_PAGINA}" not in pagina:

@@ -50,6 +50,8 @@ só entrega o arquivo.
   (remoto no país e no exterior, híbrido e presencial na cidade), data de publicação,
   tipo de emprego, senioridade, moedas aceitas para vagas de fora e empresas a excluir. Grava no `config.json` e vale a
   partir da próxima busca.
+  - **Empresas que você acompanha** (specs 031 e 042): o link da página de vagas de qualquer empresa, reconhecido pelo
+    botão Adicionar (Greenhouse, Lever, Ashby, Teamtailor, o site da EY ou página própria, lida pela IA).
   - **Portais com login** (spec 041): os portais que só mostram a busca depois do login (o MyGreenhouse Jobs), numa
     seção própria, desligados por padrão. Ligar pede a confirmação do aviso de risco; Conectar abre a página de login
     na janela da ferramenta, Pronto confere o login e Desconectar apaga a sessão. Rodam só no botão Buscar da página;
@@ -86,13 +88,15 @@ O ID é o do portal nas vagas da busca e nas do Indeed adicionadas pelo link (o 
 caracteres), `gupy-…` nas da Gupy (busca e link),
 `startupjobs-…` nas do startup.jobs (busca e link), `li-…` nas do LinkedIn, `nerdin-…` nas da Nerdin (busca e link),
 `infojobs-…` nas do InfoJobs e `vagascom-…` nas do Vagas.com (busca e link), `ey-…` nas da EY e `fullstack-…` nas
-da FullStack (busca e link), `greenhouse-<empresa>-<id>` nas do MyGreenhouse (o mesmo id das empresas acompanhadas), `jobgether-…` nas do JobGether (busca e formulário com o link), `web-…` nas de
+da FullStack (busca e link), `greenhouse-<empresa>-<id>` nas do MyGreenhouse (o mesmo id das empresas acompanhadas),
+`teamtailor-<site>-<número>` nas das empresas no Teamtailor, `pagina-<empresa>-<cargo>` nas da página própria de uma
+empresa (lida pela IA), `jobgether-…` nas do JobGether (busca e formulário com o link), `web-…` nas de
 outros sites e `m-…` nas preenchidas à mão.
 
 | Campo | Valores |
 |---|---|
 | `origem` | `busca` (veio de `vagas.py`), `link` (Adicionar Vaga pelo link; fica no relatório como as da busca) ou `manual` (formulário, direto no quadro) |
-| `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Startup Jobs`, `Nerdin`, `InfoJobs`, `Vagas.com`, `EY`, `JobGether`, `FullStack`, `MyGreenhouse`, `Outra` (e as fontes do exterior) |
+| `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Startup Jobs`, `Nerdin`, `InfoJobs`, `Vagas.com`, `EY`, `JobGether`, `FullStack`, `MyGreenhouse`, `Teamtailor`, `Site da empresa`, `Outra` (e as fontes do exterior) |
 | `outras_plataformas` | outros portais onde a mesma vaga apareceu (na mesma busca, numa busca seguinte ou pelo Adicionar Vaga). O dashboard mostra uma etiqueta por plataforma, inclusive a do link de candidatura (vaga do Indeed com candidatura na Gupy também leva a etiqueta Gupy), e o filtro de plataforma acha a vaga por qualquer uma |
 | `titulo`, `empresa`, `local`, `url`, `descricao` | dados da vaga |
 | `publicada_em`, `encontrada_em` | `AAAA-MM-DD` |
@@ -101,7 +105,7 @@ outros sites e `m-…` nas preenchidas à mão.
 | `area`, `pais_vaga` | `nacional` ou `internacional` e o país (ou região) da vaga: pela consulta que achou a vaga ou pelo local; nas vagas antigas, deduzidos pelos grupos da busca |
 | `idioma` | idioma da vaga (`pt`, `en`, `es`…), detectado sem IA ou lido pela análise; base do filtro `idiomas_aceitos` |
 | `restricao_local` | onde a vaga aceita candidatos, como o portal informa (ex.: `USA, Canada`, `Worldwide`); base da elegibilidade |
-| `ats` | sistema de candidatura (`greenhouse`, `lever`, `ashby`), quando conhecido; o detalhe mostra o botão "Candidatar no …" e, quando o link da vaga ou o de candidatura é de um desses sistemas, "Acompanhar empresa" (`POST /api/empresas`) |
+| `ats` | sistema de candidatura (`greenhouse`, `lever`, `ashby`, `teamtailor`), quando conhecido; o detalhe mostra o botão "Candidatar no …" e, quando o link da vaga ou o de candidatura é de um desses sistemas, "Acompanhar empresa" (`POST /api/empresas`) |
 | `autorizacao`, `contratacao[]`, `ingles`, `fuso`, `sistema_candidatura`, `pede[]`, `riscos[]` | o que a análise leu sobre a candidatura, cada um com a `frase` do anúncio (opções em `dash/kit.py`) |
 | `kit` | o que a pessoa marcou no checklist: `estados` por item (`a_fazer`, `pronto`, `nao_se_aplica`), `extras` e `removidos` |
 | `lembretes`, `entrevista_em` | lembretes de follow-up marcados (`feito`, `dispensado`, `parar`, valem para a etapa e a data em `base`) e a data da entrevista |

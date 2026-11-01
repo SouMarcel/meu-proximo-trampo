@@ -838,6 +838,12 @@ class Handler(BaseHTTPRequestHandler):
                 if empresa:  # vaga do Greenhouse, do Lever ou do Ashby: a página oferece "Acompanhar" (spec 031)
                     resposta["empresa"] = empresa
                 return self._json(201 if nova else 200, resposta)
+            if metodo == "POST" and caminho == "/api/empresas/reconhecer":  # botão Adicionar do painel (spec 042)
+                from fontes import ats
+                empresa = ats.descobrir(str(self._corpo().get("url") or "").strip()[:1000])
+                return self._json(200, {"empresa": empresa, "rotulo": ats.ROTULOS.get(empresa["sistema"], ""),
+                                        "ia_necessaria": empresa["sistema"] == "pagina",
+                                        "ia_ligada": ia.disponivel()})
             if metodo == "POST" and caminho == "/api/empresas":
                 empresa, nova, empresas = filtros.acompanhar(self._corpo().get("url"))
                 return self._json(201 if nova else 200, {"empresa": empresa, "nova": nova, "empresas": empresas})

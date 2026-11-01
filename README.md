@@ -1,7 +1,7 @@
 # meu-proximo-trampo
 
 Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na
-Nerdin (vagas de tecnologia), na EY e no JobGether (vagas remotas; e, se você quiser, no startup.jobs, na FullStack e no MyGreenhouse Jobs), monta um relatório para você decidir o que vale a pena e
+Nerdin (vagas de tecnologia) e no JobGether (vagas remotas; e, se você quiser, no startup.jobs, na FullStack e no MyGreenhouse Jobs), monta um relatório para você decidir o que vale a pena e
 acompanha suas candidaturas num quadro kanban. Com IA (opcional), cada vaga recebe uma
 nota de aderência ao seu perfil, com o que bate, o que falta e o que o anúncio esconde.
 
@@ -11,8 +11,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ## O que ela faz
 
-- **Busca** vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na Nerdin, de tecnologia, no site de vagas da EY e
-  no JobGether, de vagas remotas abertas a quem mora no Brasil (e no LinkedIn, no startup.jobs, de startups, na
+- **Busca** vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na Nerdin, de tecnologia, e no JobGether, de vagas
+  remotas abertas a quem mora no Brasil, e no site de vagas das empresas que você acompanha (e no LinkedIn, no startup.jobs, de startups, na
   FullStack, de vagas remotas de tecnologia para a América Latina, no MyGreenhouse Jobs, com o seu login, e em portais
   de vagas remotas do exterior, se você ligar) com
   os seus cargos e filtros, que você ajusta no painel **Filtros da busca** do dashboard:
@@ -159,7 +159,7 @@ skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`anal
 
 ```mermaid
 flowchart LR
-  A[Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, EY,<br/>LinkedIn, startup.jobs, JobGether, FullStack, MyGreenhouse e fontes do exterior] --> B[vagas.py buscar]
+  A[Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, empresas acompanhadas,<br/>LinkedIn, startup.jobs, JobGether, FullStack, MyGreenhouse e fontes do exterior] --> B[vagas.py buscar]
   B -->|sem IA| D[(banco local)]
   B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
   C --> D
@@ -526,7 +526,7 @@ funcionar, abra uma issue.
 | Campo | O que é |
 |---|---|
 | `perfil` | Arquivo do seu perfil de carreira (usado pela IA; montado nos primeiros passos). Padrão: `perfil.md` |
-| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey`, `linkedin`, `startupjobs`, `jobgether` e `fullstack` (padrão, quando o campo não existe: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey` e `jobgether`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `infojobs` e o `vagascom` trazem vagas de todas as áreas, muitas presenciais; veja os Avisos. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos. O `jobgether` traz vagas remotas de empresas do mundo todo, em inglês; os termos do JobGether proíbem acesso automatizado, e ele vem ligado por decisão registrada na spec 030: desligue no painel se não concordar (veja os Avisos). A `ey` traz as vagas do site de vagas da EY no seu país. A `fullstack` traz vagas remotas de tecnologia para a América Latina, em inglês; os termos da FullStack proíbem acesso automatizado, e ela vem desligada: ligue no painel se concordar (veja os Avisos). O `mygreenhouse` é um portal com login (MyGreenhouse Jobs): roda só no botão Buscar da página, conectado na seção "Portais com login" do painel, e vem desligado (veja os Avisos) |
+| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `linkedin`, `startupjobs`, `jobgether` e `fullstack` (padrão, quando o campo não existe: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom` e `jobgether`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `infojobs` e o `vagascom` trazem vagas de todas as áreas, muitas presenciais; veja os Avisos. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos. O `jobgether` traz vagas remotas de empresas do mundo todo, em inglês; os termos do JobGether proíbem acesso automatizado, e ele vem ligado por decisão registrada na spec 030: desligue no painel se não concordar (veja os Avisos). A EY saiu desta lista: é uma empresa acompanhada (spec 042), e quem a tinha ligada passa a tê-la em `empresas`. A `fullstack` traz vagas remotas de tecnologia para a América Latina, em inglês; os termos da FullStack proíbem acesso automatizado, e ela vem desligada: ligue no painel se concordar (veja os Avisos). O `mygreenhouse` é um portal com login (MyGreenhouse Jobs): roda só no botão Buscar da página, conectado na seção "Portais com login" do painel, e vem desligado (veja os Avisos) |
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
@@ -535,7 +535,7 @@ funcionar, abra uma issue.
 | `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias; no painel, de 24 horas a 30 dias, o máximo). Portais com poucas vagas novas por semana, como a Nerdin, aparecem mais com 15 dias (`360`) |
 | `tipos_emprego` | `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario`. Vazio = todos; com IA, conferido na descrição |
 | `senioridades` | `junior`, `pleno`, `senior`. Vazio = todas |
-| `empresas` | Empresas que você acompanha no Greenhouse, no Lever ou no Ashby (painel **Filtros da busca**), informadas pelo link da página de vagas ou pelo botão "Acompanhar"; no máximo 50. Rodam na busca nacional e, com a internacional ligada, na do exterior. Num `config.json` antigo, a lista dentro de `internacional` continua valendo e sobe para cá ao salvar |
+| `empresas` | Empresas que você acompanha (painel **Filtros da busca**), informadas pelo link da página de vagas ou pelo botão "Acompanhar"; no máximo 50. Cada uma tem `sistema` (`greenhouse`, `lever`, `ashby`, `teamtailor`, `ey` ou `pagina`), `id`, `nome` e `url`. Rodam na busca nacional e, com a internacional ligada, na do exterior. Num `config.json` antigo, a lista dentro de `internacional` continua valendo e sobe para cá ao salvar |
 | `empresas_excluir` | Empresas que você não quer ver |
 | `moedas_aceitas` | `USD`, `EUR`, `GBP`, `CAD`, `CHF`: em que moeda você aceita receber em vaga de fora do seu país (a moeda do seu país sempre vale). Vazio = qualquer uma; com IA, conferido na vaga |
 | `resultados_por_termo` | Máximo de vagas por termo |
@@ -562,9 +562,22 @@ Remote OK, Jobicy, We Work Remotely, Get on Board; todas desligadas até você m
 vez e filtra pelos cargos em inglês. Cada vaga traz, quando o portal informa, onde ela aceita candidatos, o salário, a
 moeda, o link de candidatura e o sistema de candidatura usado.
 
-**Empresas que você acompanha.** No painel **Filtros da busca**, cole o link da página de vagas das empresas que você
-acompanha no Greenhouse, no Lever ou no Ashby (ex.: `jobs.lever.co/empresa`). Também dá para usar o botão
-**Acompanhar**: ele aparece no Adicionar Vaga, quando você cola um link de vaga de um desses sistemas, e no detalhe de
+**Empresas que você acompanha.** No painel **Filtros da busca**, cole o link da página de vagas de qualquer empresa e
+clique em Adicionar (ex.: `careers.ey.com`, `carreiras.empresa.com.br/jobs` ou `jobs.lever.co/empresa`). A ferramenta
+abre a página uma vez para reconhecer o sistema por trás:
+- **Greenhouse, Lever e Ashby**: as APIs públicas de vagas;
+- **Teamtailor**: a lista pública de vagas que o próprio site oferece (feed `jobs.rss`, até 100 vagas, as mais
+  recentes);
+- **o site de vagas da EY**: a busca pública do site, como antes, quando a EY era um portal. Quem tinha a EY ligada
+  nos portais encontra a EY aqui;
+- **página própria** (a empresa monta a página de vagas no próprio site, sem sistema): a IA que você usa lê o texto
+  visível da página e separa as vagas. Só entra o que está escrito: cargo, modelo, local, requisitos e o e-mail de
+  candidatura. A data da vaga é o dia em que a ferramenta a viu pela primeira vez, e a página que não mudou não volta
+  à IA. Sem a IA ligada, a empresa fica de fora com um aviso. Na busca nacional, a vaga remota sem outro país ("Home
+  Office") conta como aberta ao seu país.
+
+Link de portal de vagas (LinkedIn, Indeed, Gupy…) é recusado: portal se liga em Portais. Também dá para usar o botão
+**Acompanhar**: ele aparece no Adicionar Vaga, quando você cola um link de vaga de um sistema conhecido, e no detalhe de
 qualquer vaga cuja candidatura é num deles, inclusive as que vieram do Indeed ou do LinkedIn.
 - Na busca nacional, entram as vagas remotas abertas a quem mora no seu país (o local cita o país, uma região que o
   inclui, como América Latina, ou "Anywhere") e, na busca da cidade, as presenciais e híbridas nela. Uma vaga só com
@@ -734,8 +747,8 @@ Para instalar à mão, no Claude Code:
     da busca. A candidatura assistida não funciona no `jobgether.com`.
 
   A candidatura é no site da empresa, pelo botão da vaga no JobGether.
-- A busca na EY (`careers.ey.com`, o site de vagas da EY) é uma consulta não oficial à busca pública do site, sem
-  login e sem cookies:
+- A busca na EY (`careers.ey.com`, o site de vagas da EY), quando ela está nas empresas que você acompanha, é uma
+  consulta não oficial à busca pública do site, sem login e sem cookies:
   - a lista de cada cargo no seu país é lida uma vez por busca, das vagas mais novas para as mais antigas (até 2
     páginas de 25); ficam só as vagas cujo título bate com o cargo;
   - a lista não traz a data: a ferramenta abre a página de cada vaga que bateu (até 20 por busca), lê a data, os
@@ -807,6 +820,9 @@ Para instalar à mão, no Claude Code:
   - **Greenhouse, Lever e Ashby**: as APIs públicas das páginas de vagas das empresas, uma
     consulta por empresa por busca, sem nova tentativa; no primeiro bloqueio de um sistema, as outras empresas dele
     ficam para a próxima busca.
+  - **Teamtailor e página própria** (empresas acompanhadas): o feed público ou a página pública da empresa, um pedido
+    por busca; no primeiro bloqueio do site (403, 429 ou 503), ele fica para a próxima busca. A página própria só vai à
+    IA quando o texto muda (no máximo 10 por busca), e só com o texto público da página.
 - A elegibilidade lê só o que o anúncio diz e erra para o lado de deixar passar: confira a
   vaga antes de se candidatar.
 - A nota da IA serve para triagem; ela não substitui ler a vaga.
@@ -825,10 +841,11 @@ O link e o QR code também ficam no canto de cima do dashboard.
 - [x] Nerdin (vagas de tecnologia no Brasil, busca pública; ligada por padrão)
 - [x] InfoJobs e Vagas.com (vagas de todas as áreas no Brasil, busca pública; ligados por padrão)
 - [x] Fontes do exterior (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board)
-  e empresas acompanhadas no Greenhouse, Lever e Ashby (também na busca nacional); opcionais
+  e empresas acompanhadas (Greenhouse, Lever, Ashby, Teamtailor, o site da EY ou a página própria da empresa, lida
+  pela IA; também na busca nacional); opcionais
 - [x] LinkedIn (busca pública, sem login; opcional)
 - [x] JobGether (vagas remotas do mundo todo, pela API para assistentes; ligado por padrão, termos contrários)
-- [x] EY (site de vagas da EY, busca pública; ligada por padrão)
+- [x] EY (site de vagas da EY, busca pública; desde a spec 042, uma empresa acompanhada)
 - [x] FullStack (vagas remotas de tecnologia para a América Latina; desligada por padrão, termos contrários)
 - [x] MyGreenhouse Jobs (busca entre as empresas do Greenhouse, com o seu login; portal com login, desligado por
   padrão, termos contrários)

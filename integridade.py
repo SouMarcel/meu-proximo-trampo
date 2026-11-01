@@ -354,6 +354,7 @@ PORTAIS = {  # nome no dashboard -> domínios; o host casa pelo domínio exato o
 INDEED = re.compile(r"(?:^|\.)indeed\.(?:com|[a-z]{2}|(?:com|co)\.[a-z]{2})$")
 ATS = {  # sistemas de vaga oficiais das empresas
     "Greenhouse": ("greenhouse.io",),
+    "Teamtailor": ("teamtailor.com",),
     "Lever": ("lever.co",),
     "Ashby": ("ashbyhq.com",),
     "Workday": ("myworkdayjobs.com",),

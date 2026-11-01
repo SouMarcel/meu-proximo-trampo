@@ -276,8 +276,8 @@ class TestAcompanhar(SemRede):  # US4 e US5 (lado do servidor)
         self.assertEqual([x["id"] for x in self.lido()["empresas"]], ["acme", "delta"])
         e, nova, lista = filtros.acompanhar("https://job-boards.greenhouse.io/ACME/jobs/123")
         self.assertEqual((e["id"], nova, len(lista)), ("acme", False, 2))
-        with self.assertRaisesRegex(ValueError, "Greenhouse, do Lever nem do Ashby"):
-            filtros.acompanhar("https://exemplo.com/vagas")
+        with self.assertRaisesRegex(ValueError, "portal de vagas"):  # portal se liga em Portais (spec 042)
+            filtros.acompanhar("https://www.linkedin.com/jobs/view/123")
         self.assertEqual(self.pedidos, [])  # sem pedido ao sistema
 
     def test_link_de_candidatura_embutida(self):  # comum no link de candidatura de vagas que vêm do Indeed
@@ -336,9 +336,9 @@ class TestServidor(SemRede):  # US4
         status, j = self.pedir("POST", "/api/empresas", {"url": TestAcompanhar.LINK_LEVER})
         self.assertEqual((status, j["nova"], j["empresa"]["id"], len(j["empresas"])), (201, True, "delta", 2))
         self.assertEqual(self.pedir("POST", "/api/empresas", {"url": DELTA["url"]})[0], 200)
-        status, j = self.pedir("POST", "/api/empresas", {"url": "https://exemplo.com/vagas"})
+        status, j = self.pedir("POST", "/api/empresas", {"url": "https://www.linkedin.com/jobs/view/123"})
         self.assertEqual(status, 400)
-        self.assertIn("Greenhouse, do Lever nem do Ashby", j["erro"])
+        self.assertIn("portal de vagas", j["erro"])
 
     def test_link_traz_a_empresa(self):
         url = TestAcompanhar.LINK_LEVER

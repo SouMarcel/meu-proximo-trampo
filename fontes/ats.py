@@ -1,35 +1,46 @@
-"""Fonte das empresas que a pessoa acompanha, pelas páginas de vagas no Greenhouse, no Lever e no Ashby.
+"""Fonte das empresas que a pessoa acompanha, pela página de vagas de cada uma (specs 031 e 042).
 
-A pessoa cola no painel o link da página de vagas da empresa (ou acompanha a empresa a partir de uma vaga);
-reconhecer() descobre o sistema e o identificador da empresa. Cada empresa é consultada no máximo uma vez por busca
-pela API pública do sistema (sem login), e a mesma lista serve às duas áreas (spec 031):
+A pessoa cola no painel o link da página de vagas da empresa (ou acompanha a empresa a partir de uma vaga). Sistemas
+reconhecidos: Greenhouse, Lever e Ashby (APIs públicas), Teamtailor (o feed público, fontes/teamtailor.py) e o site de
+vagas da EY (fontes/ey.py); outra página é "página própria", lida pela IA (fontes/pagina_empresa.py). reconhecer()
+não faz pedido (domínios conhecidos); descobrir() abre a página uma vez quando o domínio é desconhecido. Link de
+portal de vagas é recusado: portal se liga em Portais. Cada empresa é consultada no máximo uma vez por busca, sem
+login, e a mesma lista serve às duas áreas (spec 031):
 - na busca nacional, as vagas remotas abertas a quem mora no país da pessoa (o local cita o país, uma região que o
   inclui ou o mundo todo) e, na consulta da cidade, as presenciais e híbridas na cidade ou no estado dela;
 - na busca internacional, a consulta global com os cargos em inglês, como antes.
-No primeiro 403 ou 429 de um sistema, sem nova tentativa, as empresas dele ficam sem pedido até o fim da busca. ler()
-traz uma vaga pelo link (Adicionar Vaga).
+No primeiro 403 ou 429 de um sistema (Greenhouse, Lever, Ashby) ou de um site (Teamtailor e página própria, também
+503), sem nova tentativa, as empresas dele ficam sem pedido até o fim da busca. A EY segue as regras dela. ler() traz
+uma vaga pelo link (Adicionar Vaga).
 """
 from __future__ import annotations
 
+import html
 import re
 from urllib.parse import parse_qs, urlsplit
 
-from . import _comum
+from . import _comum, ey, pagina_empresa, teamtailor
 
 NOME = "ats"
 PLATAFORMA = "Empresas acompanhadas"
 AREAS = ("nacional", "internacional")
 POR_PAIS = True  # atende as consultas nacionais (remota, do país e da cidade)…
 GLOBAL = True  # …e a consulta internacional global; as por país e as de mudança não fazem pedido
-TERMOS = "APIs públicas de vagas das próprias empresas; uma consulta por empresa por busca."
-SISTEMAS = {"greenhouse": "Greenhouse", "lever": "Lever", "ashby": "Ashby"}
-EXEMPLOS = "job-boards.greenhouse.io/empresa, jobs.lever.co/empresa ou jobs.ashbyhq.com/empresa"
+TERMOS = "Páginas e APIs públicas de vagas das próprias empresas; uma consulta por empresa por busca."
+# sistema -> nome da plataforma nas vagas
+SISTEMAS = {"greenhouse": "Greenhouse", "lever": "Lever", "ashby": "Ashby", "teamtailor": "Teamtailor", "ey": "EY",
+            "pagina": "Site da empresa"}
+ROTULOS = {**SISTEMAS, "ey": "Site de vagas da EY", "pagina": "Página própria (lida pela IA)"}
+EXEMPLOS = "careers.ey.com, carreiras.empresa.com.br/jobs ou jobs.lever.co/empresa"
+EY = {"sistema": "ey", "id": "ey", "nome": "EY", "url": "https://careers.ey.com/ey/"}
+POR_HOST = ("teamtailor", "pagina")  # bloqueio por site (cada empresa num domínio)
+BLOQUEIOS_HOST = (403, 429, 503)
 SLUG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")
 MODELOS = {"remote": "remoto", "hybrid": "hibrido", "onsite": "presencial", "on-site": "presencial"}
 NACIONAIS = ("remoto", "pais", "local")  # grupos das consultas nacionais (filtros.consultas)
 BLOQUEIOS = (403, 429)
 
-_estado = {"bloqueados": set()}  # sistemas que recusaram ou limitaram nesta busca
+_estado = {"bloqueados": set()}  # sistemas (e sites) que recusaram ou limitaram nesta busca
 
 
 def _esquecer() -> None:
@@ -55,16 +66,54 @@ def _sistema(host: str) -> str | None:
         return "lever"
     if host == "jobs.ashbyhq.com":
         return "ashby"
+    if host.endswith(".teamtailor.com") and host.count(".") >= 2:
+        return "teamtailor"
+    if host == "careers.ey.com":
+        return "ey"
     return None
 
 
+class Desconhecido(ValueError):
+    """Domínio que reconhecer() não conhece: descobrir() precisa abrir a página uma vez."""
+
+
+def _portal(host: str) -> str | None:
+    """O nome do portal de vagas do domínio (LinkedIn, Indeed, Gupy…), menos a EY, que é uma empresa."""
+    import integridade  # na raiz; aqui para o módulo não depender dela ao ser importado
+
+    achado = integridade.portal_do_host(host)
+    return achado[1] if achado and achado[0] == "portal" and achado[1] != "EY" else None
+
+
+def _id_pagina(host: str, segs: list[str]) -> str:
+    return "/".join([host.removeprefix("www."), *segs])[:200]
+
+
+def _nome_do_host(host: str) -> str:
+    """Um nome para a empresa a partir do domínio ("carreiras.empresa.com.br" -> "Empresa")."""
+    base = host.removeprefix("www.").split(".")
+    parte = base[1] if base[0] in ("carreiras", "careers", "jobs", "vagas", "trabalhe") and len(base) > 2 else base[0]
+    return " ".join(p.capitalize() for p in re.split(r"[-_]+", parte) if p) or host
+
+
 def reconhecer(url: str) -> dict:
-    """{sistema, id, nome, url} da empresa pelo link da página de vagas (ou de uma vaga dela). Levanta
-    ValueError explicando quando o link não é do Greenhouse, do Lever nem do Ashby."""
+    """{sistema, id, nome, url} da empresa pelo link da página de vagas (ou de uma vaga dela), sem pedido. Levanta
+    ValueError com a explicação (link inválido, portal de vagas) e Desconhecido quando o domínio não é conhecido."""
     host, esquema, segs, query = _partes(url)
+    if esquema not in ("http", "https") or not host:
+        raise ValueError(f"o link não é de uma página da internet (ex.: {EXEMPLOS})")
     sistema = _sistema(host)
-    if not sistema or esquema not in ("http", "https"):
-        raise ValueError(f"não é uma página de vagas do Greenhouse, do Lever nem do Ashby (ex.: {EXEMPLOS})")
+    if sistema == "ey":
+        return dict(EY)
+    if sistema == "teamtailor":
+        return {"sistema": "teamtailor", "id": host, "nome": _nome_do_host(host), "url": f"https://{host}/jobs"}
+    if not sistema:
+        portal = _portal(host)
+        if portal:
+            raise ValueError(f"{portal} é um portal de vagas, não a página de uma empresa: ligue-o em Filtros da busca "
+                             "→ Portais")
+        raise Desconhecido("não reconheci o sistema dessa página: adicione pelo botão Adicionar do painel, que abre a "
+                           "página uma vez para descobrir")
     # embed/job_board?for=… e embed/job_app?for=… (formulário embutido no site da empresa) trazem a empresa no for
     slug = (query.get("for") or [""])[0] if segs[:1] == ["embed"] else (segs[0] if segs else "")
     if not SLUG.fullmatch(slug or ""):
@@ -75,8 +124,67 @@ def reconhecer(url: str) -> dict:
     return {"sistema": sistema, "id": slug, "nome": nome or slug, "url": f"{base}/{slug}"}
 
 
+def descobrir(url: str) -> dict:
+    """reconhecer(); com domínio desconhecido, um pedido à página: o feed do Teamtailor anunciado faz dela Teamtailor,
+    senão é página própria (lida pela IA). O nome vem de og:site_name ou do título. ValueError com o motivo."""
+    try:
+        return reconhecer(url)
+    except Desconhecido:
+        pass
+    url = str(url or "").strip()
+    url = url if "://" in url else "https://" + url
+    host, _, segs, _ = _partes(url)
+    try:
+        pagina = _comum.baixar(url.split("#", 1)[0], aceitar="text/html,application/xhtml+xml",
+                               nova_tentativa=False).decode("utf-8", errors="replace")
+    except _comum.FonteErro as e:
+        if e.codigo == 404:
+            raise ValueError("a página não existe (404): confira o link") from None
+        raise ValueError(f"não consegui abrir a página ({e})") from None
+    nome = ""
+    m = re.search(r"""<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']{1,120})""", pagina, re.I)
+    if m:
+        nome = m.group(1)
+    else:
+        m = re.search(r"<title[^>]*>([^<]{1,200})</title>", pagina, re.I)
+        if m:  # "Vagas - Empresa" ou "Carreira | Empresa": a parte mais curta costuma ser o nome
+            partes = [p.strip() for p in re.split(r"\s[-|–—]\s", m.group(1)) if p.strip()]
+            nome = min(partes, key=len) if partes else ""
+    nome = teamtailor.nome_bonito(" ".join(html.unescape(nome).split())[:80]) or _nome_do_host(host)
+    rss = re.search(r"""<link[^>]+application/rss\+xml[^>]*href=["'](https://[^"']+/jobs\.rss)["']""", pagina, re.I)
+    if rss and "teamtailor" in pagina.lower():
+        alvo = (urlsplit(rss.group(1)).hostname or host).lower()
+        return {"sistema": "teamtailor", "id": alvo, "nome": nome, "url": f"https://{alvo}/jobs"}
+    return {"sistema": "pagina", "id": _id_pagina(host, segs), "nome": nome, "url": url}
+
+
+def conferir(e: dict) -> dict:
+    """A empresa já reconhecida (do painel), conferida sem pedido: sistema conhecido e link coerente."""
+    sistema, url = str(e.get("sistema") or ""), str(e.get("url") or "").strip()
+    url = url if "://" in url or not url else "https://" + url
+    host, esquema, segs, _ = _partes(url)
+    if esquema not in ("http", "https") or not host:
+        raise ValueError("o link da empresa não é de uma página da internet")
+    if sistema in ("greenhouse", "lever", "ashby", "ey"):
+        r = reconhecer(url)
+        if r["sistema"] != sistema:
+            raise ValueError("o link não é do sistema informado")
+    elif sistema == "teamtailor":
+        r = {"sistema": sistema, "id": host, "nome": "", "url": f"https://{host}/jobs"}
+    elif sistema == "pagina":
+        portal = _portal(host)
+        if portal:
+            raise ValueError(f"{portal} é um portal de vagas, não a página de uma empresa")
+        r = {"sistema": sistema, "id": _id_pagina(host, segs), "nome": "", "url": url}
+    else:
+        raise ValueError(f"sistema desconhecido: {sistema}")
+    r["nome"] = str(e.get("nome") or "").strip()[:80] or r.get("nome") or r["id"]
+    return r
+
+
 def vaga_do_link(url: str) -> tuple[dict, str] | None:
-    """(empresa, id da vaga) num link de vaga do Greenhouse, Lever ou Ashby; None se não for."""
+    """(empresa, id da vaga) num link de vaga do Greenhouse, Lever, Ashby, Teamtailor (*.teamtailor.com) ou EY; None
+    se não for."""
     host, _, segs, query = _partes(url)
     sistema = _sistema(host)
     if not sistema:
@@ -85,6 +193,12 @@ def vaga_do_link(url: str) -> tuple[dict, str] | None:
         empresa = reconhecer(url)
     except ValueError:
         return None
+    if sistema == "ey":
+        n = ey.numero(url)
+        return (empresa, n) if n else None
+    if sistema == "teamtailor":
+        m = re.fullmatch(r"(\d+)(?:-.*)?", segs[1]) if len(segs) >= 2 and segs[0] == "jobs" else None
+        return (empresa, m.group(1)) if m else None
     if sistema == "greenhouse":
         vid = segs[2] if len(segs) >= 3 and segs[1] == "jobs" else (query.get("gh_jid") or [""])[0]
         vid = vid if vid.isdigit() else ""
@@ -101,6 +215,10 @@ def _api_lever(e: dict) -> str:
 
 def _lista(e: dict) -> list:
     sistema, slug = e["sistema"], e["id"]
+    if sistema == "teamtailor":
+        return teamtailor.lista(e)
+    if sistema == "pagina":
+        return pagina_empresa.lista(e)
     if not SLUG.fullmatch(slug):
         raise _comum.FonteErro("identificador de empresa inválido")
     if sistema == "greenhouse":
@@ -205,7 +323,11 @@ def _na_area(v: dict, consulta: dict) -> bool:
     if consulta.get("global"):
         return bool(v.get("remoto")) or not consulta.get("remoto")
     pais, grupo = consulta.get("pais_nome") or "", consulta.get("grupo")
-    aberta = bool(v.get("remoto")) and filtros.aberta_ao_pais(v.get("restricao_local") or v.get("local"), pais)
+    if v.get("plataforma") == SISTEMAS["pagina"]:
+        # página própria (spec 042): a remota sem outro país ("Home Office") é da empresa que a pessoa escolheu
+        aberta = bool(v.get("remoto")) and filtros.pais_do_local(v.get("local")) in (None, pais)
+    else:
+        aberta = bool(v.get("remoto")) and filtros.aberta_ao_pais(v.get("restricao_local") or v.get("local"), pais)
     if grupo == "remoto":
         return aberta
     if grupo == "pais":
@@ -213,16 +335,31 @@ def _na_area(v: dict, consulta: dict) -> bool:
     return not v.get("remoto") and _na_cidade(v.get("local"), consulta)
 
 
+def _chave(e: dict) -> str:
+    """O que um bloqueio para: o sistema (Greenhouse, Lever, Ashby) ou o site (Teamtailor e página própria)."""
+    if e.get("sistema") in POR_HOST:
+        return "site:" + (_partes(str(e.get("url") or ""))[0] or str(e.get("id")))
+    return str(e.get("sistema"))
+
+
 def _aviso(erro: _comum.FonteErro, e: dict) -> str | None:
-    """O aviso do erro de uma empresa; 403 e 429 param o sistema dela até o fim da busca."""
+    """O aviso do erro de uma empresa; 403 e 429 (e 503, num site) param o sistema ou o site dela até o fim da busca."""
     sistema = SISTEMAS.get(e.get("sistema"), e.get("sistema"))
-    if erro.codigo in BLOQUEIOS:
-        _estado["bloqueados"].add(e.get("sistema"))
+    nome = e.get("nome") or e.get("id")
+    por_host = e.get("sistema") in POR_HOST
+    if erro.codigo in (BLOQUEIOS_HOST if por_host else BLOQUEIOS):
+        _estado["bloqueados"].add(_chave(e))
+        if por_host:
+            return (f"o site de vagas de {nome} limitou as consultas (código {erro.codigo}); fica para a próxima "
+                    "busca")
         return (f"o {sistema} limitou as consultas (código {erro.codigo}); as outras empresas dele ficam para a "
                 "próxima busca")
     if erro.repetido:
         return None  # o mesmo erro já saiu nesta busca
-    nome = e.get("nome") or e.get("id")
+    if por_host:
+        if erro.codigo == 404:
+            return f"a página de vagas de {nome} não existe mais; remova ou troque o link"
+        return f"{nome}: {erro}" if erro.codigo != 0 else str(erro)  # 0: aviso sem erro (ex.: nenhuma vaga na página)
     if erro.codigo == 404:
         return (f"a página de vagas de {nome} no {sistema} não existe mais (a empresa pode ter mudado de sistema ou de "
                 "nome); remova ou troque o link")
@@ -234,8 +371,13 @@ def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list
         return [], []  # por país e mudança: as empresas rodam nas consultas nacionais e na global
     vagas, erros = [], []
     for e in consulta.get("empresas") or []:
-        if e.get("sistema") in _estado["bloqueados"]:
-            continue  # o sistema recusou ou limitou nesta busca: nenhum pedido a mais
+        if e.get("sistema") == "ey":  # a busca do site da EY, com as regras dela (spec 039), só na área nacional
+            achadas, errs = ey.buscar(consulta, horas, por_termo)
+            vagas += achadas
+            erros += errs
+            continue
+        if _chave(e) in _estado["bloqueados"]:
+            continue  # o sistema ou o site recusou ou limitou nesta busca: nenhum pedido a mais
         try:  # a mesma lista para todos os cargos e as duas áreas
             itens = _comum.lembrar(f"{NOME}:{e.get('sistema')}:{e.get('id')}", lambda e=e: _lista(e))
         except _comum.FonteErro as erro:
@@ -243,8 +385,12 @@ def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list
             if aviso:
                 erros.append(aviso)
             continue
+        if e.get("sistema") in POR_HOST:
+            normal = dict  # Teamtailor e página própria já vêm no formato comum
+        else:
+            normal = lambda r, e=e: normalizar(r, e)  # noqa: E731
         achadas = _comum.filtrar(itens, {**consulta, "remoto": False}, horas, len(itens) + 1,
-                                 lambda r, e=e: normalizar(r, e))  # cargo e janela; a área vem abaixo
+                                 normal)  # cargo e janela; a área vem abaixo
         vagas += [v for v in achadas if _na_area(v, consulta)][:max(1, por_termo)]
     return vagas, erros
 
