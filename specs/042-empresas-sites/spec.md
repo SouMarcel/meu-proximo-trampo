@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-01
 
-**Status**: Aprovada em 2026-11-01; plano e tarefas em 2026-11-01
+**Status**: Concluída em 2026-11-01 (validada pela pessoa na branch pessoal)
 
 **Input**: User description: "a EY é uma empresa e essa é a área dela para vagas (careers.ey.com/ey/search); em Filtros
 da busca temos Empresas que acompanho e a EY deveria estar lá. Assim como a Varejista (exemplo) tem o seu próprio

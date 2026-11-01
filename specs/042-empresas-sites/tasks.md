@@ -109,7 +109,7 @@ quickstart.md. Molde: `fontes/ats.py` (spec 031), `post_ia.py` (pedido à IA que
   - o texto de ajuda do painel;
   - as etiquetas "Teamtailor" e "Site da empresa", com o domínio `teamtailor.com`;
   - `npm run build` sem erro, commit local.
-- [ ] T018 Verificação e entrega:
+- [X] T018 Verificação e entrega:
   1. a suíte inteira;
   2. a busca por dados pessoais;
   3. o commit na branch da feature;
