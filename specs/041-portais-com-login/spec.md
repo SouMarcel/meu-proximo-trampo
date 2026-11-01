@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-01
 
-**Status**: Draft
+**Status**: Aprovada em 2026-11-01; plano em 2026-11-01
 
 **Input**: User description: "eu procurei vagas no portal greenhouse e lá tem muito scrum master mas aqui não aparece"
 (31/10/2026), com o link da busca `my.greenhouse.io/jobs/search?query=scrum&work_type[]=remote`. Depois: "e abrir a
@@ -49,6 +49,11 @@ empresa, e a ferramenta lê a API pública dela. Não há busca por cargo entre 
   busca, com aviso.
 - Q: O login pelo LinkedIn (SSO) pode ser usado na janela? → A: Sim, com aviso de risco. Durante o login, a ferramenta
   não lê nem age nas páginas do LinkedIn. Se o portal tiver login próprio, a área recomenda esse.
+- Q (plano): Os termos do MyGreenhouse proíbem acesso automatizado e permitem suspender a conta (research R1). Seguir?
+  → A: Sim, mesmo assim, pela regra de "Termos contrários": desligado por padrão, com o risco no aviso.
+- Q (plano): A pesquisa mostrou pouca vaga ágil aberta ao Brasil hoje (research R3). Pausar? → A: Não. Seguir com a
+  spec e, à parte, considerar acompanhar empresas que contratam no Brasil (a pessoa decidiu não acompanhar nenhuma por
+  enquanto).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -257,8 +262,8 @@ partir da vaga, e daí em diante as vagas dela entram pela API pública em toda 
   formato mudar, vale o FR-014.
 - **Descrição da vaga**: vem da página pública da vaga no Greenhouse, quando houver (como nas empresas acompanhadas), e
   só para as vagas do relatório. Assim, a sessão é usada só para a lista de resultados.
-- **Termos do MyGreenhouse**: não localizados em 25/10/2026; o plano procura de novo. Se proibirem acesso automatizado,
-  vale a regra de "Termos contrários", com a decisão da pessoa registrada e o portal desligado por padrão.
+- **Termos do MyGreenhouse**: o MyGreenhouse User Agreement (29/01/2025) proíbe acesso automatizado (research R1).
+  Vale a regra de "Termos contrários": decisão da pessoa de 2026-11-01 registrada e o portal desligado por padrão.
 - **Alcance**: só aparecem as empresas que aderiram ao MyGreenhouse Jobs. As demais continuam pelas empresas
   acompanhadas.
 - **Constituição**: a emenda no princípio VI é escrita no plano e aprovada pela pessoa antes da implementação.
