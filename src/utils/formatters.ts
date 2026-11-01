@@ -90,6 +90,13 @@ export function getPlataformaStyle(
         border: "border-fuchsia-200 dark:border-fuchsia-800",
         accent: "#c026d3",
       }
+    case "MyGreenhouse":
+      return {
+        bg: "bg-lime-50 dark:bg-lime-950/40",
+        text: "text-lime-800 dark:text-lime-300",
+        border: "border-lime-200 dark:border-lime-800",
+        accent: "#65a30d",
+      }
     case "JobGether":
       return {
         bg: "bg-cyan-50 dark:bg-cyan-950/40",
@@ -402,6 +409,7 @@ export function plataformaDoLink(u: string): string {
     ["jobgether.", "JobGether"],
     ["careers.ey.com", "EY"],
     ["talent.fullstack.com", "FullStack"],
+    ["my.greenhouse.io", "MyGreenhouse"], // antes de greenhouse.io, que também casaria
     ["remotive.", "Remotive"],
     ["himalayas.app", "Himalayas"],
     ["remoteok.", "RemoteOK"],

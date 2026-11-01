@@ -1,5 +1,6 @@
 /** Configuração da busca (dash/API.md §3.4): os filtros do config.json e as opções que o servidor aceita. */
 import { pedir } from "../api"
+import type { FonteLogin } from "../../types/api"
 
 export interface EmpresaAcompanhada {
   sistema: "greenhouse" | "lever" | "ashby" | string
@@ -63,6 +64,8 @@ export interface Opcoes {
   contratacao: Record<string, string>
   fontes_int: Fonte[]
   fontes_nac: Fonte[]
+  /** Portais com login (spec 041): ligam pela mesma lista `fontes` dos filtros. Servidor antigo não manda. */
+  fontes_login?: FonteLogin[]
 }
 
 export interface Config {

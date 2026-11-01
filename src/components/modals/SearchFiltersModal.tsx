@@ -8,6 +8,7 @@ import * as configApi from "../../services/api/config"
 import type { Config, Filtros, Opcoes } from "../../services/api/config"
 import { mensagemDeErro } from "../../services/api"
 import { useFerramenta, AvisoSoLeitura } from "../../contexto/Ferramenta"
+import PortaisLogin from "./PortaisLogin"
 
 export type ModoFiltros = "nacional" | "internacional"
 
@@ -353,6 +354,17 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
                   ))}
                 </div>
               </section>
+
+              <PortaisLogin
+                fontes={op.fontes_login || []}
+                ligados={d.fontes}
+                onLigar={(nome, ligar) =>
+                  mudar((f) => {
+                    f.fontes = f.fontes.filter((x) => x !== nome)
+                    if (ligar) f.fontes.push(nome)
+                  })
+                }
+              />
 
               <section className={SEC}>
                 <h4 className={H}>Localidade</h4>

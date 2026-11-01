@@ -1,5 +1,5 @@
 /** Andamento da busca no topo do Relatório (dash/API.md §3.3), como o painel do dashboard antigo. */
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Loader2, X, AlertTriangle, CheckCircle2, Search } from "lucide-react"
 import type { EstadoBusca } from "../types/api"
 import { useFerramenta } from "../contexto/Ferramenta"
@@ -34,6 +34,15 @@ export default function AndamentoBusca({ estado: e, iaErro, onCancelar, onTentar
   const s = e.situacao
   const podeMexer = podeGravar && e.pode_alterar !== false
 
+  // portal com login esperando a pessoa entrar (spec 041): contagem regressiva a cada segundo
+  const [agora, setAgora] = useState(() => Date.now())
+  useEffect(() => {
+    if (s !== "aguardando_login") return
+    setAgora(Date.now())
+    const t = setInterval(() => setAgora(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [s])
+
   const erros =
     e.erros && e.erros.length > 0 ? (
       <details className="text-xs text-slate-600 dark:text-slate-400">
@@ -67,21 +76,26 @@ export default function AndamentoBusca({ estado: e, iaErro, onCancelar, onTentar
     )
   }
 
-  if (s === "consultando" || s === "descricoes" || s === "gravando" || s === "cancelando") {
+  if (s === "consultando" || s === "descricoes" || s === "gravando" || s === "cancelando" || s === "aguardando_login") {
+    const login = s === "aguardando_login"
     const total = e.total || 0
-    const n = Math.min((e.feitas || 0) + (s === "consultando" ? 1 : 0), total)
+    const n = Math.min((e.feitas || 0) + (s === "consultando" || login ? 1 : 0), total)
     const pct = total ? Math.round((100 * (e.feitas || 0)) / total) : 0
     const c = e.consulta
+    const ate = Date.parse(e.login?.ate || "")
+    const faltam = isNaN(ate) ? "" : ` (faltam ${Math.max(0, Math.ceil((ate - agora) / 1000))} s)`
     const linha =
       s === "cancelando"
         ? "Cancelando: termina a consulta atual e não grava nada."
-        : s === "gravando"
-          ? "Gravando no relatório…"
-          : s === "descricoes" && e.descricoes
-            ? `Lendo as descrições das vagas: ${e.descricoes.lidas} de ${e.descricoes.total}.`
-            : c?.portal
-              ? `Consultando ${c.portal}: ${c.cargo}${c.grupo && c.grupo !== "remoto" ? ` (${c.grupo})` : ""}…`
-              : "Começando…"
+        : login
+          ? `Aguardando login${e.login?.rotulo ? ` no ${e.login.rotulo}` : ""}: entre na janela da ferramenta${faltam}.`
+          : s === "gravando"
+            ? "Gravando no relatório…"
+            : s === "descricoes" && e.descricoes
+              ? `Lendo as descrições das vagas: ${e.descricoes.lidas} de ${e.descricoes.total}.`
+              : c?.portal
+                ? `Consultando ${c.portal}: ${c.cargo}${c.grupo && c.grupo !== "remoto" ? ` (${c.grupo})` : ""}…`
+                : "Começando…"
     return (
       <div role="status" className={`${CAIXA} bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-900`}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -92,7 +106,7 @@ export default function AndamentoBusca({ estado: e, iaErro, onCancelar, onTentar
               consulta {n} de {total} · {e.encontradas || 0} vaga(s) encontrada(s)
             </span>
           </p>
-          {(s === "consultando" || s === "descricoes") && e.origem === "pagina" && (
+          {(s === "consultando" || s === "descricoes" || login) && e.origem === "pagina" && (
             <button
               onClick={() => rodar(onCancelar)}
               disabled={!podeMexer || ocupado}
@@ -106,7 +120,7 @@ export default function AndamentoBusca({ estado: e, iaErro, onCancelar, onTentar
         <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
           <div className="h-full bg-indigo-500 transition-all" style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-slate-600 dark:text-slate-400">{linha}</p>
+        <p className={login ? "font-semibold text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"}>{linha}</p>
       </div>
     )
   }

@@ -197,6 +197,11 @@ export default function SearchJobsModal({ onClose, onIniciada, onPlano, onAbrirF
                   {plano.aviso_pausa}
                 </p>
               )}
+              {plano.aviso_login && (
+                <p className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200">
+                  {plano.aviso_login}
+                </p>
+              )}
             </>
           )}
 

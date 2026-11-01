@@ -18,6 +18,7 @@ export type Plataforma =
   | "EY"
   | "JobGether"
   | "FullStack"
+  | "MyGreenhouse"
   | "Remotive"
   | "Himalayas"
   | "RemoteOK"
@@ -42,6 +43,7 @@ export const PLATAFORMAS: Plataforma[] = [
   "EY",
   "JobGether",
   "FullStack",
+  "MyGreenhouse",
   "Remotive",
   "Himalayas",
   "RemoteOK",
@@ -343,6 +345,7 @@ export type SituacaoBusca =
   | "falha"
   | "interrompida"
   | "externa"
+  | "aguardando_login"
 
 export interface EsperaPortal {
   portal: string
@@ -374,6 +377,8 @@ export interface PlanoBusca {
   so_espera: boolean
   aviso_cargos?: string
   aviso_pausa?: string
+  /** Portal com login ligado mas sem conexão (spec 041): a busca segue sem ele. */
+  aviso_login?: string | null
 }
 
 export interface EstadoBusca {
@@ -403,6 +408,35 @@ export interface EstadoBusca {
   } | null
   analise?: { rodando: boolean; faltam: number; erro: { motivo: string; em: string } | null }
   pode_alterar?: boolean
+  /** Em "aguardando_login": o portal com login que espera a pessoa entrar na janela da ferramenta (spec 041). */
+  login?: { portal: string; rotulo: string; ate: string } | null
+}
+
+// ---------- portais com login (spec 041) ----------
+
+/** Portal que só mostra a busca depois do login (opcoes.fontes_login de GET /api/config). */
+export interface FonteLogin {
+  nome: string
+  rotulo: string
+  termos: string
+  aviso_risco: string
+  aviso_login: string
+}
+
+export type SituacaoPortalLogin = "desligado" | "em_espera" | "desconectado" | "conectado"
+
+/** Um portal de GET /api/portais-login: ligado na configuração salva, conexão e espera depois de bloqueio. */
+export interface PortalLogin extends FonteLogin {
+  ligado: boolean
+  conectado: boolean
+  situacao: SituacaoPortalLogin
+  espera: { ate: string; motivo: string } | null
+}
+
+export interface PortaisLogin {
+  /** Edge ou Chrome neste computador (a janela da ferramenta precisa de um deles). */
+  navegador: boolean
+  portais: PortalLogin[]
 }
 
 export interface EstadoPendentes {

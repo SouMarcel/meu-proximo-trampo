@@ -22,4 +22,4 @@ export const pendentes = () => pedir<EstadoPendentes>("GET", "/api/busca/pendent
 export const completarPendentes = () => pedir<EstadoPendentes>("POST", "/api/busca/pendentes", {})
 
 /** Situações em que a busca está rodando (a página consulta o andamento a cada 2 s). */
-export const SITUACOES_ATIVAS = ["consultando", "descricoes", "gravando", "cancelando", "externa"]
+export const SITUACOES_ATIVAS = ["consultando", "descricoes", "gravando", "cancelando", "externa", "aguardando_login"]
