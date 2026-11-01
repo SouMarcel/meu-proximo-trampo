@@ -319,9 +319,9 @@ adicionadas pelo link.
 - [X] T030 [P] Skill: `.agents/skills/buscar-vagas/SKILL.md` (portais com login: o assistente não usa a sessão; na busca
   pelo chat, o portal fica de fora com aviso), depois `python sincronizar_skills.py` e
   `python sincronizar_skills.py --conferir`.
-- [ ] T031 Front na `frontend-react`: `npm run build` sem erro de tipo. Commit local, e o push só com o OK da pessoa
+- [X] T031 Front na `frontend-react`: `npm run build` sem erro de tipo. Commit local, e o push só com o OK da pessoa
   depois do teste.
-- [ ] T032 Verificação e entrega:
+- [X] T032 Verificação e entrega:
   1. a suíte inteira (`python -m unittest discover -s tests`);
   2. a busca por dados pessoais nos arquivos alterados;
   3. o commit na branch `041-portais-com-login`;
