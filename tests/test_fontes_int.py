@@ -138,7 +138,7 @@ class TestConsultas(unittest.TestCase):
         self.assertEqual([(e["sistema"], e["id"], e["nome"]) for e in cfg["empresas"]],
                          [("lever", "spotify", "Spotify"), ("greenhouse", "gitlab", "GitLab")])
         self.assertEqual(inter["frases_restricao"], ["Must be in the office"])
-        with self.assertRaisesRegex(ValueError, "Greenhouse, do Lever nem do Ashby"):
+        with self.assertRaisesRegex(ValueError, "botão Adicionar"):  # link solto de outro domínio (spec 042)
             filtros.validar({**base, "internacional": {"ativo": True, "termos": ["x"], "empresas": ["https://empresa.com/vagas"]}})
         with self.assertRaisesRegex(ValueError, "fonte internacional"):
             filtros.validar({**base, "internacional": {"ativo": True, "termos": ["x"], "fontes": ["linkedin"]}})

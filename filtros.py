@@ -80,9 +80,10 @@ FONTES_INT = {"remotive": "Remotive", "himalayas": "Himalayas", "remoteok": "Rem
 GLOBAL = "internacional:global"
 # Portais da busca (config.json -> "fontes"), ligados no painel "Filtros da busca"; precisa = o que o portal exige
 FONTES_NAC = {"indeed": "Indeed", "gupy": "Gupy", "nerdin": "Nerdin", "infojobs": "InfoJobs", "vagascom": "Vagas.com",
-              "ey": "EY", "linkedin": "LinkedIn", "startupjobs": "startup.jobs", "jobgether": "JobGether",
-              "fullstack": "FullStack"}
-FONTES_PADRAO = ["indeed", "gupy", "nerdin", "infojobs", "vagascom", "ey", "jobgether"]
+              "linkedin": "LinkedIn", "startupjobs": "startup.jobs", "jobgether": "JobGether", "fullstack": "FullStack"}
+FONTES_PADRAO = ["indeed", "gupy", "nerdin", "infojobs", "vagascom", "jobgether"]
+# a EY era portal até a spec 042 (ligada por padrão): quem a tinha passa a tê-la em empresas acompanhadas
+EY_EMPRESA = {"sistema": "ey", "id": "ey", "nome": "EY", "url": "https://careers.ey.com/ey/"}
 # Portais com login (spec 041), também em "fontes", desligados por padrão; ficam na seção "Portais com login" do painel
 FONTES_LOGIN = {"mygreenhouse": "MyGreenhouse Jobs"}
 # Portais da lista acima que também rodam na consulta internacional global ("mundo todo"; GLOBAL = True na fonte)
@@ -270,10 +271,11 @@ def efetivos(cfg: dict) -> dict:
         "senioridades": [s for s in cfg.get("senioridades") or [] if s in SENIORIDADES],
         "moedas_aceitas": [m for m in cfg.get("moedas_aceitas") or [] if m in MOEDAS],
         "empresas_excluir": [str(e).strip() for e in cfg.get("empresas_excluir") or [] if str(e).strip()],
-        "fontes": [str(n) for n in cfg.get("fontes") or FONTES_PADRAO],
+        "fontes": [str(n) for n in cfg.get("fontes") or FONTES_PADRAO if n != "ey"],
         # empresas acompanhadas, nas duas áreas (spec 031); config antigo: a lista ficava em "internacional"
-        "empresas": [e for e in (cfg["empresas"] if isinstance(cfg.get("empresas"), list) else inter.get("empresas"))
-                     or [] if isinstance(e, dict) and e.get("sistema") and e.get("id")],
+        "empresas": _com_ey(cfg, [e for e in (cfg["empresas"] if isinstance(cfg.get("empresas"), list)
+                                              else inter.get("empresas")) or []
+                                  if isinstance(e, dict) and e.get("sistema") and e.get("id")]),
     }
     if not loc and cfg.get("local"):
         f["local_legado"] = str(cfg["local"])  # formato antigo: onde fazer a busca do país
@@ -322,6 +324,16 @@ def _textos(v, nome: str, maximo: int, tamanho: int = 80) -> list[str]:
     return saida
 
 
+def _com_ey(cfg: dict, empresas: list[dict]) -> list[dict]:
+    """Migração da spec 042: a EY ligada nos portais (ou o padrão antigo, sem a chave "fontes" num config com cargos)
+    vira empresa acompanhada, uma vez."""
+    tinha = "ey" in (cfg["fontes"] if isinstance(cfg.get("fontes"), list) else [])
+    tinha = tinha or ("fontes" not in cfg and bool(cfg.get("termos")))
+    if not tinha or any(e.get("sistema") == "ey" for e in empresas) or len(empresas) >= MAX_EMPRESAS:
+        return empresas
+    return [*empresas, dict(EY_EMPRESA)]
+
+
 def _empresas(v) -> list[dict]:
     """Empresas acompanhadas: o link da página de vagas de cada uma (ou a empresa já reconhecida)."""
     if v is None:
@@ -335,8 +347,8 @@ def _empresas(v) -> list[dict]:
         url = str((x.get("url") if isinstance(x, dict) else x) or "").strip()
         if not url:
             continue
-        try:
-            e = ats.reconhecer(url)
+        try:  # a empresa já reconhecida pelo botão Adicionar (com o sistema) é conferida sem pedido (spec 042)
+            e = ats.conferir(x) if isinstance(x, dict) and x.get("sistema") else ats.reconhecer(url)
         except ValueError as erro:
             raise ValueError(f"empresa {url[:80]}: {erro}") from None
         if isinstance(x, dict) and str(x.get("nome") or "").strip():
@@ -449,6 +461,8 @@ def salvar(entrada: dict) -> dict:
         cfg = {**json.loads(EXEMPLO.read_text(encoding="utf-8")), **cfg}
     for k in LEGADOS:
         cfg.pop(k, None)
+    if "fontes" not in novos and "empresas" in novos:  # a EY migrada já veio na lista de empresas (spec 042)
+        cfg["fontes"] = [n for n in (cfg.get("fontes") or FONTES_PADRAO) if n != "ey"]
     cfg.update(novos)
     _gravar(cfg)
     return efetivos(cfg)
@@ -467,12 +481,13 @@ def empresa_igual(lista: list[dict], e: dict) -> dict | None:
 
 
 def acompanhar(url: str) -> tuple[dict, bool, list[dict]]:
-    """Põe uma empresa na lista de empresas acompanhadas pelo link (página de vagas ou vaga do Greenhouse, do Lever ou do
-    Ashby), a pedido da pessoa, sem revalidar os outros filtros nem fazer pedido ao sistema (spec 031). Devolve
-    (empresa, nova, empresas); ValueError com a mensagem para a pessoa (link não reconhecido, lista cheia)."""
+    """Põe uma empresa na lista de empresas acompanhadas pelo link (página de vagas ou vaga), a pedido da pessoa, sem
+    revalidar os outros filtros (spec 031). Domínio desconhecido: um pedido à página para descobrir o sistema (spec
+    042). Devolve (empresa, nova, empresas); ValueError com a mensagem para a pessoa (link não reconhecido, portal de
+    vagas, lista cheia)."""
     from fontes import ats  # aqui para o filtros.py não depender das fontes ao ser importado
 
-    e = ats.reconhecer(str(url or "").strip()[:1000])
+    e = ats.descobrir(str(url or "").strip()[:1000])
     cfg = ler_config()
     empresas = efetivos(cfg)["empresas"]
     igual = empresa_igual(empresas, e)
@@ -484,6 +499,8 @@ def acompanhar(url: str) -> tuple[dict, bool, list[dict]]:
     cfg["empresas"] = empresas  # no nível de cima; a lista antiga, dentro de "internacional", sai
     if isinstance(cfg.get("internacional"), dict):
         cfg["internacional"].pop("empresas", None)
+    if isinstance(cfg.get("fontes"), list) and "ey" in cfg["fontes"]:  # a EY já migrou para a lista (spec 042)
+        cfg["fontes"] = [n for n in cfg["fontes"] if n != "ey"]
     _gravar(cfg)
     return e, True, empresas
 

@@ -113,6 +113,21 @@ Para um portal que só mostra a busca de vagas depois do login (constituição, 
 - **Testes**: a `Aba` falsa de `tests/aba_login_falsa.py`, sem navegador e sem rede (modelo: `tests/test_mygreenhouse.py`):
   fora da página sem abrir a janela, login caído, captcha, bloqueio com espera, portal mudado e nada da conta na vaga.
 
+## 4c. Sistema novo de empresa acompanhada (spec 042)
+
+Quando o que se quer é acompanhar empresas (cada uma no seu site de vagas), e não um portal com vagas de muitas
+empresas, o caminho é um sistema novo nas empresas acompanhadas, não uma fonte nova:
+
+- **Reconhecer**: em `fontes/ats.py`, o domínio em `_sistema` (sem pedido) ou o sinal na página em `descobrir` (um
+  pedido, como o feed do Teamtailor); o rótulo em `ROTULOS` e a plataforma em `SISTEMAS`.
+- **Ler**: um módulo em `fontes/` com `lista(empresa)` que devolve as vagas no formato comum (molde:
+  `fontes/teamtailor.py`), chamado por `ats._lista`; o bloqueio por site já vem de `POR_HOST`.
+- **Sem sistema**: a página própria (`fontes/pagina_empresa.py`, pela IA) já cobre; um sistema novo só compensa quando
+  ele tem lista pública estruturada (feed, API ou dados JobPosting).
+- **Arquivos**: `dash/banco.PLATAFORMAS`, `integridade.ATS` (domínio do sistema) e, na `frontend-react`, a etiqueta e
+  o rótulo do sistema no painel.
+- **Testes**: amostra fictícia da lista e o `_comum.baixar` trocado (modelo: `tests/test_empresas_sites.py`).
+
 ## 5. Testes e verificação
 
 - `unittest` com as amostras fictícias e `_baixar` substituído, sem rede: leitura dos cards, filtro pelo cargo,

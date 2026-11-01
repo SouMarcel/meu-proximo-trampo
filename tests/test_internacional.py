@@ -45,7 +45,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(antigo["internacional"]["paises"], ["Portugal"])
 
     def test_validar(self):
-        cfg = {**efet(), "idiomas_aceitos": ["pt", "en"],
+        cfg = {**efet(), "idiomas_aceitos": ["pt", "en"], "empresas": [],  # sem a EY migrada (spec 042)
                "internacional": {"ativo": True, "paises": ["Portugal"], "termos": ["data analyst"], "regioes": ["latam"],
                                  "salario_min_anual_usd": 60000, "fuso_horas": 3, "contratacao": ["eor"],
                                  "aceita_mudar": True, "paises_mudanca": ["Irlanda"], "passaporte": True,
