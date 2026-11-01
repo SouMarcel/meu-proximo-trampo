@@ -9,6 +9,10 @@ esperando nota e a análise automática (analise.FILA) dá as notas; sem IA, fic
 Respeito aos portais: a página só inicia uma busca 30 minutos depois da última concluída (de qualquer
 origem) e pede confirmação se a última foi há menos de 6 horas. Com um portal em espera depois de um bloqueio
 (ex.: LinkedIn), pede confirmação para buscar sem ele; se só ele estiver ligado, não busca.
+
+Portais com login (spec 041): a busca da página é a única que os lê. Ela roda dentro de fontes/_sessao.na_pagina e,
+se o login caiu, traz a janela da ferramenta para a frente e espera a pessoa entrar (situação "aguardando_login", até
+3 minutos; cancelar interrompe). O portal ligado e sem conexão fica de fora, com o aviso no plano.
 """
 from __future__ import annotations
 
@@ -50,6 +54,12 @@ def _ia():
     return ia
 
 
+def _sessao():
+    _raiz()
+    from fontes import _sessao
+    return _sessao
+
+
 def _agora() -> datetime:
     return datetime.now()
 
@@ -80,7 +90,8 @@ class Busca:
 
     def _set(self, **campos):
         with self._trava:
-            if self._e.get("situacao") == "cancelando" and campos.get("situacao") in ("consultando", "descricoes"):
+            if self._e.get("situacao") == "cancelando" and campos.get("situacao") in ("consultando", "descricoes",
+                                                                                     "aguardando_login"):
                 campos.pop("situacao")  # o pedido de cancelamento não volta atrás
             self._e.update(campos)
 
@@ -147,14 +158,16 @@ class Busca:
         except (OSError, ValueError):
             cfg = {}
         f = fm.efetivos(cfg)
-        nomes = [n for n in v.fontes_da_busca(cfg, f) if n in v.FONTES]
+        ligadas = [n for n in v.fontes_da_busca(cfg, f) if n in v.FONTES]
+        login_fora = v.fontes_com_login_fora(ligadas, pagina=True)  # portal com login sem conexão: fica de fora
+        nomes = [n for n in ligadas if n not in login_fora]
         consultas = v.contar_consultas(fm.consultas(f), nomes) if f["termos"] else 0
         escolha = ia.escolha_efetiva(cfg)
         prov = ia.PROVEDORES[escolha["provedor"]]
         perfil = RAIZ / (cfg.get("perfil") or "perfil.md")
         ult = self.ultima()
         proxima, recente = self.intervalo(ult)
-        espera = v.fontes_em_espera(nomes)
+        espera = v.fontes_em_espera(nomes, pagina=True)
         return {
             "filtros_ok": bool(f["termos"]), "perfil_ok": perfil.exists(), "consultas": consultas,
             "portais": [v.FONTES[n].PLATAFORMA for n in nomes], "cargos": [t.strip('"') for t in f["termos"]],
@@ -166,7 +179,8 @@ class Busca:
             "espera": [{k: e[k] for k in ("portal", "ate", "motivo")} for e in espera],
             "so_espera": bool(nomes) and len(espera) == len(nomes),
             "aviso_cargos": fm.aviso_cargos(f, nomes) if f["termos"] else None,
-            "aviso_pausa": v.aviso_pausa(f, nomes),
+            "aviso_pausa": v.aviso_pausa(f, nomes, pagina=True),
+            "aviso_login": "; ".join(login_fora.values()) or None,
         }
 
     # ---------- iniciar e cancelar
@@ -201,7 +215,8 @@ class Busca:
             with self._trava:
                 self._e = {"situacao": "consultando", "origem": "pagina", "inicio": _agora().isoformat(timespec="seconds"),
                            "com_nota": com_nota, "feitas": 0, "total": pl["consultas"], "encontradas": 0,
-                           "consulta": None, "descricoes": None, "erros": [], "resumo": None, "mensagem": ""}
+                           "consulta": None, "descricoes": None, "erros": [], "resumo": None, "mensagem": "",
+                           "login": None}
             self._thread = threading.Thread(target=self._rodar, args=(com_nota,), daemon=True, name="busca-pagina")
             self._thread.start()
         return self.estado()
@@ -220,6 +235,28 @@ class Busca:
         elif ev["etapa"] == "descricoes":
             self._set(situacao="descricoes", descricoes={"lidas": ev["lidas"], "total": ev["total"]})
 
+    def _esperar_login(self, modulo, aba) -> bool:
+        """Login caído num portal com login (spec 041): a janela vem para a frente na aba do portal, a página mostra
+        "aguardando login" com o fim da espera e a busca espera a pessoa entrar, olhando só o endereço da aba.
+        Logou: a janela volta a minimizar. Cancelar a busca interrompe a espera."""
+        s = _sessao()
+        ate = (_agora() + timedelta(seconds=s.ESPERA_LOGIN)).isoformat(timespec="seconds")
+        self._set(situacao="aguardando_login", login={"portal": modulo.NOME, "rotulo": modulo.ROTULO, "ate": ate})
+        try:
+            try:
+                aba.frente()
+            except Exception:  # a janela pode ter sido fechada; a espera descobre e devolve False
+                pass
+            ok = s.esperar(modulo, aba, cancelado=self._cancelar.is_set)
+        finally:
+            self._set(situacao="consultando", login=None)
+        if ok:
+            try:
+                aba.minimizar()
+            except Exception:
+                pass
+        return ok
+
     def _fim(self, situacao: str, **campos):
         self._set(situacao=situacao, fim=_agora().isoformat(timespec="seconds"), **campos)
 
@@ -231,8 +268,9 @@ class Busca:
             nomes = [n for n in v.fontes_da_busca(cfg, f) if n in v.FONTES]
             with v.TravaBusca("pagina") as trava:
                 try:
-                    resultado = v.executar(cfg, f, nomes, cfg.get("resultados_por_termo", 40), pausa=PAUSA,
-                                           progresso=self._progresso, cancelado=self._cancelar.is_set)
+                    with _sessao().na_pagina(esperar_login=self._esperar_login):  # portais com login (spec 041)
+                        resultado = v.executar(cfg, f, nomes, cfg.get("resultados_por_termo", 40), pausa=PAUSA,
+                                               progresso=self._progresso, cancelado=self._cancelar.is_set)
                 except ImportError:
                     trava.situacao = "erro"
                     return self._fim("falha", mensagem="Falta uma biblioteca da busca: rode python iniciar.py "

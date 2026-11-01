@@ -180,7 +180,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(200, {"conectado": ok})
                 if partes[3] == "desconectar":
                     contas.marcar(partes[2], False)
-                    if not contas.conectados():
+                    from fontes import _sessao
+                    if not _sessao.algum_conectado():  # contas e portais com login (spec 041)
                         nav.desconectar()  # nenhum portal: fecha a janela e apaga o perfil inteiro
                     else:
                         aba = nav.abrir("about:blank", minimizado=True)
@@ -206,6 +207,64 @@ class Handler(BaseHTTPRequestHandler):
             if r["aplicados"]:
                 analise.FILA.pedir()  # vagas novas com descrição ganham nota, como no Adicionar Vaga
             return self._json(200, r)
+        return self._erro(404, "rota não encontrada")
+
+    def _portais_login(self, metodo: str, caminho: str):
+        """Portais com login (spec 041): só deste computador. Conectar abre a página de login na janela da ferramenta,
+        Pronto confere o login só pelo endereço da aba, Desconectar apaga a sessão do portal. Ligar e desligar é pelo
+        salvamento de sempre dos filtros (fontes)."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        from fontes import FONTES, _sessao
+        nav = sincronia.navegador
+        if metodo == "GET" and caminho == "/api/portais-login":
+            try:
+                ligadas = filtros.ler_config().get("fontes") or filtros.FONTES_PADRAO
+            except (OSError, ValueError):
+                ligadas = filtros.FONTES_PADRAO
+            conectados = _sessao.conectados()
+            portais = []
+            for nome, rotulo in filtros.FONTES_LOGIN.items():
+                m = FONTES.get(nome)
+                if m is None:
+                    continue
+                esp = m.espera()
+                ligado, conectado = nome in ligadas, nome in conectados
+                situacao = ("desligado" if not ligado else "em_espera" if esp else
+                            "desconectado" if not conectado else "conectado")
+                portais.append({"nome": nome, "rotulo": rotulo, "termos": m.TERMOS, "aviso_risco": m.AVISO_RISCO,
+                                "aviso_login": m.AVISO_LOGIN, "ligado": ligado, "conectado": conectado,
+                                "situacao": situacao, "espera": esp})
+            return self._json(200, {"navegador": bool(nav.achar()), "portais": portais})
+        if metodo != "POST":
+            return self._erro(405, "método não permitido")
+        partes = caminho.strip("/").split("/")  # api / portais-login / <portal> / <acao>
+        if len(partes) != 4:
+            return self._erro(404, "rota não encontrada")
+        modulo = FONTES.get(partes[2]) if partes[2] in filtros.FONTES_LOGIN else None
+        if modulo is None:
+            return self._erro(404, "portal desconhecido")
+        try:
+            if partes[3] == "conectar":  # aba nova na janela, na frente: não tira a pessoa de outra página
+                aba = nav.abrir_para_leitura(modulo.URL_LOGIN)
+                aba.frente()
+                aba.fechar()
+                return self._json(200, {"ok": True})
+            if partes[3] == "pronto":
+                aba = nav.abrir_para_leitura(modulo.URL_BUSCA)
+                try:
+                    ok = modulo.logado(aba.endereco())
+                    if ok:
+                        _sessao.marcar(modulo.NOME, True)
+                        aba.minimizar()
+                finally:
+                    aba.fechar_aba()
+                return self._json(200, {"conectado": ok})
+            if partes[3] == "desconectar":
+                _sessao.desconectar(modulo)
+                return self._json(200, {"ok": True})
+        except nav.NavegadorErro as e:
+            return self._erro(409, str(e))
         return self._erro(404, "rota não encontrada")
 
     def _candidatura(self, metodo: str, caminho: str):
@@ -788,6 +847,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._perfil(metodo, caminho)
             if caminho.startswith(("/api/contas", "/api/candidaturas")):
                 return self._contas(metodo, caminho)
+            if caminho == "/api/portais-login" or caminho.startswith("/api/portais-login/"):
+                return self._portais_login(metodo, caminho)
             if caminho == "/api/candidatura" or caminho.startswith("/api/candidatura/"):
                 return self._candidatura(metodo, caminho)
             if caminho == "/api/busca" or caminho.startswith("/api/busca/"):
@@ -833,6 +894,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
         if caminho.startswith(("/api/contas", "/api/candidaturas")):
             return self._contas("GET", caminho)
+        if caminho == "/api/portais-login":
+            return self._portais_login("GET", caminho)
         if caminho == "/api/candidatura":
             return self._candidatura("GET", caminho)
         if caminho.startswith("/arquivos/curriculo-base/"):

@@ -1,7 +1,7 @@
 # meu-proximo-trampo
 
 Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na
-Nerdin (vagas de tecnologia), na EY e no JobGether (vagas remotas; e, se você quiser, no startup.jobs e na FullStack), monta um relatório para você decidir o que vale a pena e
+Nerdin (vagas de tecnologia), na EY e no JobGether (vagas remotas; e, se você quiser, no startup.jobs, na FullStack e no MyGreenhouse Jobs), monta um relatório para você decidir o que vale a pena e
 acompanha suas candidaturas num quadro kanban. Com IA (opcional), cada vaga recebe uma
 nota de aderência ao seu perfil, com o que bate, o que falta e o que o anúncio esconde.
 
@@ -13,8 +13,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 - **Busca** vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na Nerdin, de tecnologia, no site de vagas da EY e
   no JobGether, de vagas remotas abertas a quem mora no Brasil (e no LinkedIn, no startup.jobs, de startups, na
-  FullStack, de vagas remotas de tecnologia para a América Latina, e em portais de vagas remotas do exterior, se você
-  ligar) com
+  FullStack, de vagas remotas de tecnologia para a América Latina, no MyGreenhouse Jobs, com o seu login, e em portais
+  de vagas remotas do exterior, se você ligar) com
   os seus cargos e filtros, que você ajusta no painel **Filtros da busca** do dashboard:
   remoto no seu país (e, se quiser, em outros países), híbrido e presencial só na sua
   cidade, data de publicação, tipo de emprego, senioridade, moedas aceitas para vagas de
@@ -56,6 +56,18 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   - A janela fica aberta e minimizada enquanto o dashboard roda, porque a Gupy esquece o login
     quando ela fecha. Ela fecha quando o dashboard para ou no "Desconectar". Se um portal pedir
     login, a janela vem para a frente e a leitura segue sozinha depois que você entra.
+- **Portais com login (MyGreenhouse Jobs):** alguns portais só mostram a busca de vagas depois do login. Eles ficam
+  numa seção própria do painel **Filtros da busca**, "Portais com login", desligados por padrão. O primeiro é o
+  MyGreenhouse Jobs (`my.greenhouse.io`), a busca entre as empresas que usam o Greenhouse.
+  - Para usar: ligue o portal (confirmando o aviso de risco), clique em Conectar, entre na janela da ferramenta (pelo
+    e-mail do MyGreenhouse ou pelo LinkedIn) e clique em Pronto. A ferramenta nunca vê nem guarda a sua senha e não
+    clica em nada no portal; no login pelo LinkedIn, ela não lê as páginas do LinkedIn.
+  - A leitura roda **só no botão Buscar da página**, numa aba em segundo plano da janela da ferramenta, minimizada. A
+    busca pelo terminal ou pelo chat deixa o portal de fora, com um aviso: o assistente nunca usa a sua sessão.
+  - Se o login caiu, a janela vem para a frente, a página mostra "Aguardando login" e a busca espera até 3 minutos. Se
+    você não entrar, o portal fica de fora daquela busca e os outros seguem.
+  - "Desconectar" apaga a sessão do portal. Se não sobrar nenhuma conta ou portal conectado, apaga o perfil inteiro
+    da janela.
 - **Candidatar com ajuda (candidatura assistida, ligada vaga a vaga):** no detalhe da vaga, aba
   Candidatura, marque "usar a candidatura assistida nesta vaga" (com um aviso de risco) e clique em
   **Ligar nesta vaga**; a partir daí o card dela, em Salva, ganha o botão. A ferramenta abre a vaga
@@ -147,7 +159,7 @@ skills que ensinam isso já vêm neste repositório, em `.agents/skills/` (`anal
 
 ```mermaid
 flowchart LR
-  A[Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, EY,<br/>LinkedIn, startup.jobs, JobGether, FullStack e fontes do exterior] --> B[vagas.py buscar]
+  A[Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, EY,<br/>LinkedIn, startup.jobs, JobGether, FullStack, MyGreenhouse e fontes do exterior] --> B[vagas.py buscar]
   B -->|sem IA| D[(banco local)]
   B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
   C --> D
@@ -514,7 +526,7 @@ funcionar, abra uma issue.
 | Campo | O que é |
 |---|---|
 | `perfil` | Arquivo do seu perfil de carreira (usado pela IA; montado nos primeiros passos). Padrão: `perfil.md` |
-| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey`, `linkedin`, `startupjobs`, `jobgether` e `fullstack` (padrão, quando o campo não existe: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey` e `jobgether`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `infojobs` e o `vagascom` trazem vagas de todas as áreas, muitas presenciais; veja os Avisos. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos. O `jobgether` traz vagas remotas de empresas do mundo todo, em inglês; os termos do JobGether proíbem acesso automatizado, e ele vem ligado por decisão registrada na spec 030: desligue no painel se não concordar (veja os Avisos). A `ey` traz as vagas do site de vagas da EY no seu país. A `fullstack` traz vagas remotas de tecnologia para a América Latina, em inglês; os termos da FullStack proíbem acesso automatizado, e ela vem desligada: ligue no painel se concordar (veja os Avisos) |
+| `fontes` | Portais onde buscar: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey`, `linkedin`, `startupjobs`, `jobgether` e `fullstack` (padrão, quando o campo não existe: `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom`, `ey` e `jobgether`). A `nerdin` traz só vagas de tecnologia no Brasil: quem procura em outra área pode desligá-la no painel. O `infojobs` e o `vagascom` trazem vagas de todas as áreas, muitas presenciais; veja os Avisos. O `startupjobs` traz vagas de startups, a maior parte de fora do Brasil e muitas remotas; veja os Avisos. O `jobgether` traz vagas remotas de empresas do mundo todo, em inglês; os termos do JobGether proíbem acesso automatizado, e ele vem ligado por decisão registrada na spec 030: desligue no painel se não concordar (veja os Avisos). A `ey` traz as vagas do site de vagas da EY no seu país. A `fullstack` traz vagas remotas de tecnologia para a América Latina, em inglês; os termos da FullStack proíbem acesso automatizado, e ela vem desligada: ligue no painel se concordar (veja os Avisos). O `mygreenhouse` é um portal com login (MyGreenhouse Jobs): roda só no botão Buscar da página, conectado na seção "Portais com login" do painel, e vem desligado (veja os Avisos) |
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
@@ -749,9 +761,25 @@ Para instalar à mão, no Claude Code:
   - Um link `talent.fullstack.com/jobs/…` colado no Adicionar Vaga entra com o mesmo id da busca.
 
   A candidatura é no próprio portal da FullStack.
+- A busca no MyGreenhouse Jobs (`my.greenhouse.io/jobs/search`) usa **o seu login**, feito por você na janela da
+  ferramenta, e fica na seção "Portais com login" do painel. **Os termos do MyGreenhouse proíbem acesso
+  automatizado, e a Greenhouse pode limitar, suspender ou encerrar a sua conta.** O portal entra por decisão
+  registrada na spec 041 e vem **desligado**: ligue só se concordar com o risco.
+  - Roda só no botão Buscar da página. A ferramenta pede a lista de vagas como a própria página faz, de dentro da aba
+    (os cookies não saem do navegador), e lê só os resultados: o que é da sua conta (vagas vistas, salvas,
+    candidaturas) não é guardado.
+  - Cada cargo vai com o filtro de trabalho remoto e, na busca nacional, o local Brasil; com a janela de até 5 dias,
+    vai também "postadas nos últimos 5 dias". Até 3 páginas de 12 vagas por cargo. Ficam as vagas cujo título bate
+    com o cargo, na janela de tempo e, na busca nacional, abertas a quem mora no Brasil. A busca do portal é
+    aproximada: inclua o cargo em inglês nos seus termos.
+  - A vaga tem o mesmo id das empresas acompanhadas (não duplica) e oferece "Acompanhar empresa". A descrição vem da
+    página pública da vaga no Greenhouse, sem a sua sessão (até 30 por busca).
+  - Pausa sorteada de 3 a 7 segundos (`MYGREENHOUSE_PAUSA`, de 3 a 60). Se o portal recusar ou limitar, ele sai da
+    busca sem nova tentativa e fica **24 horas em espera**. Captcha, login não feito ou página diferente da esperada
+    deixam o portal de fora só daquela busca, com aviso.
 - **Pausa por portal:** cada portal que lê páginas (LinkedIn, Nerdin, InfoJobs, Vagas.com, EY, FullStack) tem a sua
   pausa, ajustável no arquivo `.env` da raiz com `<PORTAL>_PAUSA=N` (`LINKEDIN_PAUSA`, `NERDIN_PAUSA`,
-  `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`, `EY_PAUSA`, `FULLSTACK_PAUSA`), em segundos, de 3 a 60. O `.env.exemplo` traz uma linha comentada
+  `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`, `EY_PAUSA`, `FULLSTACK_PAUSA`, `MYGREENHOUSE_PAUSA`), em segundos, de 3 a 60. O `.env.exemplo` traz uma linha comentada
   para cada um, com o padrão e o mínimo: copie a linha e tire o `#` do começo. O JobGether, que usa a API
   oficial, tem `JOBGETHER_PAUSA`, de 2 a 60 (padrão 2). Aumente só a do portal
   que estiver bloqueando; vale a partir da busca seguinte, e o começo da busca mostra a pausa em uso.
@@ -802,6 +830,8 @@ O link e o QR code também ficam no canto de cima do dashboard.
 - [x] JobGether (vagas remotas do mundo todo, pela API para assistentes; ligado por padrão, termos contrários)
 - [x] EY (site de vagas da EY, busca pública; ligada por padrão)
 - [x] FullStack (vagas remotas de tecnologia para a América Latina; desligada por padrão, termos contrários)
+- [x] MyGreenhouse Jobs (busca entre as empresas do Greenhouse, com o seu login; portal com login, desligado por
+  padrão, termos contrários)
 - [ ] Mais portais do Brasil (ex.: InHire, Catho, Glassdoor), pelo roteiro `docs/novo-portal.md`
 - [x] Preparar e simular entrevista para as vagas na coluna Entrevista
 

@@ -1,0 +1,56 @@
+{
+ "component": "jobs",
+ "props": {
+  "browsing": false,
+  "page": 2,
+  "moreResultsAvailable": false,
+  "jobPosts": [
+   {
+    "id": 5013,
+    "title": "Scrum Master",
+    "companyName": "Empresa Ni",
+    "logoUrl": "https://exemplo.invalid/logo/empresani.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresani/jobs/5013",
+    "urlToken": "empresani",
+    "departmentId": 913,
+    "viewJobPath": "/view_job?job_id=5013",
+    "firstPublished": "2026-10-29T12:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   },
+   {
+    "id": 5014,
+    "title": "Scrum Master",
+    "companyName": "Empresa Csi",
+    "logoUrl": "https://exemplo.invalid/logo/empresacsi.png",
+    "publicUrl": "https://job-boards.greenhouse.io/empresacsi/jobs/5014",
+    "urlToken": "empresacsi",
+    "departmentId": 914,
+    "viewJobPath": "/view_job?job_id=5014",
+    "firstPublished": "2026-09-01T12:00:00.000Z",
+    "locations": [
+     "Remote - Brazil"
+    ],
+    "workType": "remote",
+    "payRanges": null,
+    "summary": null,
+    "description": null,
+    "viewed": false,
+    "appliedAt": null,
+    "saved": false
+   }
+  ]
+ },
+ "url": "/jobs/search?query=scrum+master&page=2",
+ "version": "versao-ficticia-1",
+ "encryptHistory": false,
+ "clearHistory": false
+}

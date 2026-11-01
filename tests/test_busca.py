@@ -22,6 +22,8 @@ import buscador  # noqa: E402
 import filtros  # noqa: E402
 import fonte_falsa  # noqa: E402
 import vagas  # noqa: E402
+from aba_login_falsa import AbaFalsa  # noqa: E402
+from fontes import _sessao  # noqa: E402
 
 CFG = {"fontes": ["falsa"], "termos": ["analista", '"cientista de dados"'],
        "localidade": {"pais": "Brasil", "estado": "PR", "cidade": "Curitiba", "raio_km": 25},
@@ -452,6 +454,114 @@ class TestBuscaPagina(Base):
         e = buscador.Busca().estado()
         self.assertEqual(e["situacao"], "interrompida")
         self.assertIn("nada dela foi gravado", e["mensagem"])
+
+
+class TestPortalComLogin(Base):  # spec 041
+    def setUp(self):
+        super().setUp()
+        p = mock.patch.object(_sessao, "ESTADO", self.tmp / ".cache" / "portais-login.json")
+        p.start()
+        self.addCleanup(p.stop)
+        self.aba = AbaFalsa(url="https://portal.invalid/busca")
+        self.aba.ao_ir = lambda url: url
+        f = self.fonte = types.SimpleNamespace(
+            NOME="comlogin", PLATAFORMA="ComLogin", ROTULO="Portal Com Login", COM_LOGIN=True,
+            DOMINIOS=("portal.invalid",), URL_BUSCA="https://portal.invalid/busca", CHAMADAS=[], estado={},
+            logado=lambda url: "/entrar" not in url)
+
+        def buscar(c, h, n):
+            f.CHAMADAS.append(_sessao.dentro_da_pagina())
+            if f.estado.get("fora"):
+                return [], []
+            try:
+                _sessao.garantir_login(f, self.aba)
+            except _sessao.PortalComLoginErro as e:
+                f.estado["fora"] = True
+                return [], [str(e)]
+            return [{"id": "comlogin-1", "titulo": "Analista Com Login", "empresa": "Empresa Login", "local": "Remoto",
+                     "remoto": True, "publicada_em": datetime.now().date().isoformat(), "url": "https://exemplo.invalid/l1",
+                     "url_candidatura": None, "salario": None, "tipo": None, "descricao": "Texto.",
+                     "plataforma": "ComLogin"}], []
+        f.buscar = buscar
+        p = mock.patch.dict(vagas.FONTES, {"comlogin": f})
+        p.start()
+        self.addCleanup(p.stop)
+        (self.tmp / "config.json").write_text(json.dumps({**CFG, "fontes": ["falsa", "comlogin"]}), encoding="utf-8")
+
+    def test_desconectado_fica_de_fora_com_aviso(self):
+        pl = buscador.Busca().plano()
+        self.assertEqual(pl["portais"], ["Falsa"])
+        self.assertIn("conecte em Filtros da busca", pl["aviso_login"])
+        e = self.busca_pagina().estado()
+        self.assertEqual(e["situacao"], "concluida", e)
+        self.assertEqual(self.fonte.CHAMADAS, [])
+        self.assertTrue(any("conecte" in x for x in e["erros"]))
+
+    def test_conectado_roda_so_na_pagina(self):
+        _sessao.marcar("comlogin", True)
+        pl = buscador.Busca().plano()
+        self.assertEqual((pl["portais"], pl["aviso_login"]), (["Falsa", "ComLogin"], None))
+        e = self.busca_pagina().estado()
+        self.assertEqual(e["situacao"], "concluida", e)
+        self.assertTrue(self.fonte.CHAMADAS and all(self.fonte.CHAMADAS))  # sempre dentro da busca da página
+        self.assertIn("comlogin-1", [v["id"] for v in banco.listar_vagas()])
+        self.assertFalse(_sessao.dentro_da_pagina())
+
+        self.fonte.CHAMADAS.clear()  # terminal (e chat): o portal fica de fora, com o aviso
+        saida = io.StringIO()
+        with mock.patch.object(sys, "argv", ["vagas.py", "buscar", "--pausa", "0"]), contextlib.redirect_stdout(saida),                 contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(vagas.main(), 0)
+        self.assertEqual(self.fonte.CHAMADAS, [])
+        r = vagas.executar(CFG, self.efetivos(), ["comlogin"], 40, pausa=0)
+        self.assertEqual(r["erros"], ["comlogin: Portal Com Login: só pelo botão Buscar da página (portal com login)"])
+        self.assertFalse(vagas.bloqueio_provavel(r))
+
+    def esperar_trocado(self, ok, cancelar=False):
+        vistos = []
+        original = _sessao.esperar
+
+        def esperar(modulo, aba, cancelado=None, **kw):
+            vistos.append(self.b.estado())
+            if cancelar:
+                self.b.cancelar()
+                return original(modulo, aba, cancelado=cancelado, dormir=lambda s: None)
+            if ok:
+                aba.historico.append("https://portal.invalid/inicio")
+            return ok
+        return vistos, mock.patch.object(_sessao, "esperar", side_effect=esperar)
+
+    def busca_com_login_caido(self, ok, cancelar=False):
+        _sessao.marcar("comlogin", True)
+        self.aba.historico.append("https://portal.invalid/entrar")
+        self.b = buscador.Busca()
+        vistos, troca = self.esperar_trocado(ok, cancelar)
+        with troca:
+            self.b.iniciar()
+            self.b._thread.join(20)
+        return vistos, self.b.estado()
+
+    def test_login_caido_aguarda_e_segue(self):
+        vistos, e = self.busca_com_login_caido(True)
+        self.assertEqual(vistos[0]["situacao"], "aguardando_login")
+        self.assertEqual((vistos[0]["login"]["portal"], vistos[0]["login"]["rotulo"]), ("comlogin", "Portal Com Login"))
+        self.assertTrue(vistos[0]["login"]["ate"])
+        self.assertEqual((self.aba.frentes, self.aba.minimizacoes), (1, 1))
+        self.assertEqual((e["situacao"], e["login"]), ("concluida", None))
+        self.assertIn("comlogin-1", [v["id"] for v in banco.listar_vagas()])
+
+    def test_login_caido_sem_entrar_pula_o_portal(self):
+        vistos, e = self.busca_com_login_caido(False)
+        self.assertEqual(len(vistos), 1)  # uma espera por busca
+        self.assertEqual(e["situacao"], "concluida", e)
+        self.assertTrue(any("login não foi feito" in x for x in e["erros"]))
+        ids = [v["id"] for v in banco.listar_vagas()]
+        self.assertNotIn("comlogin-1", ids)
+        self.assertTrue(any(i.startswith("falsa-") for i in ids))  # os outros portais seguem
+
+    def test_cancelar_durante_a_espera(self):
+        vistos, e = self.busca_com_login_caido(False, cancelar=True)
+        self.assertEqual(e["situacao"], "cancelada", e)
+        self.assertEqual(banco.listar_vagas(), [])
 
 
 if __name__ == "__main__":

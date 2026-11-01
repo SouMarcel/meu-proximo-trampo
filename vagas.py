@@ -37,7 +37,7 @@ sys.path.insert(0, str(RAIZ / "dash"))
 import banco  # noqa: E402  (dash/banco.py)
 import filtros  # noqa: E402
 import integridade  # noqa: E402
-from fontes import FONTES, _comum  # noqa: E402
+from fontes import FONTES, _comum, _sessao  # noqa: E402
 
 
 def _origem_linkedin(nome: str):
@@ -227,11 +227,31 @@ def atende(fonte, c: dict) -> bool:
     return (not por_pais or getattr(fonte, "GLOBAL", False)) if c.get("global") else por_pais
 
 
-def fontes_em_espera(nomes_fontes: list[str]) -> list[dict]:
-    """As fontes em espera depois de um bloqueio (as que têm espera()): [{nome, portal, ate, motivo}]."""
-    lista = []
+def fontes_com_login_fora(nomes_fontes: list[str], pagina: bool | None = None) -> dict[str, str]:
+    """{nome: aviso} dos portais com login (spec 041) que não rodam nesta busca: fora da busca da página (terminal,
+    chat), todos; na página, os que não estão conectados. pagina=None: a busca em curso (fontes/_sessao.py)."""
+    pagina = _sessao.dentro_da_pagina() if pagina is None else pagina
+    fora = {}
     for n in nomes_fontes:
         fonte = FONTES.get(n)
+        if not getattr(fonte, "COM_LOGIN", False):
+            continue
+        if not pagina:
+            fora[n] = _sessao.aviso_fora(fonte)
+        elif n not in _sessao.conectados():
+            fora[n] = _sessao.aviso_desconectado(fonte)
+    return fora
+
+
+def fontes_em_espera(nomes_fontes: list[str], pagina: bool | None = None) -> list[dict]:
+    """As fontes em espera depois de um bloqueio (as que têm espera()): [{nome, portal, ate, motivo}]. Portal com
+    login que não roda nesta busca (fontes_com_login_fora) não entra: a busca não pergunta por ele."""
+    lista = []
+    fora = fontes_com_login_fora(nomes_fontes, pagina)
+    for n in nomes_fontes:
+        fonte = FONTES.get(n)
+        if n in fora:
+            continue
         esp = getattr(fonte, "espera", None)
         e = esp() if esp else None
         if e:
@@ -266,16 +286,18 @@ def contar_consultas(plano: list[dict], nomes_fontes: list[str]) -> int:
     return sum(len(consultas_da_fonte(plano, FONTES[n])) for n in nomes_fontes if n in FONTES)
 
 
-def aviso_pausa(f: dict, nomes_fontes: list[str]) -> str | None:
+def aviso_pausa(f: dict, nomes_fontes: list[str], pagina: bool | None = None) -> str | None:
     """A pausa de cada portal com <NOME>_PAUSA definida (specs 017 e 026): no começo da busca, na página e no
-    terminal. Portal fora da busca, ou em espera depois de um bloqueio, não faz pedidos e não tem aviso."""
+    terminal. Portal fora da busca, em espera depois de um bloqueio ou com login fora da página não faz pedidos e não
+    tem aviso."""
     if not f.get("termos"):
         return None
     plano = None
     avisos = []
+    fora = fontes_com_login_fora(nomes_fontes, pagina)
     for nome in nomes_fontes:
         fonte = FONTES.get(nome)
-        if not getattr(fonte, "aviso_pausa", None) or (getattr(fonte, "espera", None) and fonte.espera()):
+        if nome in fora or not getattr(fonte, "aviso_pausa", None) or (getattr(fonte, "espera", None) and fonte.espera()):
             continue
         plano = plano if plano is not None else filtros.consultas(f)
         aviso = fonte.aviso_pausa(len(consultas_da_fonte(plano, fonte)))
@@ -301,14 +323,16 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
     termos = f["termos"]
     horas = f["janela_horas"]
     plano = filtros.consultas(f, incluir_presencial=incluir_presencial)
-    total = contar_consultas(plano, nomes_fontes)
-    esperas = fontes_em_espera(nomes_fontes)
+    login_fora = fontes_com_login_fora(nomes_fontes)  # portal com login: só na busca da página e conectado (spec 041)
+    rodam = [n for n in nomes_fontes if n not in login_fora]
+    total = contar_consultas(plano, rodam)
+    esperas = fontes_em_espera(rodam)
     _comum.esquecer()  # as listas das fontes do exterior são baixadas de novo a cada busca
     brutas: dict[str, dict] = {}
     por_busca: dict[str, int] = {}
-    erros: list[str] = []
+    erros: list[str] = [f"{n}: {aviso}" for n, aviso in login_fora.items()]
     feitas = 0
-    for nome in nomes_fontes:
+    for nome in rodam:
         fonte = FONTES[nome]
         for c in consultas_da_fonte(plano, fonte):
             conferir()
@@ -386,7 +410,7 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
             fora.append(v)
         else:
             candidatas.append(v)
-    descricoes_completadas = ler_descricoes(candidatas, fora, nomes_fontes, erros, avisar, conferir)
+    descricoes_completadas = ler_descricoes(candidatas, fora, rodam, erros, avisar, conferir)
     for v in candidatas + fora:  # o candidatas.md e a nota pelo chat já leem o texto limpo (spec 034)
         verificar_texto(v)
     candidatas.sort(key=lambda r: r.get("publicada_em") or "", reverse=True)
@@ -550,7 +574,7 @@ def bloqueio_provavel(resultado: dict) -> bool:
         return False
     consultados = {rotulo.split(":", 1)[0] for rotulo in resultado.get("por_busca", {})}
     com_erro = {erro.split(":", 1)[0] for erro in resultado["erros"]}
-    return not (consultados - com_erro)
+    return bool(consultados) and not (consultados - com_erro)  # sem consulta (ex.: só um portal com login) não é bloqueio
 
 
 def confirmar_espera(nomes_fontes: list[str], confirmado: bool) -> bool:
@@ -559,7 +583,7 @@ def confirmar_espera(nomes_fontes: list[str], confirmado: bool) -> bool:
     if not esperas:
         return True
     aviso = aviso_espera(esperas)
-    if len(esperas) == len(nomes_fontes):
+    if len(esperas) == len(set(nomes_fontes) - set(fontes_com_login_fora(nomes_fontes))):
         print(f"{aviso}. Nenhum outro portal está ligado: não há o que buscar agora.", file=sys.stderr)
         return False
     if confirmado:

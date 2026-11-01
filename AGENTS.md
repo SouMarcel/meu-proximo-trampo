@@ -1,7 +1,7 @@
 # meu-proximo-trampo — instruções para assistentes de código
 
 Ferramenta local para quem procura emprego: busca vagas (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin,
-EY, startup.jobs, JobGether, FullStack), dá nota de
+EY, startup.jobs, JobGether, FullStack e, com o login da pessoa, MyGreenhouse Jobs), dá nota de
 aderência ao perfil da pessoa, mostra tudo num dashboard local (Relatório de Vagas e quadro de
 candidaturas) e ajuda a montar o currículo. Este arquivo vale para Claude Code, Codex, Gemini CLI,
 OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em português do Brasil.
@@ -29,7 +29,10 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   decisão registrada (constituição VI, "Termos contrários", spec 030); a página da vaga não é lida, e no bloqueio
   ele fica 24 horas de fora (`JOBGETHER_PAUSA`, de 2 a 60 s). A FullStack também tem termos que proíbem acesso
   automatizado e não tem API oficial: entra pelos pedidos públicos que a página do portal faz, desligada por padrão
-  (spec 040), e no bloqueio fica 24 horas de fora. O perfil da pessoa não é lido do
+  (spec 040), e no bloqueio fica 24 horas de fora. **Busca com login** (constituição VI, spec 041): portais que só
+  mostram a busca depois do login (o MyGreenhouse Jobs, com termos contrários) ficam em "Portais com login", desligados
+  por padrão, com o login feito pela pessoa na janela da ferramenta (`fontes/_sessao.py`); rodam só no botão Buscar da
+  página. A busca pelo terminal ou pelo chat os deixa de fora com aviso, e você (assistente) nunca usa essa sessão. O perfil da pessoa não é lido do
   LinkedIn, só dos arquivos que ela baixa. Um link de post colado no Adicionar Vaga é uma consulta
   pontual à versão pública do post (`fontes/post.py`), sem login, que para no primeiro bloqueio e não
   mexe na espera da busca. **Conta conectada** (constituição VI): o botão "Atualizar candidaturas" lê

@@ -50,6 +50,11 @@ Opcionais, para portais que limitam os pedidos (ex.: LinkedIn):
         '''Verdadeiro se o portal bloqueou nesta busca ou está em espera: a vaga sem texto fica pendente (e não
         é um erro da vaga).'''
 
+Portais com login (spec 041): a busca só aparece depois do login, feito pela pessoa na janela da ferramenta.
+O módulo tem também COM_LOGIN = True, ROTULO, URL_LOGIN, URL_BUSCA, DOMINIOS, ORIGENS, ORIGENS_SSO, AVISO_RISCO,
+AVISO_LOGIN e logado(url); as regras comuns (só na busca da página, aba, espera do login, conexão) ficam em
+fontes/_sessao.py. Fora da busca da página, o vagas.py deixa o portal de fora com um aviso.
+
 O `id` precisa ser estável entre buscas (é ele que impede a mesma vaga de voltar).
 Use o identificador do próprio portal; para portais novos, prefixe com o nome da
 fonte (ex.: "gupy-12345") para não colidir com outros portais.
@@ -58,11 +63,13 @@ Para adicionar um portal: crie fontes/<nome>.py seguindo esse contrato e registr
 abaixo em FONTES.
 """
 from . import (ats, ey, fullstack, getonboard, gupy, himalayas, indeed, infojobs, jobgether, jobicy, linkedin,
-               nerdin, remoteok, remotive, startupjobs, vagascom, weworkremotely)
+               mygreenhouse, nerdin, remoteok, remotive, startupjobs, vagascom, weworkremotely)
 
 FONTES = {indeed.NOME: indeed, gupy.NOME: gupy, nerdin.NOME: nerdin, infojobs.NOME: infojobs, vagascom.NOME: vagascom,
           ey.NOME: ey, linkedin.NOME: linkedin, startupjobs.NOME: startupjobs, jobgether.NOME: jobgether,
           fullstack.NOME: fullstack,
+          # portal com login (spec 041): só na busca da página, ligado em "Portais com login"
+          mygreenhouse.NOME: mygreenhouse,
           # do exterior, sem filtro de país: ligadas no painel da busca internacional
           remotive.NOME: remotive, himalayas.NOME: himalayas, remoteok.NOME: remoteok, jobicy.NOME: jobicy,
           weworkremotely.NOME: weworkremotely, getonboard.NOME: getonboard, ats.NOME: ats}

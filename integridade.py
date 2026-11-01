@@ -342,6 +342,7 @@ PORTAIS = {  # nome no dashboard -> domínios; o host casa pelo domínio exato o
     "Vagas.com": ("vagas.com.br",),
     "EY": ("careers.ey.com",),
     "FullStack": ("talent.fullstack.com",),
+    "MyGreenhouse": ("my.greenhouse.io",),
     "JobGether": ("jobgether.com",),
     "Remotive": ("remotive.com", "remotive.io"),
     "Himalayas": ("himalayas.app",),

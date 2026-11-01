@@ -43,7 +43,7 @@ ETAPAS = ("salva", "aplicada", "entrevista", "proposta", "encerrada")
 TRIAGENS = ("pendente", "seguir", "visitada", "fora")  # fora = furou os filtros da busca
 RESULTADOS = ("nao_aprovado", "desisti", "cancelada", "contratado")
 PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Nerdin", "InfoJobs", "Vagas.com",
-               "EY", "JobGether", "FullStack",
+               "EY", "JobGether", "FullStack", "MyGreenhouse",
                "Remotive", "Himalayas", "RemoteOK", "Jobicy", "We Work Remotely", "Get on Board", "Greenhouse", "Lever",
                "Ashby", "Outra")
 SISTEMAS_ATS = ("greenhouse", "lever", "ashby")

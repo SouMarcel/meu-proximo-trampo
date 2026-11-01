@@ -58,7 +58,7 @@ painel IA, "Só dá para mudar a IA no computador onde a ferramenta roda."). Alg
 |---|---|---|---|
 | Mudanças no banco, IA analisando, Forçar verificar, busca de outra origem | `GET /api/versao` | 4 s (`setInterval`), pulando com a aba escondida; também ao voltar para a aba | sempre |
 | Recarregar a lista | `GET /api/vagas` + `GET /api/buscas/ultima` | quando `versao` muda ou o servidor volta | — |
-| Busca de vagas | `GET /api/busca` | 2 s | `situacao` fora de `consultando, descricoes, gravando, cancelando, externa`, a análise parou e passaram 20 s da última ação (ou do fim de uma busca com nota) |
+| Busca de vagas | `GET /api/busca` | 2 s | `situacao` fora de `consultando, aguardando_login, descricoes, gravando, cancelando, externa`, a análise parou e passaram 20 s da última ação (ou do fim de uma busca com nota) |
 | Descrições pendentes | `GET /api/busca/pendentes` | 2 s | `situacao` deixa de ser `lendo` (aí recarrega as vagas) |
 | Currículo, carta e respostas | `GET /api/curriculo/estado` | 2 s | `situacao` fora de `escrevendo, gerando, conferindo` |
 | Leitura das contas conectadas | `GET /api/contas` + `GET /api/candidaturas/estado` | 1,5 s, só com o diálogo aberto | `situacao` fora de `lendo, aguardando_login` |
@@ -297,7 +297,9 @@ repetida: devolve a que já existe). A vaga pode cair direto em `triagem: fora` 
 `{filtros_ok, perfil_ok, consultas, portais: string[], cargos: string[], janela_horas, resumo, estimativa_min,
 ia: {ligada, nome, modelo, cobranca: "uso"|"assinatura"|"gratuito"|""}, ultima: {origem, situacao, inicio, fim}|null,
 proxima_em: ISO|null (antes disso não dá para buscar), recente: bool (última há menos de 6 h),
-espera: [{portal, ate, motivo}] (portal em espera depois de bloqueio), so_espera: bool, aviso_cargos, aviso_pausa}`.
+espera: [{portal, ate, motivo}] (portal em espera depois de bloqueio), so_espera: bool, aviso_cargos, aviso_pausa,
+aviso_login: string|null}`. `aviso_login` (spec 041): portal com login ligado e sem conexão, que fica de fora desta
+busca ("conecte em Filtros da busca → Portais com login"); `portais` e `consultas` já o deixam de fora.
 
 **`POST /api/busca`** **[local]** — "Buscar agora". Corpo `{sem_nota?: bool, confirmar_recente?: bool,
 confirmar_espera?: bool}`. Resposta 202 = estado (abaixo) + `pode_alterar: true`. Erros: 400 sem cargos;
@@ -306,10 +308,13 @@ em espera sem confirmar).
 
 **`GET /api/busca`** — andamento. `{situacao, origem: "pagina"|"terminal"|..., inicio, fim, com_nota, feitas, total,
 encontradas, consulta: {portal, cargo, grupo}|null, descricoes: {lidas, total}|null, erros: string[],
-mensagem, resumo: null|{brutas, novas, fora_criterios, ja_vistas, excluidas_titulo, fora_da_janela, busca_id,
+login: {portal, rotulo, ate: ISO}|null, mensagem, resumo: null|{brutas, novas, fora_criterios, ja_vistas, excluidas_titulo, fora_da_janela, busca_id,
 com_nota, pendentes, completadas}, analise: {rodando, faltam, erro: {motivo, em}|null}, pode_alterar}`.
-`situacao`: `ociosa`, `consultando`, `descricoes`, `gravando`, `cancelando`, `concluida`, `cancelada`, `falha`,
-`interrompida`, `externa` (busca do terminal ou do chat). buscador.py:97-113, 200-203, 251-256.
+`situacao`: `ociosa`, `consultando`, `aguardando_login`, `descricoes`, `gravando`, `cancelando`, `concluida`,
+`cancelada`, `falha`, `interrompida`, `externa` (busca do terminal ou do chat). buscador.py:97-113, 200-203, 251-256.
+`aguardando_login` (spec 041): o login de um portal com login caiu; a janela da ferramenta veio para a frente e a busca
+espera a pessoa entrar até `login.ate` (3 minutos). A página mostra "Aguardando login no {rotulo}: entre na janela da
+ferramenta (faltam N s)"; Cancelar interrompe a espera.
 
 **`DELETE /api/busca`** **[local]** — "Cancelar" (termina a consulta atual e não grava nada). Resposta = estado + `pode_alterar`.
 
@@ -333,10 +338,13 @@ cargos; o front mostra o aviso de primeira vez).
   idiomas_aceitos, janela_horas,
   tipos_emprego, senioridades, moedas_aceitas, empresas_excluir, fontes: string[] (indeed, gupy, nerdin, infojobs,
   vagascom, ey, linkedin,
-  startupjobs, jobgether, fullstack)}` (filtros.py:231-273).
+  startupjobs, jobgether, fullstack e o portal com login mygreenhouse)}` (filtros.py:231-273). O `PUT` recusa a lista
+  só com portal com login ("marque pelo menos um portal" conta só os de busca pública).
 - `opcoes`: `{paises, modelos, tipos_emprego, senioridades, moedas, moeda_do_pais, janelas (chaves "24","72","168",
   "360","720"), raios_km, idiomas, regioes, contratacao, fontes_int: [{nome, rotulo, termos}], fontes_nac:
-  [{nome, rotulo, termos, precisa}]}` (filtros.py:450-471).
+  [{nome, rotulo, termos, precisa}], fontes_login: [{nome, rotulo, termos, aviso_risco, aviso_login}]}`
+  (filtros.py:450-471). `fontes_login` (spec 041): os portais com login, na seção "Portais com login" do painel;
+  a página pede a confirmação de `aviso_risco` antes de pôr o portal em `fontes`.
 
 **`PUT /api/config`** — grava os filtros. Corpo = o objeto `filtros` inteiro. Resposta `{filtros, consultas,
 opcoes}`. Erro 400 com a regra que falhou (ex.: "informe pelo menos um cargo", "para híbrido ou presencial,
@@ -574,7 +582,27 @@ marcado: bool}` (sincronia.py:32-86).
 | `POST /api/candidaturas/ler` | — | estado `{situacao: "lendo", portal, inicio}`; 409 "conecte pelo menos um portal" | Atualizar agora / Ler de novo |
 | `POST /api/candidaturas/aplicar` | `{chaves: string[]}` (até 500) ou `{historico: true}` | `{aplicados: number, erros: string[]}`; 400 sem proposta | Aplicar N mudanças / Importar como histórico |
 
-Erros de navegador ou portal: 409 com a mensagem.
+Erros de navegador ou portal: 409 com a mensagem. O Desconectar só apaga o perfil inteiro da janela se não sobrar
+nenhuma conta nem portal com login conectado (3.11c).
+
+### 3.11c Portais com login (Filtros da busca → Portais com login; spec 041)
+
+Todas **[local]**. Portais que só mostram a busca de vagas depois do login; o primeiro é `mygreenhouse` (MyGreenhouse
+Jobs). Ligar e desligar é pela lista `fontes` dos filtros (`PUT /api/config`), com a confirmação do `aviso_risco` na
+página. A leitura roda só na busca iniciada pelo botão Buscar da página; a busca do terminal ou do chat deixa o portal
+de fora com um aviso.
+
+**`GET /api/portais-login`** — `{navegador: bool, portais: [{nome, rotulo, termos, aviso_risco, aviso_login, ligado,
+conectado, situacao: "desligado"|"em_espera"|"desconectado"|"conectado", espera: {ate, motivo}|null}]}`. A situação
+segue essa ordem: desligado (fora de `fontes`), em espera depois de um bloqueio, sem conexão, conectado.
+
+| Rota | Corpo | Resposta | Botão |
+|---|---|---|---|
+| `POST /api/portais-login/{portal}/conectar` | — | `{ok: true}` (abre a página de login numa aba da janela, na frente) | Conectar |
+| `POST /api/portais-login/{portal}/pronto` | — | `{conectado: bool}` (confere o login só pelo endereço da aba; false = login não encontrado) | Pronto |
+| `POST /api/portais-login/{portal}/desconectar` | — | `{ok: true}` (apaga a sessão do portal e a do login pelo LinkedIn; sem outra conexão, o perfil inteiro) | Desconectar |
+
+Portal fora da lista: 404 "portal desconhecido". Erro de navegador: 409 com a mensagem.
 
 ### 3.11b Candidatura assistida (detalhe da vaga → Candidatura; card → Candidatar com ajuda; Meu perfil → Informações básicas → contato, respostas e sites; Atualizar candidaturas → logins)
 

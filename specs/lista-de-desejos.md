@@ -19,7 +19,9 @@ priorizado.
   decisões na spec, inclusive se entra ligado ou desligado por padrão (princípio VI). O Glassdoor recusou acesso
   automatizado (403) em 2026-10-23, na pesquisa da faixa salarial.
 
-- **Greenhouse como portal, com busca por cargo** (pesquisa de 2026-10-25, specs 030 e 031): barrado. A única busca
+- **Greenhouse como portal, com busca por cargo** (pesquisa de 2026-10-25, specs 030 e 031): **feito na spec 041**
+  (2026-11-01), como portal com login: a pessoa conecta o MyGreenhouse Jobs na janela da ferramenta, e a busca da
+  página o lê, com a emenda 5.3.0 da constituição ("Busca com login"). O registro original segue abaixo. A única busca
   do Greenhouse entre empresas, o MyGreenhouse Jobs, exige login (sem sessão, `my.greenhouse.io/jobs` leva a
   `/users/sign_in`), não tem API documentada e só mostra as empresas que aderiram. A API pública de vagas responde
   empresa por empresa, e isso já é usado nas empresas acompanhadas (que a spec 031 levou também para a busca nacional).
