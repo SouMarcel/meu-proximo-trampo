@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-01
 
-**Status**: Aprovada em 2026-11-01; plano em 2026-11-01
+**Status**: Aprovada em 2026-11-01; plano e emenda 5.3.0 aprovados em 2026-11-01; tarefas em 2026-11-01
 
 **Input**: User description: "eu procurei vagas no portal greenhouse e lá tem muito scrum master mas aqui não aparece"
 (31/10/2026), com o link da busca `my.greenhouse.io/jobs/search?query=scrum&work_type[]=remote`. Depois: "e abrir a
