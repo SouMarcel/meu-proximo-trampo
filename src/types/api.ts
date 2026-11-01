@@ -28,6 +28,8 @@ export type Plataforma =
   | "Greenhouse"
   | "Lever"
   | "Ashby"
+  | "Teamtailor"
+  | "Site da empresa"
   | "Outra"
 
 export const PLATAFORMAS: Plataforma[] = [
@@ -53,6 +55,8 @@ export const PLATAFORMAS: Plataforma[] = [
   "Greenhouse",
   "Lever",
   "Ashby",
+  "Teamtailor",
+  "Site da empresa",
   "Outra",
 ]
 
@@ -137,7 +141,7 @@ export interface Vaga {
   url_candidatura?: string
   /** Candidatura assistida ligada nesta vaga (spec 027, chave por vaga). */
   candidatura_assistida?: { ligada: boolean; em: string }
-  ats?: "greenhouse" | "lever" | "ashby"
+  ats?: "greenhouse" | "lever" | "ashby" | "teamtailor"
   publicada_em?: string | null
   descricao?: string
   descricao_pendente?: boolean
@@ -290,7 +294,7 @@ export interface RespostaLink {
   post?: { id: string; url: string; texto: string; autor?: string; autor_tipo?: string }
   parcial?: ParcialVaga
   ia?: InfoIA
-  /** Link de vaga do Greenhouse, do Lever ou do Ashby: a empresa e se ela já é acompanhada (spec 031). */
+  /** Link de vaga do Greenhouse, do Lever, do Ashby, do Teamtailor ou da EY: a empresa e se ela já é acompanhada (specs 031 e 042). */
   empresa?: { sistema: string; id: string; nome: string; url: string; acompanhada: boolean }
 }
 

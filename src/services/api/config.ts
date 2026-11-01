@@ -3,7 +3,8 @@ import { pedir } from "../api"
 import type { FonteLogin } from "../../types/api"
 
 export interface EmpresaAcompanhada {
-  sistema: "greenhouse" | "lever" | "ashby" | string
+  /** Como a empresa é lida (spec 042): pagina = página própria, lida pela IA. Rótulos em SISTEMAS_EMPRESA. */
+  sistema: "greenhouse" | "lever" | "ashby" | "teamtailor" | "ey" | "pagina" | string
   id: string
   nome: string
   url: string
@@ -83,9 +84,23 @@ export const gravar = (filtros: Filtros) => pedir<Config>("PUT", "/api/config", 
 /** Empresas acompanhadas (dash/API.md, spec 031). */
 export const empresas = () => pedir<{ empresas: EmpresaAcompanhada[]; maximo: number }>("GET", "/api/empresas")
 
-/** Acompanha a empresa de um link (página de vagas ou vaga do Greenhouse, do Lever ou do Ashby); só grava a lista. */
+/** Acompanha a empresa de um link (página de vagas ou vaga; o servidor reconhece o sistema, spec 042); só grava a lista. */
 export const acompanhar = (url: string) =>
   pedir<{ empresa: EmpresaAcompanhada; nova: boolean; empresas: EmpresaAcompanhada[] }>("POST", "/api/empresas", { url })
+
+export interface EmpresaReconhecida {
+  empresa: EmpresaAcompanhada
+  rotulo: string
+  /** Página própria: as vagas só entram na busca com a IA ligada. */
+  ia_necessaria: boolean
+  ia_ligada: boolean
+}
+
+/**
+ * Reconhece a página de vagas de qualquer empresa (spec 042); não grava nada: a empresa vai para o formulário e é gravada
+ * em Salvar filtros. Pode levar alguns segundos (o servidor abre a página uma vez); 400 traz a mensagem para a pessoa.
+ */
+export const reconhecerEmpresa = (url: string) => pedir<EmpresaReconhecida>("POST", "/api/empresas/reconhecer", { url })
 
 // ---------- contas que o dashboard antigo mostra antes de salvar (as mesmas de filtros.consultas()) ----------
 
@@ -115,8 +130,20 @@ export function contarLinkedin(d: Filtros): number {
   return contarConsultas(d, true) + (it.ativo && !((it.fontes || []).length || (d.empresas || []).length) ? ti : 0)
 }
 
-/** Empresa acompanhada pelo link da página de vagas (Greenhouse, Lever ou Ashby); o servidor confere de novo ao salvar. */
+/**
+ * Empresa pelo link de uma vaga, sem pedido (o "Acompanhar empresa" do detalhe): Greenhouse, Lever, Ashby e, desde a
+ * spec 042, empresa.teamtailor.com e o site da EY. Domínio próprio de Teamtailor fica de fora (saber o sistema pede um
+ * pedido à página); o servidor confere de novo ao acompanhar.
+ */
 export function empresaDoLink(url: string): EmpresaAcompanhada | null {
+  let host = ""
+  try {
+    host = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+  if (host.endsWith(".teamtailor.com")) return { sistema: "teamtailor", id: host, nome: "", url }
+  if (host === "careers.ey.com") return { sistema: "ey", id: "ey", nome: "EY", url }
   const m =
     /^(?:https?:\/\/)?(boards|job-boards)(?:\.eu)?\.greenhouse\.io\/(?:embed\/job_board\?for=)?([A-Za-z0-9._-]+)|^(?:https?:\/\/)?jobs(?:\.eu)?\.lever\.co\/([A-Za-z0-9._-]+)|^(?:https?:\/\/)?jobs\.ashbyhq\.com\/([A-Za-z0-9._-]+)/i.exec(
       url,

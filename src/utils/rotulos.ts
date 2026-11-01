@@ -16,6 +16,16 @@ export const RESULTADOS: Record<Resultado, string> = {
   contratado: "Contratado",
 }
 
+/** Como a ferramenta lê cada empresa acompanhada (os mesmos rótulos de POST /api/empresas/reconhecer, spec 042). */
+export const SISTEMAS_EMPRESA: Record<string, string> = {
+  greenhouse: "Greenhouse",
+  lever: "Lever",
+  ashby: "Ashby",
+  teamtailor: "Teamtailor",
+  ey: "Site de vagas da EY",
+  pagina: "Página própria (lida pela IA)",
+}
+
 export const AUTORIZACAO: Record<string, string> = {
   patrocina: "Patrocina visto",
   nao_precisa: "Você não precisa de patrocínio",

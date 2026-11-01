@@ -35,7 +35,7 @@ const ROTULOS: Record<string, string> = {
 }
 const ACOES: Record<string, string> = { curriculo: "Gerar currículo", carta: "Escrever carta", respostas: "Preparar respostas" }
 const TONS: Record<string, string> = { direto: "Direto e objetivo", caloroso: "Caloroso e próximo", formal: "Formal" }
-const ATS: Record<string, string> = { greenhouse: "Greenhouse", lever: "Lever", ashby: "Ashby" }
+const ATS: Record<string, string> = { greenhouse: "Greenhouse", lever: "Lever", ashby: "Ashby", teamtailor: "Teamtailor" }
 const PERGUNTAS: [keyof Pick<RespostasCarta, "por_que" | "problema" | "primeiro_movimento">, string, string][] = [
   ["por_que", "Por que esta vaga?", "O que nesta vaga e nesta empresa chama a sua atenção."],
   ["problema", "Que problema da empresa você resolveria?", "Pelo anúncio, o que eles precisam resolver e como você ajudaria."],

@@ -9,6 +9,7 @@ import type { Config, Filtros, Opcoes } from "../../services/api/config"
 import { mensagemDeErro } from "../../services/api"
 import { useFerramenta, AvisoSoLeitura } from "../../contexto/Ferramenta"
 import PortaisLogin from "./PortaisLogin"
+import { SISTEMAS_EMPRESA } from "../../utils/rotulos"
 
 export type ModoFiltros = "nacional" | "internacional"
 
@@ -174,7 +175,7 @@ function listaDeTexto(v: string, sep: RegExp) {
 
 export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarModo, onSalvo }: Props) {
   // PUT /api/config não é só do computador da ferramenta (dash/API.md §1): basta o servidor no ar
-  const { servidor, tratarErro } = useFerramenta()
+  const { servidor, tratarErro, podeGravar } = useFerramenta()
   const podeSalvar = servidor === "no_ar"
   const [op, setOp] = useState<Opcoes | null>(null)
   const [d, setD] = useState<Filtros | null>(null)
@@ -184,6 +185,8 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
   const [buscaPais, setBuscaPais] = useState("")
   const [linkEmpresa, setLinkEmpresa] = useState("")
   const [erroEmpresa, setErroEmpresa] = useState("")
+  const [avisoEmpresa, setAvisoEmpresa] = useState("")
+  const [reconhecendo, setReconhecendo] = useState(false)
   // textos livres (listas separadas por vírgula ou linha) ficam como o usuário digita até salvar
   const [txtMudanca, setTxtMudanca] = useState("")
   const [txtAutorizacao, setTxtAutorizacao] = useState("")
@@ -257,6 +260,33 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
       setErro(mensagemDeErro(e, "Não deu para salvar os filtros."))
     } finally {
       setSalvando(false)
+    }
+  }
+
+  // o servidor reconhece a página (spec 042) e não grava nada: a empresa entra no formulário e vai em Salvar filtros
+  const adicionarEmpresa = async () => {
+    const link = linkEmpresa.trim()
+    if (!link) return
+    setReconhecendo(true)
+    setErroEmpresa("")
+    setAvisoEmpresa("")
+    try {
+      const r = await configApi.reconhecerEmpresa(link)
+      const e = r.empresa
+      mudar((f) => {
+        if (!f.empresas.some((x) => x.sistema === e.sistema && String(x.id).toLowerCase() === String(e.id).toLowerCase())) {
+          f.empresas.push(e)
+        }
+      })
+      setLinkEmpresa("")
+      if (r.ia_necessaria && !r.ia_ligada) {
+        setAvisoEmpresa("Esta página é lida pela IA: ligue a IA (botão IA) para as vagas dela entrarem na busca.")
+      }
+    } catch (e) {
+      tratarErro(e)
+      setErroEmpresa(mensagemDeErro(e, "Não deu para reconhecer a página de vagas."))
+    } finally {
+      setReconhecendo(false)
     }
   }
 
@@ -487,49 +517,47 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
               <section className={SEC}>
                 <h4 className={H}>Empresas que você acompanha</h4>
                 <p className={DICA}>
-                  Cole o link da página de vagas de empresas no Greenhouse, Lever ou Ashby (ex.: jobs.lever.co/empresa), ou
-                  use "Acompanhar empresa" no detalhe de uma vaga. A busca traz as vagas delas abertas a quem mora no seu
-                  país e, com a busca internacional ligada, as do exterior. Os títulos costumam vir em inglês: inclua o cargo
-                  em inglês nos seus cargos.
+                  Cole o link da página de vagas de qualquer empresa (ex.: careers.ey.com, carreiras.empresa.com.br/jobs ou
+                  jobs.lever.co/empresa), ou use "Acompanhar empresa" no detalhe de uma vaga. A ferramenta reconhece
+                  Greenhouse, Lever, Ashby, Teamtailor e o site da EY; outras páginas são lidas pela IA. A busca traz as
+                  vagas delas abertas a quem mora no seu país e, com a busca internacional ligada, as do exterior.
                 </p>
                 <div className="flex gap-2">
                   <input
                     value={linkEmpresa}
-                    maxLength={300}
+                    maxLength={1000}
                     onChange={(e) => setLinkEmpresa(e.target.value)}
-                    placeholder="https://jobs.lever.co/empresa"
+                    placeholder="https://carreiras.empresa.com.br/jobs"
                     aria-label="Link da página de vagas da empresa"
                     className={`${CAMPO} flex-1`}
                   />
                   <button
                     type="button"
-                    onClick={() => {
-                      const e = configApi.empresaDoLink(linkEmpresa.trim())
-                      if (!linkEmpresa.trim()) return
-                      if (!e) {
-                        setErroEmpresa("Esse link não é de uma página de vagas do Greenhouse, do Lever nem do Ashby.")
-                        return
-                      }
-                      setErroEmpresa("")
-                      mudar((f) => {
-                        if (!f.empresas.some((x) => x.sistema === e.sistema && String(x.id).toLowerCase() === e.id.toLowerCase())) {
-                          f.empresas.push(e)
-                        }
-                      })
-                      setLinkEmpresa("")
-                    }}
-                    className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                    onClick={adicionarEmpresa}
+                    disabled={!podeGravar || reconhecendo}
+                    title={reconhecendo ? "Abrindo a página para reconhecer…" : undefined}
+                    className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Adicionar
+                    {reconhecendo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    {reconhecendo ? "Reconhecendo…" : "Adicionar"}
                   </button>
                 </div>
                 {erroEmpresa && <p className="text-[11px] text-rose-600 dark:text-rose-400">{erroEmpresa}</p>}
+                {avisoEmpresa && (
+                  <p className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{avisoEmpresa}</span>
+                  </p>
+                )}
                 <ul className="space-y-1">
                   {d.empresas.length ? (
                     d.empresas.map((e, i) => (
                       <li key={e.sistema + e.id} className="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                         <span className="min-w-0 truncate">
-                          {e.nome || e.id} <span className={DICA}>{e.sistema} · {e.url}</span>
+                          {e.nome || e.id}{" "}
+                          <span className={DICA}>
+                            {SISTEMAS_EMPRESA[e.sistema] || e.sistema} · {e.url}
+                          </span>
                         </span>
                         <button
                           type="button"

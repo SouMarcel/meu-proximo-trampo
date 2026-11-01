@@ -97,6 +97,20 @@ export function getPlataformaStyle(
         border: "border-lime-200 dark:border-lime-800",
         accent: "#65a30d",
       }
+    case "Teamtailor":
+      return {
+        bg: "bg-pink-50 dark:bg-pink-950/40",
+        text: "text-pink-700 dark:text-pink-300",
+        border: "border-pink-200 dark:border-pink-800",
+        accent: "#db2777",
+      }
+    case "Site da empresa":
+      return {
+        bg: "bg-stone-100 dark:bg-stone-900/60",
+        text: "text-stone-700 dark:text-stone-300",
+        border: "border-stone-300 dark:border-stone-700",
+        accent: "#78716c",
+      }
     case "JobGether":
       return {
         bg: "bg-cyan-50 dark:bg-cyan-950/40",
@@ -420,6 +434,7 @@ export function plataformaDoLink(u: string): string {
     ["greenhouse.io", "Greenhouse"],
     ["lever.co", "Lever"],
     ["ashbyhq.com", "Ashby"],
+    ["teamtailor.com", "Teamtailor"],
   ]
   return pares.find(([trecho]) => h.includes(trecho))?.[1] || "Outra"
 }

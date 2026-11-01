@@ -1,7 +1,7 @@
 /**
- * "Acompanhar empresa" (dash/API.md, spec 031): no detalhe de uma vaga cujo link, ou o de candidatura, é de uma vaga
- * do Greenhouse, do Lever ou do Ashby — inclusive as que vieram do Indeed ou do LinkedIn. Só grava a lista de empresas
- * no clique da pessoa; nenhum pedido vai ao sistema da empresa.
+ * "Acompanhar empresa" (dash/API.md, specs 031 e 042): no detalhe de uma vaga cujo link, ou o de candidatura, é de uma
+ * vaga do Greenhouse, do Lever, do Ashby, do Teamtailor (empresa.teamtailor.com) ou da EY — inclusive as que vieram do
+ * Indeed ou do LinkedIn. Só grava a lista de empresas no clique da pessoa; nenhum pedido vai ao sistema da empresa.
  */
 import React, { useEffect, useState } from "react"
 import type { Vaga } from "../../types/api"
@@ -11,7 +11,14 @@ import { mensagemDeErro } from "../../services/api"
 import { useFerramenta } from "../../contexto/Ferramenta"
 import { BTN_MINI } from "../curriculo/Curriculos"
 
-const SISTEMAS: Record<string, string> = { greenhouse: "Greenhouse", lever: "Lever", ashby: "Ashby" }
+// no meio da frase ("Acompanhando no …"), por isso a EY em minúscula
+const SISTEMAS: Record<string, string> = {
+  greenhouse: "Greenhouse",
+  lever: "Lever",
+  ashby: "Ashby",
+  teamtailor: "Teamtailor",
+  ey: "site de vagas da EY",
+}
 
 /** A empresa e o link de onde ela saiu (primeiro o de candidatura); null quando a vaga não é desses sistemas. */
 export function empresaDaVaga(v: Vaga): { empresa: EmpresaAcompanhada; link: string } | null {
