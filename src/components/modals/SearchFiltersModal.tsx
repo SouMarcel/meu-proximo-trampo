@@ -1,8 +1,10 @@
 /**
  * Filtros da busca (dash/API.md §3.4), nacional e internacional, com as opções que o servidor aceita. Grava o objeto
  * inteiro em PUT /api/config; erro 400 mostra a regra que falhou. Valem a partir da próxima busca.
+ * O modo nacional tem abas (spec 043): Geral, Portais, Portais internacionais e Empresas acompanhadas/excluídas, num
+ * formulário só.
  */
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { X, SlidersHorizontal, Globe, Loader2, AlertTriangle, Plus } from "lucide-react"
 import * as configApi from "../../services/api/config"
 import type { Config, Filtros, Opcoes } from "../../services/api/config"
@@ -28,6 +30,19 @@ const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
 const CAMPO =
   "w-full px-3 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60"
 const ROTULO = "text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1"
+const AVISO_AMBAR =
+  "p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 text-xs"
+
+type Aba = "geral" | "portais" | "internacionais" | "empresas"
+type AbaComConta = Exclude<Aba, "geral">
+
+/** As abas do modo nacional; `legenda` é o contador por extenso, para o leitor de tela. */
+const ABAS: { id: Aba; rotulo: string; legenda?: (n: number) => string }[] = [
+  { id: "geral", rotulo: "Geral" },
+  { id: "portais", rotulo: "Portais", legenda: (n) => `${n} ${n === 1 ? "ligado" : "ligados"}` },
+  { id: "internacionais", rotulo: "Portais internacionais", legenda: (n) => `${n} ${n === 1 ? "ligada" : "ligadas"}` },
+  { id: "empresas", rotulo: "Empresas acompanhadas/excluídas", legenda: (n) => `${n} ${n === 1 ? "empresa" : "empresas"}` },
+]
 
 function semAcento(s: string) {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
@@ -182,6 +197,9 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
   const [existe, setExiste] = useState(true)
   const [erro, setErro] = useState("")
   const [salvando, setSalvando] = useState(false)
+  // a aba sobrevive à ida e volta com o modo internacional (o painel continua montado) e volta à Geral ao reabrir
+  const [aba, setAba] = useState<Aba>("geral")
+  const botoesAba = useRef<Partial<Record<Aba, HTMLButtonElement | null>>>({})
   const [buscaPais, setBuscaPais] = useState("")
   const [linkEmpresa, setLinkEmpresa] = useState("")
   const [erroEmpresa, setErroEmpresa] = useState("")
@@ -242,6 +260,35 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
     return { texto, alerta: maior > 20 || cargos }
   }, [d])
 
+  // os contadores das abas, do formulário ainda não salvo; nome desconhecido (config antigo) não conta
+  const contagem = useMemo((): Record<AbaComConta, number> | null => {
+    if (!d || !op) return null
+    const nac = new Set([...op.fontes_nac, ...(op.fontes_login || [])].map((x) => x.nome))
+    const int = new Set(op.fontes_int.map((x) => x.nome))
+    return {
+      portais: d.fontes.filter((x) => nac.has(x)).length,
+      internacionais: d.internacional.fontes.filter((x) => int.has(x)).length,
+      empresas: d.empresas.length + d.empresas_excluir.length,
+    }
+  }, [d, op])
+
+  // setas, Home e End trocam de aba e levam o foco (padrão de abas do WAI-ARIA)
+  const teclaNaAba = (e: React.KeyboardEvent) => {
+    const i = ABAS.findIndex((a) => a.id === aba)
+    const destino: Record<string, number> = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: ABAS.length - 1 }
+    if (!(e.key in destino)) return
+    e.preventDefault()
+    const nova = ABAS[(destino[e.key] + ABAS.length) % ABAS.length].id
+    setAba(nova)
+    botoesAba.current[nova]?.focus()
+  }
+
+  // do modo internacional para uma aba do nacional, sem perder o que foi editado
+  const irPara = (a: Aba) => {
+    setAba(a)
+    onTrocarModo("nacional")
+  }
+
   const salvar = async (ev: React.FormEvent) => {
     ev.preventDefault()
     if (!d) return
@@ -293,6 +340,7 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
   const internacional = modo === "internacional"
   const loc = d?.localidade
   const ondeCidade = loc ? [loc.cidade, loc.estado].filter(Boolean).join(", ") : ""
+  const proximos = op?.portais_a_mapear || []
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={onClose}>
@@ -329,6 +377,58 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
           </button>
         </div>
 
+        {/* Abas (só no modo nacional) */}
+        {d && op && !internacional && (
+          <div
+            role="tablist"
+            aria-label="Grupos de filtros"
+            onKeyDown={teclaNaAba}
+            className="flex items-center border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 gap-1 sm:gap-2 bg-white dark:bg-slate-900 overflow-x-auto shrink-0"
+          >
+            {ABAS.map((a) => {
+              const ativa = aba === a.id
+              const n = a.id === "geral" || !contagem ? null : contagem[a.id]
+              return (
+                <button
+                  key={a.id}
+                  ref={(el) => {
+                    botoesAba.current[a.id] = el
+                  }}
+                  type="button"
+                  role="tab"
+                  id={`aba-filtros-${a.id}`}
+                  aria-selected={ativa}
+                  aria-controls={`painel-filtros-${a.id}`}
+                  tabIndex={ativa ? 0 : -1}
+                  onClick={() => setAba(a.id)}
+                  className={`py-3 px-2 sm:px-3 text-xs sm:text-sm font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
+                    ativa
+                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                      : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  <span>{a.rotulo}</span>
+                  {n !== null && a.legenda && (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
+                          ativa
+                            ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                        }`}
+                      >
+                        {n}
+                      </span>
+                      <span className="sr-only">({a.legenda(n)})</span>
+                    </>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs sm:text-sm">
           {!d && !erro && (
             <p className="flex items-center gap-2 text-slate-500">
@@ -341,239 +441,311 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
             </p>
           )}
           {!existe && d && !internacional && (
-            <p className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 text-xs">
+            <p className={AVISO_AMBAR}>
               Primeira vez: escolha os cargos e onde buscar. Os filtros ficam no arquivo config.json deste computador.
             </p>
           )}
 
           {d && op && !internacional && loc && (
-            <>
-              <section className={SEC}>
-                <h4 className={H}>Cargos</h4>
-                <p className={DICA}>
-                  Cada cargo vira uma busca. Frase exata (entre aspas) traz só anúncios com aquela expressão, o que corta
-                  muito ruído.
-                </p>
-                <Etiquetas
-                  lista={d.termos}
-                  onMudar={(l) => mudar((f) => (f.termos = l))}
-                  exemplo="Ex.: analista de dados"
-                  rotulo="Novo cargo"
-                  comExata
-                />
-              </section>
+            <div
+              role="tabpanel"
+              id={`painel-filtros-${aba}`}
+              aria-labelledby={`aba-filtros-${aba}`}
+              className="space-y-4"
+            >
+              {aba === "geral" && (
+                <>
+                  <section className={SEC}>
+                    <h4 className={H}>Cargos</h4>
+                    <p className={DICA}>
+                      Cada cargo vira uma busca. Frase exata (entre aspas) traz só anúncios com aquela expressão, o que
+                      corta muito ruído.
+                    </p>
+                    <Etiquetas
+                      lista={d.termos}
+                      onMudar={(l) => mudar((f) => (f.termos = l))}
+                      exemplo="Ex.: analista de dados"
+                      rotulo="Novo cargo"
+                      comExata
+                    />
+                  </section>
 
-              <section className={SEC}>
-                <h4 className={H}>Portais</h4>
-                <p className={DICA}>
-                  Onde buscar. Marque pelo menos um. O LinkedIn também busca as vagas de fora quando a busca internacional
-                  está ligada.
-                </p>
-                <div className="space-y-2">
-                  {op.fontes_nac.map((x) => (
-                    <Marcar
-                      key={x.nome}
-                      checked={d.fontes.includes(x.nome)}
-                      onChange={() => mudar((f) => (f.fontes = alternar(f.fontes, x.nome)))}
-                    >
-                      <b>{x.rotulo}</b>
-                      <span className={`block ${DICA}`}>
-                        {[x.termos, x.precisa ? `Precisa ${x.precisa}.` : ""].filter(Boolean).join(" ")}
-                      </span>
-                    </Marcar>
-                  ))}
-                </div>
-              </section>
-
-              <PortaisLogin
-                fontes={op.fontes_login || []}
-                ligados={d.fontes}
-                onLigar={(nome, ligar) =>
-                  mudar((f) => {
-                    f.fontes = f.fontes.filter((x) => x !== nome)
-                    if (ligar) f.fontes.push(nome)
-                  })
-                }
-              />
-
-              <section className={SEC}>
-                <h4 className={H}>Localidade</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div>
-                    <label htmlFor="fb-pais" className={ROTULO}>País</label>
-                    <select
-                      id="fb-pais"
-                      value={loc.pais}
-                      onChange={(e) =>
-                        mudar((f) => {
-                          f.localidade.pais = e.target.value
-                          f.internacional.paises = f.internacional.paises.filter((p) => p !== e.target.value)
-                        })
-                      }
-                      className={CAMPO}
-                    >
-                      {op.paises.map((p) => (
-                        <option key={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="fb-estado" className={ROTULO}>Estado</label>
-                    <input id="fb-estado" maxLength={40} placeholder="SP" value={loc.estado} onChange={(e) => mudar((f) => (f.localidade.estado = e.target.value))} className={CAMPO} />
-                  </div>
-                  <div>
-                    <label htmlFor="fb-cidade" className={ROTULO}>Cidade</label>
-                    <input id="fb-cidade" maxLength={80} placeholder="Campinas" value={loc.cidade} onChange={(e) => mudar((f) => (f.localidade.cidade = e.target.value))} className={CAMPO} />
-                  </div>
-                  <div>
-                    <label htmlFor="fb-raio" className={ROTULO}>Raio</label>
-                    <select id="fb-raio" value={loc.raio_km} onChange={(e) => mudar((f) => (f.localidade.raio_km = Number(e.target.value)))} className={CAMPO}>
-                      {op.raios_km.map((r) => (
-                        <option key={r} value={r}>{r} km</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <p className={DICA}>
-                  Cidade e raio valem para vagas híbridas e presenciais. O Indeed não busca por estado inteiro; o estado só
-                  completa o nome da cidade. A Gupy busca só na cidade, sem raio.
-                </p>
-              </section>
-
-              <section className={SEC}>
-                <h4 className={H}>Modo de trabalho</h4>
-                <Marcar checked={d.modelos.remoto} onChange={(v) => mudar((f) => (f.modelos.remoto = v))}>
-                  Remoto <span className={DICA}>(no {loc.pais})</span>
-                </Marcar>
-                <p className={DICA}>
-                  Vagas de empresas do exterior ficam em{" "}
-                  <button type="button" onClick={() => onTrocarModo("internacional")} className="underline font-semibold text-indigo-600 dark:text-indigo-400">
-                    Filtros da busca internacional
-                  </button>
-                  .
-                </p>
-                {(["hibrido", "presencial"] as const).map((m) => (
-                  <Marcar key={m} checked={d.modelos[m]} onChange={(v) => mudar((f) => (f.modelos[m] = v))}>
-                    {m === "hibrido" ? "Híbrido" : "Presencial"}{" "}
-                    <span className={DICA}>
-                      {ondeCidade ? `em ${ondeCidade} (${loc.raio_km} km)` : "informe a cidade acima"}
-                    </span>
-                  </Marcar>
-                ))}
-              </section>
-
-              <section className={SEC}>
-                <h4 className={H}>Data de publicação</h4>
-                <Pilulas
-                  mapa={op.janelas}
-                  marcados={[String(d.janela_horas)]}
-                  onTrocar={(k) => mudar((f) => (f.janela_horas = Number(k)))}
-                />
-              </section>
-
-              <section className={SEC}>
-                <h4 className={H}>Tipo de emprego</h4>
-                <Pilulas mapa={op.tipos_emprego} marcados={d.tipos_emprego} onTrocar={(k) => mudar((f) => (f.tipos_emprego = alternar(f.tipos_emprego, k)))} />
-                <p className={DICA}>Nenhum marcado = todos. A IA confere o tipo lendo a descrição da vaga.</p>
-              </section>
-
-              <section className={SEC}>
-                <h4 className={H}>Senioridade</h4>
-                <Pilulas mapa={op.senioridades} marcados={d.senioridades} onTrocar={(k) => mudar((f) => (f.senioridades = alternar(f.senioridades, k)))} />
-                <p className={DICA}>
-                  Nenhuma marcada = todas. Vale o nível do título ou o que a IA ler na descrição; vaga que não diz o nível
-                  não é cortada.
-                </p>
-              </section>
-
-              <section className={SEC}>
-                <h4 className={H}>Moedas aceitas (vagas fora do seu país)</h4>
-                <Pilulas mapa={op.moedas} marcados={d.moedas_aceitas} onTrocar={(k) => mudar((f) => (f.moedas_aceitas = alternar(f.moedas_aceitas, k)))} />
-                <p className={DICA}>
-                  Nenhuma marcada = qualquer moeda. A moeda do seu país ({op.moeda_do_pais[loc.pais] || "—"}) sempre vale.
-                  Vaga que não diz a moeda não é cortada.
-                </p>
-              </section>
-
-              <section className={SEC}>
-                <h4 className={H}>Idiomas aceitos</h4>
-                <Pilulas mapa={op.idiomas} marcados={d.idiomas_aceitos} onTrocar={(k) => mudar((f) => (f.idiomas_aceitos = alternar(f.idiomas_aceitos, k)))} />
-                <p className={DICA}>
-                  Nenhum marcado = todos. Vaga em outro idioma vai para Fora dos critérios; na dúvida (texto curto ou
-                  misturado), a vaga não é cortada.
-                </p>
-              </section>
-
-              <section className={SEC}>
-                <h4 className={H}>Empresas a excluir</h4>
-                <Etiquetas
-                  lista={d.empresas_excluir}
-                  onMudar={(l) => mudar((f) => (f.empresas_excluir = l))}
-                  exemplo="Nome da empresa"
-                  rotulo="Empresa a excluir"
-                />
-              </section>
-
-              <section className={SEC}>
-                <h4 className={H}>Empresas que você acompanha</h4>
-                <p className={DICA}>
-                  Cole o link da página de vagas de qualquer empresa (ex.: careers.ey.com, carreiras.empresa.com.br/jobs ou
-                  jobs.lever.co/empresa), ou use "Acompanhar empresa" no detalhe de uma vaga. A ferramenta reconhece
-                  Greenhouse, Lever, Ashby, Teamtailor e o site da EY; outras páginas são lidas pela IA. A busca traz as
-                  vagas delas abertas a quem mora no seu país e, com a busca internacional ligada, as do exterior.
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    value={linkEmpresa}
-                    maxLength={1000}
-                    onChange={(e) => setLinkEmpresa(e.target.value)}
-                    placeholder="https://carreiras.empresa.com.br/jobs"
-                    aria-label="Link da página de vagas da empresa"
-                    className={`${CAMPO} flex-1`}
-                  />
-                  <button
-                    type="button"
-                    onClick={adicionarEmpresa}
-                    disabled={!podeGravar || reconhecendo}
-                    title={reconhecendo ? "Abrindo a página para reconhecer…" : undefined}
-                    className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50"
-                  >
-                    {reconhecendo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    {reconhecendo ? "Reconhecendo…" : "Adicionar"}
-                  </button>
-                </div>
-                {erroEmpresa && <p className="text-[11px] text-rose-600 dark:text-rose-400">{erroEmpresa}</p>}
-                {avisoEmpresa && (
-                  <p className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-300">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{avisoEmpresa}</span>
-                  </p>
-                )}
-                <ul className="space-y-1">
-                  {d.empresas.length ? (
-                    d.empresas.map((e, i) => (
-                      <li key={e.sistema + e.id} className="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                        <span className="min-w-0 truncate">
-                          {e.nome || e.id}{" "}
-                          <span className={DICA}>
-                            {SISTEMAS_EMPRESA[e.sistema] || e.sistema} · {e.url}
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => mudar((f) => f.empresas.splice(i, 1))}
-                          className="text-rose-600 hover:underline shrink-0"
+                  <section className={SEC}>
+                    <h4 className={H}>Localidade</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div>
+                        <label htmlFor="fb-pais" className={ROTULO}>País</label>
+                        <select
+                          id="fb-pais"
+                          value={loc.pais}
+                          onChange={(e) =>
+                            mudar((f) => {
+                              f.localidade.pais = e.target.value
+                              f.internacional.paises = f.internacional.paises.filter((p) => p !== e.target.value)
+                            })
+                          }
+                          className={CAMPO}
                         >
-                          Remover
-                        </button>
-                      </li>
-                    ))
-                  ) : (
-                    <li className={DICA}>Nenhuma empresa.</li>
+                          {op.paises.map((p) => (
+                            <option key={p}>{p}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="fb-estado" className={ROTULO}>Estado</label>
+                        <input id="fb-estado" maxLength={40} placeholder="SP" value={loc.estado} onChange={(e) => mudar((f) => (f.localidade.estado = e.target.value))} className={CAMPO} />
+                      </div>
+                      <div>
+                        <label htmlFor="fb-cidade" className={ROTULO}>Cidade</label>
+                        <input id="fb-cidade" maxLength={80} placeholder="Campinas" value={loc.cidade} onChange={(e) => mudar((f) => (f.localidade.cidade = e.target.value))} className={CAMPO} />
+                      </div>
+                      <div>
+                        <label htmlFor="fb-raio" className={ROTULO}>Raio</label>
+                        <select id="fb-raio" value={loc.raio_km} onChange={(e) => mudar((f) => (f.localidade.raio_km = Number(e.target.value)))} className={CAMPO}>
+                          {op.raios_km.map((r) => (
+                            <option key={r} value={r}>{r} km</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <p className={DICA}>
+                      Cidade e raio valem para vagas híbridas e presenciais. O Indeed não busca por estado inteiro; o
+                      estado só completa o nome da cidade. A Gupy busca só na cidade, sem raio.
+                    </p>
+                  </section>
+
+                  <section className={SEC}>
+                    <h4 className={H}>Modo de trabalho</h4>
+                    <Marcar checked={d.modelos.remoto} onChange={(v) => mudar((f) => (f.modelos.remoto = v))}>
+                      Remoto <span className={DICA}>(no {loc.pais})</span>
+                    </Marcar>
+                    <p className={DICA}>
+                      Vagas de empresas do exterior ficam em{" "}
+                      <button type="button" onClick={() => onTrocarModo("internacional")} className="underline font-semibold text-indigo-600 dark:text-indigo-400">
+                        Filtros da busca internacional
+                      </button>
+                      .
+                    </p>
+                    {(["hibrido", "presencial"] as const).map((m) => (
+                      <Marcar key={m} checked={d.modelos[m]} onChange={(v) => mudar((f) => (f.modelos[m] = v))}>
+                        {m === "hibrido" ? "Híbrido" : "Presencial"}{" "}
+                        <span className={DICA}>
+                          {ondeCidade ? `em ${ondeCidade} (${loc.raio_km} km)` : "informe a cidade acima"}
+                        </span>
+                      </Marcar>
+                    ))}
+                  </section>
+
+                  <section className={SEC}>
+                    <h4 className={H}>Data de publicação</h4>
+                    <Pilulas
+                      mapa={op.janelas}
+                      marcados={[String(d.janela_horas)]}
+                      onTrocar={(k) => mudar((f) => (f.janela_horas = Number(k)))}
+                    />
+                  </section>
+
+                  <section className={SEC}>
+                    <h4 className={H}>Tipo de emprego</h4>
+                    <Pilulas mapa={op.tipos_emprego} marcados={d.tipos_emprego} onTrocar={(k) => mudar((f) => (f.tipos_emprego = alternar(f.tipos_emprego, k)))} />
+                    <p className={DICA}>Nenhum marcado = todos. A IA confere o tipo lendo a descrição da vaga.</p>
+                  </section>
+
+                  <section className={SEC}>
+                    <h4 className={H}>Senioridade</h4>
+                    <Pilulas mapa={op.senioridades} marcados={d.senioridades} onTrocar={(k) => mudar((f) => (f.senioridades = alternar(f.senioridades, k)))} />
+                    <p className={DICA}>
+                      Nenhuma marcada = todas. Vale o nível do título ou o que a IA ler na descrição; vaga que não diz o
+                      nível não é cortada.
+                    </p>
+                  </section>
+
+                  <section className={SEC}>
+                    <h4 className={H}>Moedas aceitas (vagas fora do seu país)</h4>
+                    <Pilulas mapa={op.moedas} marcados={d.moedas_aceitas} onTrocar={(k) => mudar((f) => (f.moedas_aceitas = alternar(f.moedas_aceitas, k)))} />
+                    <p className={DICA}>
+                      Nenhuma marcada = qualquer moeda. A moeda do seu país ({op.moeda_do_pais[loc.pais] || "—"}) sempre
+                      vale. Vaga que não diz a moeda não é cortada.
+                    </p>
+                  </section>
+
+                  <section className={SEC}>
+                    <h4 className={H}>Idiomas aceitos</h4>
+                    <Pilulas mapa={op.idiomas} marcados={d.idiomas_aceitos} onTrocar={(k) => mudar((f) => (f.idiomas_aceitos = alternar(f.idiomas_aceitos, k)))} />
+                    <p className={DICA}>
+                      Nenhum marcado = todos. Vaga em outro idioma vai para Fora dos critérios; na dúvida (texto curto ou
+                      misturado), a vaga não é cortada.
+                    </p>
+                  </section>
+                </>
+              )}
+
+              {aba === "portais" && (
+                <>
+                  <section className={SEC}>
+                    <h4 className={H}>Portais da busca</h4>
+                    <p className={DICA}>
+                      Onde buscar. Marque pelo menos um. O LinkedIn também busca as vagas de fora quando a busca
+                      internacional está ligada.
+                    </p>
+                    <div className="space-y-2">
+                      {op.fontes_nac.map((x) => (
+                        <Marcar
+                          key={x.nome}
+                          checked={d.fontes.includes(x.nome)}
+                          onChange={() => mudar((f) => (f.fontes = alternar(f.fontes, x.nome)))}
+                        >
+                          <b>{x.rotulo}</b>
+                          <span className={`block ${DICA}`}>
+                            {[x.termos, x.precisa ? `Precisa ${x.precisa}.` : ""].filter(Boolean).join(" ")}
+                          </span>
+                        </Marcar>
+                      ))}
+                    </div>
+                  </section>
+
+                  <PortaisLogin
+                    fontes={op.fontes_login || []}
+                    ligados={d.fontes}
+                    onLigar={(nome, ligar) =>
+                      mudar((f) => {
+                        f.fontes = f.fontes.filter((x) => x !== nome)
+                        if (ligar) f.fontes.push(nome)
+                      })
+                    }
+                  />
+
+                  {proximos.length > 0 && (
+                    <section className={SEC}>
+                      <h4 className={H}>Próximos a mapear</h4>
+                      <p className={DICA}>Portais que a ferramenta estuda para entrar na busca, e os que não deram, com o motivo.</p>
+                      <ul className="space-y-1.5">
+                        {proximos.map((p) => (
+                          <li key={p.nome} className="text-xs text-slate-700 dark:text-slate-300">
+                            <b>{p.nome}</b>{" "}
+                            <span
+                              className={
+                                p.situacao === "nao_deu"
+                                  ? "font-semibold text-amber-700 dark:text-amber-300"
+                                  : "text-slate-500 dark:text-slate-400"
+                              }
+                            >
+                              {p.situacao === "nao_deu" ? "Não deu" : "Em estudo"}
+                            </span>
+                            {p.situacao === "nao_deu" && p.motivo && <span className={`block ${DICA}`}>{p.motivo}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
                   )}
-                </ul>
-              </section>
-            </>
+                </>
+              )}
+
+              {aba === "internacionais" && (
+                <>
+                  {!d.internacional.ativo && (
+                    <p className={`flex items-start gap-2 ${AVISO_AMBAR}`}>
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span>
+                        A busca internacional está desligada: estas fontes só rodam com ela ligada.{" "}
+                        <button type="button" onClick={() => onTrocarModo("internacional")} className="underline font-semibold">
+                          Ligar em Filtros da busca internacional
+                        </button>
+                      </span>
+                    </p>
+                  )}
+                  <section className={SEC}>
+                    <h4 className={H}>Fontes do exterior</h4>
+                    <p className={DICA}>
+                      Portais de vagas remotas, públicos e sem login. Desligados até você marcar; a busca consulta cada um
+                      uma vez e filtra pelos cargos em inglês. A vaga sempre mostra a fonte e o link original.
+                    </p>
+                    <div className="space-y-2">
+                      {op.fontes_int.map((x) => (
+                        <Marcar key={x.nome} checked={d.internacional.fontes.includes(x.nome)} onChange={() => mudarInt((it) => (it.fontes = alternar(it.fontes, x.nome)))}>
+                          <b>{x.rotulo}</b>
+                          <span className={`block ${DICA}`}>{x.termos}</span>
+                        </Marcar>
+                      ))}
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {aba === "empresas" && (
+                <>
+                  <section className={SEC}>
+                    <h4 className={H}>Empresas que você acompanha</h4>
+                    <p className={DICA}>
+                      Cole o link da página de vagas de qualquer empresa (ex.: careers.ey.com, carreiras.empresa.com.br/jobs
+                      ou jobs.lever.co/empresa), ou use "Acompanhar empresa" no detalhe de uma vaga. A ferramenta reconhece
+                      Greenhouse, Lever, Ashby, Teamtailor e o site da EY; outras páginas são lidas pela IA. A busca traz as
+                      vagas delas abertas a quem mora no seu país e, com a busca internacional ligada, as do exterior.
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        value={linkEmpresa}
+                        maxLength={1000}
+                        onChange={(e) => setLinkEmpresa(e.target.value)}
+                        placeholder="https://carreiras.empresa.com.br/jobs"
+                        aria-label="Link da página de vagas da empresa"
+                        className={`${CAMPO} flex-1`}
+                      />
+                      <button
+                        type="button"
+                        onClick={adicionarEmpresa}
+                        disabled={!podeGravar || reconhecendo}
+                        title={reconhecendo ? "Abrindo a página para reconhecer…" : undefined}
+                        className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50"
+                      >
+                        {reconhecendo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        {reconhecendo ? "Reconhecendo…" : "Adicionar"}
+                      </button>
+                    </div>
+                    {erroEmpresa && <p className="text-[11px] text-rose-600 dark:text-rose-400">{erroEmpresa}</p>}
+                    {avisoEmpresa && (
+                      <p className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{avisoEmpresa}</span>
+                      </p>
+                    )}
+                    <ul className="space-y-1">
+                      {d.empresas.length ? (
+                        d.empresas.map((e, i) => (
+                          <li key={e.sistema + e.id} className="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span className="min-w-0 truncate">
+                              {e.nome || e.id}{" "}
+                              <span className={DICA}>
+                                {SISTEMAS_EMPRESA[e.sistema] || e.sistema} · {e.url}
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => mudar((f) => f.empresas.splice(i, 1))}
+                              className="text-rose-600 hover:underline shrink-0"
+                            >
+                              Remover
+                            </button>
+                          </li>
+                        ))
+                      ) : (
+                        <li className={DICA}>Nenhuma empresa.</li>
+                      )}
+                    </ul>
+                  </section>
+
+                  <section className={SEC}>
+                    <h4 className={H}>Empresas a excluir</h4>
+                    <Etiquetas
+                      lista={d.empresas_excluir}
+                      onMudar={(l) => mudar((f) => (f.empresas_excluir = l))}
+                      exemplo="Nome da empresa"
+                      rotulo="Empresa a excluir"
+                    />
+                  </section>
+                </>
+              )}
+            </div>
           )}
 
           {d && op && internacional && loc && (
@@ -695,22 +867,6 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
               </section>
 
               <section className={SEC}>
-                <h4 className={H}>Fontes do exterior</h4>
-                <p className={DICA}>
-                  Portais de vagas remotas, públicos e sem login. Desligados até você marcar; a busca consulta cada um uma vez
-                  e filtra pelos cargos em inglês. A vaga sempre mostra a fonte e o link original.
-                </p>
-                <div className="space-y-2">
-                  {op.fontes_int.map((x) => (
-                    <Marcar key={x.nome} checked={d.internacional.fontes.includes(x.nome)} onChange={() => mudarInt((it) => (it.fontes = alternar(it.fontes, x.nome)))}>
-                      <b>{x.rotulo}</b>
-                      <span className={`block ${DICA}`}>{x.termos}</span>
-                    </Marcar>
-                  ))}
-                </div>
-              </section>
-
-              <section className={SEC}>
                 <h4 className={H}>Frases</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
@@ -733,20 +889,24 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
                 <button type="button" onClick={() => onTrocarModo("nacional")} className="underline font-semibold text-indigo-600 dark:text-indigo-400">
                   Filtros da busca
                 </button>
+                ; as fontes do exterior, na aba{" "}
+                <button type="button" onClick={() => irPara("internacionais")} className="underline font-semibold text-indigo-600 dark:text-indigo-400">
+                  Portais internacionais
+                </button>
                 .
               </p>
             </>
           )}
+        </div>
 
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          {/* no rodapé, o erro fica à vista em qualquer aba (ex.: "marque pelo menos um portal" com a Geral aberta) */}
           {erro && (
             <p role="alert" className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200 text-xs">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{erro}</span>
             </p>
           )}
-        </div>
-
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
           {conta && (
             <p className={`text-[11px] ${conta.alerta ? "text-amber-700 dark:text-amber-300 font-semibold" : "text-slate-500"}`}>
               {conta.texto}

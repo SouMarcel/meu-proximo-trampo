@@ -67,6 +67,15 @@ export interface Opcoes {
   fontes_nac: Fonte[]
   /** Portais com login (spec 041): ligam pela mesma lista `fontes` dos filtros. Servidor antigo não manda. */
   fontes_login?: FonteLogin[]
+  /** Próximos a mapear (spec 043): lista fixa da ferramenta, só leitura. Servidor antigo não manda. */
+  portais_a_mapear?: PortalAMapear[]
+}
+
+/** Portal que ainda não está na busca: em estudo ou descartado, com o motivo (opcoes.portais_a_mapear). */
+export interface PortalAMapear {
+  nome: string
+  situacao: "em_estudo" | "nao_deu"
+  motivo: string
 }
 
 export interface Config {
