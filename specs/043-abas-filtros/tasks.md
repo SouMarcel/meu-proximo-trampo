@@ -143,7 +143,7 @@ quickstart.md. Molde das abas: `abaBotao` em `src/components/modals/JobDetailMod
     este item.
 - [X] T013 Front: em `FR/`, `npx -y pnpm@10.34.3 exec tsc --noEmit` e `npx -y pnpm@10.34.3 exec vite build --base ./`,
   ambos sem erro. Depois o commit local na `frontend-react`, sem push.
-- [ ] T014 Verificação e entrega:
+- [X] T014 Verificação e entrega:
   1. `PY -m unittest discover -s tests` e `python sincronizar_skills.py --conferir`;
   2. a busca por dados pessoais no diff das duas branches;
   3. o commit na `043-abas-filtros`;
@@ -157,6 +157,15 @@ quickstart.md. Molde das abas: `abaBotao` em `src/components/modals/JobDetailMod
 
   Master, push e PR do front só com o OK da pessoa depois do teste. Antes da entrega, `git checkout -- dash/front` e
   apagar os assets novos.
+
+  A conferência por CDP achou uma barra de rolagem sob as abas no computador: a faixa passava 12 px da largura do
+  painel. Foi corrigido com menos margem e espaço entre as abas, e a barra ficou fina. A mesma conferência também
+  passou:
+  - teclado (Home, End e as setas, com volta);
+  - ida e volta entre os dois modos;
+  - o aviso com a busca internacional desligada, só no formulário;
+  - 360 px sem rolagem lateral;
+  - reabrir na Geral.
 
 ## Dependencies
 
