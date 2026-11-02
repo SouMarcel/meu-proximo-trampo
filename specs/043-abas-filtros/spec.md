@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-02
 
-**Status**: Draft
+**Status**: Concluída em 2026-11-02 (validada pela pessoa na branch pessoal)
 
 **Input**: User description: "vamos fazer uma outra melhoria da interface, em filtros de busca, vamos criar abas, 1
 primeira "Geral" com tudo exceto o que deve ir para outras abas. 2 aba "Portais" - nela vamos colocar os portais
