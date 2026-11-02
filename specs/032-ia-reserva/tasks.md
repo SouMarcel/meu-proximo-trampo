@@ -142,8 +142,10 @@ não regressão.
   - o tipo `AlertaIA` em `src/types/api.ts`;
   - em `Header.tsx`, o rótulo "IA (reserva): nome · modelo" e o texto ao passar o mouse com quem está respondendo.
 - [X] T019 `dash/API.md` (`alerta` e `ia_alerta` com `em_uso`) e a seção da IA no README.
-- [ ] T020 Suíte inteira; busca de dados pessoais; commit; merge na branch pessoal com o build do front e o dashboard
+- [X] T020 Suíte inteira; busca de dados pessoais; commit; merge na branch pessoal com o build do front e o dashboard
   reiniciado; teste da pessoa ("Tentar a nota de novo" com o Gemini fora). Com o OK: master, push e PR do front.
+  Validada pela pessoa em 2026-11-02: com o Gemini em 503, o OpenRouter deu a nota de 41 vagas. Quando o Gemini voltou,
+  as notas seguintes saíram por ele, sem chamar a reserva.
 
 ## Dependencies & Execution Order
 
