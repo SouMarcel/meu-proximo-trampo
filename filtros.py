@@ -89,6 +89,14 @@ FONTES_LOGIN = {"mygreenhouse": "MyGreenhouse Jobs"}
 # Portais da lista acima que também rodam na consulta internacional global ("mundo todo"; GLOBAL = True na fonte)
 FONTES_GLOBAIS = ("linkedin", "jobgether")
 PRECISA = {"startupjobs": "da chave MCP_STARTUP_JOBS no arquivo .env"}
+# "Próximos a mapear" no painel (spec 043): portais fora da busca, em estudo ou que não deram (com o motivo). O portal
+# que entra na busca sai daqui; o que a pesquisa barra entra como nao_deu (docs/novo-portal.md)
+PORTAIS_A_MAPEAR = (
+    {"nome": "InHire", "situacao": "em_estudo", "motivo": ""},
+    {"nome": "Catho", "situacao": "em_estudo", "motivo": ""},
+    {"nome": "Glassdoor", "situacao": "nao_deu",
+     "motivo": "Recusou acesso automatizado em 23/10/2026, e a API de parceiros não está aberta."},
+)
 MAX_EMPRESAS, MAX_FRASES, TAMANHO_FRASE = 50, 30, 120
 # palavras comuns que distinguem cada idioma (sem acento); o que aparece em mais de um idioma ficou de fora
 PALAVRAS_IDIOMA = {
@@ -511,7 +519,7 @@ def opcoes() -> dict:
             "senioridades": SENIORIDADES, "moedas": MOEDAS, "moeda_do_pais": MOEDA_DO_PAIS,
             "janelas": JANELAS, "raios_km": RAIOS_KM, "idiomas": IDIOMAS, "regioes": REGIOES,
             "contratacao": CONTRATACOES, "fontes_int": fontes_int(), "fontes_nac": fontes_nac(),
-            "fontes_login": fontes_login()}
+            "fontes_login": fontes_login(), "portais_a_mapear": [dict(p) for p in PORTAIS_A_MAPEAR]}
 
 
 def fontes_nac() -> list[dict]:

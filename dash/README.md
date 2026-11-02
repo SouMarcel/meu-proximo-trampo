@@ -46,14 +46,21 @@ só entrega o arquivo.
   primeiro. Filtros por senioridade, modo de trabalho, aderência mínima e dias desde a
   publicação; a página lembra a ordem e os filtros escolhidos. Cada vaga mostra o termo
   de busca que a encontrou.
-- **Filtros da busca** (botão no relatório): cargos, localidade, modo de trabalho
-  (remoto no país e no exterior, híbrido e presencial na cidade), data de publicação,
-  tipo de emprego, senioridade, moedas aceitas para vagas de fora e empresas a excluir. Grava no `config.json` e vale a
-  partir da próxima busca.
+- **Filtros da busca** (botão no relatório): um formulário em quatro abas (spec 043), gravado de uma vez no
+  `config.json` e válido a partir da próxima busca.
+  - **Geral**: cargos, localidade, modo de trabalho (remoto no país e no exterior, híbrido e presencial na cidade),
+    data de publicação, tipo de emprego, senioridade, moedas aceitas para vagas de fora e idiomas aceitos.
+  - **Portais**: os portais da busca, os Portais com login e Próximos a mapear. Este é a lista fixa da ferramenta,
+    só para leitura (`filtros.PORTAIS_A_MAPEAR`), com os portais em estudo e os que não deram, com o motivo.
+  - **Portais internacionais**: as fontes do exterior, com o aviso quando a busca internacional está desligada.
+  - **Empresas acompanhadas/excluídas**: as empresas que você acompanha e as empresas a excluir.
+
+  O rodapé (conta de consultas, erro, Salvar filtros) fica à vista em todas as abas, e o painel abre sempre na
+  Geral.
   - **Empresas que você acompanha** (specs 031 e 042): o link da página de vagas de qualquer empresa, reconhecido pelo
     botão Adicionar (Greenhouse, Lever, Ashby, Teamtailor, o site da EY ou página própria, lida pela IA).
   - **Portais com login** (spec 041): os portais que só mostram a busca depois do login (o MyGreenhouse Jobs), numa
-    seção própria, desligados por padrão. Ligar pede a confirmação do aviso de risco; Conectar abre a página de login
+    seção própria da aba Portais, desligados por padrão. Ligar pede a confirmação do aviso de risco; Conectar abre a página de login
     na janela da ferramenta, Pronto confere o login e Desconectar apaga a sessão. Rodam só no botão Buscar da página;
     se o login caiu, a janela vem para a frente e a busca mostra "Aguardando login" por até 3 minutos.
 

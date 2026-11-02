@@ -342,6 +342,15 @@ Resposta 202 `{situacao: "lendo", lidas, total, inicio}`. Erro 409 (busca rodand
 
 ### 3.4 Configuração da busca (Filtros da busca, Filtros da busca internacional)
 
+O painel Filtros da busca tem quatro abas (spec 043), num formulário só, gravado de uma vez pelo `PUT`:
+- **Geral**: `termos`, `localidade`, `modelos`, `janela_horas`, `tipos_emprego`, `senioridades`, `moedas_aceitas` e
+  `idiomas_aceitos`;
+- **Portais**: `fontes`, com `opcoes.fontes_nac`, `opcoes.fontes_login` e `opcoes.portais_a_mapear`;
+- **Portais internacionais**: `internacional.fontes`, com `opcoes.fontes_int`;
+- **Empresas acompanhadas/excluídas**: `empresas` e `empresas_excluir`.
+
+O resto de `internacional` fica no painel Filtros da busca internacional.
+
 **`GET /api/config`** — `{filtros, consultas: number, opcoes, existe: bool}` (`existe: false` = ainda sem
 cargos; o front mostra o aviso de primeira vez).
 - `filtros`: `{termos: string[] (cargo entre aspas = frase exata), localidade: {pais, estado, cidade, raio_km},
@@ -355,9 +364,13 @@ cargos; o front mostra o aviso de primeira vez).
   só com portal com login ("marque pelo menos um portal" conta só os de busca pública).
 - `opcoes`: `{paises, modelos, tipos_emprego, senioridades, moedas, moeda_do_pais, janelas (chaves "24","72","168",
   "360","720"), raios_km, idiomas, regioes, contratacao, fontes_int: [{nome, rotulo, termos}], fontes_nac:
-  [{nome, rotulo, termos, precisa}], fontes_login: [{nome, rotulo, termos, aviso_risco, aviso_login}]}`
-  (filtros.py:450-471). `fontes_login` (spec 041): os portais com login, na seção "Portais com login" do painel;
-  a página pede a confirmação de `aviso_risco` antes de pôr o portal em `fontes`.
+  [{nome, rotulo, termos, precisa}], fontes_login: [{nome, rotulo, termos, aviso_risco, aviso_login}],
+  portais_a_mapear: [{nome, situacao: "em_estudo"|"nao_deu", motivo}]}` (filtros.opcoes).
+  - `fontes_login` (spec 041): os portais com login, na seção "Portais com login" da aba Portais. A página pede a
+    confirmação de `aviso_risco` antes de pôr o portal em `fontes`.
+  - `portais_a_mapear` (spec 043): a lista fixa da ferramenta (`filtros.PORTAIS_A_MAPEAR`), só para leitura, no bloco
+    "Próximos a mapear" da aba Portais. `motivo` vem só quando `nao_deu`. Sem o campo (servidor antigo) ou com a
+    lista vazia, o bloco não aparece.
 
 **`PUT /api/config`** — grava os filtros. Corpo = o objeto `filtros` inteiro. Resposta `{filtros, consultas,
 opcoes}`. Erro 400 com a regra que falhou (ex.: "informe pelo menos um cargo", "para híbrido ou presencial,
