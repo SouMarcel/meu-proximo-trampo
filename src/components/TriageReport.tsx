@@ -17,12 +17,17 @@ import {
   ArrowUpDown,
   ChevronRight,
   Eye,
+  Globe2,
+  ShieldCheck,
+  Plane,
 } from "lucide-react"
 import type { Vaga, Senioridade, Versao } from "../types/api"
 import { useFerramenta, AvisoSoLeitura } from "../contexto/Ferramenta"
-import { ScreenPreferencesService } from "../services/storage"
+import { ScreenPreferencesService, type AreaRelatorio } from "../services/storage"
 import { SeloIntegridade } from "./Integridade"
+import { CONTRATACAO } from "../utils/rotulos"
 import {
+  paisDe,
   getPlataformaStyle,
   getAderenciaBadge,
   formatarDataRelativa,
@@ -49,6 +54,34 @@ interface TriageReportProps {
   onMarcarTodasNaoSeguidas: (ids: string[]) => Promise<void>
   onForcarVerificar?: (id: string) => Promise<void> | void
   onAbrirIA: () => void
+  /** "internacional" (spec 044): a aba Internacional, com moeda, visto, a linha compacta e as preferências à parte. */
+  area?: AreaRelatorio
+  /** Só na Internacional: os botões Filtros da busca internacional e Prontidão internacional. */
+  onAbrirFiltrosInternacional?: () => void
+  onAbrirProntidao?: () => void
+}
+
+type Moeda = "todas" | "usd" | "eur"
+
+/** Filtro de moeda da Internacional, com a regra da aba antiga: o salário cita a moeda ou o símbolo. */
+function naMoeda(v: Vaga, moeda: Moeda): boolean {
+  if (moeda === "todas") return true
+  const s = (v.salario || "").toLowerCase()
+  return moeda === "usd" ? s.includes("usd") || s.includes("$") : s.includes("eur") || s.includes("€")
+}
+
+/** Sinal de patrocínio de visto ou de relocation lido no anúncio (a regra da aba antiga). */
+function temVisto(v: Vaga): boolean {
+  return Boolean(v.sinais?.some((s) => /visto|relocation/.test(s.toLowerCase())))
+}
+
+const ORDENS = ["aderencia", "publicacao", "plataforma", "modo"]
+const NIVEIS = ["junior", "pleno", "senior", "ni"]
+const MODOS = ["remoto", "hibrido", "presencial", "ni"]
+
+/** Só os valores conhecidos da lista guardada no navegador. */
+function lidos(v: unknown, validos: string[]): string[] {
+  return Array.isArray(v) ? v.filter((x) => validos.includes(x)) : []
 }
 
 type SubTab = "pendente" | "seguir" | "visitada" | "fora"
@@ -142,8 +175,12 @@ export default function TriageReport({
   onMarcarTodasNaoSeguidas,
   onForcarVerificar,
   onAbrirIA,
+  area = "nacional",
+  onAbrirFiltrosInternacional,
+  onAbrirProntidao,
 }: TriageReportProps) {
   const { podeGravar } = useFerramenta()
+  const internacional = area === "internacional"
   const [subTab, setSubTab] = useState<SubTab>("pendente")
   const [verificandoMap, setVerificandoMap] = useState<Record<string, boolean>>({})
 
@@ -157,25 +194,36 @@ export default function TriageReport({
     }
   }
   const [searchQuery, setSearchQuery] = useState("")
-  const prefs = useMemo(() => ScreenPreferencesService.getTriagePreferences(), [])
+  // cada área guarda a sua ordem e os seus filtros (spec 044); o que não vale volta ao padrão
+  const prefs = useMemo(() => ScreenPreferencesService.getTriagePreferences(area), [area])
   const [ordem, setOrdem] = useState<OrdemFiltro>(
-    (["aderencia", "publicacao", "plataforma", "modo"] as string[]).includes(String(prefs.triageOrdem))
-      ? (prefs.triageOrdem as OrdemFiltro)
-      : "aderencia",
+    ORDENS.includes(String(prefs.triageOrdem)) ? (prefs.triageOrdem as OrdemFiltro) : "aderencia",
   )
-  const [niveis, setNiveis] = useState<string[]>(Array.isArray(prefs.niveis) ? prefs.niveis : [])
-  const [modos, setModos] = useState<string[]>(Array.isArray(prefs.modos) ? prefs.modos : [])
-  const [aderMin, setAderMin] = useState<number | null>(typeof prefs.ader === "number" ? prefs.ader : null)
-  const [diasMax, setDiasMax] = useState<number | null>(typeof prefs.dias === "number" ? prefs.dias : null)
+  const [niveis, setNiveis] = useState<string[]>(lidos(prefs.niveis, NIVEIS))
+  const [modos, setModos] = useState<string[]>(lidos(prefs.modos, MODOS))
+  const [aderMin, setAderMin] = useState<number | null>(
+    typeof prefs.ader === "number" && prefs.ader >= 1 && prefs.ader <= 100 ? prefs.ader : null,
+  )
+  const [diasMax, setDiasMax] = useState<number | null>(
+    typeof prefs.dias === "number" && prefs.dias >= 0 && prefs.dias <= 365 ? prefs.dias : null,
+  )
   // Analisadas (spec 038): marcada, as vagas ainda sem nota somem de todas as abas (a nota provisória conta como nota)
   const [soAnalisadas, setSoAnalisadas] = useState(prefs.analisadas === true)
+  // Moeda e visto (só na Internacional, spec 044)
+  const [moeda, setMoeda] = useState<Moeda>(
+    internacional && (prefs.moeda === "usd" || prefs.moeda === "eur") ? prefs.moeda : "todas",
+  )
+  const [visto, setVisto] = useState(internacional && prefs.visto === true)
   const [baixasAbertas, setBaixasAbertas] = useState(false)
 
   useEffect(() => {
-    ScreenPreferencesService.saveTriagePreferences({ triageOrdem: ordem, niveis, modos, ader: aderMin, dias: diasMax, analisadas: soAnalisadas })
-  }, [ordem, niveis, modos, aderMin, diasMax, soAnalisadas])
+    const base = { triageOrdem: ordem, niveis, modos, ader: aderMin, dias: diasMax, analisadas: soAnalisadas }
+    ScreenPreferencesService.saveTriagePreferences(internacional ? { ...base, moeda, visto } : base, area)
+  }, [ordem, niveis, modos, aderMin, diasMax, soAnalisadas, moeda, visto, internacional, area])
 
-  const filtrando = niveis.length > 0 || modos.length > 0 || aderMin != null || diasMax != null || Boolean(searchQuery) || soAnalisadas
+  const filtrando =
+    niveis.length > 0 || modos.length > 0 || aderMin != null || diasMax != null || Boolean(searchQuery) ||
+    soAnalisadas || moeda !== "todas" || visto
   const limparFiltros = () => {
     setNiveis([])
     setModos([])
@@ -183,6 +231,8 @@ export default function TriageReport({
     setDiasMax(null)
     setSearchQuery("")
     setSoAnalisadas(false)
+    setMoeda("todas")
+    setVisto(false)
   }
   const alternar = (lista: string[], k: string) => (lista.includes(k) ? lista.filter((x) => x !== k) : [...lista, k])
 
@@ -226,9 +276,15 @@ export default function TriageReport({
             v.titulo.toLowerCase().includes(q) ||
             v.empresa.toLowerCase().includes(q) ||
             Boolean(v.descricao?.toLowerCase().includes(q)) ||
-            Boolean(v.termos?.some((t) => t.toLowerCase().includes(q)))
+            Boolean(v.termos?.some((t) => t.toLowerCase().includes(q))) ||
+            // na Internacional, também o local e o país, como na aba antiga (spec 044)
+            (internacional &&
+              ((v.local || "").toLowerCase().includes(q) || paisDe(v).toLowerCase().includes(q)))
           if (!achou) return false
         }
+        // moeda e visto não dependem da análise: valem também para a vaga sem nota (spec 044)
+        if (!naMoeda(v, moeda)) return false
+        if (visto && !temVisto(v)) return false
         // vaga ainda sem nota (aguardando a IA, descrição pendente, falha): os outros filtros dependem da análise ou
         // a escondiam sem aviso; ela aparece sempre, salvo com Analisadas marcada (spec 038)
         if (!temNota(v)) return true
@@ -245,11 +301,21 @@ export default function TriageReport({
         return true
       })
       .sort((a, b) => criterio[ordem](a, b) || nota(b) - nota(a) || recente(a, b))
-  }, [daTriagem, searchQuery, niveis, modos, aderMin, diasMax, ordem])
+  }, [daTriagem, searchQuery, niveis, modos, aderMin, diasMax, ordem, moeda, visto, internacional])
 
   // Em Para decidir, as de nota abaixo de 50 ficam recolhidas, como no dashboard antigo
   const baixas = subTab === "pendente" ? lista.filter((v) => temNota(v) && (v.aderencia as number) < 50) : []
   const principais = subTab === "pendente" ? lista.filter((v) => !(temNota(v) && (v.aderencia as number) < 50)) : lista
+
+  // Linha compacta da Internacional (spec 044): os números da lista à vista, com as de Baixa aderência
+  const numeros = useMemo(
+    () => ({
+      total: lista.length,
+      remotas: lista.filter((v) => modoFiltro(v) === "remoto").length,
+      comVisto: lista.filter(temVisto).length,
+    }),
+    [lista],
+  )
 
   const cartao = (vaga: Vaga) => {
           const platStyle = getPlataformaStyle(vaga.plataforma)
@@ -414,6 +480,31 @@ export default function TriageReport({
                       )}
                     </div>
                   </div>
+
+                  {/* Vaga de fora (spec 044): país, contratação e sinais de visto, como na aba antiga */}
+                  {internacional && (
+                    <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md font-medium bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                        <Globe2 className="w-3 h-3" />
+                        <span>{paisDe(vaga) || "Global"}</span>
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Contratação:{" "}
+                        {vaga.contratacao?.length
+                          ? vaga.contratacao.map((c) => CONTRATACAO[c.valor] || c.valor).join(", ")
+                          : "não informada"}
+                      </span>
+                      {vaga.sinais?.map((s, idx) => (
+                        <span
+                          key={idx}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                        >
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          <span>{s}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Disqualification Reason if in "Fora dos Critérios" */}
                   {subTab === "fora" &&
@@ -599,6 +690,28 @@ export default function TriageReport({
 
   return (
     <div className="space-y-4">
+      {/* Linha compacta da Internacional (spec 044), no lugar do banner grande */}
+      {internacional && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 px-4 py-2.5 shadow-2xs flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-slate-600 dark:text-slate-400">
+          <span className="flex items-center gap-1.5 font-semibold text-teal-700 dark:text-teal-300">
+            <Globe2 className="w-4 h-4" />
+            Vagas de fora
+          </span>
+          <span>
+            <strong className="text-slate-900 dark:text-white">{numeros.total}</strong>{" "}
+            {numeros.total === 1 ? "vaga" : "vagas"}
+          </span>
+          <span>
+            <strong className="text-slate-900 dark:text-white">{numeros.remotas}</strong>{" "}
+            {numeros.remotas === 1 ? "remota" : "remotas"}
+          </span>
+          <span className="flex items-center gap-1">
+            <Plane className="w-3.5 h-3.5 text-teal-500" />
+            <strong className="text-slate-900 dark:text-white">{numeros.comVisto}</strong> com visto ou relocation
+          </span>
+        </div>
+      )}
+
       {/* Sub-tabs header */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-2 shadow-2xs">
         <div className="flex flex-wrap items-center gap-1 sm:gap-2">
@@ -678,7 +791,11 @@ export default function TriageReport({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filtrar nesta lista por termo, empresa ou habilidades..."
+              placeholder={
+                internacional
+                  ? "Filtrar por cargo, empresa, país ou habilidades..."
+                  : "Filtrar nesta lista por termo, empresa ou habilidades..."
+              }
               className="w-full pl-9 pr-4 py-2 rounded-xl text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
           </div>
@@ -700,6 +817,31 @@ export default function TriageReport({
               <option value="modo">Modo de Trabalho</option>
             </select>
           </div>
+
+          {/* Botões da Internacional (spec 044), como na aba antiga */}
+          {internacional && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {onAbrirFiltrosInternacional && (
+                <button
+                  type="button"
+                  onClick={onAbrirFiltrosInternacional}
+                  className="px-3 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 transition"
+                >
+                  Filtros da busca internacional
+                </button>
+              )}
+              {onAbrirProntidao && (
+                <button
+                  type="button"
+                  onClick={onAbrirProntidao}
+                  className="px-3 py-2 rounded-xl text-xs font-medium text-teal-700 dark:text-teal-300 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 transition"
+                  title="O que já está pronto e o que falta para se candidatar a vagas de fora"
+                >
+                  Prontidão internacional
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Secondary filters row */}
@@ -758,6 +900,48 @@ export default function TriageReport({
               </button>
             ))}
           </div>
+
+          {/* Moeda (uma) e visto ou relocation: só na Internacional (spec 044) */}
+          {internacional && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-semibold text-slate-500">Moeda:</span>
+              {(
+                [
+                  ["todas", "Todas"],
+                  ["usd", "Dólar"],
+                  ["eur", "Euro"],
+                ] as const
+              ).map(([k, rotulo]) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={moeda === k}
+                  onClick={() => setMoeda(k)}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                    moeda === k
+                      ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                  }`}
+                >
+                  {rotulo}
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-pressed={visto}
+                onClick={() => setVisto((x) => !x)}
+                title="Só as vagas com sinal de patrocínio de visto ou de relocation"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition ${
+                  visto
+                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                }`}
+              >
+                <Plane className="w-3.5 h-3.5" />
+                Visto / relocation
+              </button>
+            </div>
+          )}
 
           {/* Nota mínima e dias desde a publicação */}
           <div className="flex items-center gap-3 flex-wrap">
@@ -871,7 +1055,9 @@ export default function TriageReport({
               {naAba.length && filtrando
                 ? "Nenhuma vaga passa nos filtros."
                 : subTab === "pendente"
-                  ? "Nenhuma vaga esperando decisão. Clique em Buscar vagas, no topo, ou peça a busca no chat do seu assistente."
+                  ? internacional
+                    ? "Nenhuma vaga de fora esperando decisão. Ligue mais fontes na aba Portais internacionais de Filtros da busca, ou peça uma busca."
+                    : "Nenhuma vaga esperando decisão. Clique em Buscar vagas, no topo, ou peça a busca no chat do seu assistente."
                   : subTab === "fora"
                     ? "Nenhuma vaga fora dos critérios. Quando uma busca trouxer vagas que furam os seus filtros, elas aparecem aqui com o motivo."
                     : "Nada por aqui ainda."}

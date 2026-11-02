@@ -25,7 +25,6 @@ import Header from "./components/Header"
 import NavigationTabs, { ActiveTab } from "./components/NavigationTabs"
 import KanbanBoard from "./components/KanbanBoard"
 import TriageReport from "./components/TriageReport"
-import InternationalHub from "./components/InternationalHub"
 import FunnelAnalytics from "./components/FunnelAnalytics"
 import InterviewCoach from "./components/InterviewCoach"
 import AndamentoBusca from "./components/AndamentoBusca"
@@ -553,13 +552,20 @@ function Pagina({
                 </button>
               </p>
             )}
-            <InternationalHub
+            {/* o mesmo relatório da aba nacional, com o que é só das vagas de fora (spec 044) */}
+            <TriageReport
+              area="internacional"
               vagas={vagasInternacional}
+              versao={versaoInfo}
+              semIA={semIA}
               onSelectVaga={(v) => setDetalheId(v.id)}
               onSeguirVaga={handleSeguirVaga}
               onNaoSeguirVaga={handleNaoSeguirVaga}
               onVoltarTriagem={handleVoltarTriagem}
-              onOpenFiltersModal={() => setFiltrosModo("internacional")}
+              onMarcarTodasNaoSeguidas={handleMarcarTodasNaoSeguidas}
+              onForcarVerificar={handleForcarVerificar}
+              onAbrirIA={() => setIsAIModalOpen(true)}
+              onAbrirFiltrosInternacional={() => setFiltrosModo("internacional")}
               onAbrirProntidao={() => setPerfilAberto({ tela: "analises" })}
             />
           </div>

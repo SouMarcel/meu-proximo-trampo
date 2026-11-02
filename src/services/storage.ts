@@ -9,8 +9,13 @@ const PREF_KEYS = {
   TRIAGE_SUBTAB: "mpt_pref_triage_subtab",
   TRIAGE_ORDEM: "mpt_pref_triage_ordem",
   TRIAGE_FILTROS: "mpt_pref_triage_filtros",
+  /** Ordem e filtros da aba Internacional (spec 044), à parte dos do Relatório de Vagas. */
+  TRIAGE_FILTROS_INT: "mpt_pref_internacional_filtros",
   THEME: "mpt_pref_theme",
 }
+
+/** Área do relatório: a aba Relatório de Vagas (nacional) ou a aba Internacional (spec 044). */
+export type AreaRelatorio = "nacional" | "internacional"
 
 export interface ScreenPreferences {
   activeTab?: string
@@ -26,6 +31,9 @@ export interface ScreenPreferences {
   dias?: number | null
   /** Caixa "Analisadas" (spec 038): marcada, o Relatório oculta as vagas ainda sem nota em todas as abas. */
   analisadas?: boolean
+  /** Só na aba Internacional (spec 044): moeda do salário e sinal de visto ou relocation. */
+  moeda?: "todas" | "usd" | "eur"
+  visto?: boolean
 }
 
 export class ScreenPreferencesService {
@@ -43,18 +51,22 @@ export class ScreenPreferencesService {
     } catch {}
   }
 
-  public static getTriagePreferences(): Partial<ScreenPreferences> {
+  public static getTriagePreferences(area: AreaRelatorio = "nacional"): Partial<ScreenPreferences> {
     try {
-      const raw = localStorage.getItem(PREF_KEYS.TRIAGE_FILTROS)
-      return raw ? JSON.parse(raw) : {}
+      const raw = localStorage.getItem(area === "internacional" ? PREF_KEYS.TRIAGE_FILTROS_INT : PREF_KEYS.TRIAGE_FILTROS)
+      const prefs = raw ? JSON.parse(raw) : {}
+      return prefs && typeof prefs === "object" ? prefs : {}
     } catch {
       return {}
     }
   }
 
-  public static saveTriagePreferences(prefs: Partial<ScreenPreferences>): void {
+  public static saveTriagePreferences(prefs: Partial<ScreenPreferences>, area: AreaRelatorio = "nacional"): void {
     try {
-      localStorage.setItem(PREF_KEYS.TRIAGE_FILTROS, JSON.stringify(prefs))
+      localStorage.setItem(
+        area === "internacional" ? PREF_KEYS.TRIAGE_FILTROS_INT : PREF_KEYS.TRIAGE_FILTROS,
+        JSON.stringify(prefs),
+      )
     } catch {}
   }
 
