@@ -563,6 +563,19 @@ presenciais e híbridas nos países escolhidos. A sua situação vai para a aná
 aponta o que pode impedir (autorização, sponsor, fuso). Cada portal só roda nas buscas que
 atende (a Gupy, por exemplo, só no Brasil).
 
+A aba **Internacional** tem o mesmo desenho do Relatório de Vagas (spec 044):
+- as abas Para decidir, Não seguidas e Fora dos critérios;
+- a mesma ordem (por aderência, como padrão) e os mesmos filtros, inclusive Analisadas;
+- o cartão com a nota, a análise da IA e o Forçar verificar.
+
+Ela tem ainda o que é só das vagas de fora:
+- os filtros de moeda (dólar ou euro) e de visto ou relocation;
+- no cartão, o país, a contratação e os sinais de visto;
+- os botões **Filtros da busca internacional** e **Prontidão internacional**.
+
+No topo, uma linha mostra quantas vagas a lista tem, quantas são remotas e quantas falam de visto ou relocation. A
+ordem e os filtros da aba ficam guardados à parte dos do Relatório de Vagas.
+
 **Fontes do exterior.** Na aba **Portais internacionais** do painel **Filtros da busca**, você liga as fontes de vagas
 remotas que quiser (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board; todas desligadas até você
 marcar). Elas só rodam com a busca internacional ligada. A busca consulta cada fonte uma vez e filtra pelos cargos em

@@ -46,6 +46,13 @@ só entrega o arquivo.
   primeiro. Filtros por senioridade, modo de trabalho, aderência mínima e dias desde a
   publicação; a página lembra a ordem e os filtros escolhidos. Cada vaga mostra o termo
   de busca que a encontrou.
+- **Internacional** (spec 044): as vagas de fora, no mesmo componente do Relatório de Vagas (`TriageReport` com
+  `area="internacional"`).
+  - Ganha os filtros de moeda (dólar ou euro) e de visto ou relocation, que valem também para as vagas sem nota.
+  - No cartão, mostra o país, a contratação e os sinais.
+  - Tem os botões Filtros da busca internacional e Prontidão internacional, e uma linha compacta com os números da
+    lista.
+  - A ordem e os filtros ficam guardados à parte, na chave `mpt_pref_internacional_filtros` do navegador.
 - **Filtros da busca** (botão no relatório): um formulário em quatro abas (spec 043), gravado de uma vez no
   `config.json` e válido a partir da próxima busca.
   - **Geral**: cargos, localidade, modo de trabalho (remoto no país e no exterior, híbrido e presencial na cidade),
