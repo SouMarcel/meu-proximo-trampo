@@ -127,6 +127,24 @@ não regressão.
 - [ ] T014 Procurar dados pessoais nos arquivos alterados; commit; merge na branch pessoal (com a 027b), teste da pessoa;
   com o OK, master, push e o PR do front.
 
+## Phase 7: Emenda de 2026-11-02 (FR-010, FR-011)
+
+- [X] T015 Testes em `tests/test_ia_reserva.py` (`TestEmenda`), escritos antes da correção e falhando sem ela:
+  - a análise com o Gemini em 503 é respondida pelo OpenRouter e grava a marca dele;
+  - com a principal funcionando, a reserva não é chamada;
+  - com todas fora, a mensagem traz o motivo de cada uma;
+  - `alerta()["em_uso"]` é a reserva que respondeu depois da falha, a segunda reserva se a primeira também caiu, e
+    `None` se a reserva só respondeu antes da falha.
+- [X] T016 `dash/analise.py`: `analisar` chama `ia.responder` sem `escolha` e marca cada lote com `ia.marca()`. A IA
+  falsa de `tests/test_kit.py` ganha `marca`.
+- [X] T017 `ia.py`: `alerta()` devolve também `em_uso: {nome, modelo}|None`.
+- [X] T018 Front, na `frontend-react`:
+  - o tipo `AlertaIA` em `src/types/api.ts`;
+  - em `Header.tsx`, o rótulo "IA (reserva): nome · modelo" e o texto ao passar o mouse com quem está respondendo.
+- [X] T019 `dash/API.md` (`alerta` e `ia_alerta` com `em_uso`) e a seção da IA no README.
+- [ ] T020 Suíte inteira; busca de dados pessoais; commit; merge na branch pessoal com o build do front e o dashboard
+  reiniciado; teste da pessoa ("Tentar a nota de novo" com o Gemini fora). Com o OK: master, push e PR do front.
+
 ## Dependencies & Execution Order
 
 - **T001** → **T002** → histórias.

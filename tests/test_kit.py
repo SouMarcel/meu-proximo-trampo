@@ -89,6 +89,7 @@ class TestAnaliseComIA(unittest.TestCase):
         pedidos = []
         falsa = SimpleNamespace(disponivel=lambda: True, escolha_efetiva=lambda: {"provedor": "openai_compat"},
                                 modelo_efetivo=lambda e: "teste", IAErro=RuntimeError,
+                                marca=lambda: {"provedor": "openai_compat", "modelo": "teste"},
                                 responder=lambda texto, **k: pedidos.append(texto) or json.dumps(RESPOSTA))
         with mock.patch.object(analise, "_ia", return_value=falsa):
             ok, problemas = analise.analisar([banco.obter("kit-en-1")])

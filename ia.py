@@ -493,15 +493,25 @@ def chave_ok(escolha: dict) -> bool:
 
 
 def alerta(cfg: dict | None = None) -> dict | None:
-    """{nome, modelo, motivo, em} quando a última tentativa com a IA principal falhou; None se deu certo ou não houve."""
+    """{nome, modelo, motivo, em, em_uso} quando a última tentativa com a IA principal falhou; None se deu certo ou não
+    houve. em_uso: {nome, modelo} da primeira reserva que respondeu depois dessa falha (o botão IA mostra a reserva em
+    uso), ou None."""
     lista = sequencia(cfg)
     if not lista:
         return None
-    s = situacao().get(_chave_estado(lista[0]))
+    sit = situacao()
+    s = sit.get(_chave_estado(lista[0]))
     if not s or s.get("ok"):
         return None
+    em = str(s.get("em") or "")
+    em_uso = None
+    for reserva in lista[1:]:
+        r = sit.get(_chave_estado(reserva)) or {}
+        if r.get("ok") and str(r.get("em") or "") >= em:
+            em_uso = {"nome": nome_de(reserva), "modelo": modelo_efetivo(reserva)}
+            break
     return {"nome": nome_de(lista[0]), "modelo": modelo_efetivo(lista[0]), "motivo": str(s.get("motivo") or ""),
-            "em": str(s.get("em") or "")}
+            "em": em, "em_uso": em_uso}
 
 
 def estado_para_pagina(pode_alterar: bool, ultimo_erro=None) -> dict:

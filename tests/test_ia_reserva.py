@@ -252,5 +252,60 @@ class TestPainel(Base):  # US3 e o alerta no /api/versao
         self.assertEqual(j["alerta"]["nome"], "Gemini (Google)")
 
 
+class TestEmenda(Base):  # emenda de 2026-11-02: a reserva na análise do relatório e a reserva em uso no botão IA
+    def analisar(self, vagas):
+        import analise
+        gravadas = []
+
+        def aplicar(analises):
+            gravadas.extend(analises)
+            return [a["id"] for a in analises], []
+        with mock.patch.object(analise, "montar_pedido", return_value="pedido"), \
+                mock.patch.object(analise.banco, "aplicar_analises", side_effect=aplicar):
+            ok, _ = analise.analisar(vagas)
+        return ok, gravadas
+
+    def test_analise_usa_a_reserva(self):  # FR-010
+        self.respostas = {"googleapis": 503,
+                          "openrouter": json.dumps([{"id": "v1", "aderencia": 70, "resumo": "Bate."}])}
+        ok, gravadas = self.analisar([{"id": "v1", "descricao": "Vaga de analista."}])
+        self.assertEqual(ok, ["v1"])
+        self.assertEqual(self.chamadas, ["googleapis", "openrouter"])
+        self.assertEqual((gravadas[0]["analise_provedor"], gravadas[0]["analise_modelo"]),
+                         ("openrouter", "openrouter/free"))  # a marca é de quem deu a nota
+
+    def test_analise_com_a_principal_nao_chama_a_reserva(self):
+        self.respostas = {"googleapis": json.dumps([{"id": "v1", "aderencia": 70, "resumo": "Bate."}])}
+        _, gravadas = self.analisar([{"id": "v1", "descricao": "Vaga de analista."}])
+        self.assertEqual(self.chamadas, ["googleapis"])
+        self.assertEqual(gravadas[0]["analise_provedor"], "gemini")
+
+    def test_analise_com_todas_fora(self):
+        self.respostas = {"googleapis": 503, "openrouter": 429}
+        with self.assertRaisesRegex(ia.IAErro, "nenhuma IA respondeu: Gemini"):
+            self.analisar([{"id": "v1", "descricao": "Vaga de analista."}])
+
+    def test_alerta_com_a_reserva_em_uso(self):  # FR-011
+        self.respostas = {"googleapis": 503, "openrouter": "da reserva"}
+        ia.responder("pedido")
+        self.assertEqual(ia.alerta()["em_uso"], {"nome": "OpenRouter", "modelo": "openrouter/free"})
+        self.respostas = {"googleapis": 503, "openrouter": 429}  # a reserva também caiu: nenhuma em uso
+        with self.assertRaises(ia.IAErro):
+            ia.responder("pedido")
+        self.assertIsNone(ia.alerta()["em_uso"])
+
+    def test_reserva_que_respondeu_antes_da_falha_nao_conta(self):
+        estado = {"gemini|gemini-3.8-flash": {"ok": False, "em": "2026-11-02T16:39", "motivo": "erro 503"},
+                  "openrouter|openrouter/free": {"ok": True, "em": "2026-11-01T18:35", "motivo": ""}}
+        ia.ARQ_ESTADO.write_text(json.dumps(estado), encoding="utf-8")
+        self.assertIsNone(ia.alerta()["em_uso"])
+
+    def test_segunda_reserva_em_uso(self):
+        self.cfg = config(reservas=(OPENROUTER, GROQ))
+        self.respostas = {"googleapis": 503, "openrouter": 429, "groq": "da segunda"}
+        ia.responder("pedido")
+        self.assertEqual(ia.alerta()["em_uso"]["nome"], "Groq")
+
+
 if __name__ == "__main__":
     unittest.main()

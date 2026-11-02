@@ -388,8 +388,10 @@ claude_instalado, pode_alterar, disponivel: bool (IA pronta para uso), ultimo_er
 - `sequencia` (spec 032): `[{provedor, nome, modelo, url_base, gratuito, chave_ok, principal: bool, situacao: {ok, em
   ("AAAA-MM-DDTHH:MM"), motivo}|null}]`, a principal e as reservas, com a última tentativa de cada uma (gravada em
   `.cache/ia-estado.json`, sem chave nem pedido).
-- `alerta`: `{nome, modelo, motivo, em}` quando a última tentativa com a principal falhou; senão `null`. O mesmo vem em
-  `GET /api/versao` → `ia_alerta`, para o botão IA.
+- `alerta`: `{nome, modelo, motivo, em, em_uso: {nome, modelo}|null}` quando a última tentativa com a principal falhou;
+  senão `null`. `em_uso` (emenda de 2026-11-02) é a primeira reserva que respondeu depois dessa falha. O mesmo vem em
+  `GET /api/versao` → `ia_alerta`, para o botão IA, que mostra "IA (reserva): nome · modelo" enquanto a reserva
+  responde.
 
 Reserva: sem escolha explícita, toda chamada à IA tenta a principal e, se ela falhar por motivo do provedor (5xx, 429,
 sem crédito, chave recusada, modelo inexistente, tempo esgotado, sem conexão, falta de chave), a próxima reserva, sem
@@ -717,7 +719,7 @@ Na página, são links `<a target="_blank">` com o endereço da API na frente (`
 
 **`GET /api/versao`** — consultado a cada 4 s. `{versao: number (sobe a cada escrita no banco; mudou =
 recarregar /api/vagas), analisando: bool (IA dando notas), ia_erro: {motivo, em}|null (última análise automática
-falhou), ia_alerta: {nome, modelo, motivo, em}|null (a IA principal falhou na última tentativa; spec 032), busca: {situacao, origem} (inclui `externa` para busca do terminal/chat), verificando: string[] (vagas do
+falhou), ia_alerta: {nome, modelo, motivo, em, em_uso}|null (a IA principal falhou na última tentativa; spec 032; `em_uso`, a reserva que respondeu depois, ver §3.5), busca: {situacao, origem} (inclui `externa` para busca do terminal/chat), verificando: string[] (vagas do
 Forçar verificar na fila), falhas: {id: {motivo, em}} (Forçar verificar que não deu nota)}`. Também serve para saber
 se o servidor está no ar.
 

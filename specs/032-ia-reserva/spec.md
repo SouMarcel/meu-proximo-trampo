@@ -4,7 +4,8 @@
 
 **Created**: 2026-10-27
 
-**Status**: Aprovada em 2026-10-27
+**Status**: Aprovada em 2026-10-27; emenda em 2026-11-02 (a reserva na análise do relatório e a reserva em uso no
+botão IA)
 
 **Input**: User description: "podemos então contornar esse problema da IA estando fora. 1. avisar quando a IA não
 estiver disponível, com o motivo de estar fora. 2. podemos cadastrar mais de 1 provedor como sequência de fallback. no
@@ -16,6 +17,20 @@ Hoje a ferramenta usa uma IA só. Quando ela cai (ex.: o Gemini com erro 503, so
 com IA param: a candidatura assistida, o currículo, a carta, a análise do relatório e a do perfil. A pessoa só fica
 sabendo quando tenta usar alguma delas (research R2). Com uma sequência de reservas, a ferramenta passa para a próxima
 IA e avisa por quê.
+
+## Emenda de 2026-11-02
+
+- **O que aconteceu**: o Gemini deu 503 na análise automática do relatório, e a nota não saiu. O OpenRouter, que é a
+  reserva, nem foi tentado: a última resposta dele era do dia anterior. A análise chamava a IA com a escolha explícita
+  da principal. Esse é o caminho do "Testar", que não usa as reservas. Por isso o FR-002 não valia para a análise,
+  embora ela esteja no escopo desde o Contexto.
+- **Pedido da pessoa**: a reserva entra na análise, e o botão IA do cabeçalho mostra a IA que está respondendo agora.
+- **Decisões**:
+  - quando a reserva está respondendo, o botão mostra "IA (reserva): nome · modelo", com a bolinha âmbar. Ao passar o
+    mouse, mostra quem falhou, quando, por quê e quem está respondendo;
+  - quando a principal volta a responder, o botão volta a mostrá-la;
+  - a terceira IA fica para depois: o painel já aceita até 3 reservas;
+  - a mudança é registrada como emenda desta spec, não como spec nova.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -96,6 +111,12 @@ com a chave cadastrada como hoje. O botão "Testar" testa a sequência inteira e
   sensível nunca vai à IA.
 - **FR-009**: Documentação: `dash/API.md` (rotas da IA), README (seção da IA) e `.env.exemplo` (sem mudança de
   variáveis).
+- **FR-010** (emenda de 2026-11-02): A análise automática do relatório, inclusive a do "Forçar verificar" e a do "Tentar
+  a nota de novo", MUST usar a sequência como as outras funções (FR-002). Cada vaga MUST guardar a IA que deu a nota de
+  fato (`analise_provedor`, `analise_modelo`).
+- **FR-011** (emenda de 2026-11-02): Quando a última tentativa com a principal falhou e uma reserva respondeu depois
+  disso, o botão IA MUST mostrar essa reserva, com o aviso de reserva e o motivo da falha da principal. Sem reserva que
+  tenha respondido depois da falha, o botão mostra a principal com o alerta, como antes.
 
 ### Key Entities
 
@@ -111,6 +132,8 @@ com a chave cadastrada como hoje. O botão "Testar" testa a sequência inteira e
 - **SC-003**: Com todas fora, a mensagem traz o motivo de cada uma.
 - **SC-004**: A configuração do usuário fica: Gemini (`gemini-3.8-flash`) como principal e OpenRouter (`openrouter/free`)
   como reserva.
+- **SC-005** (emenda): Com o Gemini respondendo 503, "Tentar a nota de novo" dá a nota pelo OpenRouter, e o botão IA
+  mostra "IA (reserva): OpenRouter · openrouter/free".
 
 ## Assumptions
 
