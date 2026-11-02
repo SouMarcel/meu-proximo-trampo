@@ -144,8 +144,9 @@ e o seu perfil e o texto das vagas vão para o provedor escolhido. A chave fica 
 OpenRouter gratuito (`openrouter/free`) como reserva.
 - Se a principal falhar (fora do ar, limite de uso, sem crédito, chave recusada), a ferramenta tenta a próxima e avisa
   qual falhou e por quê. Isso vale para a nota, o currículo, a carta, as respostas e a candidatura assistida.
-- O botão **IA** fica com um alerta quando a principal falhou na última tentativa, e o painel mostra a situação de cada
-  IA. "Testar a sequência" testa uma por uma.
+- O botão **IA** fica com um alerta quando a principal falhou na última tentativa. Se uma reserva respondeu depois, o
+  botão mostra a reserva em uso ("IA (reserva): OpenRouter · …") até a principal voltar a responder. O painel mostra a
+  situação de cada IA. "Testar a sequência" testa uma por uma.
 - A reserva recebe os mesmos pedidos que a principal. Perguntas sensíveis (salário, visto, deficiência) nunca vão a
   nenhuma IA.
 

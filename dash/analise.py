@@ -177,16 +177,17 @@ def lotes(vagas: list[dict]) -> list[list[dict]]:
 
 def analisar(vagas: list[dict], sem_descricao=frozenset()) -> tuple[list[str], list[str]]:
     """Analisa estas vagas com a IA escolhida, em lotes, e grava. Devolve (ids gravados, problemas).
+    Com a principal fora, a próxima reserva dá a nota, e a vaga guarda a IA que respondeu de fato (spec 032).
     As vagas em sem_descricao vão com o aviso de nota sem a descrição e voltam com a marca nota_sem_descricao.
     Falha da IA levanta ia.IAErro (mensagem legível e sem chave)."""
     modulo = _ia()
     if not vagas or not modulo.disponivel():
         return [], []
-    escolha = modulo.escolha_efetiva()
-    marca = {"analise_provedor": escolha["provedor"], "analise_modelo": modulo.modelo_efetivo(escolha)}
     gravadas, problemas = [], []
     for lote in lotes(vagas):
-        texto = modulo.responder(montar_pedido(lote, sem_descricao), tempo=TEMPO_MAXIMO, escolha=escolha)
+        texto = modulo.responder(montar_pedido(lote, sem_descricao), tempo=TEMPO_MAXIMO)
+        quem = modulo.marca()
+        marca = {"analise_provedor": quem["provedor"], "analise_modelo": quem["modelo"]}
         a, b = texto.find("["), texto.rfind("]")
         if a < 0 or b < a:
             raise modulo.IAErro("a resposta da IA não trouxe o JSON das análises")
