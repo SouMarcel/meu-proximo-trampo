@@ -57,7 +57,7 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
     quando ela fecha. Ela fecha quando o dashboard para ou no "Desconectar". Se um portal pedir
     login, a janela vem para a frente e a leitura segue sozinha depois que você entra.
 - **Portais com login (MyGreenhouse Jobs):** alguns portais só mostram a busca de vagas depois do login. Eles ficam
-  numa seção própria do painel **Filtros da busca**, "Portais com login", desligados por padrão. O primeiro é o
+  numa seção própria da aba Portais do painel **Filtros da busca**, "Portais com login", desligados por padrão. O primeiro é o
   MyGreenhouse Jobs (`my.greenhouse.io`), a busca entre as empresas que usam o Greenhouse.
   - Para usar: ligue o portal (confirmando o aviso de risco), clique em Conectar, entre na janela da ferramenta (pelo
     e-mail do MyGreenhouse ou pelo LinkedIn) e clique em Pronto. A ferramenta nunca vê nem guarda a sua senha e não
@@ -530,12 +530,12 @@ funcionar, abra uma issue.
 | `termos` | Cargos ou palavras-chave. Entre aspas (`"\"product owner\""`) busca a frase exata, o que corta muito ruído |
 | `localidade` | `pais` (nome em português, ex.: `Brasil`), `estado`, `cidade` e `raio_km`. Cidade e raio valem para híbrido e presencial; o Indeed não busca por estado inteiro, e a Gupy busca só na cidade, sem raio |
 | `modelos` | `remoto`, `hibrido`, `presencial` (`true`/`false`). Remoto no país inteiro; híbrido e presencial só na cidade |
-| `internacional` | Busca no exterior, desligada por padrão (painel **Filtros da busca internacional**): `ativo`, `paises`, `termos` (cargos em inglês), `regioes`, `salario_min_anual_usd`, `fuso_horas`, `contratacao`, a sua situação (`aceita_mudar` + `paises_mudanca`, `passaporte`, `autorizacao_trabalho`, `precisa_sponsor`), `fontes` (fontes do exterior: `remotive`, `himalayas`, `remoteok`, `jobicy`, `weworkremotely`, `getonboard`), `frases_restricao` e `frases_positivas`. Cada país × cargo é uma consulta a mais; as fontes do exterior fazem uma consulta por cargo (as listas, uma por busca) |
+| `internacional` | Busca no exterior, desligada por padrão (painel **Filtros da busca internacional**): `ativo`, `paises`, `termos` (cargos em inglês), `regioes`, `salario_min_anual_usd`, `fuso_horas`, `contratacao`, a sua situação (`aceita_mudar` + `paises_mudanca`, `passaporte`, `autorizacao_trabalho`, `precisa_sponsor`), `fontes` (fontes do exterior, na aba Portais internacionais de **Filtros da busca**: `remotive`, `himalayas`, `remoteok`, `jobicy`, `weworkremotely`, `getonboard`), `frases_restricao` e `frases_positivas`. Cada país × cargo é uma consulta a mais; as fontes do exterior fazem uma consulta por cargo (as listas, uma por busca) |
 | `idiomas_aceitos` | `pt`, `en`, `es`, `fr`, `de`, `it`: vaga em outro idioma vai para Fora dos critérios. Vazio = todos |
 | `janela_horas` | Só vagas publicadas nas últimas N horas (`168` = 7 dias; no painel, de 24 horas a 30 dias, o máximo). Portais com poucas vagas novas por semana, como a Nerdin, aparecem mais com 15 dias (`360`) |
 | `tipos_emprego` | `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario`. Vazio = todos; com IA, conferido na descrição |
 | `senioridades` | `junior`, `pleno`, `senior`. Vazio = todas |
-| `empresas` | Empresas que você acompanha (painel **Filtros da busca**), informadas pelo link da página de vagas ou pelo botão "Acompanhar"; no máximo 50. Cada uma tem `sistema` (`greenhouse`, `lever`, `ashby`, `teamtailor`, `ey` ou `pagina`), `id`, `nome` e `url`. Rodam na busca nacional e, com a internacional ligada, na do exterior. Num `config.json` antigo, a lista dentro de `internacional` continua valendo e sobe para cá ao salvar |
+| `empresas` | Empresas que você acompanha (painel **Filtros da busca**, aba Empresas acompanhadas/excluídas), informadas pelo link da página de vagas ou pelo botão "Acompanhar"; no máximo 50. Cada uma tem `sistema` (`greenhouse`, `lever`, `ashby`, `teamtailor`, `ey` ou `pagina`), `id`, `nome` e `url`. Rodam na busca nacional e, com a internacional ligada, na do exterior. Num `config.json` antigo, a lista dentro de `internacional` continua valendo e sobe para cá ao salvar |
 | `empresas_excluir` | Empresas que você não quer ver |
 | `moedas_aceitas` | `USD`, `EUR`, `GBP`, `CAD`, `CHF`: em que moeda você aceita receber em vaga de fora do seu país (a moeda do seu país sempre vale). Vazio = qualquer uma; com IA, conferido na vaga |
 | `resultados_por_termo` | Máximo de vagas por termo |
@@ -545,7 +545,12 @@ funcionar, abra uma issue.
 | `analise_automatica` | Formato antigo: `false` equivale a "Sem IA" quando não há `ia` |
 
 Quase tudo isso se ajusta no painel **Filtros da busca** (aba Relatório de Vagas do
-dashboard), que grava o `config.json` por você.
+dashboard), que grava o `config.json` por você. O painel tem quatro abas, salvas juntas:
+- **Geral**: cargos, localidade, modo de trabalho, data, tipo de emprego, senioridade, moedas e idiomas;
+- **Portais**: os portais da busca, os portais com login e os próximos a mapear, que são os portais que a ferramenta
+  estuda para a busca e os que não deram, com o motivo;
+- **Portais internacionais**: as fontes do exterior;
+- **Empresas acompanhadas/excluídas**.
 
 **Vagas internacionais.** Opcional e desligado: na aba **Internacional**, o painel **Filtros da
 busca internacional** liga a busca no exterior e reúne países, cargos em inglês, regiões,
@@ -557,12 +562,13 @@ presenciais e híbridas nos países escolhidos. A sua situação vai para a aná
 aponta o que pode impedir (autorização, sponsor, fuso). Cada portal só roda nas buscas que
 atende (a Gupy, por exemplo, só no Brasil).
 
-**Fontes do exterior.** No mesmo painel, você liga as fontes de vagas remotas que quiser (Remotive, Himalayas,
-Remote OK, Jobicy, We Work Remotely, Get on Board; todas desligadas até você marcar). A busca consulta cada fonte uma
-vez e filtra pelos cargos em inglês. Cada vaga traz, quando o portal informa, onde ela aceita candidatos, o salário, a
+**Fontes do exterior.** Na aba **Portais internacionais** do painel **Filtros da busca**, você liga as fontes de vagas
+remotas que quiser (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board; todas desligadas até você
+marcar). Elas só rodam com a busca internacional ligada. A busca consulta cada fonte uma vez e filtra pelos cargos em
+inglês. Cada vaga traz, quando o portal informa, onde ela aceita candidatos, o salário, a
 moeda, o link de candidatura e o sistema de candidatura usado.
 
-**Empresas que você acompanha.** No painel **Filtros da busca**, cole o link da página de vagas de qualquer empresa e
+**Empresas que você acompanha.** No painel **Filtros da busca**, aba **Empresas acompanhadas/excluídas**, cole o link da página de vagas de qualquer empresa e
 clique em Adicionar (ex.: `careers.ey.com`, `carreiras.empresa.com.br/jobs` ou `jobs.lever.co/empresa`). A ferramenta
 abre a página uma vez para reconhecer o sistema por trás:
 - **Greenhouse, Lever e Ashby**: as APIs públicas de vagas;

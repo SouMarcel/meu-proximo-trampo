@@ -13,7 +13,9 @@ Gupy).
 ## 1. Pesquisa do portal (antes da spec)
 
 O resultado vai para `specs/<nnn>-<nome>/research.md`. Se algum item barrar o portal, ele não entra, e a pesquisa fica
-registrada em `specs/lista-de-desejos.md`.
+registrada em `specs/lista-de-desejos.md`. O portal barrado também entra em `filtros.PORTAIS_A_MAPEAR` (o bloco
+"Próximos a mapear" do painel, spec 043) como `nao_deu`, com o motivo e a data; um portal que ainda espera a pesquisa
+fica lá como `em_estudo`.
 
 | Pergunta | Onde ver | Barra o portal se… |
 |---|---|---|
@@ -51,7 +53,7 @@ Faça poucos pedidos nessa pesquisa, espaçados, e só à parte pública. As amo
 |---|---|
 | `fontes/<nome>.py` (novo) | `NOME`, `PLATAFORMA`, `AREAS`, `TERMOS`, `buscar()`, `descrever()` se precisar, `pausa()`, `aviso_pausa()`, `parada()`, `espera()` se tiver espera, `id_do_link()`; id prefixado (`<nome>-<id>`). Molde para portal que lê páginas: `fontes/vagascom.py` (lista com páginas) ou `fontes/infojobs.py` (uma página, lista da cidade) |
 | `fontes/__init__.py` | `import` e registro em `FONTES` |
-| `filtros.py` | `FONTES_NAC` (ou a lista internacional) e, se ligado por padrão, `FONTES_PADRAO` |
+| `filtros.py` | `FONTES_NAC` (ou a lista internacional) e, se ligado por padrão, `FONTES_PADRAO`; o portal sai de `PORTAIS_A_MAPEAR` (`tests/test_abas_filtros.py` acusa o que ficou) |
 | `fontes/link.py` | `plataforma()` reconhece o domínio; `ler()` monta a vaga com o mesmo id da busca (Adicionar Vaga). Portal com espera: entra em `_portal_paginas()`, que não faz pedido durante a espera |
 | `dash/banco.py` | nome em `PLATAFORMAS` |
 | `dash/API.md` | nome em `plataforma` e em `fontes` |

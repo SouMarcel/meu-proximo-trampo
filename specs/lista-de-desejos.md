@@ -17,7 +17,8 @@ priorizado.
   brasileiros (ex.: InHire, Catho, Glassdoor; InfoJobs e Vagas.com já entraram, specs 026 e 029). Cada um segue o
   roteiro `docs/novo-portal.md`: a pesquisa (API oficial, robots.txt, termos de uso, login, formato da lista) e as
   decisões na spec, inclusive se entra ligado ou desligado por padrão (princípio VI). O Glassdoor recusou acesso
-  automatizado (403) em 2026-10-23, na pesquisa da faixa salarial.
+  automatizado (403) em 2026-10-23, na pesquisa da faixa salarial. O bloco "Próximos a mapear" do painel (spec 043)
+  mostra esta lista, pela constante `filtros.PORTAIS_A_MAPEAR`: atualize as duas juntas.
 
 - **Greenhouse como portal, com busca por cargo** (pesquisa de 2026-10-25, specs 030 e 031): **feito na spec 041**
   (2026-11-01), como portal com login: a pessoa conecta o MyGreenhouse Jobs na janela da ferramenta, e a busca da

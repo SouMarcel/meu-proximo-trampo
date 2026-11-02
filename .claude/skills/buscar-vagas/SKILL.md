@@ -35,7 +35,7 @@ volta nas próximas buscas.
 - `vagas.py`: `buscar`, `ver` e `gravar`. As buscas de cada portal ficam em `fontes/`
   (`indeed.py`, `gupy.py`, `nerdin.py`, `infojobs.py`, `vagascom.py`, `ey.py`, `linkedin.py`, `startupjobs.py`,
   `jobgether.py`, `fullstack.py`, `mygreenhouse.py`); os
-  portais usados vêm de `fontes` no `config.json`, que a pessoa escolhe no painel Filtros da busca → Portais
+  portais usados vêm de `fontes` no `config.json`, que a pessoa escolhe no painel Filtros da busca → aba Portais
   (sem a chave, valem `indeed`, `gupy`, `nerdin`, `infojobs`, `vagascom` e `jobgether`; o `linkedin`, o
   `startupjobs` e o `fullstack` só entram se estiverem lá; o `mygreenhouse` é portal com login e só roda no botão
   Buscar da página).
@@ -382,8 +382,8 @@ busca pública de cada site (`fontes/infojobs.py`, `fontes/vagascom.py`), sem lo
 As **empresas acompanhadas** (`fontes/ats.py`, specs 031 e 042) aceitam a página de vagas de qualquer empresa:
 Greenhouse, Lever, Ashby, Teamtailor (o feed público), o site da EY e a página própria, que a IA da ferramenta lê
 (só o texto público, só quando muda; sem IA ligada, a empresa fica de fora com aviso). Elas rodam pela fonte `ats`,
-que entra sozinha na busca quando há empresas na lista. A pessoa adiciona em Filtros da busca → Empresas que você
-acompanha. Não abra as páginas das empresas por conta própria fora dos scripts.
+que entra sozinha na busca quando há empresas na lista. A pessoa adiciona em Filtros da busca → aba Empresas
+acompanhadas/excluídas → Empresas que você acompanha. Não abra as páginas das empresas por conta própria fora dos scripts.
 
 A EY (`careers.ey.com`, o site de vagas da EY) deixou de ser portal: é uma empresa acompanhada (quem a tinha ligada
 passou a tê-la na lista). Ela é consultada pela busca pública do site (`fontes/ey.py`), sem login nem cookies: a lista de cada cargo no país da pessoa e, como a lista não traz data, a página de cada vaga que bate com o
@@ -405,7 +405,7 @@ O MyGreenhouse Jobs (`my.greenhouse.io`, a busca entre as empresas do Greenhouse
   (`vagas.py buscar`), ele fica de fora com o aviso "só pelo botão Buscar da página": isso é esperado, não é erro.
   **Você nunca usa a sessão da pessoa**: não abra o MyGreenhouse, não leia a janela da ferramenta e não peça login;
 - os termos do MyGreenhouse proíbem acesso automatizado e a Greenhouse pode suspender a conta; ele vem **desligado**.
-  Se a pessoa perguntar, conte isso; ela liga e conecta em Filtros da busca → Portais com login;
+  Se a pessoa perguntar, conte isso; ela liga e conecta em Filtros da busca → aba Portais → Portais com login;
 - as vagas têm o mesmo id das empresas acompanhadas, vêm sem descrição na lista (a descrição chega pela página
   pública da vaga no Greenhouse) e oferecem "Acompanhar empresa".
 
