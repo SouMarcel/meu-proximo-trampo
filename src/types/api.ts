@@ -228,12 +228,20 @@ export interface ErroApi extends Error {
   dados: any
 }
 
+/** A IA principal falhou na última tentativa (spec 032). `em_uso`: a reserva que respondeu depois da falha. */
+export interface AlertaIA {
+  nome: string
+  modelo: string
+  motivo: string
+  em: string
+  em_uso?: { nome: string; modelo: string } | null
+}
+
 export interface Versao {
   versao: number
   analisando?: boolean
   ia_erro?: { motivo: string; em: string } | null
-  /** A IA principal falhou na última tentativa (spec 032). */
-  ia_alerta?: { nome: string; modelo: string; motivo: string; em: string } | null
+  ia_alerta?: AlertaIA | null
   busca?: { situacao: SituacaoBusca; origem?: string }
   verificando?: string[]
   falhas?: Record<string, { motivo: string; em: string }>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useFerramenta } from "../contexto/Ferramenta"
 import { ScreenPreferencesService, aplicarTema, Tema } from "../services/storage"
+import type { AlertaIA } from "../types/api"
 
 interface HeaderProps {
   /** Motivo de o Buscar vagas estar desligado ("" = pode buscar). */
@@ -25,8 +26,9 @@ interface HeaderProps {
   onOpenFiltersModal: () => void
   onOpenProfileModal: () => void
   onOpenAIModal: () => void
-  /** A IA principal falhou na última tentativa (spec 032): o botão IA mostra o alerta com o motivo. */
-  iaAlerta?: { nome: string; modelo: string; motivo: string; em: string } | null
+  /** A IA principal falhou na última tentativa (spec 032): o botão IA mostra o alerta com o motivo e, se uma reserva
+   * respondeu depois, o nome dela. */
+  iaAlerta?: AlertaIA | null
   onOpenAccountsModal?: () => void
 }
 
@@ -59,12 +61,16 @@ export default function Header({
   }
   const IconeTema = tema === "claro" ? Sun : tema === "escuro" ? Moon : Monitor
 
+  // com a principal fora, o botão mostra a reserva em uso; "(reserva)" vem antes do nome para não sumir no corte
+  const reserva = servidor === "demo" ? null : iaAlerta?.em_uso || null
   const rotuloIA =
     servidor === "demo"
       ? "IA"
-      : ia?.disponivel
-        ? `IA: ${ia.nome}${ia.modelo ? " · " + ia.modelo : ""}`
-        : "IA: escolher"
+      : reserva
+        ? `IA (reserva): ${reserva.nome}${reserva.modelo ? " · " + reserva.modelo : ""}`
+        : ia?.disponivel
+          ? `IA: ${ia.nome}${ia.modelo ? " · " + ia.modelo : ""}`
+          : "IA: escolher"
 
   return (
     <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
@@ -92,7 +98,9 @@ export default function Header({
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition max-w-[220px]"
               title={
                 iaAlerta
-                  ? `${iaAlerta.nome} falhou às ${iaAlerta.em.slice(11, 16)}: ${iaAlerta.motivo} (clique para ver as reservas)`
+                  ? `${iaAlerta.nome} falhou às ${iaAlerta.em.slice(11, 16)}: ${iaAlerta.motivo}.` +
+                    (reserva ? ` Respondendo: a reserva ${reserva.nome}${reserva.modelo ? ` (${reserva.modelo})` : ""}.` : "") +
+                    " Clique para ver as reservas."
                   : ia?.disponivel
                     ? "IA escolhida (clique para trocar)"
                     : "Nenhuma IA pronta: clique para escolher"
