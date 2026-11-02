@@ -383,7 +383,7 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
             role="tablist"
             aria-label="Grupos de filtros"
             onKeyDown={teclaNaAba}
-            className="flex items-center border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 gap-1 sm:gap-2 bg-white dark:bg-slate-900 overflow-x-auto shrink-0"
+            className="flex items-center border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 gap-1 bg-white dark:bg-slate-900 overflow-x-auto [scrollbar-width:thin] shrink-0"
           >
             {ABAS.map((a) => {
               const ativa = aba === a.id
