@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-03
 
-**Status**: Implementada em 2026-11-03; em teste na branch pessoal
+**Status**: Concluída em 2026-11-03 (validada pela pessoa na branch pessoal)
 
 **Input**: User description: "podemos seguir com a melhoria no painel de metricas e funil. colque ali em habilidades
 mais desejadas pelas vagas que a pessoa esta aplicando, tbm tempo na atividade mais solicitadas e damais indicadores
