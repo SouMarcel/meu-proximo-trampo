@@ -27,6 +27,7 @@ interface Props {
 }
 
 const VISIVEIS = 15
+const VISIVEIS_SUAS = { habilidades: 10, certificacoes: 6 }
 
 const OPCOES_VAGAS: { valor: SelecaoRequisitos["vagas"]; rotulo: string }[] = [
   { valor: "aplicacoes", rotulo: "Em Aplicações" },
@@ -247,42 +248,53 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
     )
   }
 
-  const suasLinhas = (grupo: string, linhas: LinhaSua[]) => (
-    <ul className="space-y-1.5">
-      {linhas.map((i, n) => {
-        const chave = `${grupo}:${n}:${i.linha}`
-        return (
-          <li key={chave}>
-            <button
-              type="button"
-              aria-expanded={aberto === chave}
-              onClick={() => (i.vagas ? alternar(chave) : undefined)}
-              disabled={!i.vagas}
-              className={`w-full text-left flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-xl border px-3 py-2 text-xs ${
-                i.destaque
-                  ? "border-indigo-300 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-950/40"
-                  : "border-slate-200 dark:border-slate-700"
-              } ${i.vagas ? "hover:bg-slate-50 dark:hover:bg-slate-800/60" : "opacity-60"}`}
-            >
-              <span className="min-w-0 break-words">
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{i.linha}</span>
-                {i.nivel ? <span className="text-slate-500 dark:text-slate-400"> · {i.nivel}</span> : null}
-              </span>
-              <span
-                className={
-                  i.vagas
-                    ? "font-semibold text-indigo-700 dark:text-indigo-300 whitespace-nowrap"
-                    : "text-slate-400 whitespace-nowrap"
-                }
+  const suasLinhas = (grupo: string, linhas: LinhaSua[], limite: number) => (
+    <>
+      <ul className="space-y-1.5">
+        {(todas[grupo] ? linhas : linhas.slice(0, limite)).map((i, n) => {
+          const chave = `${grupo}:${n}:${i.linha}`
+          return (
+            <li key={chave}>
+              <button
+                type="button"
+                aria-expanded={aberto === chave}
+                onClick={() => (i.vagas ? alternar(chave) : undefined)}
+                disabled={!i.vagas}
+                className={`w-full text-left flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-xl border px-3 py-2 text-xs ${
+                  i.destaque
+                    ? "border-indigo-300 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-950/40"
+                    : "border-slate-200 dark:border-slate-700"
+                } ${i.vagas ? "hover:bg-slate-50 dark:hover:bg-slate-800/60" : "opacity-60"}`}
               >
-                {i.vagas ? `${i.vagas} ${i.vagas === 1 ? "vaga" : "vagas"}` : "nenhuma vaga desta seleção"}
-              </span>
-            </button>
-            {listaDeVagas(chave, i.linha, i.ids)}
-          </li>
-        )
-      })}
-    </ul>
+                <span className="min-w-0 break-words">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{i.linha}</span>
+                  {i.nivel ? <span className="text-slate-500 dark:text-slate-400"> · {i.nivel}</span> : null}
+                </span>
+                <span
+                  className={
+                    i.vagas
+                      ? "font-semibold text-indigo-700 dark:text-indigo-300 whitespace-nowrap"
+                      : "text-slate-400 whitespace-nowrap"
+                  }
+                >
+                  {i.vagas ? `${i.vagas} ${i.vagas === 1 ? "vaga" : "vagas"}` : "nenhuma vaga desta seleção"}
+                </span>
+              </button>
+              {listaDeVagas(chave, i.linha, i.ids)}
+            </li>
+          )
+        })}
+      </ul>
+      {linhas.length > limite ? (
+        <button
+          type="button"
+          onClick={() => setTodas((x) => ({ ...x, [grupo]: !x[grupo] }))}
+          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+        >
+          {todas[grupo] ? "Ver menos" : `Ver todas (${linhas.length})`}
+        </button>
+      ) : null}
+    </>
   )
 
   const c = dados?.contagem
@@ -423,7 +435,7 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
       </div>
 
       {dados ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
           {temRequisitos && h ? (
             <div className={`${CARTAO} md:col-span-2`}>
               <Titulo icone={<ListChecks className="w-4 h-4 text-indigo-500" />}>Habilidades mais pedidas</Titulo>
@@ -479,11 +491,11 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
                     ? `${dados.suas.aparecem} das suas ${dados.suas.total} habilidades aparecem nestas vagas`
                     : "Leia os requisitos para ver quantas vagas pedem cada uma."}
                 </p>
-                {suasLinhas("sua-hab", dados.suas.habilidades)}
+                {suasLinhas("sua-hab", dados.suas.habilidades, VISIVEIS_SUAS.habilidades)}
                 {dados.suas.certificacoes.length ? (
                   <>
                     <p className="text-xs font-semibold text-slate-500 pt-2">Suas certificações</p>
-                    {suasLinhas("sua-cert", dados.suas.certificacoes)}
+                    {suasLinhas("sua-cert", dados.suas.certificacoes, VISIVEIS_SUAS.certificacoes)}
                   </>
                 ) : null}
               </>
