@@ -33,6 +33,17 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   seguidas" não pega vaga escondida.
 - **Aplicações:** Salva → Aplicação Enviada → Entrevista → Proposta
   Recebida → Encerrada, com anotações, resultado e filtro por plataforma.
+- **Métricas & Funil:** os números e o funil das candidaturas e, na seção **O que as vagas pedem**
+  (spec 045), as habilidades mais pedidas (técnicas e comportamentais, com quantas vagas exigem), as
+  certificações e cursos, o tempo de experiência (em faixas, pelo mínimo que cada vaga pede), a
+  formação, os idiomas, a senioridade, o modelo de trabalho e o tipo de contratação. Experiência não
+  conta como habilidade. Um seletor escolhe as vagas contadas: Em Aplicações (o padrão) ou Todas as
+  vagas analisadas, e Nacionais, Internacionais ou as duas. O quadro **Suas habilidades** mostra as
+  habilidades e certificações do seu perfil, com as mais pedidas em destaque, e cada item das listas
+  diz se está nas suas habilidades, se só aparece em outro ponto do perfil ou se não está nele (a
+  comparação é pelo nome, sem IA). Clicar num item mostra as vagas que o pedem. A análise da IA já
+  separa esses requisitos; para as vagas analisadas antes, o botão **Ler os requisitos** pede à IA
+  só os requisitos, em lotes, sem mudar a nota (sem IA na página, peça ao assistente no chat).
 - **Adicionar Vaga pelo link:** cole o link de uma vaga que você achou em outro lugar
   (Indeed, LinkedIn, Gupy, InfoJobs, Vagas.com, Nerdin, EY, FullStack, startup.jobs, site da empresa…). O dashboard lê os dados, põe
   a vaga em Vagas Nacionais (ou Vagas Internacionais) como as da busca e, com o Claude Code instalado, ela recebe a nota
@@ -130,6 +141,7 @@ vagas por você.
 | Montar o perfil e os filtros da busca | Pela página (**Meu perfil**), com o texto dos seus arquivos ao lado | Pela página ou pelo chat: a IA propõe o rascunho a partir do currículo e do LinkedIn |
 | Gerar o currículo (.docx e PDF) | `python curriculo.py` com um JSON seu | Escrito e conferido com você, a partir do perfil |
 | O que a candidatura pede (checklist) e lembretes de follow-up | Sim, pelas palavras do anúncio | Também autorização, contratação, inglês, fuso e riscos lidos pela análise |
+| O que as vagas pedem (Métricas & Funil) | Senioridade, modelo, contratação, inglês e o quadro Suas habilidades | Também habilidades, certificações, tempo de experiência, formação e idiomas, lidos pela análise |
 | Carta de apresentação e respostas de formulário | Conferência sem IA (`python conferir.py --carta`) | Escritas pela página ou pelo chat, conferidas antes de você usar |
 
 A nota das vagas pode vir de várias IAs: escolha no botão **IA** do dashboard. Dá para usar

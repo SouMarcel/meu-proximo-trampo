@@ -658,6 +658,31 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"marcas": ap.marcar("linkedin_en", bool(corpo.get("linkedin_en")))})
         return self._erro(404, "rota não encontrada")
 
+    def _resumo_requisitos(self) -> dict:
+        """O que as vagas pedem (spec 045): o resumo da seleção, o andamento da leitura e a IA que leria."""
+        import requisitos
+        consulta = parse_qs(urlsplit(self.path).query)
+        r = requisitos.resumo(banco.listar_vagas(), requisitos.perfil_texto(), (consulta.get("vagas") or [""])[0],
+                              (consulta.get("area") or [""])[0])
+        ligada = analise.ligada()
+        return {**r, "leitura": requisitos.LEITURA.estado(),
+                "ia": {"ligada": ligada, "nome": analise.descricao_ia() if ligada else ""}}
+
+    def _requisitos(self, metodo: str, caminho: str):
+        """Ler os requisitos das vagas já analisadas (spec 045): só deste computador e só no clique; a nota não muda."""
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        import requisitos
+        if metodo == "POST" and caminho == "/api/requisitos/ler":
+            corpo = self._corpo()
+            situacao = requisitos.LEITURA.iniciar(str(corpo.get("vagas") or ""), str(corpo.get("area") or ""))
+            if situacao is None:
+                return self._erro(409, "escolha uma IA no botão IA ou peça a leitura ao assistente no chat")
+            return self._json(202 if situacao == "comecou" else 200, {"leitura": requisitos.LEITURA.estado()})
+        if metodo == "POST" and caminho == "/api/requisitos/parar":
+            return self._json(200, {"leitura": requisitos.LEITURA.parar()})
+        return self._erro(404, "rota não encontrada")
+
     def _entrevista(self, metodo: str, caminho: str):
         """Preparação para entrevista: só deste computador (histórias e respostas são da pessoa) e só no clique."""
         if not self._local():
@@ -863,6 +888,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._curriculo(metodo, caminho)
             if caminho.startswith("/api/analises-perfil/"):
                 return self._analises(metodo, caminho)
+            if caminho.startswith("/api/requisitos/"):
+                return self._requisitos(metodo, caminho)
             if caminho.startswith("/api/entrevista/"):
                 return self._entrevista(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
@@ -913,6 +940,8 @@ class Handler(BaseHTTPRequestHandler):
             perfil = ap.perfil_texto()
             return self._json(200, {"salvas": ap.carregar(), "prontidao": ap.prontidao(perfil), "ia": ia.disponivel(),
                                     "existe_perfil": bool(perfil.strip()), "pode_alterar": self._local()})
+        if caminho == "/api/requisitos":
+            return self._json(200, self._resumo_requisitos())
         if caminho.startswith("/api/entrevista/"):
             return self._entrevista("GET", caminho)
         if caminho == "/api/kit/lista":  # cartas e respostas de uma vaga

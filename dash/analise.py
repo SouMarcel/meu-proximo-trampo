@@ -141,7 +141,10 @@ def montar_pedido(vagas: list[dict], sem_descricao=frozenset()) -> str:
         '"modelo_trabalho", "senioridade" [], "senioridade_origem", "tipo_emprego" [] (opcional), '
         '"moeda" (opcional), "idioma" (opcional), "fora_dos_criterios" (opcional), e os da candidatura, '
         'opcionais: "autorizacao" {"valor", "frase"}, "contratacao" [{"valor", "frase"}], "ingles" {"nivel", "frase"}, '
-        '"fuso" {"texto", "frase"}, "sistema_candidatura", "pede" [{"item", "frase"}], "riscos" [{"tipo", "frase"}]}.',
+        '"fuso" {"texto", "frase"}, "sistema_candidatura", "pede" [{"item", "frase"}], "riscos" [{"tipo", "frase"}], '
+        'e o que o anúncio pede, opcional: "requisitos" {"habilidades" [{"nome", "tipo", "exigida"}], '
+        '"certificacoes" [{"nome", "tipo", "exigida"}], "experiencia" {"anos", "em", "frase"}, '
+        '"formacao" {"nivel", "areas", "frase"}, "idiomas" [{"idioma", "nivel", "frase"}]}}.',
         'Se a descrição não basta para avaliar: {"id": "...", "analise_status": "sem_dados", '
         '"resumo": "Sem descrição suficiente: cole o texto da vaga no dashboard."}.'
         + (" Isso não vale para as vagas marcadas NOTA SEM A DESCRIÇÃO: nelas, dê sempre a nota."
