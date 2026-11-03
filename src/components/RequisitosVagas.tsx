@@ -8,6 +8,7 @@ import {
   Languages,
   ListChecks,
   Loader2,
+  MapPin,
   Square,
   UserCheck,
 } from "lucide-react"
@@ -592,23 +593,31 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
             <Rodape>em {dados.idiomas.base} vagas</Rodape>
           </div>
 
+          {/* Senioridade e modelo em blocos separados: "Remoto" não é senioridade (pedido no teste da spec 045) */}
           <div className={CARTAO}>
-            <Titulo icone={<Briefcase className="w-4 h-4 text-indigo-500" />}>Senioridade e modelo</Titulo>
-            {dados.senioridade.itens.length || dados.modelo.itens.length ? (
-              <>
-                <ul className="space-y-2">
-                  {dados.senioridade.itens.map((i) =>
-                    linha(`sen:${i.valor}`, i.rotulo, i.vagas, dados.senioridade.base, i.ids),
-                  )}
-                </ul>
-                <ul className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  {dados.modelo.itens.map((i) => linha(`mod:${i.valor}`, i.rotulo, i.vagas, dados.modelo.base, i.ids))}
-                </ul>
-              </>
+            <Titulo icone={<Briefcase className="w-4 h-4 text-indigo-500" />}>Senioridade</Titulo>
+            {dados.senioridade.itens.length ? (
+              <ul className="space-y-2">
+                {dados.senioridade.itens.map((i) =>
+                  linha(`sen:${i.valor}`, i.rotulo, i.vagas, dados.senioridade.base, i.ids),
+                )}
+              </ul>
             ) : (
-              <p className="text-xs text-slate-400">Nenhuma vaga analisada nesta seleção.</p>
+              <p className="text-xs text-slate-400">Nenhuma vaga desta seleção diz a senioridade.</p>
             )}
             <Rodape>em {dados.senioridade.base} vagas analisadas</Rodape>
+          </div>
+
+          <div className={CARTAO}>
+            <Titulo icone={<MapPin className="w-4 h-4 text-indigo-500" />}>Modelo de trabalho</Titulo>
+            {dados.modelo.itens.length ? (
+              <ul className="space-y-2">
+                {dados.modelo.itens.map((i) => linha(`mod:${i.valor}`, i.rotulo, i.vagas, dados.modelo.base, i.ids))}
+              </ul>
+            ) : (
+              <p className="text-xs text-slate-400">Nenhuma vaga desta seleção diz o modelo de trabalho.</p>
+            )}
+            <Rodape>em {dados.modelo.base} vagas analisadas</Rodape>
           </div>
 
           <div className={CARTAO}>
