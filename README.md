@@ -44,6 +44,12 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   comparação é pelo nome, sem IA). Clicar num item mostra as vagas que o pedem. A análise da IA já
   separa esses requisitos; para as vagas analisadas antes, o botão **Ler os requisitos** pede à IA
   só os requisitos, em lotes, sem mudar a nota (sem IA na página, peça ao assistente no chat).
+  Cada bloco do painel é um widget: em **Organizar painel**, arraste o widget pelo título para trocar
+  de lugar e puxe o canto para mudar a largura e a altura; o conteúdo se ajusta ao tamanho (listas em
+  duas colunas num widget largo, rolagem dentro do widget baixo). A altura acompanha o conteúdo até
+  você mudá-la; **Altura do conteúdo** desfaz isso. **Restaurar o padrão** volta ao painel de
+  fábrica. O layout fica guardado neste navegador; no celular, os widgets ficam numa coluna, na
+  ordem que você deixou.
 - **Adicionar Vaga pelo link:** cole o link de uma vaga que você achou em outro lugar
   (Indeed, LinkedIn, Gupy, InfoJobs, Vagas.com, Nerdin, EY, FullStack, startup.jobs, site da empresa…). O dashboard lê os dados, põe
   a vaga em Vagas Nacionais (ou Vagas Internacionais) como as da busca e, com o Claude Code instalado, ela recebe a nota

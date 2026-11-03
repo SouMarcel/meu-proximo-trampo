@@ -25,6 +25,13 @@ só entrega o arquivo.
   contratação e Suas habilidades (o perfil comparado pelo nome, sem IA). O botão **Ler os requisitos** lê
   em segundo plano, com a IA escolhida, as vagas da seleção sem o campo `requisitos`, grava só esse campo e
   mostra o andamento com Parar. A seleção fica no navegador (`mpt_pref_metricas_requisitos`).
+  Os 16 blocos do painel são widgets (spec 046, `src/components/painel/`): grade de 12 colunas e linhas de 4 px
+  com a biblioteca `react-grid-layout` (MIT, só no build da página, feito pela Action). **Organizar painel** liga
+  arrastar pelo título e redimensionar pelo canto; a altura acompanha o conteúdo até a pessoa mudá-la
+  (**Altura do conteúdo** desfaz), e o conteúdo se ajusta à largura do widget por consultas de contêiner.
+  **Restaurar o padrão** apaga o layout, que fica no navegador (`mpt_pref_metricas_layout`, lido com tolerância a
+  widget novo, widget que saiu e texto ilegível). Abaixo de 768 px de largura, uma coluna na ordem do layout, sem
+  edição.
 - **Adicionar Vaga:** cole o link. O servidor lê a vaga (Indeed e LinkedIn pelas APIs
   públicas; Gupy pelo MCP público de candidatos dela; startup.jobs pelo MCP público do
   site; Nerdin, InfoJobs, Vagas.com e EY pela página pública da vaga, sem pedido durante a espera
