@@ -60,6 +60,8 @@ identificar a vaga com melhor compatibilidade" (02/11/2026). Decisões da mesma 
 - Pedido durante o teste (02/11): no menu, "Relatório de Vagas (Triagem)" vira **Vagas Nacionais**, "Internacional"
   vira **Vagas Internacionais** e "Quadro de Candidaturas" vira **Aplicações**. A ordem passa a ser Vagas Nacionais,
   Vagas Internacionais, Aplicações, Preparador de Entrevistas e Métricas & Funil (FR-015).
+- Q: Os textos que ainda dizem "Relatório" e "quadro" mudam também? → A: Sim. "Relatório" passa a ser o nome novo, e
+  "Remover do quadro" vira "Remover de Aplicações" (FR-016).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -229,6 +231,18 @@ por exemplo, não faz sentido nas vagas do Brasil).
 - **FR-015**: O menu de abas MUST mostrar, nesta ordem: Vagas Nacionais (o antigo Relatório de Vagas), Vagas
   Internacionais, Aplicações (o antigo Quadro de Candidaturas), Preparador de Entrevistas e Métricas & Funil. Os
   contadores de cada aba e a aba que abre primeiro (Vagas Nacionais) não mudam.
+- **FR-016**: Os textos que a pessoa lê MUST usar os nomes novos:
+  - onde dizia Relatório (ou Relatório de Vagas), Vagas Nacionais, ou Vagas Nacionais e Vagas Internacionais quando
+    vale para as duas;
+  - onde dizia quadro (a aba), Aplicações: "Remover de Aplicações", "Aplicações: Salva" no Adicionar vaga etc.;
+  - na página, nas mensagens do terminal, no README, no README do dashboard, no contrato da API, no `AGENTS.md` e nas
+    skills.
+
+  Não mudam:
+  - os nomes no código, os valores gravados (`etapa: "relatorio"`, `tipo: "quadro"`) e o comando `banco.py quadro`;
+  - "quadro" no sentido de outra coisa (o quadro de vagas da empresa no Greenhouse, o quadro do WebSocket, o Quadro
+    Europeu dos idiomas, o modo de exibição em Quadro Kanban);
+  - as specs antigas, que são o registro de cada época.
 
 ### Key Entities
 

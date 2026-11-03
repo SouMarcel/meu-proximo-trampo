@@ -2,8 +2,8 @@
 
 Ferramenta local para quem procura emprego: busca vagas (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin,
 startup.jobs, JobGether, FullStack, as empresas que a pessoa acompanha e, com o login dela, MyGreenhouse Jobs), dá nota de
-aderência ao perfil da pessoa, mostra tudo num dashboard local (Relatório de Vagas e quadro de
-candidaturas) e ajuda a montar o currículo. Este arquivo vale para Claude Code, Codex, Gemini CLI,
+aderência ao perfil da pessoa, mostra tudo num dashboard local (Vagas Nacionais, Vagas Internacionais e
+Aplicações) e ajuda a montar o currículo. Este arquivo vale para Claude Code, Codex, Gemini CLI,
 OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em português do Brasil.
 
 ## Regras de conduta (da constituição em `.specify/memory/constitution.md`)

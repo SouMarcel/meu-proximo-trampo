@@ -1,6 +1,6 @@
 ---
 name: preparar-entrevista
-description: Prepara a pessoa para uma entrevista de uma vaga do quadro, pelo chat — dossiê da vaga e da empresa (só com o que a ferramenta tem e o que a pessoa colar, sem pesquisar na internet), perguntas prováveis com o porquê, histórias no formato situação, tarefa, ação, resultado e reflexão a partir das conquistas do perfil, simulação uma pergunta por vez em português ou inglês com retorno honesto, orientação de salário sem valores inventados e as anotações de como foi. Use quando a pessoa disser "tenho entrevista", "me prepara para a entrevista", "simula uma entrevista", "que perguntas vão cair?", "monta minhas histórias STAR", "como falo de salário?" ou "anota como foi a entrevista". A mesma coisa existe na página, no botão Preparar entrevista.
+description: Prepara a pessoa para uma entrevista de uma vaga de Aplicações, pelo chat — dossiê da vaga e da empresa (só com o que a ferramenta tem e o que a pessoa colar, sem pesquisar na internet), perguntas prováveis com o porquê, histórias no formato situação, tarefa, ação, resultado e reflexão a partir das conquistas do perfil, simulação uma pergunta por vez em português ou inglês com retorno honesto, orientação de salário sem valores inventados e as anotações de como foi. Use quando a pessoa disser "tenho entrevista", "me prepara para a entrevista", "simula uma entrevista", "que perguntas vão cair?", "monta minhas histórias STAR", "como falo de salário?" ou "anota como foi a entrevista". A mesma coisa existe na página, no botão Preparar entrevista.
 ---
 
 # Preparar entrevista
@@ -33,7 +33,7 @@ Linux). Rode tudo a partir da raiz do projeto.
 
 ## Passo a passo
 
-1. **Achar a vaga.** `PY dash/banco.py quadro` mostra as vagas do quadro (as de entrevista na coluna
+1. **Achar a vaga.** `PY dash/banco.py quadro` mostra as vagas de Aplicações (as de entrevista na coluna
    Entrevista); o comando abaixo também aceita um trecho do cargo ou da empresa. Se houver mais de
    uma, pergunte qual.
 2. **Dossiê, perguntas e salário (sem IA).** `PY entrevista.py preparar <ID ou trecho>` mostra o
@@ -57,7 +57,7 @@ Linux). Rode tudo a partir da raiz do projeto.
 6. **Depois da entrevista.** Quando ela contar como foi, anote pela página (aba Depois) ou pelo
    `entrevista.registrar_rodada(<ID>, {...})` com `etapa`, `perguntas` (as que caíram), `bem`, `mal`
    e `proximos`, só com o OK dela. As perguntas que caíram entram na próxima preparação. O lembrete
-   de agradecimento já aparece no quadro.
+   de agradecimento já aparece em Aplicações.
 
 Tudo fica em `entrevistas/` (fora do Git): `historias.json` (o banco de histórias, comum a todas as
 vagas) e `vaga-<ID>.json` (texto da empresa, resumo, simulação e anotações de cada vaga).

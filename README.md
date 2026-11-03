@@ -1,13 +1,13 @@
 # meu-proximo-trampo
 
 Ferramenta para quem está procurando emprego. Ela busca vagas no Indeed, na Gupy, no InfoJobs, no Vagas.com, na
-Nerdin (vagas de tecnologia) e no JobGether (vagas remotas; e, se você quiser, no startup.jobs, na FullStack e no MyGreenhouse Jobs), monta um relatório para você decidir o que vale a pena e
-acompanha suas candidaturas num quadro kanban. Com IA (opcional), cada vaga recebe uma
+Nerdin (vagas de tecnologia) e no JobGether (vagas remotas; e, se você quiser, no startup.jobs, na FullStack e no MyGreenhouse Jobs), monta a lista de vagas para você decidir o que vale a pena e
+acompanha suas candidaturas na aba Aplicações, um quadro kanban. Com IA (opcional), cada vaga recebe uma
 nota de aderência ao seu perfil, com o que bate, o que falta e o que o anúncio esconde.
 
 Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
-![Relatório de Vagas](docs/relatorio.png)
+![Vagas Nacionais](docs/relatorio.png)
 
 ## O que ela faz
 
@@ -20,8 +20,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   cidade, data de publicação, tipo de emprego, senioridade, moedas aceitas para vagas de
   fora e empresas a excluir. Tira o ruído pelo título, junta anúncios repetidos e
   esconde vagas que você já viu.
-- **Relatório de Vagas:** para cada vaga você decide **Seguir**, e ela vai para o
-  quadro, ou **Não seguir**, e ela não aparece mais nas próximas buscas. O que fura os
+- **Vagas Nacionais e Vagas Internacionais:** para cada vaga você decide **Seguir**, e ela vai
+  para Aplicações, ou **Não seguir**, e ela não aparece mais nas próximas buscas. O que fura os
   seus filtros (ex.: "remota" no portal, mas híbrida em outra cidade) vai para a aba
   **Fora dos critérios**, com o motivo, e ainda dá para seguir com ela. Dá para
   ordenar por aderência, plataforma, modo de trabalho ou data de publicação, filtrar
@@ -31,11 +31,11 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   busca por texto vale para ela. Para ver só as que já têm nota, marque a caixa
   **Analisadas**: as sem nota somem de todas as abas, e o "Marcar todas como não
   seguidas" não pega vaga escondida.
-- **Quadro de candidaturas:** Salva → Aplicação Enviada → Entrevista → Proposta
+- **Aplicações:** Salva → Aplicação Enviada → Entrevista → Proposta
   Recebida → Encerrada, com anotações, resultado e filtro por plataforma.
 - **Adicionar Vaga pelo link:** cole o link de uma vaga que você achou em outro lugar
   (Indeed, LinkedIn, Gupy, InfoJobs, Vagas.com, Nerdin, EY, FullStack, startup.jobs, site da empresa…). O dashboard lê os dados, põe
-  a vaga no relatório como as da busca e, com o Claude Code instalado, ela recebe a nota
+  a vaga em Vagas Nacionais (ou Vagas Internacionais) como as da busca e, com o Claude Code instalado, ela recebe a nota
   sozinha em cerca de 1 minuto. Se o site não deixar ler, o formulário pede o resto.
 - **Vaga publicada num post:** cole o link de um post do LinkedIn com uma vaga, ou use
   "Colar texto de post ou mensagem" para posts privados e vagas vindas do WhatsApp, do
@@ -47,8 +47,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   guarda o e-mail e o assunto e tem o botão "Enviar por e-mail", que só abre o seu
   programa de e-mail; quem envia é você.
 - **Atualizar candidaturas (contas conectadas):** o botão lê o andamento das suas candidaturas
-  na área logada da Gupy e do Indeed e propõe as mudanças no quadro: etapa nova, vaga do
-  relatório que você já se candidatou e candidaturas feitas fora da ferramenta. Você marca o
+  na área logada da Gupy e do Indeed e propõe as mudanças em Aplicações: etapa nova, vaga de
+  Vagas Nacionais que você já se candidatou e candidaturas feitas fora da ferramenta. Você marca o
   que aplicar; nada é gravado sozinho.
   - A leitura acontece numa janela do Edge (ou do Chrome) só da ferramenta, com perfil
     próprio em `.cache/navegador` (fora do Git). Você faz o login nessa janela; a ferramenta
@@ -113,17 +113,17 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 - **Com IA:** nota de 0 a 100 por vaga, encaixes, lacunas e alertas (híbrido
   disfarçado de remoto, PJ, inglês fluente, vaga afirmativa).
 
-![Quadro de candidaturas](docs/quadro.png)
+![Aplicações](docs/quadro.png)
 
 ## Precisa de IA?
 
-Não. A busca, o relatório e o quadro funcionam sem IA. A IA entra para avaliar as
+Não. A busca, as listas de vagas e Aplicações funcionam sem IA. A IA entra para avaliar as
 vagas por você.
 
 | | Sem IA | Com IA ([Claude Code](https://claude.com/claude-code)) |
 |---|---|---|
-| Buscar vagas | Botão **Buscar vagas** no relatório (ou `python vagas.py buscar --gravar`) | O mesmo botão, com nota, ou "busca vagas novas pra mim" |
-| Relatório e quadro | Sim | Sim |
+| Buscar vagas | Botão **Buscar vagas** no topo da página (ou `python vagas.py buscar --gravar`) | O mesmo botão, com nota, ou "busca vagas novas pra mim" |
+| Vagas Nacionais, Vagas Internacionais e Aplicações | Sim | Sim |
 | Nota de aderência, encaixes, lacunas e alertas | Não | Sim |
 | Analisar vagas que você adicionou pelo link ou à mão | Não | Sim, sozinho em ~1 minuto, com a IA escolhida no botão **IA** |
 | Perguntas pontuais na Gupy (vagas de uma empresa, vagas PCD, salário) | Não | Sim, pelo MCP público da Gupy |
@@ -164,8 +164,8 @@ flowchart LR
   B -->|sem IA| D[(banco local)]
   B -->|com IA| C[Claude avalia<br/>contra o seu perfil]
   C --> D
-  D --> E[Relatório de Vagas]
-  E -->|Seguir| F[Quadro de candidaturas]
+  D --> E[Vagas Nacionais e Internacionais]
+  E -->|Seguir| F[Aplicações]
   E -->|Não seguir| G[visitada:<br/>não volta mais]
 ```
 
@@ -275,9 +275,9 @@ a página aberta pela extensão Live Server (`dash/front/index.html`); e o
 1. Abra o dashboard com `python iniciar.py` (ou dois cliques em `iniciar.bat`). O navegador
    abre em http://127.0.0.1:8765. Para parar, feche a janela.
 
-2. Na aba **Relatório de Vagas**, clique em **Buscar vagas**. A página mostra o que vai
+2. Na aba **Vagas Nacionais**, clique em **Buscar vagas**. A página mostra o que vai
    consultar (cargos, portais, quanto tempo leva) e, depois de você confirmar, o andamento;
-   no fim, as vagas novas entram no relatório com um resumo. Dá para usar a página enquanto
+   no fim, as vagas novas entram em Vagas Nacionais e Vagas Internacionais com um resumo. Dá para usar a página enquanto
    isso e cancelar a qualquer momento (busca cancelada não grava nada). Uma busca por vez no
    computador, e a próxima só 30 minutos depois da última, para os portais não bloquearem;
    se a última foi há menos de 6 horas, a página pede confirmação. Se o LinkedIn estiver em espera
@@ -296,8 +296,8 @@ a página aberta pela extensão Live Server (`dash/front/index.html`); e o
    automáticas. Com o servidor no ar, dá para abrir http://127.0.0.1:8765 ou o
    `dash/front/index.html` pela extensão Live Server.
 
-3. Na aba **Relatório de Vagas**, decida vaga por vaga. As que você seguir aparecem
-   no **Quadro**; arraste os cartões conforme o processo anda.
+3. Nas abas **Vagas Nacionais** e **Vagas Internacionais**, decida vaga por vaga. As que você seguir
+   aparecem em **Aplicações**; arraste os cartões conforme o processo anda.
 
 Algumas buscas por semana bastam.
 
@@ -321,10 +321,10 @@ Algumas buscas por semana bastam.
    - "monta meu currículo" / "adapta o currículo para a vaga da empresa X"
 
 O Claude roda a busca, lê cada vaga, dá a nota, grava no dashboard e responde com um
-resumo das melhores. A decisão de seguir continua sendo sua, no relatório.
+resumo das melhores. A decisão de seguir continua sendo sua, em Vagas Nacionais e Vagas Internacionais.
 
 Com uma IA escolhida no botão **IA** e o perfil montado, o botão **Buscar vagas** da página
-também dá a nota: as vagas novas entram no relatório e a IA as analisa em seguida, em lotes.
+também dá a nota: as vagas novas entram nas listas de vagas e a IA as analisa em seguida, em lotes.
 
 As perguntas pontuais sobre a Gupy usam o MCP público de candidatos da Gupy, declarado
 em `.mcp.json` com o nome `gupy-candidato`. Na primeira vez, o Claude Code pede para
@@ -428,14 +428,14 @@ análise só acrescenta. Cada item tem o seu botão, e nada acontece sem o cliqu
 - **Candidatar no Greenhouse** (ou Lever, Ashby, a plataforma da vaga): só abre a página. A
   ferramenta nunca preenche nem envia nada.
 
-No quadro, a vaga em **Aplicação Enviada** ganha um lembrete de follow-up aos 7 e aos 14 dias (não
+Em Aplicações, a vaga em **Aplicação Enviada** ganha um lembrete de follow-up aos 7 e aos 14 dias (não
 há terceiro), e a vaga em **Entrevista**, um lembrete de agradecimento no dia seguinte (com a data da
 entrevista, se você informar no detalhe). Você marca "feito", "dispensar" ou "parar lembretes". A
 ferramenta só lembra: a mensagem é você quem escreve e envia.
 
 ### Faixa salarial
 
-No card de uma vaga do quadro, o ícone de nota abre a **Faixa salarial**. A mesma seção fica na aba
+No card de uma vaga de Aplicações, o ícone de nota abre a **Faixa salarial**. A mesma seção fica na aba
 Candidatura do detalhe da vaga. Ela mostra:
 
 - **o que a própria vaga informa**;
@@ -451,7 +451,7 @@ Nenhum valor é estimado pela IA. Pelo terminal: `PY salarios.py <ID>`.
 
 ### Preparar entrevista
 
-No card da coluna **Entrevista** (e no detalhe de qualquer vaga do quadro), o botão **Preparar
+No card da coluna **Entrevista** (e no detalhe de qualquer vaga de Aplicações), o botão **Preparar
 entrevista** abre a preparação da vaga, em seis abas. Nada é gerado nem gravado sem o clique:
 
 - **Dossiê**: o que a ferramenta já tem (análise, lacunas, faixa, suas anotações) e o que você
@@ -545,7 +545,7 @@ funcionar, abra uma issue.
 | `ia` | A IA escolhida no painel: `provedor` (`claude_code`, `anthropic`, `openai`, `openrouter`, `groq`, `deepseek`, `gemini`, `compativel` ou `nenhum`), `modelo` e, no `compativel`, `url_base`. Nunca guarda a chave, que fica no `.env` |
 | `analise_automatica` | Formato antigo: `false` equivale a "Sem IA" quando não há `ia` |
 
-Quase tudo isso se ajusta no painel **Filtros da busca** (aba Relatório de Vagas do
+Quase tudo isso se ajusta no painel **Filtros da busca** (aba Vagas Nacionais do
 dashboard), que grava o `config.json` por você. O painel tem quatro abas, salvas juntas:
 - **Geral**: cargos, localidade, modo de trabalho, data, tipo de emprego, senioridade, moedas e idiomas;
 - **Portais**: os portais da busca, os portais com login e os próximos a mapear, que são os portais que a ferramenta
@@ -553,17 +553,17 @@ dashboard), que grava o `config.json` por você. O painel tem quatro abas, salva
 - **Portais internacionais**: as fontes do exterior;
 - **Empresas acompanhadas/excluídas**.
 
-**Vagas internacionais.** Opcional e desligado: na aba **Internacional**, o painel **Filtros da
+**Vagas internacionais.** Opcional e desligado: na aba **Vagas Internacionais**, o painel **Filtros da
 busca internacional** liga a busca no exterior e reúne países, cargos em inglês, regiões,
 moedas, salário mínimo anual em dólar, fuso, formas de contratação e a sua situação (aceito
 morar fora, passaporte, visto ou autorização de trabalho, precisa de sponsor). As vagas de fora
-aparecem só na aba Internacional, com a etiqueta **Internacional · país** (e a moeda) em todo
-lugar; o Quadro é comum, com filtro por área. Com "aceito morar fora", a busca inclui vagas
+aparecem só na aba Vagas Internacionais, com a etiqueta **Internacional · país** (e a moeda) em todo
+lugar; a aba Aplicações é comum, com filtro por área. Com "aceito morar fora", a busca inclui vagas
 presenciais e híbridas nos países escolhidos. A sua situação vai para a análise da IA, que
 aponta o que pode impedir (autorização, sponsor, fuso). Cada portal só roda nas buscas que
 atende (a Gupy, por exemplo, só no Brasil).
 
-A aba **Internacional** tem o mesmo desenho do Relatório de Vagas (spec 044):
+A aba **Vagas Internacionais** tem o mesmo desenho da aba Vagas Nacionais (spec 044):
 - as abas Para decidir, Não seguidas e Fora dos critérios;
 - a mesma ordem (por aderência, como padrão) e os mesmos filtros, inclusive Analisadas;
 - o cartão com a nota, a análise da IA e o Forçar verificar.
@@ -574,7 +574,7 @@ Ela tem ainda o que é só das vagas de fora:
 - os botões **Filtros da busca internacional** e **Prontidão internacional**.
 
 No topo, uma linha mostra quantas vagas a lista tem, quantas são remotas e quantas falam de visto ou relocation. A
-ordem e os filtros da aba ficam guardados à parte dos do Relatório de Vagas.
+ordem e os filtros da aba ficam guardados à parte dos de Vagas Nacionais.
 
 **Fontes do exterior.** Na aba **Portais internacionais** do painel **Filtros da busca**, você liga as fontes de vagas
 remotas que quiser (Remotive, Himalayas, Remote OK, Jobicy, We Work Remotely, Get on Board; todas desligadas até você
@@ -688,9 +688,9 @@ Para instalar à mão, no Claude Code:
   trabalho certos (remoto no país, cidade com raio, país inteiro, cada país de fora, mudança para um
   país e, com a busca internacional, "mundo todo"); o tipo de emprego e a data de publicação vão como
   filtro do próprio LinkedIn. Há uma pausa de 3 a 7 segundos entre os pedidos, e a descrição só é lida
-  para as vagas que vão para o relatório, **no máximo 20 por busca**: as que sobram entram como
+  para as vagas que entram no dashboard, **no máximo 20 por busca**: as que sobram entram como
   "Descrição pendente", sem nota, e o texto delas é lido primeiro na busca seguinte. Sem esperar a
-  próxima busca, o botão **Completar descrições** (no topo do Relatório) ou `vagas.py completar`
+  próxima busca, o botão **Completar descrições** (no topo de Vagas Nacionais) ou `vagas.py completar`
   lê só essas descrições, sem buscar vagas novas, com o mesmo limite e a mesma pausa; durante a
   espera de 6 horas ele fica desligado e mostra o horário.
   - **O limite do LinkedIn é por rede (IP)**, não por pessoa: quem está na mesma rede (casa,
@@ -718,7 +718,7 @@ Para instalar à mão, no Claude Code:
   oficial à busca pública do site, sem login e sem cookies, que as regras do site para robôs permitem.
   A lista de cada cargo é lida uma vez por busca (até 5 páginas, parando na janela de tempo), com
   pausa de 3 segundos entre os pedidos; como a busca do site é ampla, ficam só as vagas cujo título
-  bate com o cargo. A descrição vem da página da vaga, só para as que vão para o relatório (até 30
+  bate com o cargo. A descrição vem da página da vaga, só para as que entram no dashboard (até 30
   por busca; as outras ficam com descrição pendente). Se a Nerdin recusar ou limitar as consultas,
   ela fica de fora até o fim daquela busca, sem nova tentativa, e os outros portais seguem. A
   candidatura é sempre na própria Nerdin.
@@ -733,7 +733,7 @@ Para instalar à mão, no Claude Code:
     descrição é lida do texto da página;
   - só a primeira página de cada lista (20 vagas), porque a seguinte não tem endereço próprio;
   - ficam só as vagas cujo título bate com o cargo;
-  - a descrição vem da página da vaga, só para as que vão para o relatório (até 30 por busca);
+  - a descrição vem da página da vaga, só para as que entram no dashboard (até 30 por busca);
   - pausa sorteada de 3 a 7 segundos entre os pedidos;
   - se o InfoJobs recusar, limitar ou pedir login, ele sai daquela busca sem nova tentativa e fica
     **24 horas em espera**: nesse período nenhum pedido vai a ele, e a página, o terminal e o chat
@@ -787,7 +787,7 @@ Para instalar à mão, no Claude Code:
   - Só para quem mora no Brasil: a lista do país é lida uma vez por busca, para todos os cargos (até 10 páginas de
     30); a mesma vaga publicada em várias cidades aparece uma vez. Ficam só as vagas cujo título bate com o cargo e
     que estão na janela de tempo. Inclua o cargo em inglês nos seus termos.
-  - A descrição vem do detalhe da vaga, só para as que vão para o relatório (até 30 por busca). O e-mail do
+  - A descrição vem do detalhe da vaga, só para as que entram no dashboard (até 30 por busca). O e-mail do
     recrutador que o portal devolve não é guardado.
   - Pausa sorteada de 3 a 7 segundos; se a FullStack recusar ou limitar, ela sai daquela busca sem nova tentativa
     e fica **24 horas em espera**, como o JobGether.

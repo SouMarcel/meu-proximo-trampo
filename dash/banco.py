@@ -4,13 +4,13 @@
 Usado pelo servidor (dash/servidor.py), por vagas.py e pela skill buscar-vagas. Também tem
 comandos para consultar e analisar vagas sem abrir o navegador:
 
-  python dash/banco.py quadro [--etapa entrevista]   resumo do quadro
+  python dash/banco.py quadro [--etapa entrevista]   resumo de Aplicações
   python dash/banco.py pendentes                      vagas esperando análise (JSON)
   python dash/banco.py analisar ARQUIVO.json          grava análises dessas vagas
   python dash/banco.py vaga "acme product owner"      dados completos de uma vaga (ID ou trecho do cargo/empresa)
   python dash/banco.py anotar ID "texto"              acrescenta uma linha às anotações da vaga
   python dash/banco.py kit ID                         o que a candidatura pede (checklist) e o lembrete da vaga
-  python dash/banco.py lembretes                      lembretes de follow-up pendentes no quadro
+  python dash/banco.py lembretes                      lembretes de follow-up pendentes em Aplicações
   python dash/banco.py integridade [--gravar]         passa o filtro de integridade (spec 034) nas vagas já gravadas
 
 O arquivo do banco é dash/dados/candidaturas.db (ou o caminho em TRAMPO_BANCO).
@@ -805,7 +805,7 @@ def _cmd_quadro(args) -> int:
     todas = listar_vagas()
     pend = sum(1 for v in todas if v.get("origem") != "manual" and v.get("triagem") == "pendente")
     fora = sum(1 for v in todas if v.get("triagem") == "fora")
-    print(f"Relatório de Vagas: {pend} vaga(s) esperando decisão; {fora} fora dos critérios.")
+    print(f"Vagas Nacionais e Vagas Internacionais: {pend} vaga(s) esperando decisão; {fora} fora dos critérios.")
     for etapa in ETAPAS:
         grupo = sorted((v for v in vagas if v["etapa"] == etapa), key=lambda v: v.get("etapa_em") or "", reverse=True)
         if not grupo and args.etapa:
@@ -883,7 +883,8 @@ def _cmd_vaga(args) -> int:
     if len(achadas) > 1:
         print(f"{len(achadas)} vagas com {args.texto!r}; use o ID ou um trecho mais específico:")
         for v in achadas:
-            onde = v.get("etapa") or f"relatório ({v.get('triagem')})"
+            lista = "Vagas Internacionais" if v.get("area") == "internacional" else "Vagas Nacionais"
+            onde = v.get("etapa") or f"{lista} ({v.get('triagem')})"
             print(f"- {v['id']} | {v.get('titulo')} | {v.get('empresa')} | {onde}")
         return 1
     v = achadas[0]
@@ -961,7 +962,7 @@ def _cmd_kit(args) -> int:
 def _cmd_lembretes(args) -> int:
     pendentes = [(v, lem) for v in listar_vagas() for lem in kit.lembretes(v)]
     if not pendentes:
-        print("Nenhum lembrete pendente no quadro.")
+        print("Nenhum lembrete pendente em Aplicações.")
     for v, lem in sorted(pendentes, key=lambda x: x[1]["desde"]):
         print(f"- {lem['rotulo']} (desde {lem['desde']}): {v.get('titulo')} — {v.get('empresa')} ({v['id']})")
     return 0
@@ -1007,7 +1008,7 @@ def main() -> int:
             pass
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    q = sub.add_parser("quadro", help="resumo do quadro de candidaturas")
+    q = sub.add_parser("quadro", help="resumo de Aplicações (as candidaturas)")
     q.add_argument("--etapa", choices=ETAPAS)
     sub.add_parser("pendentes", help="vagas adicionadas à mão aguardando análise (JSON)")
     a = sub.add_parser("analisar", help="grava análises de um arquivo JSON")
@@ -1019,7 +1020,7 @@ def main() -> int:
     n.add_argument("texto")
     k = sub.add_parser("kit", help="o que a candidatura pede (checklist) e o lembrete da vaga")
     k.add_argument("texto")
-    sub.add_parser("lembretes", help="lembretes de follow-up pendentes no quadro")
+    sub.add_parser("lembretes", help="lembretes de follow-up pendentes em Aplicações")
     g = sub.add_parser("integridade", help="filtro de integridade do texto nas vagas já gravadas (mostra; grava com --gravar)")
     g.add_argument("--gravar", action="store_true", help="grava o texto limpo e o aviso nas vagas que mudam")
     args = ap.parse_args()

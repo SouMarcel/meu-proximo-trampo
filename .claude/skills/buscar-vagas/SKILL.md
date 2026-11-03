@@ -1,14 +1,14 @@
 ---
 name: buscar-vagas
-description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, JobGether e as empresas acompanhadas, como a EY; LinkedIn, startup.jobs e FullStack se estiverem ligados; o MyGreenhouse Jobs, portal com login, só pela página), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava o relatório no dashboard local "Acompanhamento de Candidaturas", onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas do relatório, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
+description: Busca vagas de emprego (Indeed, Gupy, InfoJobs, Vagas.com, Nerdin, JobGether e as empresas acompanhadas, como a EY; LinkedIn, startup.jobs e FullStack se estiverem ligados; o MyGreenhouse Jobs, portal com login, só pela página), dá nota de aderência de cada vaga ao perfil de carreira do usuário e grava as vagas no dashboard local "Acompanhamento de Candidaturas" (abas Vagas Nacionais e Vagas Internacionais), onde o usuário decide se segue ou não com cada vaga. Também analisa vagas adicionadas à mão no dashboard, ajuda a montar o perfil e a configuração no primeiro uso, abre o dashboard e responde sobre o andamento das candidaturas. Use sempre que o usuário pedir para procurar, buscar ou atualizar vagas, empregos ou oportunidades, perguntar "tem vaga nova?", pedir a busca num desses portais, pedir para abrir o dashboard, analisar as vagas que adicionou nele ou as vagas das listas, ou perguntar em que pé estão as candidaturas (entrevistas, aplicações, propostas), mesmo sem citar o portal nem o dashboard. Perguntas pontuais só sobre a Gupy (vagas de uma empresa, vagas PCD, salário de uma vaga) são com a skill consultar-gupy.
 ---
 <!-- Cópia gerada de .agents/skills/buscar-vagas/ por sincronizar_skills.py: edite lá. -->
 
 # Buscar vagas
 
 Encontra vagas novas, avalia cada uma contra o perfil do usuário e grava tudo no
-dashboard local. A decisão é do usuário, na aba **Relatório de Vagas**: "Seguir com a
-vaga" manda para o quadro (coluna Salva); "Não seguir" marca como visitada, e ela não
+dashboard local. A decisão é do usuário, nas abas **Vagas Nacionais** e **Vagas Internacionais**: "Seguir com a
+vaga" manda para Aplicações (coluna Salva); "Não seguir" marca como visitada, e ela não
 volta nas próximas buscas.
 
 ## Onde está cada coisa (raiz do projeto)
@@ -16,7 +16,7 @@ volta nas próximas buscas.
 - `config.json`: portais, termos de busca (cargos), filtros da busca, filtros de título
   e o caminho do perfil (`perfil`). Termo entre aspas é frase exata, o que corta muito
   ruído. O usuário edita os filtros pelo painel **Filtros da busca** do dashboard
-  (relatório); o arquivo segue o formato de `config.exemplo.json`:
+  (aba Vagas Nacionais); o arquivo segue o formato de `config.exemplo.json`:
   - `localidade` (`pais`, `estado`, `cidade`, `raio_km`) e `modelos` (`remoto`,
     `hibrido`, `presencial`): remoto vale no país inteiro; híbrido e presencial, só na
     cidade e no raio.
@@ -71,12 +71,12 @@ Confira na ordem e resolva só o que faltar:
 
 ## Abrir o dashboard
 
-Endereço: http://127.0.0.1:8765/ (com `#relatorio` no fim abre direto no relatório).
+Endereço: http://127.0.0.1:8765/ (com `#relatorio` no fim abre direto em Vagas Nacionais).
 Para saber se está no ar: `curl -s http://127.0.0.1:8765/api/versao`. Se não estiver,
 inicie em segundo plano: no Windows, `Start-Process -FilePath dash\abrir-dashboard.bat`
 (PowerShell; abre uma janela minimizada e o navegador); no macOS/Linux,
 `nohup PY dash/servidor.py >/dev/null 2>&1 &`. Buscar e gravar não dependem do
-servidor; ele só serve para ver e mexer no quadro.
+servidor; ele só serve para ver e mexer nas vagas e em Aplicações.
 
 ## Fluxo A: buscar vagas novas
 
@@ -254,7 +254,7 @@ gravadas por uma busca sem IA (`--gravar` ou `--sem-avaliacao`) que o usuário a
 não descartou. Com uma IA ligada no painel IA do dashboard (sem configurar nada, vale o
 Claude Code instalado), o próprio dashboard já analisa sozinho as vagas adicionadas que
 têm descrição (`dash/analise.py`); sobram para este fluxo as que
-só têm o link e as que a análise automática não conseguiu fazer. Vaga do relatório
+só têm o link e as que a análise automática não conseguiu fazer. Vaga das listas de vagas
 (`origem` `link` ou `busca`) que furar os filtros vai para Fora dos critérios ao gravar
 a análise, como na busca. Vagas com `formato` `post` vieram de um post ou de um texto colado
 (WhatsApp, Instagram, e-mail): o `descricao` é o texto inteiro, informal, e a candidatura
@@ -276,11 +276,11 @@ de post ou mensagem"; você não grava a vaga por ela.
    análise; etapa, triagem, resultado e anotações são do usuário e ficam intactos.
 4. Responda com nota e resumo de cada uma.
 
-## Fluxo C: perguntas sobre o quadro
+## Fluxo C: perguntas sobre Aplicações (as candidaturas)
 
 "Em que pé estão minhas candidaturas?", "o que está em entrevista?": rode
 `PY dash/banco.py quadro` (ou `--etapa entrevista`) e responda com o que está lá. Se a pessoa
-quer o quadro em dia com a Gupy e o Indeed, sugira o botão "Atualizar candidaturas" do
+quer Aplicações em dia com a Gupy e o Indeed, sugira o botão "Atualizar candidaturas" do
 dashboard (contas conectadas): ele lê a área logada na janela da ferramenta, com o login feito
 por ela, e propõe as mudanças para ela marcar. Você não abre a área logada dos portais nem
 aplica a proposta por ela. Se ela quer ajuda para preencher o formulário de uma candidatura, o
@@ -309,7 +309,7 @@ dado o perfil dele?
 | 15 | **Condições.** Senioridade compatível e idioma exigido x nível do perfil. Contrato e salário só pesam quando informados e incompatíveis com o perfil; não informado não tira ponto. |
 
 Faixas, iguais às do dashboard: 80 ou mais é forte; 65 a 79, boa; 50 a 64, parcial;
-abaixo de 50, baixa (fica recolhida no relatório).
+abaixo de 50, baixa (fica recolhida em Baixa aderência).
 
 Para a análise ser útil, ela precisa ser honesta:
 - Encaixe e lacunas saem só do que está no perfil. Certificação "em preparação" é
@@ -357,7 +357,7 @@ LinkedIn fica **6 horas em espera**: a busca pergunta antes de seguir sem ele (c
 Não tente contornar. Por busca, no máximo 20 descrições do LinkedIn são lidas, e as vagas que
 sobram entram como **descrição pendente**: não avalie essas vagas (o digest avisa); elas são lidas
 primeiro na busca seguinte. Para completar sem uma busca nova, rode `PY vagas.py completar` (ou
-sugira o botão "Completar descrições" no topo do Relatório): lê só as pendentes, com o mesmo limite
+sugira o botão "Completar descrições" no topo de Vagas Nacionais): lê só as pendentes, com o mesmo limite
 e a mesma pausa; sai com código 5 se o portal estiver em espera (nenhum pedido feito).
 Para a nota de uma vaga só, a página tem o botão **Forçar verificar** no cartão de cada vaga sem nota:
 lê a descrição daquela vaga se der (um pedido, fora da espera) e pede a nota à IA escolhida.
@@ -438,6 +438,6 @@ só é buscada para as candidatas. A chave de API é opcional e fica em
 avisa nos erros.
 
 Algumas buscas por semana bastam. Não rode em loop: além de não trazer vagas novas,
-aumenta a chance de bloqueio. Quem prefere a página tem o botão **Buscar vagas** no
-Relatório de Vagas: ele roda a mesma busca, com os filtros gravados, e só deixa buscar de
+aumenta a chance de bloqueio. Quem prefere a página tem o botão **Buscar vagas** em
+Vagas Nacionais: ele roda a mesma busca, com os filtros gravados, e só deixa buscar de
 novo 30 minutos depois da última (de qualquer origem).

@@ -135,6 +135,14 @@ aba delas.
   - a ordem Vagas Nacionais, Vagas Internacionais, Aplicações, Preparador de Entrevistas e Métricas & Funil;
   - o texto de Filtros da busca que cita a aba passa a dizer "Vagas Internacionais";
   - `tsc`, `vite build` e o build de teste de novo no dashboard da branch pessoal.
+- [X] T020 Nomes novos nos textos (FR-016, pedido durante o teste):
+  - página (`FR/src/`): os avisos, os títulos dos botões, o Adicionar vaga (o destino "decidir depois" segue a Área
+    escolhida, com `listaDaArea` em `utils/formatters.ts`), o Atualizar candidaturas, o funil ("2. Salvas em
+    Aplicações", "3. Aplicações enviadas") e o Preparador de Entrevistas;
+  - terminal: `dash/banco.py` (`quadro`, `vaga`, `lembretes` e a ajuda) e `vagas.py` (Fora dos critérios);
+  - documentos: `README.md`, `dash/README.md`, `dash/API.md`, `AGENTS.md`, `docs/novo-portal.md` e as skills
+    `buscar-vagas`, `consultar-gupy` e `preparar-entrevista`, com `python sincronizar_skills.py`;
+  - `tsc`, `vite build`, `python -m unittest discover -s tests` e o build de teste de novo na branch pessoal.
 
 ## Dependencies & Execution Order
 

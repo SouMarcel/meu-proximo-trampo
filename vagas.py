@@ -904,7 +904,7 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None, pasta: Path 
         print(f"Já estavam no dashboard (não alteradas): {', '.join(r['existentes'])}")
     print(f"Gravadas no dashboard: {r['para_decidir']} vaga(s) nova(s) para decidir, busca {r['busca_id']}.")
     if r["fora_novas"]:
-        print(f"Fora dos critérios: {len(r['fora_novas'])} (aba Fora dos critérios do relatório; dá para seguir com elas de lá)")
+        print(f"Fora dos critérios: {len(r['fora_novas'])} (aba Fora dos critérios de Vagas Nacionais ou Vagas Internacionais; dá para seguir com elas de lá)")
         for d in r["fora_novas"]:
             print(f"  - {d['titulo'][:55]} | {d['empresa'][:28]}: {'; '.join(d['motivo_fora'])}")
     print(f"Dashboard: {URL_DASHBOARD}#relatorio  (se não abrir, rode: python dash/servidor.py)")

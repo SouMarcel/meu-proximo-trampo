@@ -103,7 +103,7 @@ Quando a pergunta não disser onde nem em que modelo, use a `localidade` e os
    `nova: false` = já estava no dashboard. `analise_automatica: true` = a nota chega
    sozinha em cerca de 1 minuto; se vier `false`, analise pelo fluxo B da
    buscar-vagas (`PY dash/banco.py pendentes`).
-3. A vaga entra no **Relatório de Vagas**, onde ele decide seguir ou não:
+3. A vaga entra em **Vagas Nacionais**, onde ele decide seguir ou não:
    http://127.0.0.1:8765/#relatorio.
 
 Para trazer muitas vagas de uma vez, com os filtros e a nota de sempre, use a busca
