@@ -1,4 +1,4 @@
-# dash: Acompanhamento de Candidaturas
+# dash: o dashboard da ferramenta
 
 App local (Python, só biblioteca padrão) que mostra as vagas e o funil de candidaturas.
 
@@ -139,14 +139,6 @@ outros sites e `m-…` nas preenchidas à mão.
 | `lembretes`, `entrevista_em` | lembretes de follow-up marcados (`feito`, `dispensado`, `parar`, valem para a etapa e a data em `base`) e a data da entrevista |
 | `documentos[]` | cartas e respostas de formulário geradas pela página (`tipo`, `nome` dos arquivos em `curriculos/`) |
 | `checklist`, `lembretes_pendentes` | calculados pelo servidor a cada leitura (não gravados) |
-
-As análises do perfil (lacunas das vagas, cargos-alvo, plano de estudo e as marcações da prontidão
-internacional) ficam em `dash/dados/analises-perfil.json`, ao lado do banco, a última de cada tipo com a data.
-
-A preparação para entrevista fica fora do banco, em `entrevistas/` na raiz (fora do Git): `historias.json`
-(o banco de histórias, comum a todas as vagas, gravado só quando a pessoa confirma) e `vaga-<id>.json` (texto
-sobre a empresa, resumo, perguntas da IA, simulação e as anotações de cada entrevista). Rotas em
-`/api/entrevista/…`, só deste computador.
 | `sinais` | sinais positivos lidos no anúncio sem IA ("Oferece patrocínio de visto", "Oferece relocation" e as suas frases positivas); etiqueta verde na listagem, no card e no detalhe |
 | `triagem` | `pendente` (em Vagas Nacionais ou Vagas Internacionais), `seguir` (foi para Aplicações), `visitada` (não seguir), `fora` (furou os filtros da busca) |
 | `motivo_fora[]` | por que a vaga ficou fora dos critérios |
@@ -163,6 +155,14 @@ sobre a empresa, resumo, perguntas da IA, simulação e as anotações de cada e
 | `fora_dos_criterios` | análise da IA: motivo que os outros campos não pegam (ex.: exige residência em outro país) |
 | `anotacao` | suas anotações |
 | `criada_em`, `atualizada_em`, `analisada_em` | carimbos de data |
+
+As análises do perfil (lacunas das vagas, cargos-alvo, plano de estudo e as marcações da prontidão
+internacional) ficam em `dash/dados/analises-perfil.json`, ao lado do banco, a última de cada tipo com a data.
+
+A preparação para entrevista fica fora do banco, em `entrevistas/` na raiz (fora do Git): `historias.json`
+(o banco de histórias, comum a todas as vagas, gravado só quando a pessoa confirma) e `vaga-<id>.json` (texto
+sobre a empresa, resumo, perguntas da IA, simulação e as anotações de cada entrevista). Rotas em
+`/api/entrevista/…`, só deste computador.
 
 Uma vaga aparece em Aplicações quando tem `etapa` e é `manual` ou tem `triagem: "seguir"`.
 
