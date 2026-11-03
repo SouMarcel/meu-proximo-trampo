@@ -5,7 +5,7 @@
 
 **Created**: 2026-11-03
 
-**Status**: Implementada em 2026-11-03; em teste na branch pessoal
+**Status**: Concluída em 2026-11-03 (validada pela pessoa na branch pessoal)
 
 **Input**: User description: "é possivel transofrmar os itens dash em widgets onde podemos reorganizar da forma que
 achar melhor? trocar de lugar, lagura e altura, e os itens de cada widgeth se ajustar internamente?" (03/11/2026).
