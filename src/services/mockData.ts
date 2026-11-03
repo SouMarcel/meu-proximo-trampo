@@ -113,7 +113,7 @@ export const MOCK_VAGAS: Vaga[] = [
     encontrada_em: diasAtras(20),
     modelo_trabalho: "hibrido",
     area: "nacional",
-    descricao: "Vaga adicionada à mão no quadro (exemplo).",
+    descricao: "Vaga adicionada à mão em Aplicações (exemplo).",
     triagem: "seguir",
     etapa: "entrevista",
     etapa_em: diasAtras(3),

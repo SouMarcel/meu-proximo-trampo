@@ -238,7 +238,7 @@ export default function JobDetailModal({
                   <Clock className="w-4 h-4 text-amber-600 shrink-0" />
                   <p className="text-xs text-amber-800 dark:text-amber-200">
                     O portal limitou os pedidos e a descrição ainda não chegou. Ela é lida na próxima busca ou em
-                    Completar descrições, no Relatório; só então a vaga ganha nota.
+                    Completar descrições, em Vagas Nacionais ou Vagas Internacionais; só então a vaga ganha nota.
                   </p>
                 </div>
               )}
@@ -494,7 +494,7 @@ export default function JobDetailModal({
                       }`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>{confirmarRemocao ? "Confirmar remoção" : "Remover do quadro"}</span>
+                      <span>{confirmarRemocao ? "Confirmar remoção" : "Remover de Aplicações"}</span>
                     </button>
                     {confirmarRemocao && (
                       <button onClick={() => setConfirmarRemocao(false)} className="text-xs text-slate-500 hover:underline">

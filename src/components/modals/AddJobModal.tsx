@@ -11,7 +11,7 @@ import * as vagasApi from "../../services/api/vagas"
 import * as configApi from "../../services/api/config"
 import { ehErroApi, mensagemDeErro } from "../../services/api"
 import { useFerramenta, motivoSemGravar } from "../../contexto/Ferramenta"
-import { noQuadro, plataformaDoLink } from "../../utils/formatters"
+import { areaDe, listaDaArea, noQuadro, plataformaDoLink } from "../../utils/formatters"
 
 interface AddJobModalProps {
   onClose: () => void
@@ -22,12 +22,13 @@ interface AddJobModalProps {
 type Passo = "inicio" | "colar" | "formulario"
 
 const ETAPAS_DESTINO: { valor: "relatorio" | Etapa; rotulo: string }[] = [
-  { valor: "relatorio", rotulo: "Relatório (decidir depois)" },
-  { valor: "salva", rotulo: "Quadro: Salva" },
-  { valor: "aplicada", rotulo: "Quadro: Aplicação Enviada" },
-  { valor: "entrevista", rotulo: "Quadro: Entrevista" },
-  { valor: "proposta", rotulo: "Quadro: Proposta Recebida" },
-  { valor: "encerrada", rotulo: "Quadro: Encerrada" },
+  // o rótulo de "relatorio" segue a Área escolhida: Vagas Nacionais ou Vagas Internacionais (spec 044)
+  { valor: "relatorio", rotulo: "(decidir depois)" },
+  { valor: "salva", rotulo: "Aplicações: Salva" },
+  { valor: "aplicada", rotulo: "Aplicações: Aplicação Enviada" },
+  { valor: "entrevista", rotulo: "Aplicações: Entrevista" },
+  { valor: "proposta", rotulo: "Aplicações: Proposta Recebida" },
+  { valor: "encerrada", rotulo: "Aplicações: Encerrada" },
 ]
 
 const ROTULO_ETAPA: Record<Etapa, string> = {
@@ -51,7 +52,7 @@ function avisoSeguranca(v: Vaga): string {
 function avisoAdicionada(v: Vaga, automatica?: boolean): string {
   if (v.triagem === "fora") return "Vaga adicionada em Fora dos critérios: " + (v.motivo_fora || []).join("; ") + avisoSeguranca(v)
   if (v.analise_status !== "pendente")
-    return (noQuadro(v) ? "Vaga adicionada ao quadro." : "Vaga adicionada ao relatório.") + avisoSeguranca(v)
+    return `Vaga adicionada em ${noQuadro(v) ? "Aplicações" : listaDaArea(areaDe(v))}.` + avisoSeguranca(v)
   return (
     (automatica
       ? "Vaga adicionada. A IA está analisando a aderência (cerca de 1 minuto)."
@@ -61,7 +62,7 @@ function avisoAdicionada(v: Vaga, automatica?: boolean): string {
 
 function jaEstava(v: Vaga): string {
   const onde = noQuadro(v)
-    ? `no quadro (${v.etapa ? ROTULO_ETAPA[v.etapa] : ""})`
+    ? `em Aplicações (${v.etapa ? ROTULO_ETAPA[v.etapa] : ""})`
     : ({ fora: "em Fora dos critérios", visitada: "em Não seguidas", seguir: "em Seguidas" } as Record<string, string>)[
         v.triagem
       ] || "em Para decidir"
@@ -383,7 +384,7 @@ export default function AddJobModal({ onClose, onVagaAdicionada, onAviso }: AddJ
                 </button>
               </div>
               <p className="text-[11px] text-slate-500">
-                A vaga vai para o Relatório. O link de um post é lido uma vez, na versão pública, sem login.
+                A vaga vai para Vagas Nacionais ou, se for de fora, para Vagas Internacionais. O link de um post é lido uma vez, na versão pública, sem login.
               </p>
               {empresaLink && (
                 <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2">
@@ -507,7 +508,9 @@ export default function AddJobModal({ onClose, onVagaAdicionada, onAviso }: AddJ
                   <label htmlFor="a-etapa" className={ROTULO}>Para onde vai</label>
                   <select id="a-etapa" value={etapa} onChange={(e) => setEtapa(e.target.value as "relatorio" | Etapa)} className={CAMPO}>
                     {ETAPAS_DESTINO.map((x) => (
-                      <option key={x.valor} value={x.valor}>{x.rotulo}</option>
+                      <option key={x.valor} value={x.valor}>
+                        {x.valor === "relatorio" ? `${listaDaArea(area)} ${x.rotulo}` : x.rotulo}
+                      </option>
                     ))}
                   </select>
                 </div>

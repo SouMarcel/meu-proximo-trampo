@@ -329,6 +329,11 @@ export function areaDe(vaga: Partial<Vaga>): "nacional" | "internacional" {
   return fora.length > 0 && fora.length === g.length ? "internacional" : "nacional"
 }
 
+/** Nome da lista de vagas da área, como no menu (spec 044). */
+export function listaDaArea(area: "nacional" | "internacional"): string {
+  return area === "internacional" ? "Vagas Internacionais" : "Vagas Nacionais"
+}
+
 export function paisDe(vaga: Partial<Vaga>): string {
   if (vaga.pais_vaga) return vaga.pais_vaga
   const g = (vaga.grupos || []).filter((x) => /^(internacional|mudanca):/.test(x))[0]

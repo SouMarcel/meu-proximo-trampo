@@ -47,7 +47,7 @@ function ehGratuito(p: Provedor | undefined, modelo: string): boolean {
 
 function avisos(p: Provedor | undefined, modelo: string): string[] {
   if (!p || p.id === "nenhum") {
-    return ["Nada é enviado a provedores de IA. Busca, relatório e quadro funcionam normalmente; as vagas ficam sem nota."]
+    return ["Nada é enviado a provedores de IA. Busca, listas de vagas e Aplicações funcionam normalmente; as vagas ficam sem nota."]
   }
   const l = [
     ehGratuito(p, modelo)
@@ -215,7 +215,7 @@ export default function AISettingsModal({ onClose, onSalvo, onAviso }: Props) {
             <div>
               <h3 id="titulo-ia" className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">IA</h3>
               <p className="text-xs text-slate-500">
-                A IA dá a nota de aderência e ajuda no currículo e na entrevista. Sem IA, busca, relatório e quadro
+                A IA dá a nota de aderência e ajuda no currículo e na entrevista. Sem IA, busca, listas de vagas e Aplicações
                 continuam funcionando.
               </p>
             </div>

@@ -27,15 +27,15 @@ interface Props {
 const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
 
 function etapaTexto(x: ItemCandidatura["para"] | null): string {
-  if (!x || !x.etapa) return "Relatório"
+  if (!x || !x.etapa) return "Vagas Nacionais"
   const e = ETAPAS.find((y) => y.valor === x.etapa)
   return (e ? e.rotulo : x.etapa) + (x.resultado ? ` · ${RESULTADOS[x.resultado] || x.resultado}` : "")
 }
 
 function mudanca(i: ItemCandidatura): string {
   if (i.tipo === "mudar") return `${etapaTexto(i.de)} → ${etapaTexto(i.para)}`
-  if (i.tipo === "quadro") return `Relatório → ${etapaTexto(i.para)}`
-  return `Nova no quadro · ${etapaTexto(i.para)}`
+  if (i.tipo === "quadro") return `Vagas Nacionais → ${etapaTexto(i.para)}`
+  return `Nova em Aplicações · ${etapaTexto(i.para)}`
 }
 
 /** O ícone do portal vem do código do servidor; como <img>, um SVG não executa script. */
@@ -74,7 +74,7 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
       }
       const acabou = anterior !== undefined && contasApi.ATIVAS.includes(anterior) && ee.situacao === "pronta"
       if (acabou && r && !r.itens.length && !r.historico.length && !Object.keys(r.erros || {}).length) {
-        aviso.current(`Tudo certo: o quadro já está em dia com os portais (${r.sem_mudanca || 0} candidatura(s) conferida(s)).`)
+        aviso.current(`Tudo certo: Aplicações já está em dia com os portais (${r.sem_mudanca || 0} candidatura(s) conferida(s)).`)
         fechar.current()
       }
     } catch (err) {
@@ -124,10 +124,10 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
       onQuadroMudou()
       if (j.erros?.length) {
         setErro("Não deu para gravar: " + j.erros.join(" · "))
-        onAviso(`Quadro atualizado (${j.aplicados}): ${lista}. Com erro: ${j.erros.length}.`, "erro")
+        onAviso(`Aplicações atualizadas (${j.aplicados}): ${lista}. Com erro: ${j.erros.length}.`, "erro")
         await carregar()
       } else {
-        onAviso(`Quadro atualizado (${j.aplicados}): ${lista}.`)
+        onAviso(`Aplicações atualizadas (${j.aplicados}): ${lista}.`)
         onClose()
       }
     })
@@ -152,8 +152,8 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
               </h3>
               <p className="text-xs text-slate-500">
                 Lê o andamento das suas candidaturas na Gupy e no Indeed, numa janela do navegador só da ferramenta, com o
-                login feito por você. Só leitura: nada é clicado nem enviado nos portais, e só o que você marcar vai para o
-                quadro.
+                login feito por você. Só leitura: nada é clicado nem enviado nos portais, e só o que você marcar vai para
+                Aplicações.
               </p>
             </div>
           </div>
@@ -174,7 +174,7 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
           {itens.length > 0 && (
             <p role="status" className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900">
               <b>Encontrei {itens.length} mudança(s) nos portais.</b> Confira e clique em Aplicar: só o que estiver marcado é
-              gravado no quadro.
+              gravado em Aplicações.
             </p>
           )}
 
@@ -317,7 +317,7 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
                   })}
                 </section>
               ))}
-              {!r.itens.length && <p className={DICA}>Nada a mudar: o quadro já está em dia com os portais.</p>}
+              {!r.itens.length && <p className={DICA}>Nada a mudar: Aplicações já está em dia com os portais.</p>}
               {r.sem_mudanca > 0 && <p className={DICA}>{r.sem_mudanca} candidatura(s) já estavam em dia.</p>}
               {r.historico.length > 0 && (
                 <p className="flex items-center gap-2 flex-wrap">

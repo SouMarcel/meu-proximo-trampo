@@ -587,7 +587,7 @@ export default function TriageReport({
                           disabled={!podeGravar}
                           onClick={() => onSeguirVaga(vaga.id)}
                           className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-xs shadow-indigo-600/30 transition w-full sm:w-auto"
-                          title="Mover para a coluna Salva no seu Quadro"
+                          title="Mover para a coluna Salva de Aplicações"
                         >
                           <Check className="w-3.5 h-3.5" />
                           <span>Seguir com a vaga</span>
@@ -654,7 +654,7 @@ export default function TriageReport({
                           disabled={!podeGravar}
                           onClick={() => onSeguirVaga(vaga.id)}
                           className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800 transition w-full sm:w-auto disabled:opacity-50"
-                          title="Seguir com a vaga mesmo fora dos critérios: vai para a coluna Salva do quadro"
+                          title="Seguir com a vaga mesmo fora dos critérios: vai para a coluna Salva de Aplicações"
                         >
                           <Check className="w-3.5 h-3.5" />
                           <span>Seguir com a vaga</span>

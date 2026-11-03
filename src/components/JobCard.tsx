@@ -232,7 +232,7 @@ export default function JobCard({
               disabled={!podeGravar}
               onClick={() => setConfirmarRemocao(true)}
               className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition disabled:opacity-50"
-              title="Remover do quadro"
+              title="Remover de Aplicações"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -252,7 +252,7 @@ export default function JobCard({
           }}
           className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl bg-slate-900/75 dark:bg-slate-950/80 backdrop-blur-[2px] p-4 cursor-default"
         >
-          <span className="text-xs font-medium text-white">Remover do quadro?</span>
+          <span className="text-xs font-medium text-white">Remover de Aplicações?</span>
           <button
             autoFocus
             disabled={!podeGravar}

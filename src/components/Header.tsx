@@ -86,7 +86,7 @@ export default function Header({
                 Meu Próximo Trampo
               </span>
               <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-                Busca de vagas, nota de aderência e quadro de candidaturas
+                Busca de vagas, nota de aderência e acompanhamento das aplicações
               </p>
             </div>
           </div>
@@ -143,7 +143,7 @@ export default function Header({
                 onClick={onOpenSearchModal}
                 disabled={Boolean(motivoBuscaDesligada)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                title={motivoBuscaDesligada || "Consultar os portais com os seus filtros e gravar as vagas novas no relatório"}
+                title={motivoBuscaDesligada || "Consultar os portais com os seus filtros e gravar as vagas novas em Vagas Nacionais e Vagas Internacionais"}
               >
                 <Search className="w-3.5 h-3.5 text-indigo-500" />
                 <span className="hidden sm:inline">Buscar vagas</span>
@@ -172,7 +172,7 @@ export default function Header({
               <button
                 onClick={onOpenAccountsModal}
                 className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition"
-                title="Atualizar o quadro com o andamento das suas candidaturas na Gupy e no Indeed"
+                title="Atualizar Aplicações com o andamento das suas candidaturas na Gupy e no Indeed"
               >
                 <div className="flex items-center gap-1.5">
                   <Link2 className="w-3.5 h-3.5 text-indigo-500" />

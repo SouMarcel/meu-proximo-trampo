@@ -69,7 +69,7 @@ export default function AndamentoBusca({ estado: e, iaErro, onCancelar, onTentar
           <Loader2 className="w-4 h-4 animate-spin shrink-0" />
           <span>
             <b>Busca em andamento {e.origem === "pagina" ? "pela página" : "no terminal ou no chat"}</b>
-            {e.inicio ? ` desde ${horaDe(e.inicio)}` : ""}. O relatório se atualiza quando ela terminar.
+            {e.inicio ? ` desde ${horaDe(e.inicio)}` : ""}. Vagas Nacionais e Vagas Internacionais se atualizam quando ela terminar.
           </span>
         </p>
       </div>
@@ -90,7 +90,7 @@ export default function AndamentoBusca({ estado: e, iaErro, onCancelar, onTentar
         : login
           ? `Aguardando login${e.login?.rotulo ? ` no ${e.login.rotulo}` : ""}: entre na janela da ferramenta${faltam}.`
           : s === "gravando"
-            ? "Gravando no relatório…"
+            ? "Gravando as vagas…"
             : s === "descricoes" && e.descricoes
               ? `Lendo as descrições das vagas: ${e.descricoes.lidas} de ${e.descricoes.total}.`
               : c?.portal

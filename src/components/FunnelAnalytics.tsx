@@ -190,13 +190,13 @@ export default function FunnelAnalytics({ vagas }: FunnelAnalyticsProps) {
               text: "text-slate-700 dark:text-slate-300",
             },
             {
-              label: "2. Salvas no Quadro",
+              label: "2. Salvas em Aplicações",
               val: metrics.salvas,
               bg: "bg-slate-200 dark:bg-slate-700",
               text: "text-slate-800 dark:text-slate-200",
             },
             {
-              label: "3. Aplicações",
+              label: "3. Aplicações enviadas",
               val: metrics.aplicadas,
               bg: "bg-blue-100 dark:bg-blue-950",
               text: "text-blue-700 dark:text-blue-300",

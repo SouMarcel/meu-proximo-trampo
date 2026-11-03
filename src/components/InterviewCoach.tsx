@@ -182,7 +182,7 @@ export default function InterviewCoach({ vagas, vagaId, onEscolherVaga, onAviso,
       <div className={SEC}>
         <h3 className={H}>Preparar entrevista</h3>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Nenhuma vaga no quadro ainda. Siga com uma vaga no Relatório para preparar a entrevista dela.
+          Nenhuma vaga em Aplicações ainda. Siga com uma vaga em Vagas Nacionais ou Vagas Internacionais para preparar a entrevista dela.
         </p>
       </div>
     )

@@ -293,7 +293,7 @@ function Pagina({
     gravar(
       id,
       { triagem: "seguir", etapa: "salva", etapa_em: hoje(), triada_em: hoje() },
-      'Vaga no quadro, na coluna "Salva".',
+      'Vaga em Aplicações, na coluna "Salva".',
     )
 
   const handleNaoSeguirVaga = (id: string) =>
@@ -358,7 +358,7 @@ function Pagina({
         ),
       )
       if (detalheId === id) setDetalheId(null)
-      showToast("Vaga removida do quadro.")
+      showToast("Vaga removida de Aplicações.")
     } catch (e) {
       avisarErro(e, "Não deu para remover a vaga.")
     }
