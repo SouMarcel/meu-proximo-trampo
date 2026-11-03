@@ -280,6 +280,8 @@ certificações e o tempo de experiência da seleção.
   - na leitura, `LOTE_LEITURA = 5`, o lote dividido ao meio quando volta ilegível ou com vagas de fora,
     `ILEGIVEIS_SEGUIDAS = 3` e a última resposta ilegível em `.cache/`;
   - a regra da `frase` curta na skill;
+  - na validação, "Experiência com X", "Conhecimento em X" e afins viram a habilidade X, e os códigos com acento
+    ("avançado", "Pós-graduação", "Comportamental") valem, como veio da IA gratuita no diagnóstico;
   - testes em `tests/test_requisitos.py`.
 
 ## Dependencies & Execution Order

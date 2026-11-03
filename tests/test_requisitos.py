@@ -145,8 +145,12 @@ class TestValidar(unittest.TestCase):
                                        {"nome": "Vivência com APIs"}, {"nome": "3 years of Python"},
                                        {"nome": "Gestão de projetos", "exigida": True}],
                        "certificacoes": [{"nome": "Experiência em auditoria"}, {"nome": "PMP"}]})
-        self.assertEqual([h["nome"] for h in r["habilidades"]], ["Gestão de projetos"])
-        self.assertTrue(r["habilidades"][0]["exigida"])
+        # o tempo sai; "Experiência com SQL" e "Conhecimento em Excel" viram o assunto
+        self.assertEqual([h["nome"] for h in r["habilidades"]], ["SQL", "Excel", "APIs", "Gestão de projetos"])
+        self.assertTrue(r["habilidades"][3]["exigida"])
+        r2 = R.validar({"habilidades": [{"nome": "Conhecimento Seguros"}, {"nome": "Experiência sólida em liderança"},
+                                        {"nome": "Experiência"}, {"nome": "Domínio de Python"}]})
+        self.assertEqual([h["nome"] for h in r2["habilidades"]], ["Seguros", "Liderança", "Python"])
         self.assertEqual([c["nome"] for c in r["certificacoes"]], ["PMP"])
 
     def test_tipos_limites_e_repeticao(self):
@@ -173,6 +177,17 @@ class TestValidar(unittest.TestCase):
         self.assertNotIn("formacao", sem)
         nulo = R.validar({"experiencia": {"anos": None, "frase": "experiência sólida"}})
         self.assertIsNone(nulo["experiencia"]["anos"])
+
+    def test_codigos_com_acento(self):  # o que as IAs gratuitas costumam mandar
+        r = R.validar({"habilidades": [{"nome": "Comunicação", "tipo": "Comportamental"}],
+                       "certificacoes": [{"nome": "PMP", "tipo": "Certificação"}],
+                       "formacao": {"nivel": "Pós-graduação", "areas": []},
+                       "idiomas": [{"idioma": "Inglês", "nivel": "avançado"}, {"idioma": "Espanhol", "nivel": "Básico"}]})
+        self.assertEqual((r["habilidades"][0]["tipo"], r["certificacoes"][0]["tipo"], r["formacao"]["nivel"]),
+                         ("comportamental", "certificacao", "pos"))
+        self.assertEqual([(i["idioma"], i["nivel"]) for i in r["idiomas"]], [("Inglês", "fluente"), ("Espanhol", "basico")])
+        self.assertEqual(R.validar({"formacao": {"nivel": "Ensino superior"}})["formacao"]["nivel"], "graduacao")
+        self.assertNotIn("formacao", R.validar({"formacao": {"nivel": None}}))
 
     def test_objeto_ausente_e_provedor(self):
         self.assertIsNone(R.validar(None))

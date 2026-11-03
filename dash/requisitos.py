@@ -73,6 +73,19 @@ FORA_DO_FORMATO = ("a resposta da IA veio fora do formato esperado; tente de nov
 EXPERIENCIA = re.compile(r"^(anos?\b|experiencias?\b|vivencias?\b|conhecimentos?\s+(em|de|com|sobre)\b|"
                          r"years?\b|experience[sd]?\b|minimo\s+de\b|pelo\s+menos\b|at\s+least\b)")
 TEMPO = re.compile(r"\b\d+\s*\+?\s*(anos?|years?|meses|months?)\b")
+# "Experiência com SQL", "Conhecimento em seguros": o assunto é a habilidade (FR-002); o resto sai
+PREFIXO = re.compile(r"^(?:experi[êe]ncias?|viv[êe]ncias?|conhecimentos?|dom[íi]nio|familiaridade|no[çc][õo]es|"
+                     r"experience|knowledge|familiarity)\b(?:\s+(?:s[óo]lid[ao]s?|comprovad[ao]s?|pr[ée]vi[ao]s?|"
+                     r"pr[áa]tic[ao]s?|avan[çc]ad[ao]s?|b[áa]sic[ao]s?|t[ée]cnic[ao]s?|profissional|strong|solid|proven|"
+                     r"deep|hands-on))*\s*(?:em|de|com|sobre|no|na|nos|nas|do|da|dos|das|in|with|of)?\s*", re.I)
+CODIGOS_FORMACAO = {"tecnico": "tecnico", "curso tecnico": "tecnico", "graduacao": "graduacao", "superior": "graduacao",
+                    "ensino superior": "graduacao", "bacharelado": "graduacao", "tecnologo": "graduacao", "pos": "pos",
+                    "pos graduacao": "pos", "posgraduacao": "pos", "especializacao": "pos", "mba": "pos",
+                    "mestrado": "mestrado", "doutorado": "doutorado"}
+CODIGOS_IDIOMA = {"basico": "basico", "intermediario": "intermediario", "fluente": "fluente", "avancado": "fluente",
+                  "nativo": "nativo", "bilingue": "nativo"}
+CODIGOS_TIPO = {"tecnica": "tecnica", "tecnico": "tecnica", "hard skill": "tecnica", "comportamental": "comportamental",
+                "soft skill": "comportamental", "certificacao": "certificacao", "curso": "curso"}
 SECAO_HABILIDADES = re.compile(r"^(habilidades|competencias|skills)\b")
 SECAO_CERTIFICACOES = re.compile(r"^(certificacoes|certificacao|certificados|cursos|certifications)\b")
 INICIO_REGRAS, FIM_REGRAS = "   **Os requisitos**", "   Critérios da nota"
@@ -105,6 +118,18 @@ def _fora_da_lista(nome: str) -> bool:
     return bool(EXPERIENCIA.match(n) or TEMPO.search(n) or chave((n.split() or [""])[0]) in IDIOMA_PT)
 
 
+def _codigo(valor) -> str:
+    """O valor que a IA mandou, como código: sem acento, minúsculas, hífen como espaço ("Pós-graduação" = "pos
+    graduacao")."""
+    return re.sub(r"[\s_-]+", " ", conferir.norm(valor if isinstance(valor, str) else "")).strip()
+
+
+def _assunto(nome: str) -> str:
+    """O nome sem "Experiência com", "Conhecimento em" e afins: fica o assunto."""
+    resto = PREFIXO.sub("", nome, count=1).strip(" :-–—")
+    return resto[:1].upper() + resto[1:] if resto != nome else nome
+
+
 def _idioma(nome: str) -> str:
     t = _texto(nome, 30)
     return IDIOMA_PT.get(chave(t), t[:1].upper() + t[1:])
@@ -112,7 +137,7 @@ def _idioma(nome: str) -> str:
 
 # ---------------------------------------------------------------- validação
 
-def _itens(lista, tipos: tuple, padrao: str, maximo: int, tamanho: int) -> list[dict]:
+def _itens(lista, tipos: tuple, padrao: str, maximo: int, tamanho: int, assunto: bool = False) -> list[dict]:
     saida, vistos = [], {}
     for x in lista if isinstance(lista, list) else []:
         if isinstance(x, str):
@@ -120,13 +145,16 @@ def _itens(lista, tipos: tuple, padrao: str, maximo: int, tamanho: int) -> list[
         if not isinstance(x, dict):
             continue
         nome = _texto(x.get("nome"), tamanho)
+        if assunto:
+            nome = _assunto(nome)
         k = chave(nome)
         if not k or _fora_da_lista(nome):
             continue
         if k in vistos:  # a mesma coisa duas vezes na vaga: uma só, exigida se alguma for
             vistos[k]["exigida"] = vistos[k]["exigida"] or _sim(x.get("exigida"))
             continue
-        item = {"nome": nome, "tipo": x.get("tipo") if x.get("tipo") in tipos else padrao,
+        tipo = CODIGOS_TIPO.get(_codigo(x.get("tipo")))
+        item = {"nome": nome, "tipo": tipo if tipo in tipos else padrao,
                 "exigida": _sim(x.get("exigida"))}
         vistos[k] = item
         saida.append(item)
@@ -155,7 +183,8 @@ def _experiencia(e) -> dict | None:
 
 
 def _formacao(f) -> dict | None:
-    if not isinstance(f, dict) or f.get("nivel") not in FORMACAO:
+    nivel = CODIGOS_FORMACAO.get(_codigo(f.get("nivel"))) if isinstance(f, dict) else None
+    if nivel is None:
         return None
     areas, vistas = [], set()
     for a in f.get("areas") if isinstance(f.get("areas"), list) else []:
@@ -163,7 +192,7 @@ def _formacao(f) -> dict | None:
         if chave(t) and chave(t) not in vistas:
             vistas.add(chave(t))
             areas.append(t)
-    return {"nivel": f["nivel"], "areas": areas[:MAX_AREAS], "frase": _texto(f.get("frase"), 200)}
+    return {"nivel": nivel, "areas": areas[:MAX_AREAS], "frase": _texto(f.get("frase"), 200)}
 
 
 def _idiomas(lista) -> list[dict]:
@@ -173,8 +202,8 @@ def _idiomas(lista) -> list[dict]:
         if not isinstance(x, dict):
             continue
         nome = _idioma(x.get("idioma"))
-        nivel = "fluente" if x.get("nivel") == "avancado" else x.get("nivel")
-        if not chave(nome) or nivel not in NIVEIS_IDIOMA:
+        nivel = CODIGOS_IDIOMA.get(_codigo(x.get("nivel")))
+        if not chave(nome) or nivel is None:
             continue
         atual = por.get(chave(nome))
         if atual is None or ordem.index(nivel) > ordem.index(atual["nivel"]):
@@ -186,7 +215,7 @@ def validar(r, provedor="", modelo="") -> dict | None:
     """Os requisitos limpos (data-model §1), ou None se não vier um objeto. O que não vale é cortado; o resto fica."""
     if not isinstance(r, dict):
         return None
-    limpo = {"habilidades": _itens(r.get("habilidades"), TIPOS_HABILIDADE, "tecnica", MAX_HABILIDADES, 60),
+    limpo = {"habilidades": _itens(r.get("habilidades"), TIPOS_HABILIDADE, "tecnica", MAX_HABILIDADES, 60, True),
              "certificacoes": _itens(r.get("certificacoes"), TIPOS_CERTIFICACAO, "curso", MAX_CERTIFICACOES, 80),
              "idiomas": _idiomas(r.get("idiomas"))}
     for campo, limpar in (("experiencia", _experiencia), ("formacao", _formacao)):
