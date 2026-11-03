@@ -57,6 +57,9 @@ identificar a vaga com melhor compatibilidade" (02/11/2026). Decisões da mesma 
 - Q: O banner grande do topo fica como? → A: Vira uma linha compacta com os números (vagas, remotas, com visto), para a
   lista começar mais perto do topo, como na aba nacional.
 - Q: Os filtros e a ordem da Internacional se misturam com os da nacional? → A: Não. Cada aba guarda os seus.
+- Pedido durante o teste (02/11): no menu, "Relatório de Vagas (Triagem)" vira **Vagas Nacionais**, "Internacional"
+  vira **Vagas Internacionais** e "Quadro de Candidaturas" vira **Aplicações**. A ordem passa a ser Vagas Nacionais,
+  Vagas Internacionais, Aplicações, Preparador de Entrevistas e Métricas & Funil (FR-015).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -223,6 +226,9 @@ por exemplo, não faz sentido nas vagas do Brasil).
   - o aviso de busca internacional desligada e o contador da aba na navegação.
 - **FR-014**: Os textos que descrevem a aba Internacional (README e README do dashboard) MUST citar as abas internas, a
   ordem e os filtros novos.
+- **FR-015**: O menu de abas MUST mostrar, nesta ordem: Vagas Nacionais (o antigo Relatório de Vagas), Vagas
+  Internacionais, Aplicações (o antigo Quadro de Candidaturas), Preparador de Entrevistas e Métricas & Funil. Os
+  contadores de cada aba e a aba que abre primeiro (Vagas Nacionais) não mudam.
 
 ### Key Entities
 

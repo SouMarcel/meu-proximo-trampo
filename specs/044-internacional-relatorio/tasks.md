@@ -130,6 +130,11 @@ aba delas.
   - merge na branch pessoal;
   - o build em `dash/front/` sem commit;
   - o dashboard reiniciado.
+- [X] T019 `FR/src/components/NavigationTabs.tsx` (FR-015, pedido durante o teste):
+  - os rótulos Vagas Nacionais, Vagas Internacionais e Aplicações;
+  - a ordem Vagas Nacionais, Vagas Internacionais, Aplicações, Preparador de Entrevistas e Métricas & Funil;
+  - o texto de Filtros da busca que cita a aba passa a dizer "Vagas Internacionais";
+  - `tsc`, `vite build` e o build de teste de novo no dashboard da branch pessoal.
 
 ## Dependencies & Execution Order
 
