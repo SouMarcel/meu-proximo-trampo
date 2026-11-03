@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-02
 
-**Status**: Implementada em 2026-11-02; em teste na branch pessoal
+**Status**: Concluída em 2026-11-03 (validada pela pessoa na branch pessoal)
 
 **Input**: User description: "outra melhoria que preciso agora é a aba de vagas internacional deveria ter o mesmo
 layout das vagas nacionais, com filtro e ordenamento + os que já existem pois da forma que está fica difícil
