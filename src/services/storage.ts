@@ -13,6 +13,8 @@ const PREF_KEYS = {
   TRIAGE_FILTROS_INT: "mpt_pref_internacional_filtros",
   /** Seleção da seção O que as vagas pedem, em Métricas & Funil (spec 045). */
   METRICAS_REQUISITOS: "mpt_pref_metricas_requisitos",
+  /** Posição e tamanho dos widgets de Métricas & Funil (spec 046); o formato está em components/painel/layout.ts. */
+  METRICAS_LAYOUT: "mpt_pref_metricas_layout",
   THEME: "mpt_pref_theme",
 }
 
@@ -88,6 +90,27 @@ export class ScreenPreferencesService {
   public static saveSelecaoRequisitos(selecao: SelecaoRequisitos): void {
     try {
       localStorage.setItem(PREF_KEYS.METRICAS_REQUISITOS, JSON.stringify(selecao))
+    } catch {}
+  }
+
+  /** Layout dos widgets de Métricas & Funil (spec 046), como texto; quem lê é o lerLayout, tolerante. */
+  public static getLayoutMetricas(): string | null {
+    try {
+      return localStorage.getItem(PREF_KEYS.METRICAS_LAYOUT)
+    } catch {
+      return null
+    }
+  }
+
+  public static saveLayoutMetricas(texto: string): void {
+    try {
+      localStorage.setItem(PREF_KEYS.METRICAS_LAYOUT, texto)
+    } catch {}
+  }
+
+  public static apagarLayoutMetricas(): void {
+    try {
+      localStorage.removeItem(PREF_KEYS.METRICAS_LAYOUT)
     } catch {}
   }
 

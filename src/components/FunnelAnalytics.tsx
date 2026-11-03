@@ -1,7 +1,9 @@
 import React, { useMemo } from "react"
 import { TrendingUp, Award, PieChart, Briefcase, Sparkles } from "lucide-react"
 import type { Vaga } from "../types/api"
-import RequisitosVagas from "./RequisitosVagas"
+import { useRequisitos, widgetsRequisitos } from "./RequisitosVagas"
+import PainelWidgets from "./painel/PainelWidgets"
+import type { WidgetDef } from "./painel/layout"
 
 interface FunnelAnalyticsProps {
   vagas: Vaga[]
@@ -75,93 +77,76 @@ export default function FunnelAnalytics({ vagas, versao, onSelectVaga, onAbrirIA
     }
   }, [vagas])
 
-  return (
-    <div className="space-y-6">
-      {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Total Rastreadas</span>
-            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
-              <Briefcase className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-            {metrics.total}
-          </div>
-          <p className="text-xs text-slate-400">
-            Em todas as plataformas configuradas
-          </p>
-        </div>
+  const requisitos = useRequisitos({ vagas, versao })
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">
-              Conversão para Entrevista
-            </span>
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-purple-600 dark:text-purple-400">
-            {metrics.taxaEntrevista}%
-          </div>
-          <p className="text-xs text-slate-400">
-            {metrics.entrevistas} processos em fase de entrevistas
-          </p>
-        </div>
+  const numero = (
+    id: string,
+    titulo: string,
+    Icone: typeof Briefcase,
+    corIcone: string,
+    corValor: string,
+    valor: React.ReactNode,
+    nota: string,
+  ): WidgetDef => ({
+    id,
+    titulo,
+    tipo: "numero",
+    icone: <Icone className="w-4 h-4" />,
+    corIcone,
+    corpo: (
+      <>
+        {/* O tamanho do número segue a largura do widget, não a da janela (spec 046). */}
+        <div className={`text-2xl @[10rem]:text-3xl font-extrabold ${corValor}`}>{valor}</div>
+        <p className="text-xs text-slate-400">{nota}</p>
+      </>
+    ),
+  })
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">
-              Média de Aderência (IA)
-            </span>
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-              <Sparkles className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
-            {metrics.mediaAderencia}%
-          </div>
-          <p className="text-xs text-slate-400">
-            Compatibilidade com seu perfil e competências
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Ofertas & Propostas</span>
-            <div className="p-2 rounded-xl bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400">
-              <Award className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-teal-600 dark:text-teal-400">
-            {metrics.propostas + metrics.contratados}
-          </div>
-          <p className="text-xs text-slate-400">
-            {metrics.contratados > 0
-              ? `${metrics.contratados} contratado!`
-              : "Na fase final de decisão"}
-          </p>
-        </div>
-      </div>
-
-      {/* Funnel Visual Pipeline */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-base text-slate-900 dark:text-white">
-              Funil de Conversão de Candidaturas
-            </h3>
-            <p className="text-xs text-slate-500">
-              Acompanhe a passagem de vagas desde a descoberta até a contratação
-              final
-            </p>
-          </div>
-        </div>
-
-        {/* Pipeline Bar Step Chart */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
+  const widgets: WidgetDef[] = [
+    numero(
+      "total",
+      "Total Rastreadas",
+      Briefcase,
+      "bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400",
+      "text-slate-900 dark:text-white",
+      metrics.total,
+      "Em todas as plataformas configuradas",
+    ),
+    numero(
+      "conversao",
+      "Conversão para Entrevista",
+      TrendingUp,
+      "bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400",
+      "text-purple-600 dark:text-purple-400",
+      `${metrics.taxaEntrevista}%`,
+      `${metrics.entrevistas} processos em fase de entrevistas`,
+    ),
+    numero(
+      "aderencia",
+      "Média de Aderência (IA)",
+      Sparkles,
+      "bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400",
+      "text-emerald-600 dark:text-emerald-400",
+      `${metrics.mediaAderencia}%`,
+      "Compatibilidade com seu perfil e competências",
+    ),
+    numero(
+      "ofertas",
+      "Ofertas & Propostas",
+      Award,
+      "bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400",
+      "text-teal-600 dark:text-teal-400",
+      metrics.propostas + metrics.contratados,
+      metrics.contratados > 0 ? `${metrics.contratados} contratado!` : "Na fase final de decisão",
+    ),
+    {
+      id: "funil",
+      titulo: "Funil de Conversão de Candidaturas",
+      tipo: "secao",
+      subtitulo: "Acompanhe a passagem de vagas desde a descoberta até a contratação final",
+      corpo: (
+        // As etapas se arranjam em 2, 3 ou 6 colunas pela largura do widget (spec 046).
+        <div className="grid grid-cols-2 @md:grid-cols-3 @4xl:grid-cols-6 gap-3 pt-3">
           {[
             {
               label: "1. Descobertas",
@@ -202,42 +187,31 @@ export default function FunnelAnalytics({ vagas, versao, onSelectVaga, onAbrirIA
           ].map((step, idx) => (
             <div
               key={idx}
-              className={`p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 flex flex-col justify-between ${step.bg}`}
+              className={`p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 flex flex-col justify-between min-w-0 ${step.bg}`}
             >
-              <span className="text-xs font-semibold text-slate-500">
-                {step.label}
-              </span>
-              <div className={`text-2xl font-black mt-2 ${step.text}`}>
-                {step.val}
-              </div>
+              <span className="text-xs font-semibold text-slate-500 break-words">{step.label}</span>
+              <div className={`text-2xl font-black mt-2 ${step.text}`}>{step.val}</div>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* O que as vagas pedem (spec 045): substitui o quadro antigo de habilidades */}
-      <RequisitosVagas
-        vagas={vagas}
-        versao={versao}
-        onSelectVaga={onSelectVaga}
-        onAbrirIA={onAbrirIA}
-        onAbrirPerfil={onAbrirPerfil}
-      />
-
-      {/* Platforms */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-3">
-        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-          <PieChart className="w-4 h-4 text-indigo-500" />
-          <span>Distribuição por Plataforma</span>
-        </h4>
+      ),
+    },
+    // O que as vagas pedem (spec 045): a barra e os nove blocos, cada um um widget (spec 046)
+    ...widgetsRequisitos(requisitos, { onSelectVaga, onAbrirIA, onAbrirPerfil }),
+    {
+      id: "plataformas",
+      titulo: "Distribuição por Plataforma",
+      tipo: "bloco",
+      icone: <PieChart className="w-4 h-4 shrink-0 text-indigo-500" />,
+      corpo: (
         <div className="space-y-2 pt-1">
           {metrics.topPlataformas.map(([plat, count]) => {
             const pct = metrics.total > 0 ? Math.round((count / metrics.total) * 100) : 0
             return (
               <div key={plat} className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  <span>{plat}</span>
-                  <span>
+                <div className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="min-w-0 break-words">{plat}</span>
+                  <span className="whitespace-nowrap">
                     {count} vagas ({pct}%)
                   </span>
                 </div>
@@ -251,7 +225,9 @@ export default function FunnelAnalytics({ vagas, versao, onSelectVaga, onAbrirIA
             )
           })}
         </div>
-      </div>
-    </div>
-  )
+      ),
+    },
+  ]
+
+  return <PainelWidgets widgets={widgets} />
 }

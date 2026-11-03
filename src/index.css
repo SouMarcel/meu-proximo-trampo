@@ -20,3 +20,64 @@ body {
 .dark .rolagem-fina {
   scrollbar-color: var(--color-slate-700) transparent;
 }
+
+/* Widgets de Métricas & Funil (spec 046). A grade não tem espaço entre linhas: os 16 px até o widget de baixo ficam
+   dentro do item (pb-4), e a sombra do lugar novo e o canto de redimensionar descontam esse espaço. */
+
+/* Fora do modo de edição nada anima: a altura acompanha o conteúdo na hora, como numa página comum. */
+.painel-widgets .react-grid-layout,
+.painel-widgets .react-grid-layout .react-grid-item {
+  transition: none;
+}
+
+/* Na edição, só a posição anima (os outros abrindo espaço); a largura e a altura mudam na hora, sem rolagem piscando. */
+.painel-editando .react-grid-layout .react-grid-item:not(.resizing):not(.react-draggable-dragging) {
+  transition: transform 200ms ease;
+}
+
+.painel-widgets .react-grid-layout .react-draggable-dragging,
+.painel-widgets .react-grid-layout .resizing {
+  filter: drop-shadow(0 12px 20px rgb(15 23 42 / 0.18));
+}
+
+/* Sombra do lugar novo: tracejado índigo, sem o vermelho da biblioteca. */
+.painel-widgets .react-grid-layout .react-grid-item.react-grid-placeholder {
+  background: transparent;
+  opacity: 1;
+}
+
+.painel-widgets .react-grid-layout .react-grid-item.react-grid-placeholder::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 16px 0;
+  border: 2px dashed var(--color-indigo-400);
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--color-indigo-100) 60%, transparent);
+}
+
+.dark .painel-widgets .react-grid-layout .react-grid-item.react-grid-placeholder::before {
+  border-color: var(--color-indigo-500);
+  background: color-mix(in oklab, var(--color-indigo-950) 70%, transparent);
+}
+
+/* Canto de redimensionar: sempre à vista na edição, no canto do cartão (16 px acima do pé do item). */
+.painel-editando .react-grid-layout .react-grid-item > .react-resizable-handle {
+  opacity: 1;
+}
+
+.painel-widgets .react-grid-layout .react-grid-item > .react-resizable-handle.react-resizable-handle-se {
+  bottom: 16px;
+}
+
+.painel-widgets .react-grid-layout .react-grid-item > .react-resizable-handle::after {
+  right: 5px;
+  bottom: 5px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--color-slate-400);
+  border-bottom: 2px solid var(--color-slate-400);
+}
+
+.dark .painel-widgets .react-grid-layout .react-grid-item > .react-resizable-handle::after {
+  border-color: var(--color-slate-500);
+}

@@ -17,15 +17,13 @@ import { mensagemDeErro } from "../services/api"
 import * as api from "../services/api/requisitos"
 import type { ItemPedido, LinhaSua, MarcaPerfil, ResumoRequisitos } from "../services/api/requisitos"
 import { ScreenPreferencesService, type SelecaoRequisitos } from "../services/storage"
+import type { WidgetDef } from "./painel/layout"
 
-/** O que as vagas pedem (spec 045): o resumo vem pronto do servidor; aqui ficam o seletor, a leitura e as listas. */
-interface Props {
-  vagas: Vaga[]
-  versao?: number
-  onSelectVaga?: (v: Vaga) => void
-  onAbrirIA?: () => void
-  onAbrirPerfil?: () => void
-}
+/**
+ * O que as vagas pedem (spec 045), em dez widgets do painel (spec 046): a barra com o seletor e a leitura, e os nove
+ * blocos. O resumo vem pronto do servidor; o estado fica num hook só, para o seletor valer para os nove onde quer que
+ * eles estejam, e para mover um widget não recarregar o resumo nem parar a leitura.
+ */
 
 const VISIVEIS = 15
 const VISIVEIS_SUAS = { habilidades: 10, certificacoes: 6 }
@@ -63,25 +61,18 @@ const BOTAO = "px-2.5 py-1 rounded-lg font-medium transition"
 const BOTAO_LIGADO =
   "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
 const BOTAO_DESLIGADO = "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
-const CARTAO =
-  "bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-3 min-w-0"
+/** Listas longas: uma coluna, ou duas no widget largo (768 px ou mais), pela largura do widget (spec 046). */
+const LISTA_PEDIDA = "grid grid-cols-1 @3xl:grid-cols-2 gap-x-6 gap-y-2 items-start"
+const LISTA_SUAS = "grid grid-cols-1 @3xl:grid-cols-2 gap-x-3 gap-y-1.5 items-start"
 
 const porcento = (vagas: number, base: number) => (base > 0 ? Math.round((vagas / base) * 100) : 0)
-
-function Titulo({ icone, children }: { icone: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-      {icone}
-      <span>{children}</span>
-    </h4>
-  )
-}
 
 function Rodape({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] text-slate-400 pt-1">{children}</p>
 }
 
-export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA, onAbrirPerfil }: Props) {
+/** Estado e chamadas da seção: a seleção, o resumo, a leitura e o item aberto. */
+export function useRequisitos({ vagas, versao }: { vagas: Vaga[]; versao?: number }) {
   const [selecao, setSelecao] = useState<SelecaoRequisitos>(() => ScreenPreferencesService.getSelecaoRequisitos())
   const [dados, setDados] = useState<ResumoRequisitos | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -141,6 +132,37 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
 
   const alternar = (chave: string) => setAberto((a) => (a === chave ? null : chave))
 
+  return {
+    selecao,
+    dados,
+    erro,
+    pedindo,
+    aberto,
+    abaHab,
+    setAbaHab,
+    todas,
+    setTodas,
+    porId,
+    rodando,
+    mudarSelecao,
+    ler,
+    parar,
+    alternar,
+  }
+}
+
+export type EstadoRequisitos = ReturnType<typeof useRequisitos>
+
+interface Acoes {
+  onSelectVaga?: (v: Vaga) => void
+  onAbrirIA?: () => void
+  onAbrirPerfil?: () => void
+}
+
+/** Os dez widgets da seção, na ordem do layout padrão (data-model §1 da spec 046). */
+export function widgetsRequisitos(r: EstadoRequisitos, { onSelectVaga, onAbrirIA, onAbrirPerfil }: Acoes): WidgetDef[] {
+  const { selecao, dados, erro, pedindo, aberto, abaHab, setAbaHab, todas, setTodas, porId, rodando, alternar } = r
+
   /** As vagas que formam um número (FR-019): os ids do resumo casados com as vagas carregadas. */
   const listaDeVagas = (chave: string, rotulo: string, ids: string[]) => {
     if (aberto !== chave) return null
@@ -179,7 +201,7 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
   ) => {
     const pct = porcento(vagasItem, base)
     return (
-      <li key={chave} className="space-y-1">
+      <li key={chave} className="space-y-1 min-w-0">
         <button
           type="button"
           aria-expanded={aberto === chave}
@@ -227,7 +249,7 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
     if (itens.length === 0) return <p className="text-xs text-slate-400">Nenhum item nestas vagas.</p>
     return (
       <>
-        <ul className="space-y-2">
+        <ul className={LISTA_PEDIDA}>
           {mostrar.map((i) =>
             linha(`${grupo}:${i.chave}`, i.nome, i.vagas, base, i.ids, {
               exigida: i.exigida,
@@ -251,11 +273,11 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
 
   const suasLinhas = (grupo: string, linhas: LinhaSua[], limite: number) => (
     <>
-      <ul className="space-y-1.5">
+      <ul className={LISTA_SUAS}>
         {(todas[grupo] ? linhas : linhas.slice(0, limite)).map((i, n) => {
           const chave = `${grupo}:${n}:${i.linha}`
           return (
-            <li key={chave}>
+            <li key={chave} className="min-w-0">
               <button
                 type="button"
                 aria-expanded={aberto === chave}
@@ -314,7 +336,7 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
       <div className="space-y-1">
         <button
           type="button"
-          onClick={() => void ler()}
+          onClick={() => void r.ler()}
           disabled={!dados?.ia.ligada || pedindo}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -335,311 +357,349 @@ export default function RequisitosVagas({ vagas, versao, onSelectVaga, onAbrirIA
       </div>
     ) : null
 
-  const h = dados?.habilidades
-  const abaItens = h ? h[abaHab] : []
-
-  return (
-    <section className="space-y-4" aria-labelledby="titulo-requisitos">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-2xs space-y-3">
-        <div>
-          <h3 id="titulo-requisitos" className="font-bold text-base text-slate-900 dark:text-white">
-            O que as vagas pedem
-          </h3>
-          <p className="text-xs text-slate-500">
-            Habilidades, certificações, experiência e outros requisitos das vagas escolhidas abaixo.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Vagas">
-            <span className="font-semibold text-slate-500">Vagas:</span>
-            {OPCOES_VAGAS.map((o) => (
-              <button
-                key={o.valor}
-                type="button"
-                aria-pressed={selecao.vagas === o.valor}
-                onClick={() => mudarSelecao({ ...selecao, vagas: o.valor })}
-                className={`${BOTAO} ${selecao.vagas === o.valor ? BOTAO_LIGADO : BOTAO_DESLIGADO}`}
-              >
-                {o.rotulo}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Área">
-            <span className="font-semibold text-slate-500">Área:</span>
-            {OPCOES_AREA.map((o) => (
-              <button
-                key={o.valor}
-                type="button"
-                aria-pressed={selecao.area === o.valor}
-                onClick={() => mudarSelecao({ ...selecao, area: o.valor })}
-                className={`${BOTAO} ${selecao.area === o.valor ? BOTAO_LIGADO : BOTAO_DESLIGADO}`}
-              >
-                {o.rotulo}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {c ? (
-          <p className="text-xs text-slate-600 dark:text-slate-400">
-            Contando {c.com_requisitos} {c.com_requisitos === 1 ? "vaga" : "vagas"} com requisitos lidos, de {c.selecao}{" "}
-            nesta seleção
-            {extras.length ? ` · ${extras.join(" · ")}` : ""}
-          </p>
-        ) : null}
-
-        {rodando && leitura ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex-1 min-w-[12rem] space-y-1">
-              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Lendo {leitura.lidas} de {leitura.total} vagas…
-              </p>
-              <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <div
-                  className="h-full bg-indigo-600 rounded-full transition-all duration-500"
-                  style={{ width: `${porcento(leitura.lidas, leitura.total)}%` }}
-                />
-              </div>
-            </div>
+  const barra = (
+    <>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Vagas">
+          <span className="font-semibold text-slate-500">Vagas:</span>
+          {OPCOES_VAGAS.map((o) => (
             <button
+              key={o.valor}
               type="button"
-              onClick={() => void parar()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              aria-pressed={selecao.vagas === o.valor}
+              onClick={() => r.mudarSelecao({ ...selecao, vagas: o.valor })}
+              className={`${BOTAO} ${selecao.vagas === o.valor ? BOTAO_LIGADO : BOTAO_DESLIGADO}`}
             >
-              <Square className="w-3 h-3" />
-              Parar
+              {o.rotulo}
             </button>
-          </div>
-        ) : null}
-
-        {!rodando && leitura?.erro ? (
-          <p className="text-xs text-rose-700 dark:text-rose-300">
-            A leitura parou: {leitura.erro.motivo}. O que foi lido ficou gravado; clique de novo para continuar.
-          </p>
-        ) : null}
-        {!rodando && leitura?.parada && !leitura.erro && c && c.a_ler > 0 ? (
-          <p className="text-xs text-slate-600 dark:text-slate-400">
-            Leitura parada: {leitura.lidas} de {leitura.total} vagas lidas. Clique de novo para continuar.
-          </p>
-        ) : null}
-
-        {botaoLer}
-
-        {dados?.poucas && c ? (
-          <p className="text-xs text-amber-700 dark:text-amber-300">
-            Poucas vagas para tirar conclusão ({c.com_requisitos}).
-          </p>
-        ) : null}
-        {erro ? <p className="text-xs text-rose-700 dark:text-rose-300">{erro}</p> : null}
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Área">
+          <span className="font-semibold text-slate-500">Área:</span>
+          {OPCOES_AREA.map((o) => (
+            <button
+              key={o.valor}
+              type="button"
+              aria-pressed={selecao.area === o.valor}
+              onClick={() => r.mudarSelecao({ ...selecao, area: o.valor })}
+              className={`${BOTAO} ${selecao.area === o.valor ? BOTAO_LIGADO : BOTAO_DESLIGADO}`}
+            >
+              {o.rotulo}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {dados ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-          {temRequisitos && h ? (
-            <div className={`${CARTAO} md:col-span-2`}>
-              <Titulo icone={<ListChecks className="w-4 h-4 text-indigo-500" />}>Habilidades mais pedidas</Titulo>
-              <div className="flex flex-wrap gap-1.5 text-xs" role="group" aria-label="Tipo de habilidade">
-                {(
-                  [
-                    ["tecnicas", "Técnicas e ferramentas"],
-                    ["comportamentais", "Comportamentais"],
-                  ] as const
-                ).map(([k, rotulo]) => (
+      {c ? (
+        <p className="text-xs text-slate-600 dark:text-slate-400">
+          Contando {c.com_requisitos} {c.com_requisitos === 1 ? "vaga" : "vagas"} com requisitos lidos, de {c.selecao}{" "}
+          nesta seleção
+          {extras.length ? ` · ${extras.join(" · ")}` : ""}
+        </p>
+      ) : null}
+
+      {rodando && leitura ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[12rem] space-y-1">
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Lendo {leitura.lidas} de {leitura.total} vagas…
+            </p>
+            <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <div
+                className="h-full bg-indigo-600 rounded-full transition-all duration-500"
+                style={{ width: `${porcento(leitura.lidas, leitura.total)}%` }}
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void r.parar()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <Square className="w-3 h-3" />
+            Parar
+          </button>
+        </div>
+      ) : null}
+
+      {!rodando && leitura?.erro ? (
+        <p className="text-xs text-rose-700 dark:text-rose-300">
+          A leitura parou: {leitura.erro.motivo}. O que foi lido ficou gravado; clique de novo para continuar.
+        </p>
+      ) : null}
+      {!rodando && leitura?.parada && !leitura.erro && c && c.a_ler > 0 ? (
+        <p className="text-xs text-slate-600 dark:text-slate-400">
+          Leitura parada: {leitura.lidas} de {leitura.total} vagas lidas. Clique de novo para continuar.
+        </p>
+      ) : null}
+
+      {botaoLer}
+
+      {dados?.poucas && c ? (
+        <p className="text-xs text-amber-700 dark:text-amber-300">Poucas vagas para tirar conclusão ({c.com_requisitos}).</p>
+      ) : null}
+      {erro ? <p className="text-xs text-rose-700 dark:text-rose-300">{erro}</p> : null}
+    </>
+  )
+
+  // Os nove blocos aparecem sempre, para o layout da pessoa não pular (spec 046).
+  const semResumo = erro ? (
+    <p className="text-xs text-slate-400">O resumo não carregou; veja o aviso em O que as vagas pedem.</p>
+  ) : (
+    <p className="text-xs text-slate-400 flex items-center gap-1.5">
+      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      Montando o resumo…
+    </p>
+  )
+  const semRequisitos = <p className="text-xs text-slate-500">Ainda não há requisitos lidos nestas vagas.</p>
+  /** Corpo dos blocos que dependem de requisitos lidos. */
+  const comRequisitos = (corpo: (d: ResumoRequisitos) => React.ReactNode) =>
+    !dados ? semResumo : !temRequisitos ? semRequisitos : corpo(dados)
+  /** Corpo dos blocos que aparecem com o resumo, com ou sem requisitos lidos. */
+  const comResumo = (corpo: (d: ResumoRequisitos) => React.ReactNode) => (!dados ? semResumo : corpo(dados))
+
+  const icone = (I: typeof ListChecks, cor = "text-indigo-500") => <I className={`w-4 h-4 shrink-0 ${cor}`} />
+
+  return [
+    {
+      id: "requisitos",
+      titulo: "O que as vagas pedem",
+      tipo: "secao",
+      subtitulo: "Habilidades, certificações, experiência e outros requisitos das vagas escolhidas neste seletor.",
+      corpo: barra,
+    },
+    {
+      id: "habilidades",
+      titulo: "Habilidades mais pedidas",
+      tipo: "bloco",
+      icone: icone(ListChecks),
+      corpo: comRequisitos((d) => (
+        <>
+          <div className="flex flex-wrap gap-1.5 text-xs" role="group" aria-label="Tipo de habilidade">
+            {(
+              [
+                ["tecnicas", "Técnicas e ferramentas"],
+                ["comportamentais", "Comportamentais"],
+              ] as const
+            ).map(([k, rotulo]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={abaHab === k}
+                onClick={() => setAbaHab(k)}
+                className={`${BOTAO} ${abaHab === k ? BOTAO_LIGADO : BOTAO_DESLIGADO}`}
+              >
+                {rotulo} ({d.habilidades[k].length})
+              </button>
+            ))}
+          </div>
+          {listaPedida(`hab-${abaHab}`, d.habilidades[abaHab], d.habilidades.base)}
+          <Rodape>em {d.habilidades.base} vagas com requisitos lidos</Rodape>
+        </>
+      )),
+    },
+    {
+      id: "suas-habilidades",
+      titulo: "Suas habilidades",
+      tipo: "bloco",
+      icone: icone(UserCheck, "text-emerald-500"),
+      corpo: comResumo((d) =>
+        !d.suas.tem_secao ? (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500">
+              {d.suas.existe_perfil
+                ? "Seu perfil não tem a seção Habilidades e ferramentas. Abra Meu perfil para montar."
+                : "Você ainda não tem um perfil. Abra Meu perfil para montar."}
+            </p>
+            <button
+              type="button"
+              onClick={onAbrirPerfil}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Meu perfil
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              {temRequisitos
+                ? `${d.suas.aparecem} das suas ${d.suas.total} habilidades aparecem nestas vagas`
+                : "Leia os requisitos para ver quantas vagas pedem cada uma."}
+            </p>
+            {suasLinhas("sua-hab", d.suas.habilidades, VISIVEIS_SUAS.habilidades)}
+            {d.suas.certificacoes.length ? (
+              <>
+                <p className="text-xs font-semibold text-slate-500 pt-2">Suas certificações</p>
+                {suasLinhas("sua-cert", d.suas.certificacoes, VISIVEIS_SUAS.certificacoes)}
+              </>
+            ) : null}
+          </>
+        ),
+      ),
+    },
+    {
+      id: "certificacoes",
+      titulo: "Certificações e cursos",
+      tipo: "bloco",
+      icone: icone(Award),
+      corpo: comRequisitos((d) => (
+        <>
+          {listaPedida("cert", d.certificacoes.itens, d.certificacoes.base, true)}
+          <Rodape>em {d.certificacoes.base} vagas com requisitos lidos</Rodape>
+        </>
+      )),
+    },
+    {
+      id: "experiencia",
+      titulo: "Tempo de experiência",
+      tipo: "bloco",
+      icone: icone(Clock),
+      corpo: comRequisitos((d) => (
+        <>
+          <ul className="space-y-2">
+            {d.experiencia.faixas.map((f) =>
+              linha(`exp:${f.faixa}`, f.rotulo, f.vagas, d.experiencia.base, f.ids, {
+                destaque: f.faixa === d.experiencia.destaque,
+              }),
+            )}
+          </ul>
+          <Rodape>em {d.experiencia.base} vagas com requisitos lidos · o mínimo de anos que cada uma pede</Rodape>
+        </>
+      )),
+    },
+    {
+      id: "formacao",
+      titulo: "Formação",
+      tipo: "bloco",
+      icone: icone(GraduationCap),
+      corpo: comRequisitos((d) => (
+        <>
+          <ul className="space-y-2">
+            {d.formacao.niveis.map((n) => linha(`form:${n.nivel}`, n.rotulo, n.vagas, d.formacao.base, n.ids))}
+          </ul>
+          {d.formacao.areas.length ? (
+            <div className="space-y-1.5 pt-1">
+              <p className="text-xs font-semibold text-slate-500">Áreas mais citadas</p>
+              <div className="flex flex-wrap gap-1.5">
+                {d.formacao.areas.slice(0, 12).map((a) => (
                   <button
-                    key={k}
+                    key={a.nome}
                     type="button"
-                    aria-pressed={abaHab === k}
-                    onClick={() => setAbaHab(k)}
-                    className={`${BOTAO} ${abaHab === k ? BOTAO_LIGADO : BOTAO_DESLIGADO}`}
+                    aria-expanded={aberto === `area:${a.nome}`}
+                    onClick={() => alternar(`area:${a.nome}`)}
+                    className="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 break-words"
                   >
-                    {rotulo} ({h[k].length})
+                    {a.nome} · {a.vagas}
                   </button>
                 ))}
               </div>
-              {listaPedida(`hab-${abaHab}`, abaItens, h.base)}
-              <Rodape>em {h.base} vagas com requisitos lidos</Rodape>
+              {d.formacao.areas.map((a) => (
+                <React.Fragment key={a.nome}>{listaDeVagas(`area:${a.nome}`, a.nome, a.ids)}</React.Fragment>
+              ))}
             </div>
-          ) : (
-            <div className={`${CARTAO} md:col-span-2`}>
-              <Titulo icone={<ListChecks className="w-4 h-4 text-indigo-500" />}>Habilidades mais pedidas</Titulo>
-              <p className="text-xs text-slate-500">Ainda não há requisitos lidos nestas vagas.</p>
-            </div>
-          )}
-
-          <div className={CARTAO}>
-            <Titulo icone={<UserCheck className="w-4 h-4 text-emerald-500" />}>Suas habilidades</Titulo>
-            {!dados.suas.tem_secao ? (
-              <div className="space-y-2">
-                <p className="text-xs text-slate-500">
-                  {dados.suas.existe_perfil
-                    ? "Seu perfil não tem a seção Habilidades e ferramentas. Abra Meu perfil para montar."
-                    : "Você ainda não tem um perfil. Abra Meu perfil para montar."}
-                </p>
-                <button
-                  type="button"
-                  onClick={onAbrirPerfil}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  Meu perfil
-                </button>
-              </div>
-            ) : (
-              <>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  {temRequisitos
-                    ? `${dados.suas.aparecem} das suas ${dados.suas.total} habilidades aparecem nestas vagas`
-                    : "Leia os requisitos para ver quantas vagas pedem cada uma."}
-                </p>
-                {suasLinhas("sua-hab", dados.suas.habilidades, VISIVEIS_SUAS.habilidades)}
-                {dados.suas.certificacoes.length ? (
-                  <>
-                    <p className="text-xs font-semibold text-slate-500 pt-2">Suas certificações</p>
-                    {suasLinhas("sua-cert", dados.suas.certificacoes, VISIVEIS_SUAS.certificacoes)}
-                  </>
-                ) : null}
-              </>
-            )}
-          </div>
-
-          {temRequisitos ? (
-            <>
-              <div className={CARTAO}>
-                <Titulo icone={<Award className="w-4 h-4 text-indigo-500" />}>Certificações e cursos</Titulo>
-                {listaPedida("cert", dados.certificacoes.itens, dados.certificacoes.base, true)}
-                <Rodape>em {dados.certificacoes.base} vagas com requisitos lidos</Rodape>
-              </div>
-
-              <div className={CARTAO}>
-                <Titulo icone={<Clock className="w-4 h-4 text-indigo-500" />}>Tempo de experiência</Titulo>
-                <ul className="space-y-2">
-                  {dados.experiencia.faixas.map((f) =>
-                    linha(`exp:${f.faixa}`, f.rotulo, f.vagas, dados.experiencia.base, f.ids, {
-                      destaque: f.faixa === dados.experiencia.destaque,
-                    }),
-                  )}
-                </ul>
-                <Rodape>em {dados.experiencia.base} vagas com requisitos lidos · o mínimo de anos que cada uma pede</Rodape>
-              </div>
-
-              <div className={CARTAO}>
-                <Titulo icone={<GraduationCap className="w-4 h-4 text-indigo-500" />}>Formação</Titulo>
-                <ul className="space-y-2">
-                  {dados.formacao.niveis.map((n) =>
-                    linha(`form:${n.nivel}`, n.rotulo, n.vagas, dados.formacao.base, n.ids),
-                  )}
-                </ul>
-                {dados.formacao.areas.length ? (
-                  <div className="space-y-1.5 pt-1">
-                    <p className="text-xs font-semibold text-slate-500">Áreas mais citadas</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {dados.formacao.areas.slice(0, 12).map((a) => (
-                        <button
-                          key={a.nome}
-                          type="button"
-                          aria-expanded={aberto === `area:${a.nome}`}
-                          onClick={() => alternar(`area:${a.nome}`)}
-                          className="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 break-words"
-                        >
-                          {a.nome} · {a.vagas}
-                        </button>
-                      ))}
-                    </div>
-                    {dados.formacao.areas.map((a) => (
-                      <React.Fragment key={a.nome}>{listaDeVagas(`area:${a.nome}`, a.nome, a.ids)}</React.Fragment>
-                    ))}
-                  </div>
-                ) : null}
-                <Rodape>em {dados.formacao.base} vagas com requisitos lidos · o mínimo que cada uma pede</Rodape>
-              </div>
-            </>
           ) : null}
-
-          <div className={CARTAO}>
-            <Titulo icone={<Languages className="w-4 h-4 text-indigo-500" />}>Idiomas</Titulo>
-            {dados.idiomas.itens.length ? (
-              <ul className="space-y-2">
-                {dados.idiomas.itens.map((i) =>
-                  linha(`idi:${i.idioma}`, i.idioma, i.vagas, dados.idiomas.base, i.ids, {
-                    filhos: (
-                      <>
-                        <div className="flex flex-wrap gap-1.5 pl-1">
-                          {i.niveis.map((n) => (
-                            <button
-                              key={n.nivel}
-                              type="button"
-                              aria-expanded={aberto === `idi:${i.idioma}:${n.nivel}`}
-                              onClick={() => alternar(`idi:${i.idioma}:${n.nivel}`)}
-                              className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                            >
-                              {n.rotulo} {n.vagas}
-                            </button>
-                          ))}
-                        </div>
+          <Rodape>em {d.formacao.base} vagas com requisitos lidos · o mínimo que cada uma pede</Rodape>
+        </>
+      )),
+    },
+    {
+      id: "idiomas",
+      titulo: "Idiomas",
+      tipo: "bloco",
+      icone: icone(Languages),
+      corpo: comResumo((d) => (
+        <>
+          {d.idiomas.itens.length ? (
+            <ul className="space-y-2">
+              {d.idiomas.itens.map((i) =>
+                linha(`idi:${i.idioma}`, i.idioma, i.vagas, d.idiomas.base, i.ids, {
+                  filhos: (
+                    <>
+                      <div className="flex flex-wrap gap-1.5 pl-1">
                         {i.niveis.map((n) => (
-                          <React.Fragment key={n.nivel}>
-                            {listaDeVagas(`idi:${i.idioma}:${n.nivel}`, `${i.idioma} ${n.rotulo.toLowerCase()}`, n.ids)}
-                          </React.Fragment>
+                          <button
+                            key={n.nivel}
+                            type="button"
+                            aria-expanded={aberto === `idi:${i.idioma}:${n.nivel}`}
+                            onClick={() => alternar(`idi:${i.idioma}:${n.nivel}`)}
+                            className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                          >
+                            {n.rotulo} {n.vagas}
+                          </button>
                         ))}
-                      </>
-                    ),
-                  }),
-                )}
-              </ul>
-            ) : (
-              <p className="text-xs text-slate-400">Nenhum idioma pedido nestas vagas.</p>
-            )}
-            <Rodape>em {dados.idiomas.base} vagas</Rodape>
-          </div>
-
-          {/* Senioridade e modelo em blocos separados: "Remoto" não é senioridade (pedido no teste da spec 045) */}
-          <div className={CARTAO}>
-            <Titulo icone={<Briefcase className="w-4 h-4 text-indigo-500" />}>Senioridade</Titulo>
-            {dados.senioridade.itens.length ? (
-              <ul className="space-y-2">
-                {dados.senioridade.itens.map((i) =>
-                  linha(`sen:${i.valor}`, i.rotulo, i.vagas, dados.senioridade.base, i.ids),
-                )}
-              </ul>
-            ) : (
-              <p className="text-xs text-slate-400">Nenhuma vaga desta seleção diz a senioridade.</p>
-            )}
-            <Rodape>em {dados.senioridade.base} vagas analisadas</Rodape>
-          </div>
-
-          <div className={CARTAO}>
-            <Titulo icone={<MapPin className="w-4 h-4 text-indigo-500" />}>Modelo de trabalho</Titulo>
-            {dados.modelo.itens.length ? (
-              <ul className="space-y-2">
-                {dados.modelo.itens.map((i) => linha(`mod:${i.valor}`, i.rotulo, i.vagas, dados.modelo.base, i.ids))}
-              </ul>
-            ) : (
-              <p className="text-xs text-slate-400">Nenhuma vaga desta seleção diz o modelo de trabalho.</p>
-            )}
-            <Rodape>em {dados.modelo.base} vagas analisadas</Rodape>
-          </div>
-
-          <div className={CARTAO}>
-            <Titulo icone={<BookOpen className="w-4 h-4 text-indigo-500" />}>Tipo de contratação</Titulo>
-            {dados.contratacao.itens.length ? (
-              <ul className="space-y-2">
-                {dados.contratacao.itens.map((i) =>
-                  linha(`con:${i.valor}`, i.rotulo, i.vagas, dados.contratacao.base, i.ids),
-                )}
-              </ul>
-            ) : (
-              <p className="text-xs text-slate-400">Nenhuma vaga desta seleção diz o tipo de contratação.</p>
-            )}
-            <Rodape>em {dados.contratacao.base} vagas analisadas</Rodape>
-          </div>
-        </div>
-      ) : !erro ? (
-        <p className="text-xs text-slate-400 flex items-center gap-1.5">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          Montando o resumo…
-        </p>
-      ) : null}
-    </section>
-  )
+                      </div>
+                      {i.niveis.map((n) => (
+                        <React.Fragment key={n.nivel}>
+                          {listaDeVagas(`idi:${i.idioma}:${n.nivel}`, `${i.idioma} ${n.rotulo.toLowerCase()}`, n.ids)}
+                        </React.Fragment>
+                      ))}
+                    </>
+                  ),
+                }),
+              )}
+            </ul>
+          ) : (
+            <p className="text-xs text-slate-400">Nenhum idioma pedido nestas vagas.</p>
+          )}
+          <Rodape>em {d.idiomas.base} vagas</Rodape>
+        </>
+      )),
+    },
+    // Senioridade e modelo em blocos separados: "Remoto" não é senioridade (pedido no teste da spec 045)
+    {
+      id: "senioridade",
+      titulo: "Senioridade",
+      tipo: "bloco",
+      icone: icone(Briefcase),
+      corpo: comResumo((d) => (
+        <>
+          {d.senioridade.itens.length ? (
+            <ul className="space-y-2">
+              {d.senioridade.itens.map((i) => linha(`sen:${i.valor}`, i.rotulo, i.vagas, d.senioridade.base, i.ids))}
+            </ul>
+          ) : (
+            <p className="text-xs text-slate-400">Nenhuma vaga desta seleção diz a senioridade.</p>
+          )}
+          <Rodape>em {d.senioridade.base} vagas analisadas</Rodape>
+        </>
+      )),
+    },
+    {
+      id: "modelo",
+      titulo: "Modelo de trabalho",
+      tipo: "bloco",
+      icone: icone(MapPin),
+      corpo: comResumo((d) => (
+        <>
+          {d.modelo.itens.length ? (
+            <ul className="space-y-2">
+              {d.modelo.itens.map((i) => linha(`mod:${i.valor}`, i.rotulo, i.vagas, d.modelo.base, i.ids))}
+            </ul>
+          ) : (
+            <p className="text-xs text-slate-400">Nenhuma vaga desta seleção diz o modelo de trabalho.</p>
+          )}
+          <Rodape>em {d.modelo.base} vagas analisadas</Rodape>
+        </>
+      )),
+    },
+    {
+      id: "contratacao",
+      titulo: "Tipo de contratação",
+      tipo: "bloco",
+      icone: icone(BookOpen),
+      corpo: comResumo((d) => (
+        <>
+          {d.contratacao.itens.length ? (
+            <ul className="space-y-2">
+              {d.contratacao.itens.map((i) => linha(`con:${i.valor}`, i.rotulo, i.vagas, d.contratacao.base, i.ids))}
+            </ul>
+          ) : (
+            <p className="text-xs text-slate-400">Nenhuma vaga desta seleção diz o tipo de contratação.</p>
+          )}
+          <Rodape>em {d.contratacao.base} vagas analisadas</Rodape>
+        </>
+      )),
+    },
+  ]
 }
