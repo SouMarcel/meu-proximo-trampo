@@ -1,25 +1,19 @@
 import React, { useMemo } from "react"
-import {
-  TrendingUp,
-  Target,
-  Award,
-  CheckCircle2,
-  BarChart3,
-  PieChart,
-  ArrowRight,
-  Briefcase,
-  Calendar,
-  Clock,
-  Sparkles,
-} from "lucide-react"
-import type { Vaga, Etapa } from "../types/api"
+import { TrendingUp, Award, PieChart, Briefcase, Sparkles } from "lucide-react"
+import type { Vaga } from "../types/api"
+import RequisitosVagas from "./RequisitosVagas"
 
 interface FunnelAnalyticsProps {
   vagas: Vaga[]
   onNavigateToTab?: (tab: string) => void
+  /** Versão do banco: muda a cada gravação, e a seção O que as vagas pedem refaz o resumo (spec 045). */
+  versao?: number
+  onSelectVaga?: (v: Vaga) => void
+  onAbrirIA?: () => void
+  onAbrirPerfil?: () => void
 }
 
-export default function FunnelAnalytics({ vagas }: FunnelAnalyticsProps) {
+export default function FunnelAnalytics({ vagas, versao, onSelectVaga, onAbrirIA, onAbrirPerfil }: FunnelAnalyticsProps) {
   const metrics = useMemo(() => {
     const total = vagas.length
     const salvas = vagas.filter((v) => v.etapa === "salva").length
@@ -65,19 +59,6 @@ export default function FunnelAnalytics({ vagas }: FunnelAnalyticsProps) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
 
-    // Skills mais frequentes
-    const skillsMap: Record<string, number> = {}
-    vagas.forEach((v) => {
-      v.encaixe?.forEach((s) => {
-        const limpo = s.split(" ")[0].replace(/[^a-zA-Z0-9#+.]/g, "")
-        if (limpo.length > 2) {
-          skillsMap[limpo] = (skillsMap[limpo] || 0) + 1
-        }
-      })
-    })
-    const topSkills = Object.entries(skillsMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
 
     return {
       total,
@@ -91,7 +72,6 @@ export default function FunnelAnalytics({ vagas }: FunnelAnalyticsProps) {
       taxaProposta,
       mediaAderencia,
       topPlataformas,
-      topSkills,
     }
   }, [vagas])
 
@@ -235,63 +215,41 @@ export default function FunnelAnalytics({ vagas }: FunnelAnalyticsProps) {
         </div>
       </div>
 
-      {/* Two columns: Platforms distribution & In-demand skills */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Platforms */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-3">
-          <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-indigo-500" />
-            <span>Distribuição por Plataforma</span>
-          </h4>
-          <div className="space-y-2 pt-1">
-            {metrics.topPlataformas.map(([plat, count]) => {
-              const pct =
-                metrics.total > 0
-                  ? Math.round((count / metrics.total) * 100)
-                  : 0
-              return (
-                <div key={plat} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    <span>{plat}</span>
-                    <span>
-                      {count} vagas ({pct}%)
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                    <div
-                      className="h-full bg-indigo-600 rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+      {/* O que as vagas pedem (spec 045): substitui o quadro antigo de habilidades */}
+      <RequisitosVagas
+        vagas={vagas}
+        versao={versao}
+        onSelectVaga={onSelectVaga}
+        onAbrirIA={onAbrirIA}
+        onAbrirPerfil={onAbrirPerfil}
+      />
 
-        {/* Skills in Demand */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-3">
-          <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <Target className="w-4 h-4 text-emerald-500" />
-            <span>Habilidades Mais Valorizadas nas Vagas</span>
-          </h4>
-          <p className="text-xs text-slate-400">
-            Requisitos mais recorrentes detectados pela análise de inteligência
-            artificial
-          </p>
-          <div className="flex flex-wrap gap-2 pt-2">
-            {metrics.topSkills.map(([skill, count]) => (
-              <span
-                key={skill}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-              >
-                <span>{skill}</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-bold">
-                  {count}x
-                </span>
-              </span>
-            ))}
-          </div>
+      {/* Platforms */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-3">
+        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+          <PieChart className="w-4 h-4 text-indigo-500" />
+          <span>Distribuição por Plataforma</span>
+        </h4>
+        <div className="space-y-2 pt-1">
+          {metrics.topPlataformas.map(([plat, count]) => {
+            const pct = metrics.total > 0 ? Math.round((count / metrics.total) * 100) : 0
+            return (
+              <div key={plat} className="space-y-1">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <span>{plat}</span>
+                  <span>
+                    {count} vagas ({pct}%)
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-600 rounded-full transition-all duration-500"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

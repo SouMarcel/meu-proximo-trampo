@@ -201,9 +201,23 @@ export interface Vaga {
     item: "curriculo_ingles" | "carta" | "formulario" | "portfolio" | "teste" | "video"
   } & Frase)[]
   sistema_candidatura?: string
+  /** O que o anúncio pede (spec 045); ausente = ainda não lido. */
+  requisitos?: Requisitos
   // calculados
   checklist?: ItemChecklist[]
   lembretes_pendentes?: LembretePendente[]
+}
+
+/** Requisitos do anúncio (spec 045): só o que ele diz; experiência não é habilidade. */
+export interface Requisitos {
+  habilidades: { nome: string; tipo: "tecnica" | "comportamental"; exigida: boolean }[]
+  certificacoes: { nome: string; tipo: "certificacao" | "curso"; exigida: boolean }[]
+  experiencia?: { anos: number | null; em: string; frase: string }
+  formacao?: { nivel: "tecnico" | "graduacao" | "pos" | "mestrado" | "doutorado"; areas: string[]; frase: string }
+  idiomas: { idioma: string; nivel: "basico" | "intermediario" | "fluente" | "nativo"; frase: string }[]
+  lido_em: string
+  provedor?: string
+  modelo?: string
 }
 
 /** Campos que o PATCH /api/vagas/{id} aceita (§3.1). Outro campo = 400 "campo não editável". */

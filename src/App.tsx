@@ -572,7 +572,14 @@ function Pagina({
         )}
 
         {activeTab === "metricas" && (
-          <FunnelAnalytics vagas={vagas} onNavigateToTab={(tab) => handleTabChange(tab as ActiveTab)} />
+          <FunnelAnalytics
+            vagas={vagas}
+            onNavigateToTab={(tab) => handleTabChange(tab as ActiveTab)}
+            versao={versaoInfo?.versao}
+            onSelectVaga={(v) => setDetalheId(v.id)}
+            onAbrirIA={() => setIsAIModalOpen(true)}
+            onAbrirPerfil={() => setPerfilAberto({})}
+          />
         )}
 
         {activeTab === "entrevistas" && (

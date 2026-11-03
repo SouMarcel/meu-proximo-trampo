@@ -11,6 +11,8 @@ const PREF_KEYS = {
   TRIAGE_FILTROS: "mpt_pref_triage_filtros",
   /** Ordem e filtros da aba Internacional (spec 044), à parte dos do Relatório de Vagas. */
   TRIAGE_FILTROS_INT: "mpt_pref_internacional_filtros",
+  /** Seleção da seção O que as vagas pedem, em Métricas & Funil (spec 045). */
+  METRICAS_REQUISITOS: "mpt_pref_metricas_requisitos",
   THEME: "mpt_pref_theme",
 }
 
@@ -70,6 +72,25 @@ export class ScreenPreferencesService {
     } catch {}
   }
 
+  /** Seleção de O que as vagas pedem (spec 045); valor que não vale volta ao padrão. */
+  public static getSelecaoRequisitos(): SelecaoRequisitos {
+    try {
+      const raw = JSON.parse(localStorage.getItem(PREF_KEYS.METRICAS_REQUISITOS) || "{}")
+      return {
+        vagas: raw?.vagas === "todas" ? "todas" : "aplicacoes",
+        area: raw?.area === "nacional" || raw?.area === "internacional" ? raw.area : "todas",
+      }
+    } catch {
+      return { vagas: "aplicacoes", area: "todas" }
+    }
+  }
+
+  public static saveSelecaoRequisitos(selecao: SelecaoRequisitos): void {
+    try {
+      localStorage.setItem(PREF_KEYS.METRICAS_REQUISITOS, JSON.stringify(selecao))
+    } catch {}
+  }
+
   /** Primeiros passos abertos sozinhos (sem perfil) só uma vez por sessão do navegador. */
   public static primeirosPassosJaAbertos(): boolean {
     try {
@@ -104,6 +125,12 @@ export class ScreenPreferencesService {
 }
 
 export type Tema = "sistema" | "claro" | "escuro"
+
+/** Quais vagas a seção O que as vagas pedem conta (spec 045). */
+export interface SelecaoRequisitos {
+  vagas: "aplicacoes" | "todas"
+  area: "todas" | "nacional" | "internacional"
+}
 
 /** Aplica o tema na página (classe "dark" no <html>); no "sistema", segue o prefers-color-scheme. */
 export function aplicarTema(tema: Tema): void {
