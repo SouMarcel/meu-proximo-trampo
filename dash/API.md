@@ -78,7 +78,7 @@ Fontes: banco.py:498-604, vagas.py:719-739, kit.py.
 | Campo | Tipo | Significado |
 |---|---|---|
 | `id` | string | `^[A-Za-z0-9_.:-]{1,64}$`; vaga manual começa com `m-`, post do LinkedIn com `lip-` |
-| `origem` | `"busca"` \| `"link"` \| `"manual"` | busca automática; adicionada pelo link ou com "Relatório (decidir depois)"; adicionada direto no quadro |
+| `origem` | `"busca"` \| `"link"` \| `"manual"` | busca automática; adicionada pelo link ou com "Vagas Nacionais (decidir depois)" ou "Vagas Internacionais (decidir depois)"; adicionada direto em Aplicações |
 | `plataforma` | string | uma de: Indeed, LinkedIn, Gupy, InHire, Catho, Startup Jobs, Nerdin, InfoJobs, Vagas.com, EY, JobGether, FullStack, Remotive, Himalayas, RemoteOK, Jobicy, We Work Remotely, Get on Board, Greenhouse, Lever, Ashby, Outra |
 | `outras_plataformas` | string[] | outros portais onde o mesmo anúncio apareceu |
 | `formato` | `"post"` | vaga tirada de um post ou texto colado (etiqueta "Post") |
@@ -106,14 +106,14 @@ Fontes: banco.py:498-604, vagas.py:719-739, kit.py.
 | `integridade` | `{veredito: "limpo"\|"atencao", contagens: {invisiveis?, adulteracao?, instrucoes?, alfabetos?, ocultos?, links_ocultos?}, citacoes: [{tipo: instrucao\|alfabetos\|adulteracao\|oculto\|link_oculto, trecho}]}` | filtro de integridade do texto (spec 034): ausente = nada a apontar; `atencao` = o texto parece mirar a IA (selo "Texto suspeito"); até 5 citações de até 120 caracteres; o conteúdo oculto tirado nunca vem |
 | `origem_link` | `{tipo: "portal"\|"ats"\|"nao_verificada", dominio, nome?}` | de quem é o domínio do link, nas vagas do Adicionar Vaga (spec 034); `nao_verificada` = selo "Fonte não verificada" |
 
-**Triagem e quadro (o que a pessoa decide)**
+**Triagem e Aplicações (o que a pessoa decide)**
 
 | Campo | Tipo | Significado |
 |---|---|---|
 | `triagem` | `pendente` \| `seguir` \| `visitada` \| `fora` | Para decidir / Seguidas / Não seguidas / Fora dos critérios |
 | `triada_em` | `AAAA-MM-DD` ou null | |
 | `motivo_fora` | string[] | por que furou os filtros |
-| `etapa` | `salva` \| `aplicada` \| `entrevista` \| `proposta` \| `encerrada` \| null | colunas do quadro: Salva, Aplicação Enviada, Entrevista, Proposta Recebida, Encerrada |
+| `etapa` | `salva` \| `aplicada` \| `entrevista` \| `proposta` \| `encerrada` \| null | colunas de Aplicações: Salva, Aplicação Enviada, Entrevista, Proposta Recebida, Encerrada |
 | `etapa_em` | `AAAA-MM-DD` | desde quando está na etapa |
 | `resultado` | `nao_aprovado` \| `desisti` \| `cancelada` \| `contratado` \| null | só com etapa `encerrada` (Não aprovado, Desisti, Vaga cancelada, Contratado) |
 | `entrevista_em` | `AAAA-MM-DD` ou null | |
@@ -123,9 +123,9 @@ Fontes: banco.py:498-604, vagas.py:719-739, kit.py.
 | `lembretes` | `{base: "aplicada:AAAA-MM-DD"\|"entrevista:AAAA-MM-DD", parar: bool, follow1?, follow2?, agradecimento?: "feito"\|"dispensado"}` | |
 | `curriculos`, `documentos` | string[], `[{tipo, nome, criado_em}]` | arquivos gerados pela página para a vaga |
 
-Regras do front: a vaga está **no quadro** quando `etapa` não é nula e (`origem == "manual"` ou
-`triagem == "seguir"`). O **Relatório** mostra as de `origem != "manual"`, separadas por `area`
-(aba Relatório de Vagas = nacional, aba Internacional).
+Regras do front: a vaga está **em Aplicações** quando `etapa` não é nula e (`origem == "manual"` ou
+`triagem == "seguir"`). As listas de vagas mostram as de `origem != "manual"`, separadas por `area`
+(aba Vagas Nacionais = nacional, aba Vagas Internacionais = internacional).
 
 **Análise (nota de aderência)**
 
@@ -163,12 +163,12 @@ Campos internos que o front não usa: `jk`, `ids_relacionados`, `fora_dos_criter
 
 Notação: `*` = obrigatório; **[local]** = só no computador da pessoa (403 de outro aparelho).
 
-### 3.1 Vagas e quadro
+### 3.1 Vagas e Aplicações
 
 **`GET /api/vagas`** — todas as vagas.
-Resposta: `{versao: number, vagas: Vaga[]}`. Tela: quadro, lista, Relatório, Internacional.
+Resposta: `{versao: number, vagas: Vaga[]}`. Tela: Aplicações (quadro e lista), Vagas Nacionais, Vagas Internacionais.
 
-**`GET /api/buscas/ultima`** — a última busca registrada (linha do topo do Relatório).
+**`GET /api/buscas/ultima`** — a última busca registrada (linha do topo de Vagas Nacionais).
 Resposta: `{busca: null | {id, data (ISO), termos: string[], brutas, avaliadas, fora_criterios, com_nota: bool,
 fontes, janela_horas, resumo, consultas, excluidas_titulo, ja_vistas, candidatas, fortes, boas, parciais, baixas,
 origem, situacao}}` (registros antigos podem não ter todos; vagas.py:778-788).
@@ -194,21 +194,21 @@ Resposta: `{vaga: Vaga}`. Erros: 400, 404. Combinações que o front manda:
 - Resultado (menu ou seletor): `{resultado}`; Salvar no detalhe: `{anotacao, email_candidatura, assunto_candidatura}`
 - Data da entrevista: `{entrevista_em}`; checklist: `{kit}`; lembrete Feito/Dispensar/Parar: `{lembretes}`
 O front faz uma escrita por vez por vaga (fila) e troca a vaga local pela devolvida.
-O servidor liga o item "Enviar a candidatura" ao quadro (spec 010, FR-017; `kit.apos_marcar`). Um `{kit}` que passa
+O servidor liga o item "Enviar a candidatura" a Aplicações (spec 010, FR-017; `kit.apos_marcar`). Um `{kit}` que passa
 `candidatura` a `pronto` com a vaga em `salva` devolve a vaga em `aplicada`, com `etapa_em` de hoje e
 `resultado: null`; voltar a `a_fazer` não muda a etapa. Um `{etapa}` para `aplicada`, `entrevista` ou `proposta`
 devolve o `kit` com `candidatura: pronto`, a menos que esteja `nao_se_aplica`. Nessas etapas, o item vem `pronto` por
 padrão no `checklist`.
 
-**`DELETE /api/vagas/{id}`** — "Remover do quadro". Vaga `manual` é apagada; as outras só saem do quadro
+**`DELETE /api/vagas/{id}`** — "Remover de Aplicações". Vaga `manual` é apagada; as outras só saem de Aplicações
 (viram `triagem: visitada`, `etapa: null`). Resposta `{ok: true}`. Erro 404.
 
-**`POST /api/vagas/{id}/analisar`** **[local]** — "Forçar verificar" (Relatório, vaga sem nota ou com
+**`POST /api/vagas/{id}/analisar`** **[local]** — "Forçar verificar" (Vagas Nacionais e Vagas Internacionais, vaga sem nota ou com
 `nota_sem_descricao`, triagem pendente ou fora). Corpo `{}`. Resposta 202 `{verificando: string[]}` (ids na
 fila). Erros: 404; 409 "a vaga já tem nota"; 409 `{erro: "Para dar nota, ligue uma IA", sem_ia: true}`.
 O andamento chega por `/api/versao` (`verificando`, `falhas`).
 
-### 3.1b Faixa salarial (botão no card do quadro e seção na aba Candidatura do detalhe)
+### 3.1b Faixa salarial (botão no card de Aplicações e seção na aba Candidatura do detalhe)
 
 Spec 028. A faixa salarial usa só números com fonte. Nada é buscado na internet e nada é estimado pela IA.
 
@@ -246,7 +246,7 @@ Fluxo do front: cola o link → `POST /api/vagas/link`. Se for post do LinkedIn 
 preenche (`POST /api/vagas/extrair`), a pessoa confere o formulário e só então `POST /api/vagas`.
 
 **`POST /api/vagas/link`** — corpo `{url*: string}` (até 1.000). Respostas:
-- 201 (nova) ou 200 (já estava): `{vaga: Vaga, nova: bool, analise_automatica?: bool, empresa?}` — gravada no Relatório.
+- 201 (nova) ou 200 (já estava): `{vaga: Vaga, nova: bool, analise_automatica?: bool, empresa?}` — gravada em Vagas Nacionais ou Vagas Internacionais.
   Com link de vaga do Greenhouse, do Lever ou do Ashby, `empresa: {sistema, id, nome, url, acompanhada: bool}`: o front
   oferece "Acompanhar" quando `acompanhada` é falso (spec 031).
 - 200 de link de post do LinkedIn ainda não gravado: `{post: {id, url, texto, autor, autor_tipo: "empresa"|"pessoa"|...},
@@ -296,7 +296,7 @@ Erros: 400 texto vazio; 409 "nenhuma IA configurada"; 502 a IA falhou.
 | `plataforma` | string da lista | outra vira "Outra" |
 | `url` | http/https | link de vaga do JobGether: a vaga fica com o id da busca (`jobgether-…`) e, se já existe, volta a que existe (200, `nova: false`) |
 | `local`, `descricao` (até 20.000) | string | |
-| `etapa` | `"relatorio"` ou uma etapa | `relatorio` = vai para o Relatório (`origem: link`); etapa = direto no quadro (`origem: manual`); padrão `salva` |
+| `etapa` | `"relatorio"` ou uma etapa | `relatorio` = vai para Vagas Nacionais ou Vagas Internacionais (`origem: link`); etapa = direto em Aplicações (`origem: manual`); padrão `salva` |
 | `area`, `pais_vaga` | `nacional\|internacional`, string | |
 | `email_candidatura`, `assunto_candidatura` | string | e-mail validado |
 | `formato`, `post_id`, `publicado_por` | `"post"`, `lip-…`, string | só de post |
@@ -304,7 +304,7 @@ Erros: 400 texto vazio; 409 "nenhuma IA configurada"; 502 a IA falhou.
 Resposta 201 `{vaga, nova: true, analise_automatica: bool}` ou 200 `{vaga, nova: false}` (post ou vaga
 repetida: devolve a que já existe). A vaga pode cair direto em `triagem: fora` (o front avisa o motivo).
 
-### 3.3 Busca e descrições pendentes (Relatório: Buscar vagas, Completar descrições)
+### 3.3 Busca e descrições pendentes (Vagas Nacionais: Buscar vagas, Completar descrições)
 
 **`GET /api/busca/plano`** — o que o diálogo de confirmação da busca mostra.
 `{filtros_ok, perfil_ok, consultas, portais: string[], cargos: string[], janela_horas, resumo, estimativa_min,
@@ -728,7 +728,7 @@ se o servidor está no ar.
 Conferidos na página; a maior parte também é garantida pelo servidor.
 
 1. **Confirmar antes de gravar ou apagar.**
-   - Remover do quadro e "Marcar todas como não seguidas" pedem um segundo clique ("Confirmar remoção",
+   - Remover de Aplicações e "Marcar todas como não seguidas" pedem um segundo clique ("Confirmar remoção",
      "Confirmar: marcar todas"); remover história também. "Recomeçar" o perfil pede `confirm()`.
    - Perfil: com perfil existente, "Ver o que muda" mostra as diferenças antes de "Confirmar e gravar".
      Filtros propostos (primeiros passos, cargos-alvo, currículo) são só proposta até o botão de gravar.

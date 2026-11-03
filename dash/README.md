@@ -14,7 +14,7 @@ extensão Live Server (`dash/front/index.html`): aberta assim, ela fala com o se
 porta) e continua recusando outros sites. O servidor precisa estar no ar: sozinho, o Live Server
 só entrega o arquivo.
 
-- **Quadro:** kanban Salva → Aplicação Enviada → Entrevista → Proposta Recebida →
+- **Aplicações:** kanban Salva → Aplicação Enviada → Entrevista → Proposta Recebida →
   Encerrada (arraste os cartões, use Avançar ou a etapa no detalhe), com anotações, resultado (não
   aprovado, desisti, vaga cancelada, contratado), filtro por plataforma e visão em
   lista.
@@ -24,21 +24,21 @@ só entrega o arquivo.
   do InfoJobs e do Vagas.com depois de um bloqueio; FullStack pelo detalhe público da vaga, com o id da busca e sem
   pedido durante a espera; outros sites pelos dados
   estruturados JobPosting da página; o JobGether não é lido, porque a página recusa a ferramenta: o formulário abre
-  para completar, com o id da busca), grava no Relatório de Vagas e, se houver uma IA ligada
+  para completar, com o id da busca), grava em Vagas Nacionais ou Vagas Internacionais e, se houver uma IA ligada
   (botão **IA**), pede a análise em segundo plano (`analise.py`). Se a vaga já está
   no dashboard, mesmo vinda de outro portal (link igual ao de candidatura de um cartão,
   ou mesmo cargo e empresa encontrados nos últimos 60 dias), avisa onde ela está e não
   duplica. Se não der para ler, o formulário abre com o que deu, para completar; dali
-  dá para mandar para o relatório ou direto para o quadro.
-- **Forçar verificar:** toda vaga sem nota do Relatório (Para decidir e Fora dos critérios) tem, embaixo de
+  dá para mandar para Vagas Nacionais (ou Vagas Internacionais) ou direto para Aplicações.
+- **Forçar verificar:** toda vaga sem nota de Vagas Nacionais e Vagas Internacionais (Para decidir e Fora dos critérios) tem, embaixo de
   Seguir / Não seguir, o botão **Forçar verificar**. Ele manda só aquela vaga para a IA, na frente da análise
   automática (`POST /api/vagas/<id>/analisar`, só deste computador); o cartão mostra "Verificando…" e a nota chega
   em alguns minutos, ou o motivo, se não deu. Se a vaga está com descrição pendente, a ferramenta lê a descrição
   dela antes (um pedido ao portal, fora da espera depois de um bloqueio e fora de uma busca); sem o texto, a nota
   sai marcada **nota sem a descrição** (provisória) e é refeita quando a descrição chegar. Sem IA ligada, o botão
   só avisa.
-- **Relatório de Vagas:** o que as buscas trouxeram, em três abas: Para decidir,
-  Não seguidas e **Fora dos critérios** (as seguidas ficam no quadro; Fora dos critérios são as vagas que furaram os filtros da
+- **Vagas Nacionais:** o que as buscas trouxeram, em três abas: Para decidir,
+  Não seguidas e **Fora dos critérios** (as seguidas ficam em Aplicações; Fora dos critérios são as vagas que furaram os filtros da
   busca, com o motivo). "Seguir com a vaga" manda para a coluna Salva, inclusive a
   partir de Fora dos critérios; "Não seguir" marca como visitada e a vaga não volta nas
   próximas buscas. Vagas com nota abaixo de 50 ficam recolhidas. Ordem por aderência
@@ -46,7 +46,14 @@ só entrega o arquivo.
   primeiro. Filtros por senioridade, modo de trabalho, aderência mínima e dias desde a
   publicação; a página lembra a ordem e os filtros escolhidos. Cada vaga mostra o termo
   de busca que a encontrou.
-- **Filtros da busca** (botão no relatório): um formulário em quatro abas (spec 043), gravado de uma vez no
+- **Vagas Internacionais** (spec 044): as vagas de fora, no mesmo componente de Vagas Nacionais (`TriageReport` com
+  `area="internacional"`).
+  - Ganha os filtros de moeda (dólar ou euro) e de visto ou relocation, que valem também para as vagas sem nota.
+  - No cartão, mostra o país, a contratação e os sinais.
+  - Tem os botões Filtros da busca internacional e Prontidão internacional, e uma linha compacta com os números da
+    lista.
+  - A ordem e os filtros ficam guardados à parte, na chave `mpt_pref_internacional_filtros` do navegador.
+- **Filtros da busca** (botão em Vagas Nacionais): um formulário em quatro abas (spec 043), gravado de uma vez no
   `config.json` e válido a partir da próxima busca.
   - **Geral**: cargos, localidade, modo de trabalho (remoto no país e no exterior, híbrido e presencial na cidade),
     data de publicação, tipo de emprego, senioridade, moedas aceitas para vagas de fora e idiomas aceitos.
@@ -102,7 +109,7 @@ outros sites e `m-…` nas preenchidas à mão.
 
 | Campo | Valores |
 |---|---|
-| `origem` | `busca` (veio de `vagas.py`), `link` (Adicionar Vaga pelo link; fica no relatório como as da busca) ou `manual` (formulário, direto no quadro) |
+| `origem` | `busca` (veio de `vagas.py`), `link` (Adicionar Vaga pelo link; fica em Vagas Nacionais ou Vagas Internacionais como as da busca) ou `manual` (formulário, direto em Aplicações) |
 | `plataforma` | `Indeed`, `LinkedIn`, `Gupy`, `InHire`, `Catho`, `Startup Jobs`, `Nerdin`, `InfoJobs`, `Vagas.com`, `EY`, `JobGether`, `FullStack`, `MyGreenhouse`, `Teamtailor`, `Site da empresa`, `Outra` (e as fontes do exterior) |
 | `outras_plataformas` | outros portais onde a mesma vaga apareceu (na mesma busca, numa busca seguinte ou pelo Adicionar Vaga). O dashboard mostra uma etiqueta por plataforma, inclusive a do link de candidatura (vaga do Indeed com candidatura na Gupy também leva a etiqueta Gupy), e o filtro de plataforma acha a vaga por qualquer uma |
 | `titulo`, `empresa`, `local`, `url`, `descricao` | dados da vaga |
@@ -127,27 +134,27 @@ A preparação para entrevista fica fora do banco, em `entrevistas/` na raiz (fo
 sobre a empresa, resumo, perguntas da IA, simulação e as anotações de cada entrevista). Rotas em
 `/api/entrevista/…`, só deste computador.
 | `sinais` | sinais positivos lidos no anúncio sem IA ("Oferece patrocínio de visto", "Oferece relocation" e as suas frases positivas); etiqueta verde na listagem, no card e no detalhe |
-| `triagem` | `pendente` (no relatório), `seguir` (foi para o quadro), `visitada` (não seguir), `fora` (furou os filtros da busca) |
+| `triagem` | `pendente` (em Vagas Nacionais ou Vagas Internacionais), `seguir` (foi para Aplicações), `visitada` (não seguir), `fora` (furou os filtros da busca) |
 | `motivo_fora[]` | por que a vaga ficou fora dos critérios |
-| `etapa` | `salva`, `aplicada`, `entrevista`, `proposta`, `encerrada` ou `null` (fora do quadro) |
+| `etapa` | `salva`, `aplicada`, `entrevista`, `proposta`, `encerrada` ou `null` (fora de Aplicações) |
 | `etapa_em`, `triada_em` | `AAAA-MM-DD` da última mudança |
 | `resultado` | só em `encerrada`: `nao_aprovado`, `desisti`, `cancelada`, `contratado` |
 | `analise_status` | `feita`, `sem_analise` (gravada sem IA), `pendente` (adicionada no dashboard, esperando a IA), `sem_dados` |
 | `aderencia` | 0–100 (só com IA); faixas: ≥80 forte, 65–79 boa, 50–64 parcial, <50 baixa |
 | `nota_sem_descricao` | `true` quando a nota foi dada sem o texto da vaga (Forçar verificar com a descrição indisponível); sai quando a descrição chega, e a vaga volta a `pendente` para a nota nova |
 | `resumo`, `encaixe[]`, `lacunas[]`, `alertas[]`, `modelo_trabalho` | análise da IA |
-| `senioridade[]`, `senioridade_origem` | análise da IA: `junior`, `pleno`, `senior` (pode ter mais de um; `[]` = não informada), `declarada` pelo anúncio ou `sugerida` pela IA quando o anúncio não diz. Sem esse campo, o dashboard deduz pelo título (Jr, Pl, Sr, Pleno, Sênior, Snr, Mid-level, Intermediate, Semi Senior/SSr como pleno, II, III, Principal). O relatório mostra os níveis abreviados: Jr, Pl, Sr |
+| `senioridade[]`, `senioridade_origem` | análise da IA: `junior`, `pleno`, `senior` (pode ter mais de um; `[]` = não informada), `declarada` pelo anúncio ou `sugerida` pela IA quando o anúncio não diz. Sem esse campo, o dashboard deduz pelo título (Jr, Pl, Sr, Pleno, Sênior, Snr, Mid-level, Intermediate, Semi Senior/SSr como pleno, II, III, Principal). As listas de vagas mostram os níveis abreviados: Jr, Pl, Sr |
 | `tipo_emprego[]` | análise da IA: `tempo_integral`, `pj`, `meio_periodo`, `estagio`, `temporario` |
 | `moeda` | análise da IA: código da moeda em que a vaga paga (`BRL`, `USD`, `EUR`…), quando a vaga diz |
 | `fora_dos_criterios` | análise da IA: motivo que os outros campos não pegam (ex.: exige residência em outro país) |
 | `anotacao` | suas anotações |
 | `criada_em`, `atualizada_em`, `analisada_em` | carimbos de data |
 
-Uma vaga aparece no quadro quando tem `etapa` e é `manual` ou tem `triagem: "seguir"`.
+Uma vaga aparece em Aplicações quando tem `etapa` e é `manual` ou tem `triagem: "seguir"`.
 
 ### Tabela `buscas` (um registro por busca)
 
 ID `AAAAMMDD-HHMMSS`. Campos: `data`, `fontes`, `termos`, `janela_horas`, `resumo`
 (filtros usados), `consultas`, `brutas`, `excluidas_titulo`, `ja_vistas`, `candidatas`,
 `avaliadas`, `fora_criterios`, `com_nota`, `fortes`, `boas`, `parciais`, `baixas`
-(buscas antigas têm `somente_remoto`). O relatório mostra a mais recente.
+(buscas antigas têm `somente_remoto`). A página mostra a mais recente.
