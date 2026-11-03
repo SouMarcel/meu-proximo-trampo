@@ -259,11 +259,11 @@ certificações e o tempo de experiência da seleção.
 - [X] T027 `FR/`: `npx -y pnpm@10.34.3 exec tsc --noEmit` e `npx -y pnpm@10.34.3 exec vite build --base ./`, sem erro.
 - [X] T028 `python -m unittest discover -s tests` na worktree da feature, com tudo passando, e `python
   sincronizar_skills.py --conferir`.
-- [ ] T029 Conferência por CDP (research D12, quickstart), com o build de teste no dashboard:
+- [X] T029 Conferência por CDP (research D12, quickstart), com o build de teste no dashboard:
   - só leituras do DOM, trocas no seletor e abrir e fechar a lista de um item;
   - nunca em Ler os requisitos, Parar ou nos botões que gravam;
   - confere a ordem do painel, o quadro antigo fora, a seleção lembrada e a largura de 360 px.
-- [ ] T030 Entrega para o teste (plan, Entrega 1 e 2):
+- [X] T030 Entrega para o teste (plan, Entrega 1 e 2):
   - busca de dados pessoais no diff;
   - commit local na `045-requisitos-vagas` e na `frontend-react`;
   - merge na branch pessoal;
