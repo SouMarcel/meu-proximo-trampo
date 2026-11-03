@@ -191,7 +191,8 @@ flowchart LR
 
 Você precisa do [Python](https://www.python.org/downloads/) 3.10 ou mais novo e do
 [Git](https://git-scm.com/downloads). Por enquanto o foco é o **Windows**; em macOS e Linux,
-use a instalação manual mais abaixo.
+use a instalação manual mais abaixo. Se você usa um assistente de IA no computador, ele pode fazer tudo isso: veja
+[Instalar com um assistente de IA](#instalar-com-um-assistente-de-ia).
 
 ```bash
 git clone https://github.com/SouMarcel/meu-proximo-trampo.git
@@ -214,6 +215,52 @@ ficam salvos.
 
 Opções: `--sim` (instala sem perguntar), `--sem-navegador`, `--rede` (acesso pelo celular no
 mesmo Wi-Fi) e `--porta 8766`. Ajuda: `python iniciar.py --help`.
+
+### Instalar com um assistente de IA
+
+Se você usa um assistente de IA que roda comandos no seu computador (Claude Code, Codex, Gemini CLI, OpenCode ou
+outro parecido), ele pode fazer a instalação por você: copie o texto abaixo e cole no chat dele. Ele confere o Python
+e o Git, baixa a ferramenta, prepara o ambiente e abre a página nos primeiros passos, e pede o seu OK antes de
+instalar qualquer coisa. Um chat no navegador (claude.ai, chatgpt.com) não serve: ele não acessa o seu computador.
+
+```text
+Quero instalar no meu computador a ferramenta meu-proximo-trampo
+(https://github.com/SouMarcel/meu-proximo-trampo) e deixá-la pronta para o primeiro uso.
+Fale comigo em português do Brasil, em linguagem simples, e siga estes passos:
+
+1. Veja o sistema (Windows, macOS ou Linux) e se há o Git e o Python 3.10 ou mais novo. No
+   Windows, teste `py -3 --version` e `python --version` (o "python" pode ser só o atalho da
+   Microsoft Store). Se faltar algum, diga o que falta e como instalar (no Windows, pelo winget:
+   `winget install -e --id Python.Python.3.13` e `winget install -e --id Git.Git`) e só instale
+   com o meu OK. Um programa recém-instalado pode não aparecer no terminal que já estava aberto:
+   nesse caso, use o caminho completo dele.
+2. Pergunte em que pasta instalar (sugira a minha pasta de usuário, fora de pasta sincronizada
+   como o OneDrive) e clone o repositório nela. Se a pasta meu-proximo-trampo já existir, não
+   apague nada: me mostre o que tem lá e pergunte o que fazer.
+3. Leia o AGENTS.md do repositório e siga as regras dele daqui em diante.
+4. Me explique o que vai ser instalado (as bibliotecas do requirements.txt, só na pasta .venv,
+   dentro do projeto) e, com o meu OK, crie o .venv e instale o requirements.txt com o Python
+   do .venv.
+5. Abra a ferramenta de um jeito que continue rodando depois que você terminar: no Windows, o
+   iniciar.bat numa janela própria (o mesmo que dois cliques nele); no macOS e no Linux,
+   `nohup python3 iniciar.py >/dev/null 2>&1 &`. Confira se http://127.0.0.1:8765/api/versao
+   responde e se a página abriu no navegador.
+6. Termine com um resumo curto: onde a ferramenta ficou; como abrir de novo e como parar; e o
+   primeiro passo, montar o meu perfil, pela página (os primeiros passos abrem sozinhos) ou pelo
+   chat (abrindo o assistente dentro da pasta do projeto e pedindo "monta meu perfil", com o meu
+   currículo ou o PDF do meu LinkedIn na pasta anexos/).
+
+Regras:
+- Não invente nada sobre mim e não crie o perfil.md nem o config.json por conta própria.
+- Não peça, não leia e não grave senhas nem chaves de API: a chave da IA eu cadastro no botão
+  IA da página.
+- Não rode a busca de vagas, não altere os arquivos do repositório e não faça commit nem push.
+- Se um passo falhar, me mostre o erro e proponha a correção antes de tentar outra coisa.
+```
+
+Depois, para as conversas do dia a dia (buscar vagas, montar o perfil, o currículo), abra o assistente dentro da
+pasta da ferramenta: é lá que ele encontra o `AGENTS.md` e as skills. Veja [Uso com IA](#uso-com-ia-claude-code) e
+[Usar com outros assistentes](#usar-com-outros-assistentes).
 
 ### Primeiros passos
 
