@@ -367,7 +367,7 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
               </h3>
               <p className="text-xs text-slate-500">
                 {internacional
-                  ? "Vagas de empresas do exterior: opcional e desligado até você ligar. As vagas de fora aparecem na aba Internacional, com a etiqueta do país."
+                  ? "Vagas de empresas do exterior: opcional e desligado até você ligar. As vagas de fora aparecem na aba Vagas Internacionais, com a etiqueta do país."
                   : "O que procurar nos portais. Vale a partir da próxima busca; vaga que furar estes filtros vai para Fora dos critérios, de onde você ainda pode seguir com ela."}
               </p>
             </div>

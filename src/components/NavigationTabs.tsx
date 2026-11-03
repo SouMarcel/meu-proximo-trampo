@@ -33,35 +33,30 @@ export default function NavigationTabs({
     count?: number
     countColor?: string
   }[] = [
-    // Aba de Triagem priorizada como primeira opcao para triagem agil de vagas
+    // Ordem do menu (spec 044): as duas listas de vagas primeiro, depois as aplicações, as entrevistas e as métricas
     {
       id: "relatorio",
-      label: "Relatório de Vagas (Triagem)",
+      label: "Vagas Nacionais",
       icon: <FileText className="w-4 h-4" />,
       count: countPendentes,
       countColor:
         "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
     },
     {
-      id: "quadro",
-      label: "Quadro de Candidaturas",
-      icon: <Kanban className="w-4 h-4" />,
-      count: countQuadro,
-      countColor:
-        "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300",
-    },
-    {
       id: "internacional",
-      label: "Internacional",
+      label: "Vagas Internacionais",
       icon: <Globe2 className="w-4 h-4" />,
       count: countInternacional,
       countColor:
         "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300",
     },
     {
-      id: "metricas",
-      label: "Métricas & Funil",
-      icon: <BarChart3 className="w-4 h-4" />,
+      id: "quadro",
+      label: "Aplicações",
+      icon: <Kanban className="w-4 h-4" />,
+      count: countQuadro,
+      countColor:
+        "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300",
     },
     {
       id: "entrevistas",
@@ -70,6 +65,11 @@ export default function NavigationTabs({
       count: countEntrevistas > 0 ? countEntrevistas : undefined,
       countColor:
         "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+    },
+    {
+      id: "metricas",
+      label: "Métricas & Funil",
+      icon: <BarChart3 className="w-4 h-4" />,
     },
   ]
 
