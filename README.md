@@ -191,7 +191,8 @@ flowchart LR
 
 Você precisa do [Python](https://www.python.org/downloads/) 3.10 ou mais novo e do
 [Git](https://git-scm.com/downloads). Por enquanto o foco é o **Windows**; em macOS e Linux,
-use a instalação manual mais abaixo.
+use a instalação manual mais abaixo. Se você usa um assistente de IA no computador, ele pode fazer tudo isso: veja
+[Instalar com um assistente de IA](#instalar-com-um-assistente-de-ia).
 
 ```bash
 git clone https://github.com/SouMarcel/meu-proximo-trampo.git
@@ -214,6 +215,52 @@ ficam salvos.
 
 Opções: `--sim` (instala sem perguntar), `--sem-navegador`, `--rede` (acesso pelo celular no
 mesmo Wi-Fi) e `--porta 8766`. Ajuda: `python iniciar.py --help`.
+
+### Instalar com um assistente de IA
+
+Se você usa um assistente de IA que roda comandos no seu computador (Claude Code, Codex, Gemini CLI, OpenCode ou
+outro parecido), ele pode fazer a instalação por você: copie o texto abaixo e cole no chat dele. Ele confere o Python
+e o Git, baixa a ferramenta, prepara o ambiente e abre a página nos primeiros passos, e pede o seu OK antes de
+instalar qualquer coisa. Um chat no navegador (claude.ai, chatgpt.com) não serve: ele não acessa o seu computador.
+
+```text
+Quero instalar no meu computador a ferramenta meu-proximo-trampo
+(https://github.com/SouMarcel/meu-proximo-trampo) e deixá-la pronta para o primeiro uso.
+Fale comigo em português do Brasil, em linguagem simples, e siga estes passos:
+
+1. Veja o sistema (Windows, macOS ou Linux) e se há o Git e o Python 3.10 ou mais novo. No
+   Windows, teste `py -3 --version` e `python --version` (o "python" pode ser só o atalho da
+   Microsoft Store). Se faltar algum, diga o que falta e como instalar (no Windows, pelo winget:
+   `winget install -e --id Python.Python.3.13` e `winget install -e --id Git.Git`) e só instale
+   com o meu OK. Um programa recém-instalado pode não aparecer no terminal que já estava aberto:
+   nesse caso, use o caminho completo dele.
+2. Pergunte em que pasta instalar (sugira a minha pasta de usuário, fora de pasta sincronizada
+   como o OneDrive) e clone o repositório nela. Se a pasta meu-proximo-trampo já existir, não
+   apague nada: me mostre o que tem lá e pergunte o que fazer.
+3. Leia o AGENTS.md do repositório e siga as regras dele daqui em diante.
+4. Me explique o que vai ser instalado (as bibliotecas do requirements.txt, só na pasta .venv,
+   dentro do projeto) e, com o meu OK, crie o .venv e instale o requirements.txt com o Python
+   do .venv.
+5. Abra a ferramenta de um jeito que continue rodando depois que você terminar: no Windows, o
+   iniciar.bat numa janela própria (o mesmo que dois cliques nele); no macOS e no Linux,
+   `nohup python3 iniciar.py >/dev/null 2>&1 &`. Confira se http://127.0.0.1:8765/api/versao
+   responde e se a página abriu no navegador.
+6. Termine com um resumo curto: onde a ferramenta ficou; como abrir de novo e como parar; e o
+   primeiro passo, montar o meu perfil, pela página (os primeiros passos abrem sozinhos) ou pelo
+   chat (abrindo o assistente dentro da pasta do projeto e pedindo "monta meu perfil", com o meu
+   currículo ou o PDF do meu LinkedIn na pasta anexos/).
+
+Regras:
+- Não invente nada sobre mim e não crie o perfil.md nem o config.json por conta própria.
+- Não peça, não leia e não grave senhas nem chaves de API: a chave da IA eu cadastro no botão
+  IA da página.
+- Não rode a busca de vagas, não altere os arquivos do repositório e não faça commit nem push.
+- Se um passo falhar, me mostre o erro e proponha a correção antes de tentar outra coisa.
+```
+
+Depois, para as conversas do dia a dia (buscar vagas, montar o perfil, o currículo), abra o assistente dentro da
+pasta da ferramenta: é lá que ele encontra o `AGENTS.md` e as skills. Veja [Uso com IA](#uso-com-ia-claude-code) e
+[Usar com outros assistentes](#usar-com-outros-assistentes).
 
 ### Primeiros passos
 
@@ -648,7 +695,8 @@ continua funcionando. Opções pontuais, sem mexer no arquivo:
   em `anexos/primeiros-passos/`, as versões anteriores do perfil em
   `anexos/perfis-anteriores/` e o progresso em `.cache/primeiros-passos.json`. O mesmo vale para `.liftli/` (o tom de voz
   das skills de LinkedIn), `linkedin/` (banners e imagens dos seus posts) e `.env`
-  (as chaves de API: as da IA, cadastradas pelo painel, e a opcional do startup.jobs). Se você fizer um fork, o seu
+  (as chaves da IA, cadastradas pelo painel; a chave opcional do startup.jobs; os logins opcionais da Gupy e do
+  Greenhouse, guardados pela página; e as pausas por portal: veja o `.env.exemplo`). Se você fizer um fork, o seu
   histórico continua só com você.
 - Dica: mantenha a ferramenta na branch `master` e os seus ajustes pessoais numa
   branch local (por exemplo `minha`), trazendo as melhorias com `git merge master`.
@@ -828,8 +876,8 @@ Para instalar à mão, no Claude Code:
   - Pausa sorteada de 3 a 7 segundos (`MYGREENHOUSE_PAUSA`, de 3 a 60). Se o portal recusar ou limitar, ele sai da
     busca sem nova tentativa e fica **24 horas em espera**. Captcha, login não feito ou página diferente da esperada
     deixam o portal de fora só daquela busca, com aviso.
-- **Pausa por portal:** cada portal que lê páginas (LinkedIn, Nerdin, InfoJobs, Vagas.com, EY, FullStack) tem a sua
-  pausa, ajustável no arquivo `.env` da raiz com `<PORTAL>_PAUSA=N` (`LINKEDIN_PAUSA`, `NERDIN_PAUSA`,
+- **Pausa por portal:** cada portal que lê páginas (LinkedIn, Nerdin, InfoJobs, Vagas.com, FullStack, MyGreenhouse
+  Jobs e o site da EY, nas empresas acompanhadas) tem a sua pausa, ajustável no arquivo `.env` da raiz com `<PORTAL>_PAUSA=N` (`LINKEDIN_PAUSA`, `NERDIN_PAUSA`,
   `INFOJOBS_PAUSA`, `VAGASCOM_PAUSA`, `EY_PAUSA`, `FULLSTACK_PAUSA`, `MYGREENHOUSE_PAUSA`), em segundos, de 3 a 60. O `.env.exemplo` traz uma linha comentada
   para cada um, com o padrão e o mínimo: copie a linha e tire o `#` do começo. O JobGether, que usa a API
   oficial, tem `JOBGETHER_PAUSA`, de 2 a 60 (padrão 2). Aumente só a do portal
@@ -890,7 +938,33 @@ O link e o QR code também ficam no canto de cima do dashboard.
 - [ ] Mais portais do Brasil (ex.: InHire, Catho, Glassdoor), pelo roteiro `docs/novo-portal.md`
 - [x] Preparar e simular entrevista para as vagas na coluna Entrevista
 
+## Como contribuir
+
+Contribuições são bem-vindas. Para contar um problema ou propor uma ideia, abra uma issue; numa mudança grande,
+converse na issue antes do PR. A ferramenta e a documentação são em português do Brasil.
+
+- **Testes:** `python -m unittest discover -s tests`, com o Python do `.venv` (`.venv\Scripts\python` no Windows).
+  Eles rodam em pastas temporárias, com dados fictícios, sem mexer nos seus.
+- **Python com a biblioteca padrão:** dependência nova só com motivo (as de hoje estão no `requirements.txt`).
+- **Nada pessoal na `master`:** ela é a ferramenta de qualquer pessoa. Nomes, empresas, números e regras suas ficam
+  numa branch local (veja [Seus dados](#seus-dados)), e `config.json`, `perfil.md`, `anexos/`, `curriculos/`,
+  `entrevistas/`, `dash/dados/`, `.cache/` e `.env` nunca entram num commit.
+- **A página é montada, não editada:** `dash/front/` é o resultado do build. O código-fonte do React fica na branch
+  `frontend-react` (o PR de uma mudança na página vai para ela), e o GitHub Actions ("Front: abrir PR", em
+  `.github/workflows/front.yml`) monta a página e abre o PR `front/atualizacao` para a `master`. O contrato entre a
+  página e o servidor está no [`dash/API.md`](dash/API.md), e o banco, no [`dash/README.md`](dash/README.md).
+- **Funcionalidade nova passa pelo [Spec Kit](https://github.com/github/spec-kit):** spec, plano e tarefas em
+  `specs/<número>-<nome>/` antes do código, seguindo a constituição do projeto
+  ([`.specify/memory/constitution.md`](.specify/memory/constitution.md)).
+- **Skills:** a fonte fica em `.agents/skills/`; depois de mudar uma, rode `python sincronizar_skills.py` para
+  atualizar a cópia em `.claude/skills/`.
+- **Com um assistente de código:** o [`AGENTS.md`](AGENTS.md) traz essas regras para o Claude Code, o Codex, o
+  Gemini CLI e o OpenCode.
+
 ### Adicionar um portal
+
+Comece pelo roteiro [`docs/novo-portal.md`](docs/novo-portal.md): a pesquisa do portal (termos de uso, regras para
+robôs, API), as decisões a tomar e os arquivos que um portal novo toca.
 
 Cada portal é um módulo em `fontes/` com uma função `buscar()` que devolve as vagas
 num formato comum. O contrato está em [`fontes/__init__.py`](fontes/__init__.py), e o
@@ -898,7 +972,7 @@ num formato comum. O contrato está em [`fontes/__init__.py`](fontes/__init__.py
 exemplo; o [`fontes/startupjobs.py`](fontes/startupjobs.py) mostra o `descrever()`, para
 portal cuja busca não traz a descrição. Portais do exterior sem filtro de país usam
 `POR_PAIS = False` e o apoio de [`fontes/_comum.py`](fontes/_comum.py) (o
-[`fontes/remotive.py`](fontes/remotive.py) é o exemplo mais curto). Contribuições são bem-vindas.
+[`fontes/remotive.py`](fontes/remotive.py) é o exemplo mais curto).
 
 ## Licença
 
