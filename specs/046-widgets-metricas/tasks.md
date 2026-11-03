@@ -255,7 +255,7 @@ habilidade, na edição, abre a lista sem mover nada.
   10. capturas de tela no tema claro e no escuro, na edição e fora dela.
 
   Nunca clica em Ler os requisitos, Parar ou nos botões que gravam no servidor.
-- [ ] T021 Entrega para o teste (plan, Entrega 1 e 2):
+- [X] T021 Entrega para o teste (plan, Entrega 1 e 2):
   - busca de dados pessoais no diff;
   - commit local na `046-widgets-metricas` (documentos) e na `frontend-react` (página);
   - merge na branch pessoal;
