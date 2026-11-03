@@ -18,6 +18,13 @@ só entrega o arquivo.
   Encerrada (arraste os cartões, use Avançar ou a etapa no detalhe), com anotações, resultado (não
   aprovado, desisti, vaga cancelada, contratado), filtro por plataforma e visão em
   lista.
+- **Métricas & Funil:** os números e o funil e, depois deles, **O que as vagas pedem** (spec 045,
+  `src/components/RequisitosVagas.tsx`). O resumo vem pronto de `GET /api/requisitos` (`dash/requisitos.py`),
+  para a seleção escolhida: Em Aplicações ou Todas as vagas analisadas, e a área. Ele traz as habilidades,
+  as certificações e cursos, o tempo de experiência, a formação, os idiomas, a senioridade, o modelo, a
+  contratação e Suas habilidades (o perfil comparado pelo nome, sem IA). O botão **Ler os requisitos** lê
+  em segundo plano, com a IA escolhida, as vagas da seleção sem o campo `requisitos`, grava só esse campo e
+  mostra o andamento com Parar. A seleção fica no navegador (`mpt_pref_metricas_requisitos`).
 - **Adicionar Vaga:** cole o link. O servidor lê a vaga (Indeed e LinkedIn pelas APIs
   públicas; Gupy pelo MCP público de candidatos dela; startup.jobs pelo MCP público do
   site; Nerdin, InfoJobs, Vagas.com e EY pela página pública da vaga, sem pedido durante a espera

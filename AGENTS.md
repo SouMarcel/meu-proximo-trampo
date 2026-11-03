@@ -72,7 +72,10 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   `proposta <arquivo>` (não grava), `usar <arquivo> [--manter-perfil]` (só com o OK da pessoa) e
   `marcar <arquivo> [--idioma en]`. Faixa salarial de uma vaga (só números com fonte, sem internet):
   `PY salarios.py <ID>`. Análises do perfil: `PY analise_perfil.py lacunas [--seguidas]`,
-  `prontidao`, `cargos` e `plano` (os dois últimos com IA).
+  `prontidao`, `cargos` e `plano` (os dois últimos com IA). O que as vagas pedem (habilidades,
+  certificações, tempo de experiência; sem IA): `PY dash/requisitos.py resumo [--vagas todas]
+  [--area nacional|internacional]`; ler os requisitos das vagas já analisadas pelo chat: `pendentes`
+  e `gravar <arquivo.json>` (só os requisitos; a nota não muda).
 
 ## Skills da ferramenta
 

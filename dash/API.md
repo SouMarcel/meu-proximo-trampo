@@ -146,6 +146,7 @@ Regras do front: a vaga está **em Aplicações** quando `etapa` não é nula e 
 | `riscos` | `[{tipo: remuneracao\|remoto_hibrido, frase}]` | |
 | `pede` | `[{item: curriculo_ingles\|carta\|formulario\|portfolio\|teste\|video, frase}]` | |
 | `sistema_candidatura` | string | |
+| `requisitos` | `{habilidades: [{nome, tipo: tecnica\|comportamental, exigida}], certificacoes: [{nome, tipo: certificacao\|curso, exigida}], experiencia?: {anos: int\|null, em, frase}, formacao?: {nivel: tecnico\|graduacao\|pos\|mestrado\|doutorado, areas, frase}, idiomas: [{idioma, nivel: basico\|intermediario\|fluente\|nativo, frase}], lido_em, provedor?, modelo?}` | o que o anúncio pede (spec 045), da análise ou do botão Ler os requisitos; ausente = ainda não lido. Experiência não entra como habilidade. requisitos.py |
 
 Rótulos desses códigos: kit.py:14-24 e `src/utils/rotulos.ts`.
 
@@ -487,6 +488,25 @@ existe_perfil, pode_alterar}`. Cada análise salva traz `data` (ISO).
 | `PUT /api/analises-perfil/marcas` | `{linkedin_en: bool}` | `{marcas}` | "Meu LinkedIn tem a versão em inglês" |
 
 Erros: 400 com a mensagem (ex.: sem IA, sem perfil, IA fora do formato).
+
+### 3.7b O que as vagas pedem (Métricas & Funil; spec 045)
+
+**`GET /api/requisitos?vagas=aplicacoes|todas&area=todas|nacional|internacional`** — o resumo da seleção (valor
+inválido volta ao padrão): `{selecao, contagem: {selecao, com_requisitos, a_ler, sem_texto, sem_analise}, poucas,
+habilidades: {base, tecnicas, comportamentais}, certificacoes: {base, itens}, experiencia: {base, destaque, faixas},
+formacao: {base, niveis, areas}, idiomas: {base, itens}, senioridade, modelo, contratacao, suas: {existe_perfil,
+tem_secao, habilidades, certificacoes, aparecem, total}, leitura: {rodando, lidas, total, parada, erro, selecao},
+ia: {ligada, nome}}`. Cada item traz `vagas`, `ids` (as vagas que o pedem) e, nas listas de habilidades e
+certificações, `exigida`, `parte` e `perfil: habilidade|certificacao|citada|nao`. Formato completo:
+`specs/045-requisitos-vagas/data-model.md`.
+
+| Rota [local] | Corpo | Resposta | Botão |
+|---|---|---|---|
+| `POST /api/requisitos/ler` | `{vagas, area}` | 202 `{leitura}` quando começa; 200 `{leitura}` já rodando ou sem vagas a ler (`total: 0`); 409 sem IA | Ler os requisitos das N vagas desta seleção |
+| `POST /api/requisitos/parar` | `{}` | `{leitura}` com `parada: true` (o lote em andamento termina) | Parar |
+
+A leitura grava só `requisitos` (a nota, a análise, a triagem e a etapa não mudam). No terminal, o mesmo resumo:
+`PY dash/requisitos.py resumo`.
 
 ### 3.8 Currículo (detalhe da vaga → Currículos para esta vaga; Meu perfil → Currículo base)
 

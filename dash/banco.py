@@ -408,6 +408,9 @@ def validar_analise(a: dict) -> dict:
         limpos["analise_modelo"] = _texto(a.get("analise_modelo"), 120)
     if a.get("nota_sem_descricao") and status == "feita":  # nota provisória, sem o texto da vaga (spec 021)
         limpos["nota_sem_descricao"] = True
+    if isinstance(a.get("requisitos"), dict):  # o que o anúncio pede (spec 045); inválido é cortado, sem custar a nota
+        import requisitos  # dash/requisitos.py (aqui, para não importar em círculo)
+        limpos["requisitos"] = requisitos.validar(a["requisitos"], provedor, a.get("analise_modelo"))
     return limpos
 
 
@@ -776,6 +779,32 @@ def aplicar_analises(analises: list[dict]) -> tuple[list[str], list[str]]:
             if not limpos.get("nota_sem_descricao"):
                 doc.pop("nota_sem_descricao", None)
             aplicar_criterios(doc)
+            doc["atualizada_em"] = agora()
+            _gravar(con, vid, doc)
+            ok.append(vid)
+    return ok, problemas
+
+
+def aplicar_requisitos(itens: list[dict]) -> tuple[list[str], list[str]]:
+    """Grava só os requisitos de cada vaga ({"id", "requisitos", "provedor"?, "modelo"?}; spec 045): a nota, a
+    triagem, a etapa e o resto da análise não mudam."""
+    import requisitos  # dash/requisitos.py
+    ok, problemas = [], []
+    with escrita() as con:
+        for item in itens:
+            if not isinstance(item, dict):
+                problemas.append("item que não é um objeto")
+                continue
+            vid = str(item.get("id", ""))
+            doc = _ler(con, vid)
+            if doc is None:
+                problemas.append(f"{vid!r}: vaga não encontrada")
+                continue
+            limpos = requisitos.validar(item.get("requisitos"), item.get("provedor"), item.get("modelo"))
+            if limpos is None:
+                problemas.append(f"{vid}: requisitos ausentes ou fora do formato")
+                continue
+            doc["requisitos"] = limpos
             doc["atualizada_em"] = agora()
             _gravar(con, vid, doc)
             ok.append(vid)
