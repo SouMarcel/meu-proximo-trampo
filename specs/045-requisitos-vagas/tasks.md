@@ -270,6 +270,18 @@ certificações e o tempo de experiência da seleção.
   - o build em `dash/front/` sem commit;
   - o dashboard reiniciado.
 
+## Phase 8: Ajustes do teste (03/11)
+
+- [X] T031 `FR/src/components/RequisitosVagas.tsx` (FR-025): Senioridade e Modelo de trabalho em blocos separados, cada
+  um com o título e a base; o contrato de tela acompanha.
+- [X] T032 `dash/analise.py` e `dash/requisitos.py` (FR-026):
+  - `analise.lista_json` (bloco de código, vírgula sobrando, resposta cortada), usada também por `analise.analisar`;
+  - `analise.lotes(vagas, tamanho)`;
+  - na leitura, `LOTE_LEITURA = 5`, o lote dividido ao meio quando volta ilegível ou com vagas de fora,
+    `ILEGIVEIS_SEGUIDAS = 3` e a última resposta ilegível em `.cache/`;
+  - a regra da `frase` curta na skill;
+  - testes em `tests/test_requisitos.py`.
+
 ## Dependencies & Execution Order
 
 - T001 → T002 → T003 → T004.

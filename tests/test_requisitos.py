@@ -113,6 +113,31 @@ class Base(unittest.TestCase):
 
 # ---------------------------------------------------------------- validação e chaves
 
+class TestRespostaDaIA(unittest.TestCase):
+    def test_lista_json_tolerante(self):
+        L = analise.lista_json
+        self.assertEqual(L('[{"id": "a"}]'), [{"id": "a"}])
+        self.assertEqual(L('```json\n[{"id": "a"}, {"id": "b"},]\n```'), [{"id": "a"}, {"id": "b"}])
+        self.assertEqual(L('Aqui está: [{"id": "a", "x": [1]}, {"id": "b", "x": [2'), [{"id": "a", "x": [1]}])
+        self.assertEqual(L('{"id": "a"}'), [{"id": "a"}])
+        self.assertIsNone(L("não sei"))
+        self.assertIsNone(L(""))
+
+    def test_analise_aceita_resposta_em_bloco_de_codigo(self):
+        resposta = '```json\n[{"id": "a", "aderencia": 66, "resumo": "Ok.",}]\n```'
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(banco, "ARQUIVO", Path(tmp) / "banco.db"), \
+                mock.patch.object(filtros, "CONFIG", Path(tmp) / "config.json"), \
+                mock.patch.object(ia, "disponivel", return_value=True), \
+                mock.patch.object(ia, "escolha_efetiva", return_value={"provedor": "openrouter", "modelo": "m:free"}), \
+                mock.patch.object(ia, "modelo_efetivo", return_value="m:free"), \
+                mock.patch.object(ia, "responder", return_value=resposta):
+            (Path(tmp) / "config.json").write_text(json.dumps(CFG), encoding="utf-8")
+            gravar(vaga("a", analise_status="pendente", aderencia=None))
+            ok, _ = analise.analisar([banco.obter("a")])
+            self.assertEqual((ok, banco.obter("a")["aderencia"]), (["a"], 66))
+
+
 class TestValidar(unittest.TestCase):
     def test_experiencia_nao_e_habilidade(self):  # FR-002, SC-002
         r = R.validar({"habilidades": [{"nome": "5+ anos de experiência"}, {"nome": "Experiência com SQL"},
@@ -381,7 +406,7 @@ class TestLeitura(Base):
         gravar(*[vaga(f"v{i}", triagem="seguir", etapa="aplicada") for i in range(3)], vaga("fora-da-selecao"))
         antes = {v["id"]: v for v in banco.listar_vagas()}
         leitura = R.Leitura()
-        with mock.patch.object(analise, "LOTE", 2):
+        with mock.patch.object(R, "LOTE_LEITURA", 2):
             self.assertEqual(self.ler(leitura, "aplicacoes", "todas"), "comecou")
         e = leitura.estado()
         self.assertEqual((e["rodando"], e["lidas"], e["total"], e["parada"], e["erro"]), (False, 3, 3, False, None))
@@ -414,7 +439,7 @@ class TestLeitura(Base):
             return json.dumps([{"id": i, "requisitos": {"habilidades": ["SQL"]}} for i in ids])
         self.ia_falsa(responder)
         gravar(*[vaga(f"v{i}", triagem="seguir", etapa="aplicada") for i in range(3)])
-        with mock.patch.object(analise, "LOTE", 1):
+        with mock.patch.object(R, "LOTE_LEITURA", 1):
             self.ler(leitura, "aplicacoes")
             e = leitura.estado()
             self.assertEqual((e["lidas"], e["total"], e["parada"], e["rodando"]), (1, 3, True, False))
@@ -436,7 +461,7 @@ class TestLeitura(Base):
         self.ia_falsa(responder)
         gravar(*[vaga(f"v{i}", triagem="seguir", etapa="aplicada") for i in range(3)])
         leitura = R.Leitura()
-        with mock.patch.object(analise, "LOTE", 1):
+        with mock.patch.object(R, "LOTE_LEITURA", 1):
             self.ler(leitura, "aplicacoes")
             e = leitura.estado()
             self.assertEqual((e["lidas"], e["parada"]), (1, False))
@@ -466,8 +491,42 @@ class TestLeitura(Base):
         gravar(vaga("a", triagem="seguir", etapa="aplicada"))
         leitura = R.Leitura()
         self.ler(leitura, "aplicacoes")
-        self.assertIn("JSON", leitura.estado()["erro"]["motivo"])
+        self.assertIn("fora do formato", leitura.estado()["erro"]["motivo"])
         self.assertNotIn("requisitos", banco.obter("a"))
+
+    def test_lote_ilegivel_e_dividido(self):  # resposta longa demais, comum nas IAs gratuitas
+        def responder(pedido, **_):
+            ids = re.findall(r"^### id: (\S+)$", pedido, re.M)
+            if len(ids) > 2:
+                return '[{"id": "' + ids[0] + '", "requisitos": {"habilidades": ["SQ'  # cortada no meio
+            return "```json\n" + json.dumps([{"id": i, "requisitos": {"habilidades": ["SQL"]}} for i in ids]) + "\n```"
+        self.ia_falsa(responder)
+        gravar(*[vaga(f"v{i}", triagem="seguir", etapa="aplicada") for i in range(4)])
+        with mock.patch.object(R, "LOTE_LEITURA", 4), mock.patch.object(R, "RAIZ", self.tmp):
+            leitura = R.Leitura()
+            self.ler(leitura, "aplicacoes")
+        self.assertEqual((leitura.estado()["lidas"], leitura.estado()["erro"]), (4, None))
+        self.assertEqual(len(self.pedidos_ia), 3)  # o lote de 4 e as duas metades
+        self.assertTrue((self.tmp / ".cache" / "requisitos-resposta-invalida.txt").exists())
+
+    def test_vaga_esquecida_e_pedida_sozinha(self):
+        def responder(pedido, **_):
+            ids = re.findall(r"^### id: (\S+)$", pedido, re.M)
+            return json.dumps([{"id": i, "requisitos": {"habilidades": ["SQL"]}} for i in ids[:-1] or ids])
+        self.ia_falsa(responder)
+        gravar(*[vaga(f"v{i}", triagem="seguir", etapa="aplicada") for i in range(3)])
+        with mock.patch.object(R, "LOTE_LEITURA", 3):
+            self.ler(R.Leitura(), "aplicacoes")
+        self.assertTrue(all(R.lidos(v) for v in banco.listar_vagas()))
+
+    def test_ilegivel_seguido_para(self):
+        self.ia_falsa(lambda pedido, **_: "desculpe, não consigo")
+        gravar(*[vaga(f"v{i}", triagem="seguir", etapa="aplicada") for i in range(8)])
+        leitura = R.Leitura()
+        with mock.patch.object(R, "RAIZ", self.tmp):
+            self.ler(leitura, "aplicacoes")
+        self.assertIn("fora do formato", leitura.estado()["erro"]["motivo"])
+        self.assertEqual(len(self.pedidos_ia), R.ILEGIVEIS_SEGUIDAS)  # não insiste numa IA que não está dando conta
 
     def test_analise_leva_o_item_da_skill(self):
         self.assertIn("**Os requisitos**", analise.montar_pedido([vaga("a")]))

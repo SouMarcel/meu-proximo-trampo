@@ -49,6 +49,9 @@ que mais se identificam com as desejadas." (03/11/2026). Decisões da mesma data
   idiomas, senioridade e modelo de trabalho, e tipo de contratação.
 - Pedido da pessoa: experiência não é habilidade. Tempo de experiência vai num indicador à parte e nunca aparece na
   lista de habilidades.
+- Pedidos durante o teste (03/11), com a spec validada:
+  - "remoto não é senioridade": Senioridade e Modelo de trabalho ficam em blocos separados (FR-025);
+  - a leitura parou com "a resposta da IA veio com um JSON inválido", na reserva gratuita da IA (FR-026).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -311,6 +314,18 @@ contagens da página para a mesma seleção.
 - **FR-023**: A seção MUST funcionar no tema claro e no escuro e a 360 px de largura sem rolagem horizontal.
 - **FR-024**: README, README do dashboard, contrato da API, `AGENTS.md` (comandos) e a skill buscar-vagas MUST descrever
   a seção, a leitura dos requisitos e o comando novo.
+
+**Ajustes pedidos no teste (03/11)**
+
+- **FR-025**: Senioridade e Modelo de trabalho MUST ficar em blocos separados, cada um com o seu título e a sua base.
+- **FR-026**: A leitura MUST tolerar a resposta fora do formato, comum nas IAs gratuitas:
+  - a resposta em bloco de código ou com vírgula sobrando ainda vale;
+  - na resposta cortada, valem as vagas que vieram completas;
+  - a leitura vai em lotes de 5 vagas;
+  - o lote que volta ilegível, ou que deixa vagas de fora, é dividido ao meio e pedido de novo, até uma vaga por pedido;
+  - a vaga que volta ilegível sozinha fica para o próximo clique;
+  - três respostas ilegíveis seguidas param a leitura com o motivo, sem insistir numa IA que não está dando conta;
+  - a análise automática lê a resposta com a mesma tolerância.
 
 ### Key Entities
 

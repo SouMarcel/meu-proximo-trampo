@@ -65,6 +65,10 @@ MAX_HABILIDADES, MAX_CERTIFICACOES, MAX_IDIOMAS, MAX_AREAS = 30, 15, 6, 5
 POUCAS = 5  # menos vagas que isso com requisitos lidos: aviso de que são poucas para tirar conclusão
 DESTAQUES = 5
 ESPERA_ANALISE = 900  # segundos que a leitura espera a análise automática terminar antes de seguir
+LOTE_LEITURA = 5  # vagas por pedido na leitura: resposta menor, que as IAs gratuitas não cortam
+ILEGIVEIS_SEGUIDAS = 3  # respostas fora do formato seguidas: a IA não está dando conta, e a leitura para
+FORA_DO_FORMATO = ("a resposta da IA veio fora do formato esperado; tente de novo mais tarde ou escolha outra IA no "
+                   "botão IA")
 # o que fala de tempo ou de experiência não é habilidade (FR-002); o texto já vem sem acento (conferir.norm)
 EXPERIENCIA = re.compile(r"^(anos?\b|experiencias?\b|vivencias?\b|conhecimentos?\s+(em|de|com|sobre)\b|"
                          r"years?\b|experience[sd]?\b|minimo\s+de\b|pelo\s+menos\b|at\s+least\b)")
@@ -538,23 +542,51 @@ def montar_pedido(vagas: list[dict], nomes: list[str]) -> str:
     ])
 
 
-def ler_lote(lote: list[dict], nomes: list[str]) -> tuple[list[str], list[str]]:
-    """Um pedido à IA e a gravação só dos requisitos. Falha da IA levanta ia.IAErro (sem chave)."""
+def _guardar_resposta(texto: str) -> None:
+    """A última resposta que não deu para ler, em .cache/ (fora do Git), para entender o que a IA mandou."""
+    try:
+        destino = RAIZ / ".cache" / "requisitos-resposta-invalida.txt"
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(str(texto or "")[:200000], encoding="utf-8")
+    except OSError:
+        pass
+
+
+def ler_lote(lote: list[dict], nomes: list[str], ilegiveis: dict | None = None) -> tuple[list[str], list[str]]:
+    """Um pedido à IA e a gravação só dos requisitos. A resposta é lida com tolerância (analise.lista_json); se ela não
+    trouxer nada legível, ou deixar vagas de fora, o lote é dividido ao meio e pedido de novo, até uma vaga por pedido
+    (resposta longa demais é o que mais falha nas IAs gratuitas). A vaga sozinha que volta ilegível fica para o próximo
+    clique; ILEGIVEIS_SEGUIDAS respostas ilegíveis seguidas param a leitura. ilegiveis: {"seguidas", "total"},
+    compartilhado entre os lotes de uma leitura. Falha da IA levanta ia.IAErro (sem chave)."""
+    ilegiveis = ilegiveis if ilegiveis is not None else {"seguidas": 0, "total": 0}
     modulo = analise._ia()
     texto = modulo.responder(montar_pedido(lote, nomes), tempo=analise.TEMPO_MAXIMO)
     quem = modulo.marca()
-    a, b = texto.find("["), texto.rfind("]")
-    if a < 0 or b < a:
-        raise modulo.IAErro("a resposta da IA não trouxe o JSON dos requisitos")
-    try:
-        lista = json.loads(texto[a:b + 1])
-    except ValueError:
-        raise modulo.IAErro("a resposta da IA veio com um JSON inválido") from None
+    lista = analise.lista_json(texto)
+    if lista is None:
+        _guardar_resposta(texto)
+        ilegiveis["seguidas"] += 1
+        ilegiveis["total"] += 1
+        if ilegiveis["seguidas"] >= ILEGIVEIS_SEGUIDAS:
+            raise modulo.IAErro(FORA_DO_FORMATO)
+        if len(lote) == 1:
+            return [], [f"{lote[0]['id']}: a resposta da IA veio fora do formato"]
+        lista = []
+    else:
+        ilegiveis["seguidas"] = 0
     ids = {v["id"] for v in lote}
     itens = [{"id": str(x["id"]), "requisitos": x["requisitos"], "provedor": quem.get("provedor"),
               "modelo": quem.get("modelo")}
-             for x in lista if isinstance(x, dict) and str(x.get("id")) in ids and isinstance(x.get("requisitos"), dict)]
-    return banco.aplicar_requisitos(itens)
+             for x in lista if str(x.get("id")) in ids and isinstance(x.get("requisitos"), dict)]
+    ok, problemas = banco.aplicar_requisitos(itens)
+    faltaram = [v for v in lote if v["id"] not in ok]
+    if faltaram and len(lote) > 1:
+        meio = (len(faltaram) + 1) // 2
+        for parte in (faltaram[:meio], faltaram[meio:]):
+            if parte:
+                mais, outros = ler_lote(parte, nomes, ilegiveis)
+                ok, problemas = ok + mais, problemas + outros
+    return ok, problemas
 
 
 class Leitura:
@@ -607,9 +639,10 @@ class Leitura:
             return self._parar
 
     def _rodar(self, fila: list[dict]) -> None:
+        ilegiveis = {"seguidas": 0, "total": 0}
         try:
             nomes = nomes_do_perfil(ler_perfil(perfil_texto()))
-            for lote in analise.lotes(fila):
+            for lote in analise.lotes(fila, LOTE_LEITURA):
                 espera = 0
                 while analise.FILA.rodando and espera < ESPERA_ANALISE and not self._pedido_de_parar():
                     time.sleep(1)  # a análise automática usa a mesma IA: um pedido por vez
@@ -619,11 +652,13 @@ class Leitura:
                 lote = [v for v in (banco.obter(x["id"]) for x in lote) if v and not lidos(v)]
                 if not lote:  # a análise automática já trouxe os requisitos
                     continue
-                ok, problemas = ler_lote(lote, nomes)
+                ok, problemas = ler_lote(lote, nomes, ilegiveis)
                 with self._trava:
                     self.lidas += len(ok)
                 if problemas:
                     print(f"[requisitos] problemas: {'; '.join(problemas)}", file=sys.stderr)
+            if not self.lidas and ilegiveis["total"] and not self._pedido_de_parar():
+                raise analise._ia().IAErro(FORA_DO_FORMATO)  # nada lido: o painel mostra o motivo
             print(f"[requisitos] {self.lidas} de {self.total} vaga(s) com os requisitos lidos")
         except Exception as e:  # nunca derruba o servidor; o painel mostra o motivo e o próximo clique continua
             motivo = analise._ia().mascarar(str(e)) or "falha desconhecida"

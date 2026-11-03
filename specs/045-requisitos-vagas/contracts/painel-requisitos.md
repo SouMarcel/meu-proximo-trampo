@@ -54,8 +54,9 @@ O quadro "Habilidades Mais Valorizadas nas Vagas" sai (FR-022).
    mais pedida".
 5. **Formação:** os níveis em barras e, abaixo, "Áreas mais citadas" em etiquetas com o número.
 6. **Idiomas:** cada idioma com o número de vagas e os níveis em etiquetas ("Fluente 9 · Intermediário 6").
-7. **Senioridade e modelo:** dois grupos de barras.
-8. **Tipo de contratação:** barras.
+7. **Senioridade:** barras (Júnior, Pleno, Sênior).
+8. **Modelo de trabalho:** barras (Remoto, Híbrido, Presencial), num bloco à parte (FR-025).
+9. **Tipo de contratação:** barras.
 
 Cada bloco diz a base no rodapé ("em 30 vagas com requisitos lidos" ou "em 35 vagas analisadas").
 

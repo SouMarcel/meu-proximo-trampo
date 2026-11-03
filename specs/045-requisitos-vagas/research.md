@@ -47,8 +47,14 @@ Decisões do plano, com o motivo e o que ficou de fora.
 - **Decisão:** uma classe `Leitura` em `dash/requisitos.py`, no molde da `Fila` da análise:
   - **Vagas:** a seleção que a pessoa vê no painel (Em Aplicações ou Todas as vagas analisadas, mais a área). Entra a
     vaga com `analise_status` "feita", texto do anúncio, sem `descricao_pendente` e sem `requisitos`.
-  - **Lotes:** de `analise.LOTE` vagas, separados por `analise.lotes()`. A vaga com o texto suspeito (spec 034) vai num
-    lote só dela, e o texto passa por `integridade.limpar`.
+  - **Lotes:** de `LOTE_LEITURA` (5) vagas, separados por `analise.lotes()`, menores que os da análise porque a resposta
+    é longa e as IAs gratuitas cortam (FR-026). A vaga com o texto suspeito (spec 034) vai num lote só dela, e o texto
+    passa por `integridade.limpar`.
+  - **Resposta fora do formato** (FR-026):
+    - a resposta é lida por `analise.lista_json`, que tolera bloco de código, vírgula sobrando e resposta cortada;
+    - o lote ilegível, ou com vagas de fora, é dividido ao meio até uma vaga por pedido;
+    - `ILEGIVEIS_SEGUIDAS` (3) respostas ilegíveis seguidas param a leitura com o motivo;
+    - a última resposta ilegível fica em `.cache/requisitos-resposta-invalida.txt`, fora do Git, para diagnóstico.
   - **O que vai à IA:** só o cargo, a empresa e o texto do anúncio, mais os nomes da lista de habilidades e
     certificações do perfil (FR-006).
   - **Andamento:** guarda lidas, total, rodando, parado e erro. A página lê esse estado em `GET /api/requisitos`.

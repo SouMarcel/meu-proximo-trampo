@@ -14,6 +14,7 @@ sem o texto, a nota sai com a marca nota_sem_descricao e é refeita quando a des
 from __future__ import annotations
 
 import json
+import re
 import sys
 import threading
 from datetime import datetime
@@ -169,13 +170,43 @@ def montar_pedido(vagas: list[dict], sem_descricao=frozenset()) -> str:
     ])
 
 
-def lotes(vagas: list[dict]) -> list[list[dict]]:
-    """Lotes de até LOTE vagas; a vaga cujo texto parece mirar a IA vai num pedido só dela, para não mexer na nota das
-    outras (spec 034). O aviso é calculado aqui, sobre o texto, e vale também para as vagas gravadas antes."""
+def lotes(vagas: list[dict], tamanho: int | None = None) -> list[list[dict]]:
+    """Lotes de até LOTE vagas (ou `tamanho`); a vaga cujo texto parece mirar a IA vai num pedido só dela, para não
+    mexer na nota das outras (spec 034). O aviso é calculado aqui, sobre o texto, e vale também para as vagas gravadas
+    antes."""
+    tamanho = tamanho or LOTE
     atencao = _integridade().atencao
     marcadas = [atencao(v.get("descricao"), v.get("integridade")) for v in vagas]
     comuns = [v for v, m in zip(vagas, marcadas) if not m]
-    return [comuns[i:i + LOTE] for i in range(0, len(comuns), LOTE)] + [[v] for v, m in zip(vagas, marcadas) if m]
+    return ([comuns[i:i + tamanho] for i in range(0, len(comuns), tamanho)]
+            + [[v] for v, m in zip(vagas, marcadas) if m])
+
+
+def lista_json(texto) -> list[dict] | None:
+    """Os objetos do array JSON da resposta da IA. Tolera bloco de código, vírgula sobrando e resposta cortada no meio
+    (ficam os objetos completos), comum nas IAs gratuitas (spec 045). None quando não há nenhum objeto legível."""
+    t = re.sub(r"```(?:json)?", "", str(texto or ""))
+    a, b = t.find("["), t.rfind("]")
+    if a >= 0 and b > a:
+        for trecho in (t[a:b + 1], re.sub(r",\s*([\]}])", r"\1", t[a:b + 1])):
+            try:
+                valor = json.loads(trecho)
+            except ValueError:
+                continue
+            if isinstance(valor, list):
+                return [x for x in valor if isinstance(x, dict)]
+    leitor, objetos = json.JSONDecoder(), []  # objeto por objeto: o que veio inteiro antes do corte
+    i = t.find("{", max(a, 0))
+    while i >= 0:
+        try:
+            valor, fim = leitor.raw_decode(t, i)
+        except ValueError:
+            i = t.find("{", i + 1)
+            continue
+        if isinstance(valor, dict):
+            objetos.append(valor)
+        i = t.find("{", fim)
+    return objetos or None
 
 
 def analisar(vagas: list[dict], sem_descricao=frozenset()) -> tuple[list[str], list[str]]:
@@ -191,13 +222,9 @@ def analisar(vagas: list[dict], sem_descricao=frozenset()) -> tuple[list[str], l
         texto = modulo.responder(montar_pedido(lote, sem_descricao), tempo=TEMPO_MAXIMO)
         quem = modulo.marca()
         marca = {"analise_provedor": quem["provedor"], "analise_modelo": quem["modelo"]}
-        a, b = texto.find("["), texto.rfind("]")
-        if a < 0 or b < a:
+        lista = lista_json(texto)
+        if lista is None:
             raise modulo.IAErro("a resposta da IA não trouxe o JSON das análises")
-        try:
-            lista = json.loads(texto[a:b + 1])
-        except ValueError:
-            raise modulo.IAErro("a resposta da IA veio com um JSON inválido") from None
         ids = {v["id"] for v in lote}
         analises = [{**x, **marca, **({"nota_sem_descricao": True} if str(x.get("id")) in sem_descricao else {})}
                     for x in lista if isinstance(x, dict) and str(x.get("id")) in ids]

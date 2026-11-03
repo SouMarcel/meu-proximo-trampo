@@ -224,7 +224,7 @@ servidor; ele só serve para ver e mexer nas vagas e em Aplicações.
      remota, mas pede ir ao escritório).
    **Os requisitos** (`requisitos`, opcional, em qualquer vaga com texto; o painel Métricas
    & Funil conta o que as vagas pedem): só o que o anúncio diz, sem deduzir. Omita a parte
-   que o anúncio não traz.
+   que o anúncio não traz. Cada `frase` é um trecho curto do anúncio (até 120 caracteres).
    - `habilidades`: lista de `{"nome", "tipo", "exigida"}`. `tipo`: `tecnica` (ferramentas,
      linguagens, métodos, conhecimentos da área) ou `comportamental` (comunicação,
      liderança, negociação). `exigida`: `true` quando o anúncio exige, `false` quando é
