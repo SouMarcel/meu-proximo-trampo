@@ -132,6 +132,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
 
 ![Aplicações](docs/quadro.png)
 
+![Métricas & Funil](docs/metricas.png)
+
 ## Precisa de IA?
 
 Não. A busca, as listas de vagas e Aplicações funcionam sem IA. A IA entra para avaliar as
