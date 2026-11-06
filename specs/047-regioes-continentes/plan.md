@@ -115,7 +115,7 @@ frontend-react (worktree ../mpt-front-027b):
 2. Merge da `047-regioes-continentes` na branch pessoal. O build do front vai para `dash/front/` sem commit, e o
    dashboard é reiniciado para a pessoa testar.
 3. Na branch pessoal, com o OK da pessoa já dado nesta sessão:
-   - `config.json`: Europa e Oceania nas regiões aceitas, União Europeia na autorização;
+   - `config.json`: as regiões aceitas e a autorização combinadas com ela;
    - `perfil.md`: a linha de regiões e a de autorização.
 4. Com o OK do teste:
    - busca de dados pessoais no diff;
