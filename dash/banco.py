@@ -12,6 +12,7 @@ comandos para consultar e analisar vagas sem abrir o navegador:
   python dash/banco.py kit ID                         o que a candidatura pede (checklist) e o lembrete da vaga
   python dash/banco.py lembretes                      lembretes de follow-up pendentes em Aplicações
   python dash/banco.py integridade [--gravar]         passa o filtro de integridade (spec 034) nas vagas já gravadas
+  python dash/banco.py regioes [--gravar]             revê as vagas em Fora por região ou lugar (spec 047)
 
 O arquivo do banco é dash/dados/candidaturas.db (ou o caminho em TRAMPO_BANCO).
 """
@@ -513,7 +514,7 @@ def definir_area(doc: dict, campos: dict | None = None) -> None:
     if campos.get("area") in filtros.AREAS:
         doc["area"] = campos["area"]
         pais = _texto(campos.get("pais_vaga"), 60)
-        doc["pais_vaga"] = (filtros.pais_pt(pais) or pais or filtros.pais_do_local(doc.get("local"))) if doc["area"] == "internacional" else None
+        doc["pais_vaga"] = (filtros.lugar_pt(pais) or pais or filtros.pais_do_local(doc.get("local"))) if doc["area"] == "internacional" else None
     else:
         doc["area"], doc["pais_vaga"] = filtros.area_da_vaga({**doc, "area": None}, f)
     if not doc.get("idioma"):  # como nas vagas da busca: o checklist pede o currículo no idioma da vaga
@@ -1029,6 +1030,60 @@ def _cmd_integridade(args) -> int:
     return 0
 
 
+# motivos de lugar da elegibilidade (filtros.elegibilidade): região aceita, lugar exigido e autorização de trabalho
+MOTIVOS_LUGAR = ("Vaga aberta a:", "Só aceita quem está em:", "Exige autorização de trabalho em:")
+
+
+def rever_regioes(gravar: bool = False) -> dict:
+    """As vagas em Fora dos critérios por um motivo de lugar, pela regra das regiões da spec 047: os motivos de lugar
+    são refeitos com o config de agora e os outros ficam; sem motivo, a vaga volta ao relatório. Com gravar=True,
+    grava só as que mudam."""
+    raiz = str(DASH.parent)
+    if raiz not in sys.path:
+        sys.path.insert(0, raiz)
+    import filtros
+    f = filtros.efetivos(filtros.ler_config())
+    mudam = []
+    with escrita() if gravar else closing(conectar()) as con:
+        for vid, dados in con.execute("SELECT id, dados FROM vagas ORDER BY id").fetchall():
+            doc = json.loads(dados)
+            antes = [str(m) for m in doc.get("motivo_fora") or []]
+            if doc.get("triagem") != "fora" or not any(m.startswith(MOTIVOS_LUGAR) for m in antes):
+                continue
+            outros = [m for m in antes if not m.startswith(MOTIVOS_LUGAR)]
+            novos = [m for m in filtros.elegibilidade(doc, f)["motivos"] if m.startswith(MOTIVOS_LUGAR)]
+            motivos = outros + novos
+            if motivos == antes:
+                continue
+            mudam.append({"id": vid, "titulo": doc.get("titulo"), "empresa": doc.get("empresa"),
+                          "antes": [m for m in antes if m.startswith(MOTIVOS_LUGAR)], "motivos": motivos})
+            if gravar:
+                if motivos:
+                    doc["motivo_fora"] = motivos
+                else:  # volta ao relatório
+                    doc["triagem"] = "pendente"
+                    doc.pop("motivo_fora", None)
+                    doc.pop("triada_em", None)
+                doc["atualizada_em"] = agora()
+                _gravar(con, vid, doc)
+    return {"mudam": mudam, "voltam": sum(1 for x in mudam if not x["motivos"]), "gravou": gravar}
+
+
+def _cmd_regioes(args) -> int:
+    r = rever_regioes(args.gravar)
+    if not r["mudam"]:
+        print("Nenhuma vaga em Fora dos critérios muda com a regra das regiões.")
+        return 0
+    perderam, voltaram = ("perderam", "voltaram") if r["gravou"] else ("perderiam", "voltariam")
+    print(f"{len(r['mudam'])} vaga(s) {perderam} o motivo de região ou de lugar; {r['voltam']} {voltaram} ao relatório.")
+    for x in r["mudam"]:
+        destino = ("volta" if not x["motivos"] else "continua em Fora: " + "; ".join(x["motivos"]))
+        print(f"- {x['id']} | {x['titulo']} | {x['empresa']}: {'; '.join(x['antes'])} → {destino}")
+    if not r["gravou"]:
+        print("Nada foi gravado. Para gravar: python dash/banco.py regioes --gravar")
+    return 0
+
+
 def main() -> int:
     for fluxo in (sys.stdout, sys.stderr):
         try:
@@ -1052,10 +1107,12 @@ def main() -> int:
     sub.add_parser("lembretes", help="lembretes de follow-up pendentes em Aplicações")
     g = sub.add_parser("integridade", help="filtro de integridade do texto nas vagas já gravadas (mostra; grava com --gravar)")
     g.add_argument("--gravar", action="store_true", help="grava o texto limpo e o aviso nas vagas que mudam")
+    r = sub.add_parser("regioes", help="vagas em Fora por região ou lugar, pela regra das regiões (mostra; grava com --gravar)")
+    r.add_argument("--gravar", action="store_true", help="grava os motivos novos e devolve ao relatório as que não têm motivo")
     args = ap.parse_args()
     return {"quadro": _cmd_quadro, "pendentes": _cmd_pendentes, "analisar": _cmd_analisar,
             "vaga": _cmd_vaga, "anotar": _cmd_anotar, "kit": _cmd_kit, "lembretes": _cmd_lembretes,
-            "integridade": _cmd_integridade}[args.cmd](args)
+            "integridade": _cmd_integridade, "regioes": _cmd_regioes}[args.cmd](args)
 
 
 if __name__ == "__main__":

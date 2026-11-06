@@ -69,7 +69,44 @@ LEGADOS = ("local", "pais_indeed", "somente_remoto")  # formato antigo do config
 # ---------------------------------------------------------------- área internacional e idioma
 
 IDIOMAS = {"pt": "português", "en": "inglês", "es": "espanhol", "fr": "francês", "de": "alemão", "it": "italiano"}
-REGIOES = {"brasil": "Brasil", "latam": "América Latina", "americas": "Américas", "mundo": "Mundo todo"}
+# Regiões (spec 047): nome -> países de PAISES. As marcáveis entram em Regiões aceitas e nos campos de país (países de
+# interesse, países para morar, autorização de trabalho); as outras só são reconhecidas no texto da vaga
+_AMERICA_NORTE = frozenset({"Estados Unidos", "Canadá", "México"})
+_AMERICA_CENTRAL = frozenset({"Costa Rica", "Panamá"})
+_AMERICA_SUL = frozenset({"Argentina", "Brasil", "Chile", "Colômbia", "Equador", "Peru", "Uruguai", "Venezuela"})
+_UE = frozenset({"Alemanha", "Áustria", "Bélgica", "Bulgária", "Chipre", "Croácia", "Dinamarca", "Eslováquia",
+                 "Eslovênia", "Espanha", "Estônia", "Finlândia", "França", "Grécia", "Holanda", "Hungria", "Irlanda",
+                 "Itália", "Letônia", "Lituânia", "Luxemburgo", "Malta", "Polônia", "Portugal", "República Tcheca",
+                 "Romênia", "Suécia"})
+_EUROPA = _UE | {"Reino Unido", "Suíça", "Noruega", "Ucrânia"}
+_ORIENTE_MEDIO = frozenset({"Arábia Saudita", "Bahrein", "Catar", "Emirados Árabes Unidos", "Israel", "Kuwait", "Omã",
+                            "Turquia"})
+_ASIA = _ORIENTE_MEDIO | {"Bangladesh", "China", "Coreia do Sul", "Filipinas", "Hong Kong", "Índia", "Indonésia",
+                          "Japão", "Malásia", "Paquistão", "Singapura", "Tailândia", "Taiwan", "Vietnã"}
+_OCEANIA = frozenset({"Austrália", "Nova Zelândia"})
+_AFRICA = frozenset({"África do Sul", "Egito", "Marrocos", "Nigéria"})
+REGIOES_PAISES = {
+    "América do Norte": _AMERICA_NORTE, "América Central": _AMERICA_CENTRAL, "América do Sul": _AMERICA_SUL,
+    "América Latina": _AMERICA_SUL | _AMERICA_CENTRAL | {"México"},
+    "Américas": _AMERICA_NORTE | _AMERICA_CENTRAL | _AMERICA_SUL,
+    "União Europeia": _UE, "Europa": _EUROPA, "Ásia": _ASIA, "Oceania": _OCEANIA, "África": _AFRICA,
+    # só no texto da vaga
+    "Oriente Médio": _ORIENTE_MEDIO, "EMEA": _EUROPA | _ORIENTE_MEDIO | _AFRICA, "Ásia-Pacífico": _ASIA | _OCEANIA,
+}
+# nome em inglês de cada região marcável: a busca por região (POR_REGIAO) e o nome que a pessoa digita
+REGIAO_EN = {"América do Norte": "North America", "América Central": "Central America",
+             "América do Sul": "South America", "América Latina": "Latin America", "Américas": "Americas",
+             "União Europeia": "European Union", "Europa": "Europe", "Ásia": "Asia", "Oceania": "Oceania",
+             "África": "Africa"}
+REGIOES_MARCAVEIS = list(REGIAO_EN)
+# Regiões aceitas (código -> rótulo): "pais" é o país da pessoa
+REGIAO_DO_CODIGO = {"america_norte": "América do Norte", "america_central": "América Central",
+                    "america_sul": "América do Sul", "latam": "América Latina", "americas": "Américas",
+                    "ue": "União Europeia", "europa": "Europa", "asia": "Ásia", "oceania": "Oceania",
+                    "africa": "África"}
+REGIOES = {"pais": "Seu país", **REGIAO_DO_CODIGO}
+# config de antes da spec 047: "brasil" era o próprio país; "mundo" saiu (vaga do mundo todo sempre passa)
+CODIGOS_ANTIGOS = {"brasil": "pais", "mundo": None}
 CONTRATACOES = {"contractor": "Contractor (você emite nota)", "eor": "Empregado por EOR (Deel, Remote…)",
                 "pj": "PJ no Brasil", "clt": "CLT de empresa com operação no Brasil"}
 AREAS = ("nacional", "internacional")
@@ -123,10 +160,14 @@ LUGARES = {  # cidades, siglas e regiões que aparecem no local das vagas (sem a
     "toronto": "Canadá", "vancouver": "Canadá", "montreal": "Canadá", "buenos aires": "Argentina",
     "santiago": "Chile", "bogota": "Colômbia", "ciudad de mexico": "México", "mexico city": "México",
     "worldwide": "mundo todo", "anywhere": "mundo todo", "global": "mundo todo", "mundo": "mundo todo",
-    "europe": "Europa", "europa": "Europa", "emea": "Europa", "latam": "América Latina",
-    "latin america": "América Latina", "america latina": "América Latina", "south america": "América Latina",
+    "europe": "Europa", "europa": "Europa", "emea": "EMEA", "latam": "América Latina",
+    "latin america": "América Latina", "america latina": "América Latina", "south america": "América do Sul",
+    "america do sul": "América do Sul", "central america": "América Central", "america central": "América Central",
     "americas": "Américas", "brazil": "Brasil", "brasil": "Brasil", "north america": "América do Norte",
-    "eu": "Europa", "european union": "Europa", "anywhere in the world": "mundo todo",
+    "america do norte": "América do Norte", "eu": "União Europeia", "european union": "União Europeia",
+    "uniao europeia": "União Europeia", "anywhere in the world": "mundo todo", "oceania": "Oceania",
+    "anz": "Oceania", "asia": "Ásia", "apac": "Ásia-Pacífico", "asia pacific": "Ásia-Pacífico", "africa": "África",
+    "middle east": "Oriente Médio", "oriente medio": "Oriente Médio",
 }
 
 
@@ -156,6 +197,13 @@ def area_da_vaga(v: dict, f: dict) -> tuple[str, str | None]:
     fora = [g.split(":", 1)[1] for g in grupos if g.startswith(GRUPOS_FORA)]
     if fora and len(fora) == len(grupos):
         paises = [x for x in fora if x != "global"]
+        if paises and paises[0] in REGIOES_PAISES:
+            # consulta por região (spec 047): o país do local, quando diz (o do país da pessoa fica nacional); senão,
+            # a região
+            pais = pais_do_local(v.get("local"))
+            if pais == f["localidade"]["pais"]:
+                return "nacional", None
+            return "internacional", (pais if pais in PAISES else paises[0])
         if paises:
             return "internacional", paises[0]
         # fonte sem filtro de país: o país ou a região que a vaga exige, quando diz
@@ -233,6 +281,31 @@ def pais_pt(nome) -> str | None:
     return None
 
 
+def lugar_pt(nome) -> str | None:
+    """País (pais_pt) ou região marcável, pelo nome em português (com ou sem acento) ou em inglês (spec 047)."""
+    pais = pais_pt(nome)
+    if pais:
+        return pais
+    alvo = sem_acento(nome)
+    for regiao in REGIOES_MARCAVEIS:
+        if alvo and alvo in (sem_acento(regiao), sem_acento(REGIAO_EN[regiao])):
+            return regiao
+    return None
+
+
+def paises_de(lugar) -> frozenset | None:
+    """Os países de um país ou de uma região; None para o mundo todo (todos)."""
+    if lugar == "mundo todo":
+        return None
+    return REGIOES_PAISES.get(lugar) or frozenset({lugar})
+
+
+def sobrepoe(a, b) -> bool:
+    """Os dois lugares (país, região ou mundo todo) têm país em comum."""
+    pa, pb = paises_de(a), paises_de(b)
+    return pa is None or pb is None or bool(pa & pb)
+
+
 # ---------------------------------------------------------------- config
 
 def ler_config() -> dict:
@@ -258,16 +331,16 @@ def efetivos(cfg: dict) -> dict:
         "modelos": {k: bool(modelos.get(k)) for k in MODELOS},
         "internacional": {
             "ativo": bool(inter.get("ativo")),
-            "paises": [p for p in map(pais_pt, inter.get("paises") or []) if p and p != pais],
+            "paises": _lugares_cfg(inter.get("paises"), pais),
             "termos": [str(t) for t in inter.get("termos") or []],
-            "regioes": [r for r in inter.get("regioes") or [] if r in REGIOES],
+            "regioes": _regioes_cfg(inter.get("regioes")),
             "salario_min_anual_usd": _numero(inter.get("salario_min_anual_usd")),
             "fuso_horas": int(_numero(inter.get("fuso_horas"))),
             "contratacao": [c for c in inter.get("contratacao") or [] if c in CONTRATACOES],
             "aceita_mudar": bool(inter.get("aceita_mudar")),
-            "paises_mudanca": [p for p in map(pais_pt, inter.get("paises_mudanca") or []) if p and p != pais],
+            "paises_mudanca": _lugares_cfg(inter.get("paises_mudanca"), pais),
             "passaporte": bool(inter.get("passaporte")),
-            "autorizacao_trabalho": [p for p in map(pais_pt, inter.get("autorizacao_trabalho") or []) if p],
+            "autorizacao_trabalho": _lugares_cfg(inter.get("autorizacao_trabalho")),
             "precisa_sponsor": bool(inter.get("precisa_sponsor")),
             "fontes": [n for n in FONTES_INT if n in (inter.get("fontes") or [])],
             "frases_restricao": [str(x).strip() for x in inter.get("frases_restricao") or [] if str(x).strip()],
@@ -297,15 +370,45 @@ def _numero(v) -> float:
         return 0.0
 
 
+def _lugares_cfg(v, excluir: str | None = None) -> list[str]:
+    """Países e regiões de um campo do config.json (nome em português), sem repetir e sem o país da pessoa; o nome
+    desconhecido sai (spec 047)."""
+    saida = []
+    for p in v if isinstance(v, list) else []:
+        pp = lugar_pt(p)
+        if pp and pp != excluir and pp not in saida:
+            saida.append(pp)
+    return saida
+
+
+def _regioes_cfg(v) -> list[str]:
+    """Os códigos de Regiões aceitas, com os antigos traduzidos ("brasil" vira "pais"; "mundo" sai), sem repetir."""
+    saida = []
+    for r in v if isinstance(v, list) else []:
+        r = CODIGOS_ANTIGOS.get(r, r) if isinstance(r, str) else None
+        if r in REGIOES and r not in saida:
+            saida.append(r)
+    return saida
+
+
 def _paises(v, nome: str, excluir: str | None = None) -> list[str]:
+    """Países e regiões (spec 047) de um campo do painel; nome desconhecido dá erro."""
     saida = []
     for p in v or []:
-        pp = pais_pt(p)
+        pp = lugar_pt(p)
         if not pp:
-            raise ValueError(f"{nome}: país desconhecido: {p}")
+            raise ValueError(f"{nome}: país ou região desconhecido: {p}")
         if pp != excluir and pp not in saida:
             saida.append(pp)
     return saida
+
+
+def _regioes_antigas(v):
+    """No que vem do painel, os códigos de antes da spec 047: "brasil" vira "pais" e "mundo" sai, sem erro."""
+    if not isinstance(v, list):
+        return v
+    return [CODIGOS_ANTIGOS.get(r, r) if isinstance(r, str) else r for r in v
+            if not (isinstance(r, str) and r in CODIGOS_ANTIGOS and CODIGOS_ANTIGOS[r] is None)]
 
 
 def _codigos(v, nome: str, validos: dict) -> list[str]:
@@ -418,7 +521,7 @@ def validar(e: dict) -> dict:
         raise ValueError("as horas de sobreposição de fuso devem ficar entre 0 e 12")
     internacional = {
         "ativo": ativo, "paises": paises_int, "termos": termos_int,
-        "regioes": _codigos(inter.get("regioes"), "região", REGIOES),
+        "regioes": _codigos(_regioes_antigas(inter.get("regioes")), "região", REGIOES),
         "salario_min_anual_usd": salario, "fuso_horas": fuso,
         "contratacao": _codigos(inter.get("contratacao"), "forma de contratação", CONTRATACOES),
         "aceita_mudar": bool(inter.get("aceita_mudar")),
@@ -515,9 +618,14 @@ def acompanhar(url: str) -> tuple[dict, bool, list[dict]]:
 
 def opcoes() -> dict:
     """Listas que o painel do dashboard mostra."""
+    from fontes import FONTES
+
     return {"paises": sorted(PAISES, key=sem_acento), "modelos": MODELOS, "tipos_emprego": TIPOS_EMPREGO,
             "senioridades": SENIORIDADES, "moedas": MOEDAS, "moeda_do_pais": MOEDA_DO_PAIS,
             "janelas": JANELAS, "raios_km": RAIOS_KM, "idiomas": IDIOMAS, "regioes": REGIOES,
+            # spec 047: as regiões dos campos de país e os portais que procuram por região
+            "regioes_lugar": list(REGIOES_MARCAVEIS),
+            "fontes_regiao": [n for n, fonte in FONTES.items() if getattr(fonte, "POR_REGIAO", False)],
             "contratacao": CONTRATACOES, "fontes_int": fontes_int(), "fontes_nac": fontes_nac(),
             "fontes_login": fontes_login(), "portais_a_mapear": [dict(p) for p in PORTAIS_A_MAPEAR]}
 
@@ -564,7 +672,7 @@ def criterios_extra(f: dict) -> list[str]:
     if inter["ativo"]:
         partes = []
         if inter["regioes"]:
-            partes.append("regiões aceitas: " + ", ".join(REGIOES[r] for r in inter["regioes"]))
+            partes.append("regiões aceitas: " + ", ".join(regioes_aceitas(f)))
         if inter["contratacao"]:
             partes.append("contratação aceita: " + ", ".join(CONTRATACOES[c] for c in inter["contratacao"]))
         if inter["fuso_horas"]:
@@ -591,6 +699,14 @@ def cidade_rotulo(f: dict) -> str:
     return ", ".join(x for x in (loc["cidade"], loc["estado"]) if x)
 
 
+def _onde(lugar: str) -> dict:
+    """O lugar de uma consulta do exterior: o país (nome do jobspy) ou, para uma região (spec 047), "regiao" com o
+    nome em inglês e país nenhum; só os portais com POR_REGIAO atendem a consulta por região."""
+    if lugar in REGIAO_EN:
+        return {"pais": None, "pais_nome": lugar, "regiao": REGIAO_EN[lugar]}
+    return {"pais": PAISES[lugar], "pais_nome": lugar}
+
+
 def consultas(f: dict, incluir_presencial: bool = False) -> list[dict]:
     """Uma consulta por termo em cada grupo: remoto no país, cidade (híbrido/presencial) e cada país do exterior."""
     m, loc, inter = f["modelos"], f["localidade"], f["internacional"]
@@ -615,13 +731,13 @@ def consultas(f: dict, incluir_presencial: bool = False) -> list[dict]:
     if inter["ativo"]:  # não depende do remoto no país
         for p in inter["paises"]:
             for t in inter["termos"] or f["termos"]:
-                lista.append({"grupo": f"internacional:{p}", "termo": t, "pais": PAISES[p], "pais_nome": p,
+                lista.append({"grupo": f"internacional:{p}", "termo": t, **_onde(p),
                               "local": None, "raio_km": None, "remoto": True, "area": "internacional",
                               "modelos": ["remoto"], "tipos_emprego": f.get("tipos_emprego", [])})
         if inter.get("aceita_mudar"):  # presencial e híbrido nos países para onde aceita se mudar
             for p in inter.get("paises_mudanca") or inter["paises"]:
                 for t in inter["termos"] or f["termos"]:
-                    lista.append({"grupo": f"mudanca:{p}", "termo": t, "pais": PAISES[p], "pais_nome": p,
+                    lista.append({"grupo": f"mudanca:{p}", "termo": t, **_onde(p),
                                   "local": None, "raio_km": None, "remoto": False, "area": "internacional",
                                   "modelos": ["presencial", "hibrido"], "tipos_emprego": f.get("tipos_emprego", [])})
         if inter.get("fontes") or f.get("empresas") or any(n in FONTES_GLOBAIS for n in f.get("fontes", [])):
@@ -723,15 +839,8 @@ def resumo(f: dict) -> str:
 
 # ---------------------------------------------------------------- elegibilidade (vagas do exterior)
 
-# Países de cada região que o anúncio pode exigir ("mundo todo" vale para qualquer país)
-_LATAM = {"Argentina", "Brasil", "Chile", "Colômbia", "Costa Rica", "Equador", "México", "Panamá", "Peru",
-          "Uruguai", "Venezuela"}
-_EUROPA = {"Alemanha", "Áustria", "Bélgica", "Bulgária", "Chipre", "Croácia", "Dinamarca", "Eslováquia",
-           "Eslovênia", "Espanha", "Estônia", "Finlândia", "França", "Grécia", "Holanda", "Hungria", "Irlanda",
-           "Itália", "Letônia", "Lituânia", "Luxemburgo", "Malta", "Noruega", "Polônia", "Portugal", "Reino Unido",
-           "República Tcheca", "Romênia", "Suécia", "Suíça", "Ucrânia"}
-PAISES_DA_REGIAO = {"América Latina": _LATAM, "Américas": _LATAM | {"Estados Unidos", "Canadá"},
-                    "América do Norte": {"Estados Unidos", "Canadá", "México"}, "Europa": _EUROPA}
+# Países de cada região que o anúncio pode exigir ("mundo todo" vale para qualquer país): o catálogo da spec 047
+PAISES_DA_REGIAO = REGIOES_PAISES
 # Frases padrão do anúncio (sem acento, minúsculas); a pessoa amplia com frases_restricao e frases_positivas
 NAO_PATROCINA = (
     r"(do|does|will|can|are|is) not (currently )?(offer|provide|support)( any)?( work)?( visa)? sponsorship",
@@ -771,8 +880,15 @@ SINAL_PATROCINIO, SINAL_RELOCATION = "Oferece patrocínio de visto", "Oferece re
 
 
 def _inclui(lugar: str, pais: str) -> bool:
-    """O lugar exigido (país ou região) inclui o país."""
-    return lugar in (pais, "mundo todo") or pais in PAISES_DA_REGIAO.get(lugar, ())
+    """O lugar exigido (país ou região) tem país em comum com o lugar da pessoa (país ou região, spec 047)."""
+    return sobrepoe(lugar, pais)
+
+
+def regioes_aceitas(f: dict) -> list[str]:
+    """As regiões aceitas da pessoa como lugares (nomes do catálogo); "pais" é o país dela."""
+    casa = f["localidade"]["pais"]
+    return [casa if r == "pais" else REGIAO_DO_CODIGO[r] for r in f["internacional"].get("regioes") or []
+            if r == "pais" or r in REGIAO_DO_CODIGO]
 
 
 def _lugares(texto) -> list[str]:
@@ -802,12 +918,8 @@ def _acha(padroes, texto: str) -> bool:
     return any(re.search(p, texto) for p in padroes)
 
 
-def _regiao(lugares: list[str], casa: str) -> str | None:
-    """Em que região das caixas da pessoa (brasil, latam, americas, mundo) a vaga está aberta."""
-    for lugar, codigo in (("mundo todo", "mundo"), ("Américas", "americas"), ("América Latina", "latam")):
-        if lugar in lugares:
-            return codigo
-    return "brasil" if casa == "Brasil" and casa in lugares else None
+def _lista_ou(itens: list[str]) -> str:
+    return itens[0] if len(itens) == 1 else ", ".join(itens[:-1]) + " ou " + itens[-1]
 
 
 def elegibilidade(v: dict, f: dict) -> dict:
@@ -842,17 +954,19 @@ def elegibilidade(v: dict, f: dict) -> dict:
                 trecho = trecho or m.group(0).strip()
     for lugares, fonte in ((do_campo, restricao), (das_frases, trecho)):
         if lugares and not serve(lugares) and not patrocina:
-            onde = lugares[0] if len(lugares) == 1 else ", ".join(lugares[:-1]) + " ou " + lugares[-1]
+            onde = _lista_ou(lugares)
             if nao_patrocina and inter.get("precisa_sponsor"):
                 motivos.append(f"Exige autorização de trabalho em: {onde}; não patrocina visto")
             else:
                 motivos.append(f"Só aceita quem está em: {onde} (o anúncio diz “{str(fonte)[:80]}”)")
             break
-    # 3: regiões aceitas pela pessoa
-    regiao = _regiao(do_campo or das_frases, casa)
-    if not motivos and inter.get("regioes") and regiao and regiao not in inter["regioes"]:
-        motivos.append(f"Vaga aberta a: {REGIOES[regiao]}; você aceita "
-                       + _lista_e([REGIOES[r] for r in inter["regioes"]]))
+    # 3: regiões aceitas pela pessoa, por sobreposição (spec 047): passa a vaga aberta a um lugar com país em comum com
+    # alguma região marcada; a aberta ao mundo todo e a que não diz o lugar sempre passam
+    aceitas = regioes_aceitas(f)
+    lugares = do_campo or das_frases
+    if (not motivos and aceitas and lugares and "mundo todo" not in lugares
+            and not any(sobrepoe(lugar, a) for lugar in lugares for a in aceitas)):
+        motivos.append(f"Vaga aberta a: {_lista_ou(lugares)}; você aceita {_lista_e(aceitas)}")
     # 4: presencial ou híbrido no exterior
     modelo = v.get("modelo_trabalho")
     if modelo not in MODELOS and (GLOBAL in (v.get("grupos") or []) or v.get("ats")):
@@ -862,7 +976,7 @@ def elegibilidade(v: dict, f: dict) -> dict:
         onde = f" em {v['local']}" if v.get("local") else ""
         if not inter.get("aceita_mudar"):
             motivos.append(f"{MODELOS[modelo]}{onde}; você não marcou que aceita morar fora")
-        elif inter.get("paises_mudanca") and pais and pais not in inter["paises_mudanca"]:
+        elif inter.get("paises_mudanca") and pais and not any(sobrepoe(pais, p) for p in inter["paises_mudanca"]):
             motivos.append(f"{MODELOS[modelo]}{onde}; você aceita morar em " + _lista_e(inter["paises_mudanca"]))
     # 5: frases da pessoa
     for frase in inter.get("frases_restricao") or []:

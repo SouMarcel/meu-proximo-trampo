@@ -9,7 +9,10 @@ Cada fonte é um módulo nesta pasta com:
                                  # roda só na consulta internacional global, uma por cargo
     GLOBAL = True                # opcional: portal por país que também roda na consulta global
                                  # ("mundo todo"), além das consultas por país (ex.: LinkedIn)
-    TERMOS = "…"                 # opcional: resumo dos termos de uso, mostrado no painel
+    POR_REGIAO = True            # opcional: portal que procura por região (spec 047); recebe a consulta com
+                                 # "regiao" (nome em inglês, ex. "European Union") e pais vazio. Sem ele, o portal
+                                 # não recebe as consultas por região (o Indeed exige um país)
+    TERMOS = "…"                # opcional: resumo dos termos de uso, mostrado no painel
 
     def buscar(consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list[str]]:
         '''consulta (montada por filtros.consultas): termo, pais (nome do jobspy, ex.

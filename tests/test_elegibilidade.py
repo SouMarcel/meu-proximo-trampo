@@ -57,9 +57,16 @@ CASOS = [
      {"frases_restricao": ["quarterly onsite"]}, True, "“quarterly onsite” (frase da sua lista)", []),
     ("frase própria positiva", vaga("Brazilian candidates are welcome!"), {"frases_positivas": ["Brazilian candidates"]},
      False, "", ["Brazilian candidates"]),
-    ("região aceita: só LATAM, vaga do mundo todo", vaga("", "Worldwide"), {"regioes": ["latam"]},
-     True, "Vaga aberta a: Mundo todo", []),
+    # regiões aceitas por sobreposição (spec 047): o mundo todo sempre passa; "mundo" (config antigo) é ignorado
+    ("região aceita: só LATAM, vaga do mundo todo", vaga("", "Worldwide"), {"regioes": ["latam"]}, False, "", []),
     ("região aceita: mundo, vaga LATAM", vaga("", "LATAM"), {"regioes": ["mundo", "latam"]}, False, "", []),
+    ("região aceita: Américas, vaga LATAM", vaga("", "LATAM"), {"regioes": ["brasil", "americas"]}, False, "", []),
+    ("região aceita: Américas e Europa, vaga da Ásia", vaga("", "Asia"), {"regioes": ["americas", "europa"],
+     "autorizacao_trabalho": ["Japão"]}, True, "Vaga aberta a: Ásia; você aceita Américas e Europa", []),
+    ("região aceita: Europa, vaga EU only", vaga("", "EU"), {"regioes": ["europa"],
+     "autorizacao_trabalho": ["Portugal"]}, False, "", []),
+    ("região aceita: vaga sem lugar", vaga("Remote role.", "Remote"), {"regioes": ["europa"]}, False, "", []),
+    ("região aceita: seu país, vaga do Brasil", vaga("", "Brazil"), {"regioes": ["pais"]}, False, "", []),
     ("UK right to work", vaga("You must have the right to work in the UK."), {}, True, "Reino Unido", []),
     ("residência exigida", vaga("You must reside in Canada to be considered."), {}, True, "Canadá", []),
 ]

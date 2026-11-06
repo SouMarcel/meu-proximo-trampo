@@ -36,7 +36,8 @@ Faça poucos pedidos nessa pesquisa, espaçados, e só à parte pública. As amo
 ## 2. Decisões que a pessoa toma na spec
 
 - **Área**: `AREAS = ("nacional",)`, internacional ou as duas; se for internacional, se roda por país (`POR_PAIS`) ou
-  só na consulta global.
+  só na consulta global, e se procura também por região (`POR_REGIAO = True`, spec 047: a consulta chega com
+  `regiao`, o nome em inglês da região, e sem país; só para portal que aceita o nome da região no local da busca).
 - **Ligado por padrão?** Se sim, o portal entra em `filtros.FONTES_PADRAO`. A lista de portais que a pessoa já
   escolheu no `config.json` não muda.
 - **Pausa entre os pedidos**: o valor padrão e o mínimo deste portal, ajustáveis por `<NOME>_PAUSA` no `.env`

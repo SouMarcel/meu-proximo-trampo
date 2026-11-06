@@ -64,7 +64,8 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   carta.txt` confere uma carta), `PY candidatura_ia.py sensiveis perguntas.txt` (perguntas de
   formulário que só a pessoa responde), `PY dash/banco.py kit ID` e `lembretes` (o que a
   candidatura pede e os follow-ups), `PY dash/banco.py integridade` (filtro de integridade nas vagas
-  já gravadas; mostra o que mudaria e só grava com `--gravar` e o OK da pessoa),
+  já gravadas; mostra o que mudaria e só grava com `--gravar` e o OK da pessoa), `PY dash/banco.py regioes`
+  (vagas em Fora por região ou lugar, revistas pela regra das regiões; mostra e só grava com `--gravar` e o OK da pessoa),
   `PY consultar_gupy.py <ferramenta> chave=valor …` (perguntas pontuais à Gupy sem a integração
   MCP) e `python iniciar.py` (abre o dashboard em http://127.0.0.1:8765). Perfil: `PY primeiros_passos.py extrair <arquivo>` (texto de
   currículo ou LinkedIn sem documentos de identificação), `diagnostico [perfil.md]` e
