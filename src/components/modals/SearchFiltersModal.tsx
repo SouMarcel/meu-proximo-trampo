@@ -246,7 +246,7 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
   // a conta de consultas do dashboard antigo, com o aviso de risco de bloqueio
   const conta = useMemo(() => {
     if (!d) return null
-    const n = configApi.contarConsultas(d)
+    const n = configApi.contarConsultas(d, false, op?.regioes_lugar || [])
     const nl = d.fontes.includes("linkedin") ? configApi.contarLinkedin(d) : 0
     const maior = Math.max(n, nl)
     const limitado = d.fontes.some((x) => x === "linkedin" || x === "indeed")
@@ -258,7 +258,16 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
       (maior > 20 ? ": muitas consultas aumentam o risco de bloqueio" : "") +
       (cargos ? ". Mais de 5 cargos com LinkedIn ou Indeed ligados aumentam o risco de bloqueio desses portais." : "")
     return { texto, alerta: maior > 20 || cargos }
-  }, [d])
+  }, [d, op])
+
+  // região em países de interesse ou para morar sem nenhum portal ligado que procure por região (spec 047)
+  const avisoRegiao = useMemo(() => {
+    if (!d || !op?.regioes_lugar || !d.internacional.ativo) return ""
+    const regioes = op.regioes_lugar
+    const usa = [...d.internacional.paises, ...listaDeTexto(txtMudanca, /,/)].some((p) => regioes.includes(p))
+    const porRegiao = (op.fontes_regiao || []).some((n) => d.fontes.includes(n))
+    return usa && !porRegiao ? "Nenhum portal ligado procura por região; o Indeed só procura nos países marcados um a um." : ""
+  }, [d, op, txtMudanca])
 
   // os contadores das abas, do formulário ainda não salvo; nome desconhecido (config antigo) não conta
   const contagem = useMemo((): Record<AbaComConta, number> | null => {
@@ -762,6 +771,19 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
 
               <section className={SEC}>
                 <h4 className={H}>Países de interesse</h4>
+                {op.regioes_lugar?.length ? (
+                  <div>
+                    <span className={ROTULO}>Regiões</span>
+                    <Pilulas
+                      mapa={Object.fromEntries(op.regioes_lugar.map((r) => [r, r]))}
+                      marcados={d.internacional.paises}
+                      onTrocar={(k) => mudarInt((it) => (it.paises = alternar(it.paises, k)))}
+                    />
+                    <p className={`${DICA} mt-1`}>
+                      Uma região é uma consulta por cargo no LinkedIn; o Indeed só procura nos países marcados um a um.
+                    </p>
+                  </div>
+                ) : null}
                 <input value={buscaPais} onChange={(e) => setBuscaPais(e.target.value)} placeholder="Buscar país…" aria-label="Buscar país" className={CAMPO} />
                 <div className="max-h-40 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800">
                   {op.paises
@@ -775,6 +797,7 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
                 <p className={DICA}>
                   Marcados: {d.internacional.paises.length ? d.internacional.paises.join(", ") : "nenhum"}.
                 </p>
+                {avisoRegiao && <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold">{avisoRegiao}</p>}
               </section>
 
               <section className={SEC}>
@@ -791,8 +814,16 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
 
               <section className={SEC}>
                 <h4 className={H}>Regiões aceitas</h4>
-                <Pilulas mapa={op.regioes} marcados={d.internacional.regioes} onTrocar={(k) => mudarInt((it) => (it.regioes = alternar(it.regioes, k)))} />
-                <p className={DICA}>Para vagas "remoto em tal região". Nenhuma marcada = sem restrição.</p>
+                <Pilulas
+                  mapa={"pais" in op.regioes ? { ...op.regioes, pais: `Seu país (${loc.pais})` } : op.regioes}
+                  marcados={d.internacional.regioes}
+                  onTrocar={(k) => mudarInt((it) => (it.regioes = alternar(it.regioes, k)))}
+                />
+                <p className={DICA}>
+                  {"pais" in op.regioes
+                    ? "Passa a vaga aberta a uma região com país em comum com as marcadas; a aberta ao mundo todo sempre passa. Nenhuma marcada = sem restrição."
+                    : 'Para vagas "remoto em tal região". Nenhuma marcada = sem restrição.'}
+                </p>
               </section>
 
               <section className={SEC}>
@@ -842,8 +873,8 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
                 <input
                   value={txtMudanca}
                   onChange={(e) => setTxtMudanca(e.target.value)}
-                  placeholder="Para quais países (separados por vírgula); vazio = os de interesse"
-                  aria-label="Países para onde aceita se mudar"
+                  placeholder="Para quais países ou regiões (separados por vírgula); vazio = os de interesse"
+                  aria-label="Países ou regiões para onde aceita se mudar"
                   className={CAMPO}
                 />
                 <Marcar checked={d.internacional.passaporte} onChange={(v) => mudarInt((it) => (it.passaporte = v))}>
@@ -851,9 +882,15 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
                 </Marcar>
                 <div>
                   <label htmlFor="fbi-autorizacao" className={ROTULO}>
-                    Tenho visto ou autorização de trabalho em (países, separados por vírgula)
+                    Tenho visto ou autorização de trabalho em (países ou regiões, separados por vírgula)
                   </label>
-                  <input id="fbi-autorizacao" value={txtAutorizacao} onChange={(e) => setTxtAutorizacao(e.target.value)} placeholder="nenhum" className={CAMPO} />
+                  <input
+                    id="fbi-autorizacao"
+                    value={txtAutorizacao}
+                    onChange={(e) => setTxtAutorizacao(e.target.value)}
+                    placeholder="nenhum (ex.: Portugal, União Europeia)"
+                    className={CAMPO}
+                  />
                 </div>
                 <Marcar checked={d.internacional.precisa_sponsor} onChange={(v) => mudarInt((it) => (it.precisa_sponsor = v))}>
                   Preciso de patrocínio de visto (sponsor)

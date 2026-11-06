@@ -62,6 +62,10 @@ export interface Opcoes {
   raios_km: number[]
   idiomas: Record<string, string>
   regioes: Record<string, string>
+  /** Regiões que os campos de país aceitam (spec 047), em português ("União Europeia"). Servidor antigo não manda. */
+  regioes_lugar?: string[]
+  /** Portais que procuram por região (spec 047; hoje, o LinkedIn). Servidor antigo não manda. */
+  fontes_regiao?: string[]
   contratacao: Record<string, string>
   fontes_int: Fonte[]
   fontes_nac: Fonte[]
@@ -113,8 +117,11 @@ export const reconhecerEmpresa = (url: string) => pedir<EmpresaReconhecida>("POS
 
 // ---------- contas que o dashboard antigo mostra antes de salvar (as mesmas de filtros.consultas()) ----------
 
-/** Consultas por portal; porGrupo: os cargos numa consulta só (LinkedIn). */
-export function contarConsultas(d: Filtros, porGrupo = false): number {
+/**
+ * Consultas por portal; porGrupo: os cargos numa consulta só (LinkedIn). regioes (opcoes.regioes_lugar, spec 047): as
+ * regiões em países de interesse e para morar só contam no LinkedIn (porGrupo); o Indeed só procura nos países.
+ */
+export function contarConsultas(d: Filtros, porGrupo = false, regioes: string[] = []): number {
   const m = d.modelos
   let t = d.termos.length
   const locais = m.hibrido || m.presencial
@@ -127,7 +134,9 @@ export function contarConsultas(d: Filtros, porGrupo = false): number {
   }
   let n = m.remoto || (locais && !cidade) ? t : 0
   if (locais && cidade) n += t
-  if (it.ativo) n += it.paises.length * ti + (it.aceita_mudar ? ((it.paises_mudanca || []).length || it.paises.length) * ti : 0)
+  const lugares = (l: string[]) => (porGrupo ? l : l.filter((p) => !regioes.includes(p))).length
+  const mudanca = (it.paises_mudanca || []).length ? it.paises_mudanca : it.paises
+  if (it.ativo) n += lugares(it.paises) * ti + (it.aceita_mudar ? lugares(mudanca) * ti : 0)
   if (it.ativo && ((it.fontes || []).length || (d.empresas || []).length)) n += ti // fontes do exterior: uma por cargo
   return n
 }
