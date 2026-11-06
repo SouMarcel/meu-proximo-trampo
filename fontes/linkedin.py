@@ -38,6 +38,7 @@ PLATAFORMA = "LinkedIn"
 AREAS = ("nacional", "internacional")
 POR_PAIS = True
 GLOBAL = True  # também na consulta "mundo todo" (Worldwide)
+POR_REGIAO = True  # e na consulta por região (spec 047): o nome em inglês no local ("European Union")
 TERMOS = ("Consulta não oficial à busca pública do LinkedIn, sem login e sem a sua conta. Há uma pausa de alguns "
           "segundos entre as consultas e, se o LinkedIn limitar, a busca segue sem ele e ele fica 6 horas em espera. "
           "A candidatura é sempre no próprio LinkedIn.")
@@ -276,6 +277,8 @@ def parametros(consulta: dict, horas: int | None) -> dict:
     """Os filtros da busca do LinkedIn para uma consulta de filtros.consultas."""
     if consulta.get("global"):
         local = "Worldwide"
+    elif consulta.get("regiao"):
+        local = consulta["regiao"]
     elif consulta.get("local"):
         local = f"{consulta['local']}, {_pais(consulta)}".strip(", ")
     else:

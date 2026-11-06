@@ -372,10 +372,19 @@ cargos; o front mostra o aviso de primeira vez).
   - `portais_a_mapear` (spec 043): a lista fixa da ferramenta (`filtros.PORTAIS_A_MAPEAR`), só para leitura, no bloco
     "Próximos a mapear" da aba Portais. `motivo` vem só quando `nao_deu`. Sem o campo (servidor antigo) ou com a
     lista vazia, o bloco não aparece.
+  - Regiões (spec 047):
+    - `regioes`: os códigos de Regiões aceitas: `pais` (Seu país), `america_norte`, `america_central`, `america_sul`,
+      `latam`, `americas`, `ue`, `europa`, `asia`, `oceania`, `africa`. O `PUT` aceita os antigos `brasil` (vira
+      `pais`) e `mundo` (sai); a vaga aberta ao mundo todo sempre passa.
+    - `regioes_lugar`: as regiões que `internacional.paises`, `paises_mudanca` e `autorizacao_trabalho` aceitam, além
+      dos países, como nomes em português ("União Europeia", "Oceania"…).
+    - `fontes_regiao`: os portais que procuram por região (hoje, `linkedin`). Com uma região em países de interesse e
+      nenhum deles ligado, o painel avisa; o Indeed só procura nos países marcados um a um.
+    - Sem esses campos (servidor antigo), o painel não mostra as regiões nos campos de país.
 
 **`PUT /api/config`** — grava os filtros. Corpo = o objeto `filtros` inteiro. Resposta `{filtros, consultas,
 opcoes}`. Erro 400 com a regra que falhou (ex.: "informe pelo menos um cargo", "para híbrido ou presencial,
-informe a cidade"; filtros.py:355-433). Também usado por "Gravar filtros" nos primeiros passos.
+informe a cidade"; nome fora dos países e regiões: "<campo>: país ou região desconhecido: X"; filtros.py, validar). Também usado por "Gravar filtros" nos primeiros passos.
 
 ### 3.5 IA (botão IA)
 

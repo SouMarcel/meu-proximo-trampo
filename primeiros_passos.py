@@ -705,7 +705,7 @@ PERGUNTAS = [
     {"id": "exterior_remoto", "tipo": "sim_nao", "condicao": EXTERIOR,
      "texto": "Trabalhando remoto, morando no Brasil?"},
     {"id": "exterior_paises", "tipo": "lista", "condicao": EXTERIOR,
-     "texto": "De quais países você aceita vagas? Um por linha (ex.: Estados Unidos, Portugal)."},
+     "texto": "De quais países ou regiões você aceita vagas? Um por linha (ex.: Estados Unidos, União Europeia)."},
     {"id": "morar_fora", "tipo": "texto", "condicao": EXTERIOR,
      "texto": "Aceitaria morar fora? Em quais países? (deixe vazio se não)"},
     {"id": "passaporte", "tipo": "sim_nao", "condicao": EXTERIOR, "texto": "Tem passaporte válido?"},
@@ -949,7 +949,7 @@ def montar_perfil(rascunho: dict | None, respostas: dict | None, contato: dict |
         sim = lambda v: "sim" if v is True else "não" if v is False else "não informado"
         L += ["", "## Trabalho no exterior",
               f"- Remoto morando no Brasil: {sim(resp.get('exterior_remoto'))}",
-              f"- Países de interesse: {lista(resp.get('exterior_paises')) or 'não informado'}",
+              f"- Países e regiões de interesse: {lista(resp.get('exterior_paises')) or 'não informado'}",
               f"- Aceita morar fora: {resp.get('morar_fora') or 'não'}",
               f"- Passaporte válido: {sim(resp.get('passaporte'))}",
               f"- Visto ou autorização de trabalho: {resp.get('autorizacao') or 'nenhum'}",
@@ -1044,7 +1044,12 @@ def propor_filtros(respostas: dict | None, cfg: dict | None = None, sugerir_en: 
     if (modelos.get("hibrido") or modelos.get("presencial")) and not cidade:
         modelos = {**modelos, "hibrido": False, "presencial": False, "remoto": True}
         avisos.append("Sem cidade, ficou só remoto (híbrido e presencial precisam da cidade).")
-    paises = [p for p in (filtros.pais_pt(x) for x in resp.get("exterior_paises") or []) if p]
+    # países e regiões (spec 047); o nome que a ferramenta não conhece fica de fora, com aviso
+    lugares = [(x, filtros.lugar_pt(x)) for x in resp.get("exterior_paises") or [] if str(x).strip()]
+    paises = list(dict.fromkeys(p for _, p in lugares if p))
+    desconhecidos = [str(x).strip() for x, p in lugares if not p]
+    if desconhecidos:
+        avisos.append("Fora da lista de países e regiões, ficaram de fora: " + ", ".join(desconhecidos) + ".")
     inter = {"ativo": bool(resp.get(EXTERIOR)) and bool(resp.get("exterior_remoto")) and bool(paises and termos_en),
              "paises": paises, "termos": termos_en}
     if resp.get(EXTERIOR) and not inter["ativo"]:

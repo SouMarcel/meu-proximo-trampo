@@ -223,6 +223,8 @@ def atende(fonte, c: dict) -> bool:
     com GLOBAL = True nas duas."""
     if c.get("area", "nacional") not in getattr(fonte, "AREAS", ("nacional", "internacional")):
         return False
+    if c.get("regiao"):  # consulta por região (spec 047): só quem procura por região (POR_REGIAO = True)
+        return bool(getattr(fonte, "POR_REGIAO", False))
     por_pais = getattr(fonte, "POR_PAIS", True)
     return (not por_pais or getattr(fonte, "GLOBAL", False)) if c.get("global") else por_pais
 

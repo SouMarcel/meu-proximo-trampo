@@ -241,11 +241,11 @@ gravar e ver as vagas de volta no relatório.
   - O perfil MUST mostrar a linha "Países e regiões de interesse".
   - A proposta de filtros MUST levar os países e as regiões reconhecidos para Países de interesse.
   - Os nomes não reconhecidos MUST ficar de fora, com aviso.
-- **FR-010**: A ferramenta MUST oferecer uma revisão das vagas em Fora dos critérios que têm motivo de região. A revisão
-  roda pelo terminal e pelo chat.
-  - Sem gravar, MUST mostrar quais perderiam esse motivo pela regra nova e quais voltariam ao relatório.
-  - Só com a confirmação da pessoa, MUST gravar: tira o motivo de região e devolve ao relatório a vaga que não tem outro
-    motivo.
+- **FR-010**: A ferramenta MUST oferecer uma revisão das vagas em Fora dos critérios que têm motivo de região ou de
+  lugar (lugar exigido, autorização de trabalho). A revisão roda pelo terminal e pelo chat.
+  - Esses motivos são refeitos pela regra nova (regiões e autorização por região), e os outros motivos ficam.
+  - Sem gravar, MUST mostrar quais perderiam o motivo e quais voltariam ao relatório.
+  - Só com a confirmação da pessoa, MUST gravar e devolver ao relatório a vaga que fica sem motivo.
 - **FR-011**: A análise da vaga pela IA MUST receber as regiões aceitas e a autorização de trabalho com os nomes novos
   das regiões.
 - **FR-012**: Nada MUST mudar para quem não marca regiões nem usa região nos campos de país, exceto a leitura do texto

@@ -52,10 +52,10 @@ liderou do que você apoiou: a IA respeita essa diferença ao apontar encaixes.
 
 ## Trabalho no exterior (opcional)
 - Remoto morando no Brasil: (sim/não)
-- Países de interesse: (ex.: Portugal, Estados Unidos)
-- Aceita morar fora: (não; ou os países)
+- Países e regiões de interesse: (ex.: Portugal, Estados Unidos, União Europeia)
+- Aceita morar fora: (não; ou os países ou regiões)
 - Passaporte válido: (sim/não)
-- Visto ou autorização de trabalho: (nenhum; ou os países)
+- Visto ou autorização de trabalho: (nenhum; ou os países ou regiões, ex.: União Europeia)
 - Precisa de patrocínio de visto: (sim/não)
 - Fuso: (ex.: até 3 horas de diferença)
 - Contratação aceita: (ex.: contractor, EOR, PJ)
