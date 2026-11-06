@@ -190,7 +190,7 @@
 - [X] T036 Rodar `python -m unittest discover -s tests` na worktree; tudo passa.
 - [X] T037 Front: `npx -y pnpm@10.34.3 exec tsc --noEmit` e `npx -y pnpm@10.34.3 exec vite build --base ./` em `../mpt-front-027b`; commit local na `frontend-react` (sem push).
 - [X] T038 Procurar dados pessoais no diff da worktree e fazer o commit local na `047-regioes-continentes`.
-- [ ] T039 Na pasta principal (branch pessoal):
+- [X] T039 Na pasta principal (branch pessoal):
   - `git merge 047-regioes-continentes`;
   - rodar os testes;
   - copiar o `dist/` do front para `dash/front/` sem commit;
