@@ -87,7 +87,8 @@ def texto_da_vaga(vaga: dict | None) -> str:
     return "\n".join(str(x) for x in partes if x)
 
 
-def montar_pedido(perfil: str, vaga: dict | None, tecnicas: dict) -> str:
+def montar_pedido(perfil: str, vaga: dict | None, tecnicas: dict, adicional: str = "") -> str:
+    """O pedido do currículo. adicional: um bloco a mais no fim (o resultado da análise de reprovação, spec 049)."""
     perfil = _mascarar(perfil)
     marcadas = [f"- {curriculo.TECNICAS[k]['nome']}: {curriculo.TECNICAS[k]['explicacao']}"
                 for k in curriculo.TECNICAS if tecnicas.get(k)]
@@ -133,6 +134,7 @@ def montar_pedido(perfil: str, vaga: dict | None, tecnicas: dict) -> str:
         perfil[:40000],
         "",
         *alvo,
+        *(["", _mascarar(adicional)] if adicional else []),
     ])
 
 
@@ -175,8 +177,10 @@ def validar_tecnicas(dados) -> dict:
     return tec
 
 
-def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None = None) -> dict:
-    """Pede o currículo à IA e gera os arquivos e o meta. Em falha, nada fica pela metade."""
+def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None = None, adicional: str = "",
+          marca: dict | None = None) -> dict:
+    """Pede o currículo à IA e gera os arquivos e o meta. Em falha, nada fica pela metade. adicional vai ao fim do
+    pedido e marca ao meta (spec 049: o currículo que saiu da análise de reprovação)."""
     import ia
     avisar = progresso or (lambda etapa: None)
     perfil = perfil_texto() if perfil is None else perfil
@@ -185,7 +189,7 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
     tecnicas = validar_tecnicas(tecnicas)
     avisar("escrevendo")
     try:
-        resposta = ia.responder(montar_pedido(perfil, vaga, tecnicas), tempo=TEMPO_IA)
+        resposta = ia.responder(montar_pedido(perfil, vaga, tecnicas, adicional), tempo=TEMPO_IA)
     except ia.IAErro as e:
         raise GeracaoErro(f"a IA não conseguiu escrever o currículo: {ia.mascarar(str(e))}") from None
     cv = ler_resposta(resposta, tecnicas)
@@ -213,6 +217,7 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
             "conferencia": conf, "pronto": conf["veredito"] != "bloquear",
             "ia": ia.marca(),  # quem respondeu de fato (a principal ou uma reserva, spec 032)
             "criado_em": datetime.now().isoformat(timespec="seconds"),
+            **(marca or {}),
         }
         (CURRICULOS / f"{nome}.meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     except PermissionError:

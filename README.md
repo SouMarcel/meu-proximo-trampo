@@ -451,6 +451,17 @@ aparece como **não pronto**, com o que resolver. O **currículo base** sai do m
 **Meu perfil**. Nada vai para a IA antes do clique; com IA por chave, cada currículo é uma chamada
 cobrada pelo provedor.
 
+**Análise de reprovação** é um checkbox no diálogo do currículo de uma vaga, e funciona assim:
+- **A IA tenta te reprovar.** Ela lê a vaga e o seu último currículo (o desta vaga, o currículo base ou o perfil),
+  como um recrutador criterioso.
+- **Os motivos de hesitação aparecem em cinco grupos.** Cada um mostra o trecho do currículo e a frase da vaga.
+- **A IA pergunta o que falta.** Para cada pergunta você responde ❌ **Não tenho**, ⚠️ **Tenho** (contando com as
+  suas palavras) ou **Pular**. Cada ⚠️ pode ir ao seu perfil ou valer só para este currículo.
+- **Reescrever e gerar o currículo** reescreve os trechos genéricos só com o que você confirmou e gera o currículo.
+  O que você não tem nunca vira competência.
+
+As perguntas e as respostas ficam no fim da janela da vaga, e só a última análise aparece.
+
 ### Kit de candidatura ("indica, não faz")
 
 No detalhe de cada vaga, o bloco **Para se candidatar** mostra o que a análise leu no anúncio,

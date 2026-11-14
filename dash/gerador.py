@@ -1,8 +1,8 @@
 """Currículo, carta e respostas de formulário pela página, em segundo plano (uma geração por vez).
 
-O servidor chama GERACAO.iniciar(vaga_id, tecnicas) (currículo) ou GERACAO.iniciar_kit(tipo, vaga_id, dados)
-(carta ou respostas) no clique da pessoa (nunca antes), GERACAO.estado() para o andamento e GERACAO.tentar()
-para repetir o último pedido que falhou. A escrita é da IA escolhida no painel IA; os arquivos, a
+O servidor chama GERACAO.iniciar(vaga_id, tecnicas) (currículo), GERACAO.iniciar_kit(tipo, vaga_id, dados)
+(carta ou respostas) ou GERACAO.iniciar_reprovacao / iniciar_reescrita (análise de reprovação, spec 049) no clique
+da pessoa (nunca antes), GERACAO.estado() para o andamento e GERACAO.tentar() para repetir o último pedido que falhou. A escrita é da IA escolhida no painel IA; os arquivos, a
 conferência e o meta saem de curriculo_ia.gerar e de candidatura_ia.
 """
 from __future__ import annotations
@@ -14,7 +14,8 @@ from datetime import datetime
 import banco
 
 RAIZ = banco.DASH.parent
-ETAPAS = {"escrevendo": "Escrevendo com a IA…", "gerando": "Gerando os arquivos…", "conferindo": "Conferindo…"}
+ETAPAS = {"escrevendo": "Escrevendo com a IA…", "gerando": "Gerando os arquivos…", "conferindo": "Conferindo…",
+          "analisando": "Analisando como um recrutador…", "reescrevendo": "Reescrevendo os trechos genéricos…"}
 
 
 def _raiz():
@@ -40,7 +41,14 @@ def _candidatura_ia():
     return candidatura_ia
 
 
-NOMES = {"curriculo": "o currículo", "carta": "a carta", "respostas": "as respostas", "verificar": "a carta revisada"}
+def _reprovacao():
+    _raiz()
+    import reprovacao
+    return reprovacao
+
+
+NOMES = {"curriculo": "o currículo", "carta": "a carta", "respostas": "as respostas", "verificar": "a carta revisada",
+         "reprovacao": "a análise de reprovação"}
 
 
 class GeracaoOcupada(Exception):
@@ -77,10 +85,15 @@ class Geracao:
         cfg = ia._ler_config()
         escolha = ia.escolha_efetiva(cfg)
         prov = ia.PROVEDORES[escolha["provedor"]]
-        return {**cia.curriculo.catalogo(vaga),
-                "ia": {"ligada": ia.disponivel(cfg), "nome": prov["nome"], "modelo": ia.modelo_efetivo(escolha),
-                       "cobranca": ia.cobranca_efetiva(escolha)},
-                "perfil_ok": bool(cia.perfil_texto())}
+        saida = {**cia.curriculo.catalogo(vaga),
+                 "ia": {"ligada": ia.disponivel(cfg), "nome": prov["nome"], "modelo": ia.modelo_efetivo(escolha),
+                        "cobranca": ia.cobranca_efetiva(escolha)},
+                 "perfil_ok": bool(cia.perfil_texto())}
+        if vaga:  # o checkbox Análise de reprovação (spec 049)
+            rep = _reprovacao()
+            ok, motivo = rep.disponivel(vaga)
+            saida["reprovacao"] = {"disponivel": ok, "motivo": motivo, "anterior": rep.anterior(vaga_id)}
+        return saida
 
     def iniciar(self, vaga_id: str | None, tecnicas) -> dict:
         cia, ia = _curriculo_ia(), _ia()
@@ -147,11 +160,93 @@ class Geracao:
             self._thread.start()
         return self.estado()
 
+    def _pode_comecar(self, nome: str):
+        """Confere a fila, a IA e o perfil antes de uma geração da análise de reprovação."""
+        with self._trava:
+            if self.rodando():
+                raise GeracaoOcupada("Já há um documento sendo gerado; espere ele terminar.")
+        if not _ia().disponivel():
+            raise ValueError(f"{nome} pela página precisa de uma IA: escolha uma no botão IA.")
+        if not _curriculo_ia().perfil_texto():
+            raise ValueError("Monte o seu perfil antes (botão Meu perfil): a análise compara a vaga com os fatos dele.")
+
+    def _comecar(self, tipo: str, situacao: str, vaga: dict, alvo_rodar, args, extra: dict | None = None):
+        with self._trava:
+            self._e = {"situacao": situacao, "tipo": tipo,
+                       "alvo": {"vaga_id": vaga.get("id"), "titulo": vaga.get("titulo"), "empresa": vaga.get("empresa")},
+                       "inicio": datetime.now().isoformat(timespec="seconds"), "nome": None, "mensagem": "", **(extra or {})}
+            self._thread = threading.Thread(target=alvo_rodar, args=args, daemon=True, name=f"gerar-{tipo}")
+            self._thread.start()
+        return self.estado()
+
+    def iniciar_reprovacao(self, vaga_id: str, tecnicas) -> dict:
+        """Etapa 1 da análise de reprovação (spec 049): só a análise; o currículo espera as respostas."""
+        rep, cia = _reprovacao(), _curriculo_ia()
+        self._pode_comecar("A análise de reprovação")
+        vaga = banco.obter(vaga_id) if vaga_id else None
+        if not vaga:
+            raise KeyError(vaga_id)
+        ok, motivo = rep.disponivel(vaga)
+        if not ok:
+            raise ValueError(motivo)
+        try:
+            tec = cia.validar_tecnicas(tecnicas)
+        except cia.GeracaoErro as e:
+            raise ValueError(str(e)) from None
+        self._ultimo_pedido = ("reprovacao", vaga_id, tec)
+        return self._comecar("reprovacao", "analisando", vaga, self._rodar_reprovacao, (vaga, tec), {"tecnicas": tec})
+
+    def iniciar_reescrita(self, vaga_id: str) -> dict:
+        """Etapa 3: Reescrever e gerar o currículo, com as respostas da análise de reprovação."""
+        rep = _reprovacao()
+        self._pode_comecar("Reescrever e gerar o currículo")
+        vaga = banco.obter(vaga_id) if vaga_id else None
+        if not vaga:
+            raise KeyError(vaga_id)
+        analise = rep.obter(vaga_id)
+        if not analise:
+            raise ValueError("esta vaga não tem análise de reprovação")
+        if not analise["pronta_para_gerar"]:
+            raise ValueError("responda ou pule as perguntas")
+        self._ultimo_pedido = ("reescrita", vaga_id, None)
+        return self._comecar("curriculo", "reescrevendo", vaga, self._rodar_reescrita, (vaga,),
+                             {"tecnicas": analise.get("tecnicas"), "reprovacao": True})
+
     def tentar(self) -> dict:
         if not self._ultimo_pedido or self._e.get("situacao") != "falha":
             raise GeracaoOcupada("Não há geração com falha para tentar de novo.")
         tipo, vaga_id, dados = self._ultimo_pedido
+        if tipo == "reprovacao":
+            return self.iniciar_reprovacao(vaga_id, dados)
+        if tipo == "reescrita":
+            return self.iniciar_reescrita(vaga_id)
         return self.iniciar(vaga_id, dados) if tipo == "curriculo" else self.iniciar_kit(tipo, vaga_id, dados)
+
+    def _rodar_reprovacao(self, vaga: dict, tec: dict):
+        rep = _reprovacao()
+        try:
+            rep.analisar(vaga, tec, progresso=lambda etapa: self._set(situacao=etapa))
+            self._set(situacao="pronto", pronto=True, fim=datetime.now().isoformat(timespec="seconds"))
+        except rep.ReprovacaoErro as e:
+            self._set(situacao="falha", mensagem=str(e), fim=datetime.now().isoformat(timespec="seconds"))
+        except Exception as e:  # nunca derruba o servidor
+            print(f"[análise de reprovação] erro: {e!r}", file=sys.stderr)
+            self._set(situacao="falha", mensagem="A análise parou por um erro inesperado; os detalhes estão na janela do servidor.",
+                      fim=datetime.now().isoformat(timespec="seconds"))
+
+    def _rodar_reescrita(self, vaga: dict):
+        rep, cia = _reprovacao(), _curriculo_ia()
+        try:
+            meta = rep.reescrever_e_gerar(vaga["id"], progresso=lambda etapa: self._set(situacao=etapa))
+            banco.registrar_curriculo(vaga["id"], meta["nome"])
+            self._set(situacao="pronto", nome=meta["nome"], veredito=meta["conferencia"]["veredito"], pronto=meta["pronto"],
+                      fim=datetime.now().isoformat(timespec="seconds"))
+        except (rep.ReprovacaoErro, cia.GeracaoErro) as e:
+            self._set(situacao="falha", mensagem=str(e), fim=datetime.now().isoformat(timespec="seconds"))
+        except Exception as e:  # nunca derruba o servidor
+            print(f"[reescrever e gerar] erro: {e!r}", file=sys.stderr)
+            self._set(situacao="falha", mensagem="A geração parou por um erro inesperado; os detalhes estão na janela do servidor.",
+                      fim=datetime.now().isoformat(timespec="seconds"))
 
     def _rodar_kit(self, tipo: str, vaga: dict, dados):
         cand = _candidatura_ia()

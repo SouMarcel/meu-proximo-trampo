@@ -540,8 +540,52 @@ pronto: bool, pode_tentar: bool, etapa_texto, pode_alterar}` (gerador.py:64-69, 
 **`GET /api/curriculo/lista?vaga={id}`** ou **`?base=1`** — `{curriculos: [meta]}`, mais recentes primeiro. Meta:
 `{nome, alvo, tecnicas, arquivos: {json, docx, pdf|null}, disponivel: {pdf, docx, json: bool}, paginas|null, acima_do_limite,
 sugestoes_corte, conferencia: {veredito, fatos: [{nivel, mensagem, valor?, trecho?}], ats: [...], requisitos: [{situacao,
-texto}], cobertura: {achadas, total, faltando}|null}, pronto, ia, criado_em}` (curriculo_ia.py:202-213; conferir.py:380-387).
+texto}], cobertura: {achadas, total, faltando}|null}, pronto, ia, criado_em, reprovacao?: true}` (curriculo_ia.py:202-213; conferir.py:380-387).
 Os links de download são `/arquivos/curriculos/{arquivos.pdf|docx}`.
+
+#### Análise de reprovação (checkbox no diálogo "Gerar currículo" de uma vaga; spec 049)
+
+A IA tenta reprovar a pessoa para a vaga (recrutador criterioso), pergunta o que falta, e o currículo só sai depois das
+respostas. A análise e a reescrita usam a mesma fila. Uma análise por vaga (a nova substitui), em
+`dash/dados/reprovacao.json`.
+
+- O catálogo com `vaga` ganha `reprovacao: {disponivel, motivo, anterior: ISO|null}`. `disponivel` é false quando a
+  vaga não tem descrição.
+- O estado ganha `tipo: "reprovacao"` e as situações `analisando` e `reescrevendo`.
+- O meta do currículo gerado pela análise ganha `reprovacao: true`.
+
+**`POST /api/curriculo/reprovacao`** **[local]**: "Analisar".
+- Corpo: `{vaga_id, tecnicas}`, com as mesmas técnicas do `POST /api/curriculo`.
+- 202: estado (`tipo: "reprovacao"`, `situacao: "analisando"`).
+- 400: sem IA, sem perfil, vaga sem descrição, técnica inválida. 404: vaga não encontrada. 409: ocupado.
+
+**`GET /api/curriculo/reprovacao?vaga={id}`**: devolve `{analise: Analise|null, pode_alterar}`. `Analise` tem:
+- os dados gerais: `vaga`, `criada_em`, `tecnicas`, `curriculo_analisado: {tipo: vaga|base_arquivo|base_gerado|perfil,
+  nome, rotulo}` e `avisos`;
+- `motivos: [{i, grupo, motivo, trecho_cv|null, trecho_ok, trecho_vaga, perguntas: [n], sensivel, estado}]`, com
+  `estado` em `nao_tenho|tenho|sem_resposta|sem_pergunta`;
+- `perguntas: [{n, texto}]` e `respostas: {n: {resposta: nao|tenho|pular, relato?, destino?: perfil|so_aqui, levado?}}`;
+- o resultado: `reescritos: [{original, novo, motivos, avisos}]`, `curriculo_gerado`, `gerado_em`, `levados`;
+- os campos calculados: `resumo: {nao_tenho, tenho, sem_resposta}`, `pronta_para_gerar`, `respostas_mudaram` e
+  `grupos: {chave: rótulo}`.
+
+A ❌ vem só da resposta da pessoa. A frase da IA que afirma falta vira pergunta.
+
+**`PUT /api/curriculo/reprovacao/{vaga_id}/respostas`** **[local]**: grava as respostas, também parciais.
+- Corpo: `{respostas: {n: {resposta, relato?, destino?}}}`. O `destino` padrão é `so_aqui`.
+- 200: `{analise}`.
+- 400: pergunta inexistente, resposta inválida, destino inválido, ou mudança numa resposta já levada ao perfil.
+- 404: sem análise.
+
+**`POST /api/curriculo/reprovacao/{vaga_id}/gerar`** **[local]**: "Reescrever e gerar o currículo".
+- Corpo: `{}`.
+- Faz três coisas:
+  1. leva ao `perfil.md` os ⚠️ com destino `perfil`, pelos relatos da spec 035, com a versão anterior guardada;
+  2. reescreve os trechos genéricos só com o que foi confirmado;
+  3. gera o currículo, com os ⚠️ `so_aqui` valendo como fatos só nesse pedido e os ❌ nunca como competência.
+- 202: estado (`tipo: "curriculo"`, `situacao: "reescrevendo"`).
+- 400: perguntas sem resposta, sem IA. 404: sem análise. 409: ocupado.
+- `POST /api/curriculo/tentar` repete a análise ou a reescrita que falhou.
 
 ### 3.9 Kit da candidatura (detalhe da vaga → "O que esta candidatura pede")
 

@@ -609,6 +609,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(202, {**gerador.GERACAO.iniciar(vaga_id, corpo.get("tecnicas") or {}), "pode_alterar": True})
             if metodo == "POST" and caminho == "/api/curriculo/tentar":
                 return self._json(202, {**gerador.GERACAO.tentar(), "pode_alterar": True})
+            if caminho == "/api/curriculo/reprovacao" or caminho.startswith("/api/curriculo/reprovacao/"):
+                return self._reprovacao(metodo, caminho)
             if metodo == "POST" and caminho in ("/api/kit/carta", "/api/kit/respostas", "/api/kit/verificar"):
                 corpo = self._corpo()
                 tipo = caminho.rsplit("/", 1)[1]
@@ -633,6 +635,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"documento": meta})
         except gerador.GeracaoOcupada as e:
             return self._json(409, {"erro": str(e), "estado": gerador.GERACAO.estado()})
+        return self._erro(404, "rota não encontrada")
+
+    def _reprovacao(self, metodo: str, caminho: str):
+        """Análise de reprovação (spec 049): Gerar com o checkbox, as respostas e Reescrever e gerar o currículo."""
+        sys.path.insert(0, str(banco.DASH.parent))
+        import reprovacao
+        if metodo == "POST" and caminho == "/api/curriculo/reprovacao":
+            corpo = self._corpo()
+            vaga_id = str(corpo.get("vaga_id") or "").strip()
+            return self._json(202, {**gerador.GERACAO.iniciar_reprovacao(vaga_id, corpo.get("tecnicas") or {}),
+                                    "pode_alterar": True})
+        partes = caminho.split("/")  # ["", "api", "curriculo", "reprovacao", id, acao]
+        if len(partes) != 6 or not banco.ID_VALIDO.match(unquote(partes[4])):
+            return self._erro(404, "rota não encontrada")
+        vaga_id, acao = unquote(partes[4]), partes[5]
+        if reprovacao.obter(vaga_id) is None:
+            return self._erro(404, "esta vaga não tem análise de reprovação")
+        if metodo == "PUT" and acao == "respostas":
+            return self._json(200, {"analise": reprovacao.gravar_respostas(vaga_id, self._corpo().get("respostas"))})
+        if metodo == "POST" and acao == "gerar":
+            self._corpo()
+            return self._json(202, {**gerador.GERACAO.iniciar_reescrita(vaga_id), "pode_alterar": True})
         return self._erro(404, "rota não encontrada")
 
     def _analises(self, metodo: str, caminho: str):
@@ -961,6 +985,11 @@ class Handler(BaseHTTPRequestHandler):
                 import curriculo_ia
                 base = (consulta.get("base") or [""])[0] == "1"
                 return self._json(200, {"curriculos": curriculo_ia.listar(vaga_id, base=base)})
+            if caminho == "/api/curriculo/reprovacao":  # a última análise de reprovação da vaga (spec 049)
+                sys.path.insert(0, str(banco.DASH.parent))
+                import reprovacao
+                return self._json(200, {"analise": reprovacao.obter(vaga_id) if vaga_id else None,
+                                        "pode_alterar": self._local()})
         if caminho == "/api/busca":
             return self._json(200, {**buscador.BUSCA.estado(), "pode_alterar": self._local()})
         if caminho == "/api/busca/plano":
