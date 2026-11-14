@@ -21,8 +21,14 @@ interface ValorGeracao {
 
 const Contexto = createContext<ValorGeracao | null>(null)
 
-const NOMES: Record<string, string> = { carta: "A carta", respostas: "As respostas", verificar: "A carta revisada" }
+const NOMES: Record<string, string> = {
+  carta: "A carta",
+  respostas: "As respostas",
+  verificar: "A carta revisada",
+  reprovacao: "A análise de reprovação",
+}
 const PRONTO: Record<string, string> = {
+  reprovacao: " saiu: responda as perguntas no fim da janela da vaga.",
   respostas: " estão prontas: confira e responda as que são só suas.",
   carta: " saiu e foi conferida.",
   verificar: " saiu e foi conferida: a versão anterior continua na lista.",

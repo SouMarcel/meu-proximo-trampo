@@ -10,6 +10,7 @@ import { mensagemDeErro, urlArquivo } from "../../services/api"
 import { useFerramenta } from "../../contexto/Ferramenta"
 import { useGeracao, ehDoAlvo } from "../../contexto/Geracao"
 import { diaMes, horaDe } from "../../utils/formatters"
+import { SecaoReprovacao } from "./Reprovacao"
 
 const FORMATOS: Record<string, string> = { br: "Brasil", us: "Estados Unidos", eu: "Europa" }
 const ESTILOS: Record<string, string> = { padrao: "padrão", compacto: "compacto", executivo: "executivo" }
@@ -56,6 +57,7 @@ export function GerarCurriculo({
   const [escolha, setEscolha] = useState<Record<string, unknown>>({})
   const [erro, setErro] = useState("")
   const [enviando, setEnviando] = useState(false)
+  const [reprovar, setReprovar] = useState(false)
 
   useEffect(() => {
     curriculoApi
@@ -77,7 +79,7 @@ export function GerarCurriculo({
     try {
       const tec: Record<string, unknown> = { ...escolha }
       if ("paginas" in tec) tec.paginas = Number(tec.paginas)
-      comecou(await curriculoApi.gerar(vagaId, tec))
+      comecou(vagaId && reprovar ? await curriculoApi.reprovacao(vagaId, tec) : await curriculoApi.gerar(vagaId, tec))
       onClose()
     } catch (e) {
       tratarErro(e)
@@ -141,6 +143,32 @@ export function GerarCurriculo({
             </div>
           </section>
         ))}
+        {vagaId && c.reprovacao && (
+          <section className="space-y-1.5 p-3 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20">
+            <label className={`flex items-start gap-2 ${c.reprovacao.disponivel ? "cursor-pointer" : "opacity-60"}`}>
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                disabled={!c.reprovacao.disponivel}
+                checked={reprovar && c.reprovacao.disponivel}
+                onChange={(ev) => setReprovar(ev.target.checked)}
+              />
+              <span>
+                <b>Análise de reprovação</b>{" "}
+                <span className={DICA}>
+                  {c.reprovacao.disponivel
+                    ? "A IA tenta te reprovar para a vaga, como um recrutador criterioso, e pergunta o que falta. O currículo só sai depois das suas respostas."
+                    : c.reprovacao.motivo}
+                </span>
+              </span>
+            </label>
+            {reprovar && c.reprovacao.anterior && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                A análise anterior desta vaga (de {diaMes(c.reprovacao.anterior)}) será substituída.
+              </p>
+            )}
+          </section>
+        )}
         {c.sugestao?.motivo && <p className={DICA}>Sugestão marcada: {c.sugestao.motivo}.</p>}
         <ul className="list-disc pl-5 space-y-1">
           <li>
@@ -162,7 +190,7 @@ export function GerarCurriculo({
         className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
       >
         {enviando && <Loader2 className="w-4 h-4 animate-spin" />}
-        Gerar
+        {vagaId && reprovar ? "Analisar" : "Gerar"}
       </button>
     )
   }
@@ -234,7 +262,13 @@ function ItemCurriculo({ m }: { m: MetaCurriculo }) {
           {d.docx ? <LinkArquivo arquivo={m.arquivos.docx} rotulo=".docx" /> : <span className={DICA}>.docx indisponível</span>}
         </span>
       </div>
-      {nomes.length > 0 && <p className={DICA}>Técnicas: {nomes.join(", ")}</p>}
+      {(nomes.length > 0 || m.reprovacao) && (
+        <p className={DICA}>
+          {nomes.length > 0 && `Técnicas: ${nomes.join(", ")}`}
+          {nomes.length > 0 && m.reprovacao && " · "}
+          {m.reprovacao && <b className="text-rose-700 dark:text-rose-300">com análise de reprovação</b>}
+        </p>
+      )}
       {m.ia?.aviso && <p className="text-[11px] text-amber-700 dark:text-amber-300">{m.ia.aviso}</p>}
       {bloqueios.length > 0 && (
         <p className="text-xs text-rose-700 dark:text-rose-300">
@@ -295,7 +329,8 @@ export function SecaoCurriculos({ vagaId, onGerar }: { vagaId: string | null; on
       .catch(() => setLista((l) => l || []))
   }, [vagaId, versao])
 
-  const meu = ehDoAlvo(estado, vagaId, ["curriculo"])
+  const meu = ehDoAlvo(estado, vagaId, ["curriculo", "reprovacao"])
+  const analise = estado?.tipo === "reprovacao"
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -313,7 +348,7 @@ export function SecaoCurriculos({ vagaId, onGerar }: { vagaId: string | null; on
       {!meu && ativa && <p className={DICA}>Há outro documento sendo gerado; espere ele terminar.</p>}
       {meu && estado?.situacao === "falha" && (
         <p className="text-xs text-rose-700 dark:text-rose-300">
-          O currículo não saiu: {estado.mensagem}{" "}
+          {analise ? "A análise não saiu" : "O currículo não saiu"}: {estado.mensagem}{" "}
           {estado.pode_tentar && (
             <button type="button" onClick={tentar} className={BTN_MINI}>
               Tentar de novo
@@ -332,6 +367,7 @@ export function SecaoCurriculos({ vagaId, onGerar }: { vagaId: string | null; on
           ))}
         </ul>
       )}
+      {vagaId && <SecaoReprovacao vagaId={vagaId} />}
     </section>
   )
 }
