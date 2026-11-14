@@ -318,10 +318,10 @@ aviso, e a análise de outra vaga não muda.
 - [X] T039 Rodar `python -m unittest discover -s tests` na worktree e corrigir as regressões.
 - [X] T040 No front (`../mpt-front-027b`), rodar `npm run build` (ou o `tsc` do projeto) para conferir os tipos;
   commitar na `frontend-react` e enviar (`git push origin frontend-react`), o que dispara a Action do front, só com o
-  OK do usuário. Para o teste local, copiar o build para `dash/front/` na `marcel`, sem commit, como nas specs
+  OK do usuário. Para o teste local, copiar o build para `dash/front/` na branch de uso pessoal, sem commit, como nas specs
   anteriores.
 - [X] T041 Procurar dados pessoais nos arquivos alterados. Commitar na branch `049-analise-reprovacao`, fazer
-  `git merge` na `marcel`, rodar `graphify update .`, reiniciar o dashboard (`python iniciar.py --sem-navegador`) e
+  `git merge` na branch de uso pessoal, rodar `graphify update .`, reiniciar o dashboard (`python iniciar.py --sem-navegador`) e
   passar o roteiro de `quickstart.md` ao usuário.
 
 ---
@@ -349,5 +349,5 @@ Polish: T037 e T038 em paralelo.
 1. **MVP (US1)**: a análise aparece na janela da vaga. Já é útil para ler os motivos.
 2. **US2**: respostas guardadas, com ❌ e ⚠️.
 3. **US3**: reescrita e currículo melhorado, que completam o objetivo.
-4. **US4 + Polish**: aviso de substituição, documentação, testes completos, merge na `marcel` para o teste do
+4. **US4 + Polish**: aviso de substituição, documentação, testes completos, merge na branch de uso pessoal para o teste do
    usuário. A `master`, o push e o PR do front só com o OK dele.

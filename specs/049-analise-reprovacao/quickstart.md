@@ -21,7 +21,7 @@ cobrem:
 - o gerador: tipos, situações, fila e tentar;
 - as rotas: 202, 400, 404, 409 e 403 fora deste computador.
 
-## Teste à mão (na `marcel`, depois do merge)
+## Teste à mão (na branch de uso pessoal, depois do merge)
 
 1. Reinicie o dashboard (`python iniciar.py --sem-navegador`) e abra uma vaga com descrição.
 2. Clique em **Gerar currículo**, marque **Análise de reprovação** e clique em **Gerar**. A seção mostra "Analisando
