@@ -1,7 +1,7 @@
 """Análise de reprovação (spec 049), sem rede e sem IA de verdade: a IA tenta reprovar a pessoa para a vaga, a
 ferramenta confere sem IA (grupos, trecho no currículo, nenhuma afirmação de falta, sem pergunta sensível, até 10
-perguntas), a pessoa responde ❌ / ⚠️ / pular, os ⚠️ marcados vão ao perfil, os trechos genéricos são reescritos e o
-currículo da vaga sai com isso. Conteúdo fictício."""
+perguntas), a pessoa responde ❌ / ⚠️ / pular, os ⚠️ marcados ficam em Seus relatos à espera da revisão do perfil
+(spec 050), os trechos genéricos são reescritos e o currículo da vaga sai com isso. Conteúdo fictício."""
 import json
 import shutil
 import sys
@@ -269,13 +269,14 @@ class TestReescritaEGeracao(Base):  # T025
         self.assertEqual(a["reescritos"][0]["motivos"], [1])
         self.assertFalse(a["respostas_mudaram"])
         perfil = self.perfil.read_text(encoding="utf-8")
-        self.assertIn("Fazia consultas com CTEs", perfil)  # destino perfil
+        self.assertNotIn("Fazia consultas com CTEs", perfil)  # destino perfil: espera a revisão do perfil (spec 050)
         self.assertNotIn("Usei Tableau", perfil)  # só neste currículo
         lista = relatos.listar()
         self.assertEqual([r["relato"] for r in lista], ["Fazia consultas com CTEs para as metas comerciais."])
-        self.assertTrue(lista[0]["no_perfil"])
-        self.assertTrue(list((self.tmp / "perfis-anteriores").glob("*")))  # versão anterior guardada
-        with self.assertRaises(rep.ReprovacaoErro):  # o levado não muda de destino
+        self.assertFalse(lista[0]["no_perfil"])
+        self.assertEqual((a["para_revisar"], a["levadas_em"]), ([lista[0]["id"]], None))
+        self.assertFalse((self.tmp / "perfis-anteriores").exists())  # o perfil não mudou
+        with self.assertRaises(rep.ReprovacaoErro):  # o guardado não muda de destino
             rep.gravar_respostas("v1", {"2": {"resposta": "tenho", "relato": "Outra coisa.", "destino": "so_aqui"}})
         rep.gravar_respostas("v1", {"1": {"resposta": "pular"}})
         self.assertTrue(rep.obter("v1")["respostas_mudaram"])
@@ -290,15 +291,16 @@ class TestReescritaEGeracao(Base):  # T025
         self.assertEqual(r["motivos"], [1])
         self.assertTrue(any("45%" in a for a in r["avisos"]))
 
-    def test_tentar_de_novo_nao_duplica_no_perfil(self):
+    def test_tentar_de_novo_nao_duplica_o_relato(self):
         self.preparar()
         self.respostas_ia.append(ia.IAErro("fora do ar"))
         with self.assertRaises(rep.ReprovacaoErro):
             rep.reescrever_e_gerar("v1")
         self.respostas_ia += [REESCRITA, cv_fiel()]
         rep.reescrever_e_gerar("v1")
-        self.assertEqual(self.perfil.read_text(encoding="utf-8").count("Fazia consultas com CTEs"), 1)
+        self.assertNotIn("Fazia consultas com CTEs", self.perfil.read_text(encoding="utf-8"))
         self.assertEqual(len(relatos.listar()), 1)
+        self.assertEqual(len(rep.obter("v1")["para_revisar"]), 1)
 
     def test_sem_perguntas_e_pendentes(self):
         self.analisar(resposta={"motivos": [{"grupo": "requisito_nao_comprovado", "motivo": "Sem Tableau no currículo.",

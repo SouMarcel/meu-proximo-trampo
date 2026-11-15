@@ -96,8 +96,8 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
     aconteceu (sem se preocupar com o limite do formulário). O relato vale como verdade: a IA o
     transforma na melhor resposta para aquela pergunta, sem acrescentar fatos, e ele fica guardado no
     que a ferramenta sabe de você. A partir daí entra nas respostas, no currículo, na carta, nas
-    histórias STAR e na nota das vagas. Em **Meu perfil → Seus relatos** você corrige, apaga ou leva o
-    relato ao `perfil.md` (a versão anterior fica guardada). Sem IA, o relato vai como você escreveu.
+    histórias STAR e na nota das vagas. Em **Meu perfil → Seus relatos** você corrige, apaga ou leva
+    relatos ao `perfil.md` com **Revisar e levar ao perfil**: a IA propõe onde cada fato entra (o cargo certo, Habilidades, Formação…), aponta o que discorda do perfil, e você aceita item a item antes de gravar (a versão anterior fica guardada). Sem IA, o relato vai como você escreveu, para a seção Relatos.
   - As suas respostas ficam guardadas no seu computador (`dash/dados/`, fora do Git) e são
     reaproveitadas nas próximas vagas, inclusive a remuneração atual e o nome da mãe, também quando a
     pergunta vem com outra redação; a pretensão salarial e a relocação ela pergunta a cada vaga. Você vê e
@@ -456,9 +456,13 @@ cobrada pelo provedor.
   como um recrutador criterioso.
 - **Os motivos de hesitação aparecem em cinco grupos.** Cada um mostra o trecho do currículo e a frase da vaga.
 - **A IA pergunta o que falta.** Para cada pergunta você responde ❌ **Não tenho**, ⚠️ **Tenho** (contando com as
-  suas palavras) ou **Pular**. Cada ⚠️ pode ir ao seu perfil ou valer só para este currículo.
+  suas palavras) ou **Pular**. Cada ⚠️ pode valer só para este currículo ou ir ao seu perfil, depois da revisão abaixo.
 - **Reescrever e gerar o currículo** reescreve os trechos genéricos só com o que você confirmou e gera o currículo.
   O que você não tem nunca vira competência.
+- **Revisar e levar ao perfil** (depois do currículo): a IA propõe onde cada resposta ⚠️ entra no seu perfil,
+  escrita como item de currículo e só com o que você contou. Se algo discorda do perfil (um total de anos, um
+  método), ela mostra os dois trechos e você escolhe. Nada muda no perfil até você clicar em **Gravar no
+  perfil**, item a item, com a versão anterior guardada. O mesmo botão existe em Meu perfil → Seus relatos.
 
 As perguntas e as respostas ficam no fim da janela da vaga, e só a última análise aparece.
 

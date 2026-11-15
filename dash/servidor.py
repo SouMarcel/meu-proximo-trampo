@@ -492,6 +492,8 @@ class Handler(BaseHTTPRequestHandler):
         if metodo == "POST" and caminho == "/api/perfil/filtros-propostos":
             sugerir = bool(self._corpo().get("sugerir_en")) and ia.disponivel()
             return self._json(200, pp.propor_filtros(pp.carregar()["respostas"], sugerir_en=sugerir))
+        if caminho == "/api/perfil/revisao" or caminho.startswith("/api/perfil/revisao/"):  # spec 050
+            return self._revisao(metodo, caminho)
         if caminho.startswith("/api/perfil/relatos/"):  # relatos da pessoa (spec 035): corrigir, apagar, levar ao perfil
             import relatos
             partes = caminho[len("/api/perfil/relatos/"):].split("/")
@@ -657,6 +659,39 @@ class Handler(BaseHTTPRequestHandler):
         if metodo == "POST" and acao == "gerar":
             self._corpo()
             return self._json(202, {**gerador.GERACAO.iniciar_reescrita(vaga_id), "pode_alterar": True})
+        return self._erro(404, "rota não encontrada")
+
+    def _revisao(self, metodo: str, caminho: str):
+        """Revisão do perfil ao levar relatos (spec 050): a IA propõe, a pessoa decide item a item, e só então o
+        perfil.md muda. Só deste computador (conferido pelo _perfil)."""
+        sys.path.insert(0, str(banco.DASH.parent))
+        import revisao_perfil as rv
+        try:
+            if metodo == "POST" and caminho == "/api/perfil/revisao":
+                corpo = self._corpo()
+                origem, ids = str(corpo.get("origem") or ""), corpo.get("relatos")
+                if not ia.disponivel():  # sem IA, o caminho da spec 035, com aviso
+                    with TRAVA_PERFIL:
+                        return self._json(200, rv.levar_sem_ia(origem, ids))
+                return self._json(202, {**gerador.GERACAO.iniciar_revisao(origem, ids), "pode_alterar": True})
+            if metodo == "PUT" and caminho == "/api/perfil/revisao/decisoes":
+                corpo = self._corpo()
+                return self._json(200, {"revisao": rv.decidir(str(corpo.get("origem") or ""), corpo.get("itens"),
+                                                               corpo.get("discordancias"))})
+            if metodo == "POST" and caminho == "/api/perfil/revisao/gravar":
+                origem = str(self._corpo().get("origem") or "")
+                with TRAVA_PERFIL:
+                    return self._json(200, rv.gravar(origem))
+            if metodo == "DELETE" and caminho == "/api/perfil/revisao":
+                self._corpo()
+                rv.descartar((parse_qs(urlsplit(self.path).query).get("origem") or [""])[0])
+                return self._json(200, {"revisao": None})
+        except rv.RevisaoErro as e:
+            return self._erro(e.codigo, str(e))
+        except gerador.GeracaoOcupada as e:
+            return self._json(409, {"erro": str(e), "estado": gerador.GERACAO.estado()})
+        except ValueError as e:  # IA ou perfil faltando, no gerador
+            return self._erro(400, str(e))
         return self._erro(404, "rota não encontrada")
 
     def _analises(self, metodo: str, caminho: str):
@@ -1009,6 +1044,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._erro(403, SO_LOCAL_PERFIL)
             import relatos
             return self._json(200, {"relatos": relatos.listar()})
+        if caminho == "/api/perfil/revisao":  # a proposta da revisão do perfil (spec 050): só deste computador
+            if not self._local():
+                return self._erro(403, SO_LOCAL_PERFIL)
+            sys.path.insert(0, str(banco.DASH.parent))
+            import revisao_perfil as rv
+            origem = (parse_qs(urlsplit(self.path).query).get("origem") or [""])[0]
+            try:
+                return self._json(200, {"revisao": rv.obter(origem), "pode_alterar": True})
+            except rv.RevisaoErro as e:
+                return self._erro(e.codigo, str(e))
         if caminho == "/api/perfil/filtros-propostos":
             return self._json(200, pp.propor_filtros(pp.carregar()["respostas"]))
         if caminho.startswith("/api/vagas/") and caminho.endswith("/salario"):

@@ -13,7 +13,7 @@ página: http://127.0.0.1:8765 (aberta com `python iniciar.py`).
 **Relatos** (spec 035): o que a pessoa contou com as próprias palavras na candidatura assistida fica em
 `dash/dados/relatos.json` e vale como fato confirmado. Leia com `PY relatos.py lista` antes do diagnóstico: um relato
 pode responder a uma dúvida da anamnese ou completar uma experiência. Proponha levar ao perfil o que descreve a carreira
-(na página, Meu perfil → Seus relatos → Levar ao perfil) e grave só com o OK dela.
+(na página, Meu perfil → Seus relatos → Revisar e levar ao perfil, spec 050: a IA propõe onde cada fato entra e a pessoa aceita item a item) e grave só com o OK dela, no lugar certo do perfil (o cargo, Habilidades, Formação…), escrito como item de currículo e só com o que ela contou; quando o relato discorda do perfil, mostre os dois trechos e pergunte.
 
 `PY` é o Python do projeto: `.venv\Scripts\python.exe` no Windows (`.venv/bin/python` no macOS e
 Linux). Rode tudo a partir da raiz do projeto.

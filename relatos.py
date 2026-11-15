@@ -7,7 +7,9 @@ respondia a uma pergunta. O relato vale como fato confirmado (constituição IV)
   listar() / editar(id, relato) / apagar(id)    para a pessoa ver e corrigir (Meu perfil → Seus relatos)
   bloco()                                       a seção "Relatos da pessoa" com os que ainda não estão no perfil.md
   com_relatos(perfil)                           o texto do perfil com essa seção, para os pedidos à IA
-  levar_ao_perfil(id)                           acrescenta o relato ao perfil.md (a versão anterior fica guardada)
+  levar_ao_perfil(id)                           acrescenta o relato cru ao perfil.md (o caminho sem IA; com IA, a
+                                                revisão do perfil, revisao_perfil.py, spec 050)
+  marcar_no_perfil(ids)                         a revisão gravou os fatos destes relatos no perfil.md
 
 Fica em dash/dados/relatos.json (fora do Git). Documentos (CPF, RG) são mascarados antes de guardar.
 
@@ -175,6 +177,19 @@ def levar_ao_perfil(rid: str) -> dict:
         r["no_perfil"] = True
         _gravar(itens)
     return {"relato": r, "anterior": anterior.name if anterior else None}
+
+
+def marcar_no_perfil(ids) -> None:
+    """Marca como já no perfil.md os relatos que a revisão do perfil (spec 050) levou, item a item."""
+    alvo = {str(i) for i in ids or []}
+    if not alvo:
+        return
+    with TRAVA:
+        itens = _carregar()
+        for x in itens:
+            if x.get("id") in alvo:
+                x["no_perfil"] = True
+        _gravar(itens)
 
 
 def main(argv: list[str] | None = None) -> int:

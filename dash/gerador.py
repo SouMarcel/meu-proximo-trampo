@@ -1,9 +1,10 @@
 """Currículo, carta e respostas de formulário pela página, em segundo plano (uma geração por vez).
 
 O servidor chama GERACAO.iniciar(vaga_id, tecnicas) (currículo), GERACAO.iniciar_kit(tipo, vaga_id, dados)
-(carta ou respostas) ou GERACAO.iniciar_reprovacao / iniciar_reescrita (análise de reprovação, spec 049) no clique
-da pessoa (nunca antes), GERACAO.estado() para o andamento e GERACAO.tentar() para repetir o último pedido que falhou. A escrita é da IA escolhida no painel IA; os arquivos, a
-conferência e o meta saem de curriculo_ia.gerar e de candidatura_ia.
+(carta ou respostas), GERACAO.iniciar_reprovacao / iniciar_reescrita (análise de reprovação, spec 049) ou
+GERACAO.iniciar_revisao (revisão do perfil ao levar relatos, spec 050) no clique da pessoa (nunca antes),
+GERACAO.estado() para o andamento e GERACAO.tentar() para repetir o último pedido que falhou. A escrita é da IA
+escolhida no painel IA; os arquivos, a conferência e o meta saem de curriculo_ia.gerar e de candidatura_ia.
 """
 from __future__ import annotations
 
@@ -15,7 +16,8 @@ import banco
 
 RAIZ = banco.DASH.parent
 ETAPAS = {"escrevendo": "Escrevendo com a IA…", "gerando": "Gerando os arquivos…", "conferindo": "Conferindo…",
-          "analisando": "Analisando como um recrutador…", "reescrevendo": "Reescrevendo os trechos genéricos…"}
+          "analisando": "Analisando como um recrutador…", "reescrevendo": "Reescrevendo os trechos genéricos…",
+          "revisando": "Revisando o seu perfil…"}
 
 
 def _raiz():
@@ -47,8 +49,14 @@ def _reprovacao():
     return reprovacao
 
 
+def _revisao():
+    _raiz()
+    import revisao_perfil
+    return revisao_perfil
+
+
 NOMES = {"curriculo": "o currículo", "carta": "a carta", "respostas": "as respostas", "verificar": "a carta revisada",
-         "reprovacao": "a análise de reprovação"}
+         "reprovacao": "a análise de reprovação", "revisao_perfil": "a revisão do perfil"}
 
 
 class GeracaoOcupada(Exception):
@@ -160,20 +168,22 @@ class Geracao:
             self._thread.start()
         return self.estado()
 
-    def _pode_comecar(self, nome: str):
-        """Confere a fila, a IA e o perfil antes de uma geração da análise de reprovação."""
+    def _pode_comecar(self, nome: str, sem_perfil: str = "a análise compara a vaga com os fatos dele"):
+        """Confere a fila, a IA e o perfil antes de uma geração da análise de reprovação ou da revisão do perfil."""
         with self._trava:
             if self.rodando():
                 raise GeracaoOcupada("Já há um documento sendo gerado; espere ele terminar.")
         if not _ia().disponivel():
             raise ValueError(f"{nome} pela página precisa de uma IA: escolha uma no botão IA.")
         if not _curriculo_ia().perfil_texto():
-            raise ValueError("Monte o seu perfil antes (botão Meu perfil): a análise compara a vaga com os fatos dele.")
+            raise ValueError(f"Monte o seu perfil antes (botão Meu perfil): {sem_perfil}.")
 
-    def _comecar(self, tipo: str, situacao: str, vaga: dict, alvo_rodar, args, extra: dict | None = None):
+    def _comecar(self, tipo: str, situacao: str, vaga: dict | None, alvo_rodar, args, extra: dict | None = None,
+                 alvo: dict | None = None):
+        if alvo is None:
+            alvo = {"vaga_id": vaga.get("id"), "titulo": vaga.get("titulo"), "empresa": vaga.get("empresa")}
         with self._trava:
-            self._e = {"situacao": situacao, "tipo": tipo,
-                       "alvo": {"vaga_id": vaga.get("id"), "titulo": vaga.get("titulo"), "empresa": vaga.get("empresa")},
+            self._e = {"situacao": situacao, "tipo": tipo, "alvo": alvo,
                        "inicio": datetime.now().isoformat(timespec="seconds"), "nome": None, "mensagem": "", **(extra or {})}
             self._thread = threading.Thread(target=alvo_rodar, args=args, daemon=True, name=f"gerar-{tipo}")
             self._thread.start()
@@ -212,6 +222,18 @@ class Geracao:
         return self._comecar("curriculo", "reescrevendo", vaga, self._rodar_reescrita, (vaga,),
                              {"tecnicas": analise.get("tecnicas"), "reprovacao": True})
 
+    def iniciar_revisao(self, origem: str, ids=None) -> dict:
+        """Revisar e levar ao perfil (spec 050): a IA propõe onde cada relato entra; a pessoa decide e grava depois.
+        origem: "vaga:<id>" (as respostas da análise de reprovação) ou "relatos" (ids marcados em Seus relatos)."""
+        rv = _revisao()
+        self._pode_comecar("A revisão do perfil", "a revisão põe os fatos nele")
+        origem = rv._chave(origem)  # RevisaoErro (400) com origem inválida
+        vaga, _ = rv._resolver(origem, ids)  # RevisaoErro: 404 sem análise, 400 sem relato
+        alvo = ({"vaga_id": vaga.get("id"), "titulo": vaga.get("titulo"), "empresa": vaga.get("empresa")} if vaga
+                else {"perfil": True})
+        self._ultimo_pedido = ("revisao", origem, ids)
+        return self._comecar("revisao_perfil", "revisando", None, self._rodar_revisao, (origem, ids), alvo=alvo)
+
     def tentar(self) -> dict:
         if not self._ultimo_pedido or self._e.get("situacao") != "falha":
             raise GeracaoOcupada("Não há geração com falha para tentar de novo.")
@@ -220,7 +242,21 @@ class Geracao:
             return self.iniciar_reprovacao(vaga_id, dados)
         if tipo == "reescrita":
             return self.iniciar_reescrita(vaga_id)
+        if tipo == "revisao":
+            return self.iniciar_revisao(vaga_id, dados)
         return self.iniciar(vaga_id, dados) if tipo == "curriculo" else self.iniciar_kit(tipo, vaga_id, dados)
+
+    def _rodar_revisao(self, origem: str, ids):
+        rv = _revisao()
+        try:
+            rv.revisar(origem, ids, progresso=lambda etapa: self._set(situacao=etapa))
+            self._set(situacao="pronto", pronto=True, fim=datetime.now().isoformat(timespec="seconds"))
+        except rv.RevisaoErro as e:
+            self._set(situacao="falha", mensagem=str(e), fim=datetime.now().isoformat(timespec="seconds"))
+        except Exception as e:  # nunca derruba o servidor
+            print(f"[revisão do perfil] erro: {e!r}", file=sys.stderr)
+            self._set(situacao="falha", mensagem="A revisão parou por um erro inesperado; os detalhes estão na janela do servidor.",
+                      fim=datetime.now().isoformat(timespec="seconds"))
 
     def _rodar_reprovacao(self, vaga: dict, tec: dict):
         rep = _reprovacao()

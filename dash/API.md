@@ -478,7 +478,7 @@ Erros: 400 com a mensagem (ex.: conflito sem escolha no texto, arquivo .doc, IA 
 | `GET /api/perfil/relatos` [local] | — | `{relatos: [{id, pergunta, relato, resposta, vaga: {id, titulo, empresa}\|null, em, no_perfil}]}`: os relatos da pessoa (spec 035), mais recentes primeiro; valem como fato junto do perfil |
 | `PUT /api/perfil/relatos/{id}` [local] | `{relato}` | `{relatos}`; 400 relato vazio ou inexistente |
 | `DELETE /api/perfil/relatos/{id}` [local] | — | `{relatos}`; 400 inexistente |
-| `POST /api/perfil/relatos/{id}/perfil` [local] | — | `{relatos, anterior}`: acrescenta o relato à seção "Relatos" do perfil.md (a versão anterior fica em `anexos/perfis-anteriores/`) e o marca `no_perfil`; 400 sem perfil |
+| `POST /api/perfil/relatos/{id}/perfil` [local] | — | `{relatos, anterior}`: acrescenta o relato cru à seção "Relatos" do perfil.md (a versão anterior fica em `anexos/perfis-anteriores/`) e o marca `no_perfil`; 400 sem perfil. É o caminho sem IA; com IA, a página usa a revisão do perfil (`/api/perfil/revisao`, §3.8, spec 050) |
 | `POST /api/perfil/do-curriculo/confirmar` [local] | `{arquivo*, idioma, manter_perfil: bool, marcar_base: bool, perfil (markdown, se não mantém), edicao?: {cargos, cargos_en, cidade, estado, modelos: string[]}}` | `{perfil, anterior, filtros, curriculo_base}` |
 | `PUT /api/curriculo-base` [local] | `{idioma*: "pt"\|"en", arquivo: caminho\|null}` | `{curriculo_base: {pt, en}}` — marca/desmarca "Seu currículo" |
 
@@ -564,8 +564,10 @@ respostas. A análise e a reescrita usam a mesma fila. Uma análise por vaga (a 
   nome, rotulo}` e `avisos`;
 - `motivos: [{i, grupo, motivo, trecho_cv|null, trecho_ok, trecho_vaga, perguntas: [n], sensivel, estado}]`, com
   `estado` em `nao_tenho|tenho|sem_resposta|sem_pergunta`;
-- `perguntas: [{n, texto}]` e `respostas: {n: {resposta: nao|tenho|pular, relato?, destino?: perfil|so_aqui, levado?}}`;
-- o resultado: `reescritos: [{original, novo, motivos, avisos}]`, `curriculo_gerado`, `gerado_em`, `levados`;
+- `perguntas: [{n, texto}]` e `respostas: {n: {resposta: nao|tenho|pular, relato?, destino?: perfil|so_aqui, levado?,
+  revisado_em?}}`;
+- o resultado: `reescritos: [{original, novo, motivos, avisos}]`, `curriculo_gerado`, `gerado_em`, `levados`,
+  `para_revisar: [id]` (os relatos "Levar ao meu perfil" que esperam a revisão do perfil) e `levadas_em` (spec 050);
 - os campos calculados: `resumo: {nao_tenho, tenho, sem_resposta}`, `pronta_para_gerar`, `respostas_mudaram` e
   `grupos: {chave: rótulo}`.
 
@@ -574,18 +576,56 @@ A ❌ vem só da resposta da pessoa. A frase da IA que afirma falta vira pergunt
 **`PUT /api/curriculo/reprovacao/{vaga_id}/respostas`** **[local]**: grava as respostas, também parciais.
 - Corpo: `{respostas: {n: {resposta, relato?, destino?}}}`. O `destino` padrão é `so_aqui`.
 - 200: `{analise}`.
-- 400: pergunta inexistente, resposta inválida, destino inválido, ou mudança numa resposta já levada ao perfil.
+- 400: pergunta inexistente, resposta inválida, destino inválido, ou mudança numa resposta já guardada em Seus relatos.
 - 404: sem análise.
 
 **`POST /api/curriculo/reprovacao/{vaga_id}/gerar`** **[local]**: "Reescrever e gerar o currículo".
 - Corpo: `{}`.
 - Faz três coisas:
-  1. leva ao `perfil.md` os ⚠️ com destino `perfil`, pelos relatos da spec 035, com a versão anterior guardada;
+  1. guarda em Seus relatos os ⚠️ com destino `perfil` (spec 050: o `perfil.md` só muda na revisão do perfil; enquanto
+     isso, o relato já vale como fato nos pedidos à IA);
   2. reescreve os trechos genéricos só com o que foi confirmado;
   3. gera o currículo, com os ⚠️ `so_aqui` valendo como fatos só nesse pedido e os ❌ nunca como competência.
 - 202: estado (`tipo: "curriculo"`, `situacao: "reescrevendo"`).
 - 400: perguntas sem resposta, sem IA. 404: sem análise. 409: ocupado.
-- `POST /api/curriculo/tentar` repete a análise ou a reescrita que falhou.
+- `POST /api/curriculo/tentar` repete a análise, a reescrita ou a revisão do perfil que falhou.
+
+#### Revisão do perfil ao levar relatos (spec 050)
+
+"Levar ao perfil" passa por uma revisão: a IA propõe onde cada relato entra no `perfil.md` (o cargo certo,
+Habilidades, Formação…), escrito como item de currículo e só com o que a pessoa contou; aponta as discordâncias com o
+perfil em vez de escolher; a pessoa aceita item a item e grava. A origem é `vaga:<id>` (as respostas "Levar ao meu
+perfil" da análise de reprovação que esperam revisão, `para_revisar`) ou `relatos` (ids marcados em Meu perfil → Seus
+relatos). Uma revisão por origem (a nova substitui), em `dash/dados/revisao_perfil.json`. O estado de geração ganha
+`tipo: "revisao_perfil"`, a situação `revisando` e, na origem `relatos`, o alvo `{perfil: true}`.
+
+**`POST /api/perfil/revisao`** **[local]**: "Revisar e levar ao perfil".
+- Corpo: `{origem, relatos?: [id]}` (`relatos` só na origem `relatos`, 1 a 20 ids).
+- 202: estado. 200 sem IA: `{sem_ia: true, levados, anterior, aviso}` (o caminho da spec 035: a seção "Relatos").
+- 400: origem inválida, nenhum relato, sem perfil. 404: vaga sem análise, relato inexistente. 409: ocupado.
+
+**`GET /api/perfil/revisao?origem=`** **[local]**: `{revisao: Revisao|null, pode_alterar}`. `Revisao` tem `origem`,
+`vaga|null`, `relatos: [id]`, `criada_em`, `itens: [{id, tipo: entra|muda|sai, secao, cargo|null, atual|null,
+novo|null, relatos, avisos, valido, aceito, origem: ia|ferramenta|discordancia}]`, `discordancias: [{id, assunto,
+trecho_relato, trecho_perfil|null, relatos, avisos, valido, opcao_relato: item|null, escolha:
+perfil|relato|correcao|null, correcao}]`, `sem_fato: [id]`, `avisos`, `ia`, `gravada_em`, `anterior`, `aceitos` e os
+calculados `situacao: pronta|gravada`, `pode_gravar`, `motivo` e `relatos_info: [{id, pergunta, relato, no_perfil}]`.
+A conferência sem IA (revisao_perfil.py): linha ou lugar que não existe no perfil → `valido: false` (não pode ser
+aceito); número, data ou nome fora dos relatos e do perfil, assunto sensível ou seção fora da revisão → aviso e
+`aceito: false`; afirmação de falta da pessoa → descartado. O item "sai" da linha crua da seção "Relatos" vem da
+ferramenta (`origem: "ferramenta"`).
+
+**`PUT /api/perfil/revisao/decisoes`** **[local]**: `{origem, itens?: {id: bool}, discordancias?: {id: {escolha,
+correcao?}}}`, também parciais. 200 `{revisao}`; 400 item inválido aceito, escolha desconhecida, correção vazia,
+revisão já gravada; 404 sem revisão.
+
+**`POST /api/perfil/revisao/gravar`** **[local]**: `{origem}`. Aplica sem IA só os itens aceitos e as escolhas das
+discordâncias, grava o `perfil.md` (versão anterior em `anexos/perfis-anteriores/`), marca `no_perfil` nos relatos com
+item aceito e, na origem da vaga, `revisado_em` nas respostas. 200 `{revisao, anterior, aceitos, relatos}`; 400
+discordância sem escolha, nenhum item aceito; 404 sem revisão; 409 o perfil mudou desde a proposta (nada é gravado).
+
+**`DELETE /api/perfil/revisao?origem=`** **[local]**: descarta a proposta (o perfil e os relatos não mudam). 200
+`{revisao: null}`.
 
 ### 3.9 Kit da candidatura (detalhe da vaga → "O que esta candidatura pede")
 

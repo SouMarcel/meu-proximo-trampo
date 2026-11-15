@@ -47,7 +47,7 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   o que ela sabe (respostas que a pessoa já deu, em `dash/dados/respostas_formulario.json`, e o perfil) e
   pergunta o resto; na pergunta aberta, a pessoa escreve um relato, que a IA transforma na resposta e que fica em
   `dash/dados/relatos.json` (spec 035): os relatos valem como fatos confirmados, junto do perfil (`PY relatos.py lista`);
-  só entram no `perfil.md` com o OK da pessoa; o login guardado por ela no `.env` só é digitado na página de login
+  só entram no `perfil.md` com o OK da pessoa, pela revisão do perfil (spec 050: a IA propõe onde cada fato entra, a pessoa aceita item a item e grava; `PY revisao_perfil.py mostra <origem>`); o login guardado por ela no `.env` só é digitado na página de login
   do portal. Você (assistente) não usa esse recurso pela pessoa nem lê a credencial do `.env`.
 
 ## Como rodar os scripts
@@ -72,7 +72,7 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   `gravar <rascunho.md>` (só com o OK da pessoa). Já tem currículo: `PY curriculo_base.py lista`,
   `proposta <arquivo>` (não grava), `usar <arquivo> [--manter-perfil]` (só com o OK da pessoa) e
   `marcar <arquivo> [--idioma en]`. Faixa salarial de uma vaga (só números com fonte, sem internet):
-  `PY salarios.py <ID>`. Análise de reprovação de uma vaga (spec 049, feita pela página): `PY reprovacao.py mostra <ID>`.
+  `PY salarios.py <ID>`. Análise de reprovação de uma vaga (spec 049, feita pela página): `PY reprovacao.py mostra <ID>`. Revisão do perfil ao levar relatos (spec 050, feita pela página): `PY revisao_perfil.py mostra vaga:<ID>` ou `mostra relatos`.
   Análises do perfil: `PY analise_perfil.py lacunas [--seguidas]`,
   `prontidao`, `cargos` e `plano` (os dois últimos com IA). O que as vagas pedem (habilidades,
   certificações, tempo de experiência; sem IA): `PY dash/requisitos.py resumo [--vagas todas]

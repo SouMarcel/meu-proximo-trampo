@@ -7,10 +7,12 @@ reescreve os trechos genéricos só com o que foi confirmado, e o currículo da 
   analisar(vaga, tecnicas)           etapa 1: pedido à IA, conferência sem IA e gravação (substitui a anterior)
   obter(vaga_id)                     a última análise da vaga, com estados, resumo e "pronta para gerar"
   gravar_respostas(vaga_id, r)       etapa 2: Não tenho / Tenho (relato e destino) / Pular
-  reescrever_e_gerar(vaga_id)        etapa 3: leva ao perfil os ⚠️ marcados, reescreve e gera o currículo
+  reescrever_e_gerar(vaga_id)        etapa 3: guarda os ⚠️ marcados como relatos, reescreve e gera o currículo
 
 O ❌ vem só da resposta da pessoa, nunca da IA (constituição IV). Fica em dash/dados/reprovacao.json (fora do Git),
-uma análise por vaga. Documentos (CPF, RG) são mascarados antes de guardar e antes de ir à IA.
+uma análise por vaga. Documentos (CPF, RG) são mascarados antes de guardar e antes de ir à IA. Os ⚠️ com "Levar ao
+meu perfil" ficam em Seus relatos à espera da revisão do perfil (revisao_perfil.py, spec 050): o perfil.md só muda
+quando a pessoa grava a revisão.
 
   python reprovacao.py mostra <vaga_id>    a última análise da vaga (para o assistente no chat)
 """
@@ -376,6 +378,13 @@ def com_calculos(a: dict) -> dict:
     a["pronta_para_gerar"] = all(_respondida(respostas.get(str(p["n"]))) for p in a.get("perguntas") or [])
     a["respostas_mudaram"] = bool(a.get("curriculo_gerado")) and respostas != (a.get("respostas_do_curriculo") or {})
     a["grupos"] = GRUPOS
+    # spec 050: os relatos "Levar ao meu perfil" que ainda esperam a revisão do perfil, e a última revisão gravada
+    import relatos
+    import revisao_perfil
+    no_perfil = {r["id"]: bool(r.get("no_perfil")) for r in relatos.listar()}
+    a["para_revisar"] = [r["levado"] for _, r in sorted(respostas.items(), key=lambda x: int(x[0]))
+                         if r.get("levado") in no_perfil and not no_perfil[r["levado"]]]
+    a["levadas_em"] = revisao_perfil.ultima_gravacao(f"{revisao_perfil.PREFIXO_VAGA}{(a.get('vaga') or {}).get('id')}")
     return a
 
 
@@ -403,6 +412,22 @@ def _atualizar(vaga_id: str, **campos) -> dict:
 def anterior(vaga_id: str | None) -> str | None:
     a = _bruta(vaga_id) if vaga_id else None
     return a.get("criada_em") if a else None
+
+
+def marcar_revisadas(vaga_id: str, ids) -> None:
+    """A revisão do perfil (spec 050) gravou os relatos destas respostas: anota a hora em cada uma."""
+    alvo = {str(i) for i in ids or []}
+    if not alvo:
+        return
+    with TRAVA:
+        d = _carregar()
+        a = d.get(str(vaga_id))
+        if not isinstance(a, dict):
+            return
+        for r in (a.get("respostas") or {}).values():
+            if r.get("levado") in alvo:
+                r["revisado_em"] = _agora()
+        _gravar(d)
 
 
 # ---------------------------------------------------------------- etapa 1: analisar
@@ -474,7 +499,7 @@ def gravar_respostas(vaga_id: str, respostas) -> dict:
             antigo = atuais.get(n) or {}
             if antigo.get("levado"):
                 if {k: antigo.get(k) for k in ("resposta", "relato", "destino")} != {k: novo.get(k) for k in ("resposta", "relato", "destino")}:
-                    raise ReprovacaoErro("este relato já foi para o seu perfil: para mudar, edite em Meu perfil → Seus relatos")
+                    raise ReprovacaoErro("este relato já está em Seus relatos: para mudar, edite em Meu perfil → Seus relatos")
                 novo["levado"] = antigo["levado"]
             atuais[n] = novo
         a["respostas"], a["respostas_em"] = atuais, _agora()
@@ -484,8 +509,10 @@ def gravar_respostas(vaga_id: str, respostas) -> dict:
 
 # ---------------------------------------------------------------- etapa 3: perfil, reescrita e currículo
 
-def levar_ao_perfil(vaga_id: str) -> list[str]:
-    """Leva ao perfil.md os ⚠️ com destino "perfil" que ainda não foram (um Tentar de novo não leva duas vezes)."""
+def guardar_relatos(vaga_id: str) -> list[str]:
+    """Guarda em Seus relatos os ⚠️ com destino "perfil" que ainda não foram (um Tentar de novo não guarda duas vezes).
+    O perfil.md não muda aqui: o relato espera a revisão do perfil (spec 050) e, enquanto isso, já vale como fato nos
+    pedidos à IA pelo relatos.com_relatos."""
     import relatos
     a = _bruta(vaga_id)
     if not a:
@@ -496,11 +523,6 @@ def levar_ao_perfil(vaga_id: str) -> list[str]:
         if r.get("resposta") != "tenho" or r.get("destino") != "perfil" or r.get("levado") or not str(r.get("relato") or "").strip():
             continue
         reg = relatos.adicionar(perguntas.get(n, ""), r["relato"], vaga=a.get("vaga"))
-        if reg and not reg.get("no_perfil"):
-            try:
-                relatos.levar_ao_perfil(reg["id"])
-            except relatos.RelatoErro as e:
-                raise ReprovacaoErro(str(e)) from None
         with TRAVA:
             d = _carregar()
             atual = d.get(str(vaga_id)) or {}
@@ -602,7 +624,7 @@ def extras_do_curriculo(a: dict) -> tuple[str, str]:
 
 
 def reescrever_e_gerar(vaga_id: str, progresso=None) -> dict:
-    """Etapa 3: leva ao perfil os ⚠️ marcados, reescreve os trechos genéricos e gera o currículo da vaga."""
+    """Etapa 3: guarda os ⚠️ marcados como relatos, reescreve os trechos genéricos e gera o currículo da vaga."""
     import ia
     cia = _cia()
     avisar = progresso or (lambda etapa: None)
@@ -615,7 +637,7 @@ def reescrever_e_gerar(vaga_id: str, progresso=None) -> dict:
     if not vaga:
         raise ReprovacaoErro("vaga não encontrada")
     avisar("reescrevendo")
-    levar_ao_perfil(vaga_id)
+    guardar_relatos(vaga_id)
     a = _bruta(vaga_id)
     perfil = cia.perfil_texto()
     alvos = {m["i"] for m in a.get("motivos") or [] if m["grupo"] in GRUPOS_REESCRITA and m.get("trecho_cv")}
