@@ -69,6 +69,29 @@ priorizado.
 - **Glassdoor**: em 2026-10-23 o site recusou acesso automatizado (403) e a API pública de parceiros não está
   disponível. Se houver uma integração oficial, ela pode entrar como fonte.
 
+## Busca nacional e internacional
+
+- **Busca única, com a área da vaga pela moeda, pelo país e pelo idioma** (pedido do usuário em 2026-10-31; análise
+  feita, sem spec): um clique em "Buscar vagas" procura em todos os portais, e cada vaga é separada em nacional ou
+  internacional pelo que importa para a pessoa. Decisões já tomadas:
+  - **área**: moeda > país > idioma. Uma vaga que paga numa moeda que não é a da pessoa é internacional. Senão, uma vaga
+    com local fora do país dela também é internacional. Com local no país dela, a vaga é nacional mesmo em outro
+    idioma e ganha a etiqueta "em inglês". Sem moeda nem local, o idioma decide. A moeda e o idioma da pessoa saem de
+    `localidade.pais`;
+  - **busca**: tudo, sempre. Sai o interruptor `internacional.ativo`, e as duas listas de portais viram uma só. O
+    Indeed continua só nos países escolhidos, porque exige um país por consulta;
+  - **elegibilidade**: etiquetar e avisar com "Aceita <país ou região>", "Só residentes de X" ou "⚠ Não diz". A vaga
+    "Só residentes de X" vai para Fora dos critérios, como hoje;
+  - **origem do portal no lugar do domínio**: o portal brasileiro (atributo `PAIS` na fonte) conta como local no
+    país. O `.com.br` vale só como palpite no Adicionar Vaga por link, porque o domínio engana: a Gupy é gupy.io, e
+    FullStack e Get on Board são .com e contratam na América Latina;
+  - **etiqueta de país em toda vaga**: "<país da pessoa> → <país da vaga>", com "País não informado" quando ninguém
+    diz o país.
+
+  Antes da spec, rever as decisões contra as specs 044 (Vagas Internacionais) e 047 (o catálogo de regiões e a regra
+  por sobreposição) e prever um comando que mostre quais vagas gravadas mudariam de área. Esse comando só grava com o
+  OK da pessoa.
+
 ## Divulgação
 
 - **Site do projeto no GitHub Pages** (`soumarcel.github.io/meu-proximo-trampo`, pasta `docs/` na master): página de
