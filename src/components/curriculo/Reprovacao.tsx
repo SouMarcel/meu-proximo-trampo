@@ -7,11 +7,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { Loader2, ShieldAlert } from "lucide-react"
 import * as curriculoApi from "../../services/api/curriculo"
+import * as perfilApi from "../../services/api/perfil"
 import type { GrupoReprovacao, MotivoReprovacao, Reprovacao, RespostaReprovacao } from "../../services/api/curriculo"
 import { mensagemDeErro } from "../../services/api"
 import { useFerramenta } from "../../contexto/Ferramenta"
 import { useGeracao } from "../../contexto/Geracao"
 import { diaMes, horaDe } from "../../utils/formatters"
+import { SecaoRevisaoPerfil } from "../perfil/RevisaoPerfil"
 
 const DICA = "text-[11px] text-slate-500 dark:text-slate-400"
 const BTN_OPCAO = "px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors disabled:opacity-50"
@@ -87,7 +89,9 @@ export function SecaoReprovacao({ vagaId }: { vagaId: string }) {
   const [respostas, setRespostas] = useState<Record<string, RespostaReprovacao>>({})
   const [salvo, setSalvo] = useState<"" | "salvando" | "salvo">("")
   const [erro, setErro] = useState("")
+  const [nota, setNota] = useState("")
   const [enviando, setEnviando] = useState(false)
+  const [revisando, setRevisando] = useState(false)
   const pendente = useRef<Record<string, RespostaReprovacao>>({})
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -148,6 +152,27 @@ export function SecaoReprovacao({ vagaId }: { vagaId: string }) {
     }
   }
 
+  /** Revisar e levar ao perfil (spec 050): as respostas "Levar ao meu perfil" que esperam a revisão. */
+  const revisar = async () => {
+    setRevisando(true)
+    setErro("")
+    setNota("")
+    try {
+      const j = await perfilApi.revisarPerfil(`vaga:${vagaId}`)
+      if ("sem_ia" in j) {
+        setNota(j.aviso)
+        carregar()
+      } else {
+        comecou(j)
+      }
+    } catch (e) {
+      tratarErro(e)
+      setErro(mensagemDeErro(e, "Não deu para começar a revisão do perfil."))
+    } finally {
+      setRevisando(false)
+    }
+  }
+
   const minha = Boolean(estado?.alvo?.vaga_id === vagaId && (estado?.tipo === "reprovacao" || estado?.situacao === "reescrevendo"))
   if (!a) return null
 
@@ -156,7 +181,7 @@ export function SecaoReprovacao({ vagaId }: { vagaId: string }) {
     Boolean(r && (r.resposta === "nao" || r.resposta === "pular" || (r.resposta === "tenho" && (r.relato || "").trim())))
   const pronta = a.perguntas.every((p) => respondida(respostas[String(p.n)]))
   const bloqueado = !podeAlterar || !podeGravar
-  const nLevados = (a.levados || []).length
+  const nRevisar = (a.para_revisar || []).length
 
   return (
     <section className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800">
@@ -231,7 +256,7 @@ export function SecaoReprovacao({ vagaId }: { vagaId: string }) {
                         className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
                       />
                       {levado ? (
-                        <p className={DICA}>Levado ao seu perfil. Para mudar, edite em Meu perfil → Seus relatos.</p>
+                        <p className={DICA}>Guardado em Seus relatos. Para mudar, edite em Meu perfil → Seus relatos.</p>
                       ) : (
                         <div className="flex gap-1.5 flex-wrap items-center">
                           <span className={DICA}>Esse relato:</span>
@@ -248,7 +273,10 @@ export function SecaoReprovacao({ vagaId }: { vagaId: string }) {
                         </div>
                       )}
                       {!levado && r.destino === "perfil" && (
-                        <p className={DICA}>Vai para o seu perfil quando você clicar em Reescrever e gerar (a versão anterior fica guardada).</p>
+                        <p className={DICA}>
+                          Depois de Reescrever e gerar, fica em Seus relatos; você revisa e leva ao perfil com um clique (nada muda no
+                          perfil sem a sua revisão).
+                        </p>
                       )}
                     </div>
                   )}
@@ -260,7 +288,6 @@ export function SecaoReprovacao({ vagaId }: { vagaId: string }) {
       )}
 
       {a.respostas_mudaram && <p className="text-[11px] text-amber-700 dark:text-amber-300">As respostas mudaram desde o último currículo.</p>}
-      {nLevados > 0 && <p className={DICA}>Levados ao seu perfil: {nLevados} relato(s).</p>}
       {erro && <p className="text-xs text-rose-700 dark:text-rose-300">{erro}</p>}
       <div className="flex items-center gap-2 flex-wrap">
         <button
@@ -295,6 +322,30 @@ export function SecaoReprovacao({ vagaId }: { vagaId: string }) {
           </ul>
         </div>
       )}
+
+      {(nRevisar > 0 || nota) && (
+        <div className="space-y-1.5">
+          {nRevisar > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs">
+                <b>{nRevisar}</b> {nRevisar === 1 ? "resposta" : "respostas"} para levar ao seu perfil.
+              </span>
+              <button
+                type="button"
+                disabled={ativa || revisando || bloqueado || servidor !== "no_ar"}
+                onClick={revisar}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {revisando && <Loader2 className="w-4 h-4 animate-spin" />}
+                Revisar e levar ao perfil
+              </button>
+              <span className={DICA}>A IA propõe onde cada resposta entra; você confere item a item antes de gravar.</span>
+            </div>
+          )}
+          {nota && <p className="text-[11px] text-amber-700 dark:text-amber-300">{nota}</p>}
+        </div>
+      )}
+      <SecaoRevisaoPerfil origem={`vaga:${vagaId}`} onGravado={carregar} />
     </section>
   )
 }

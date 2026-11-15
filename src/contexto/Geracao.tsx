@@ -26,9 +26,11 @@ const NOMES: Record<string, string> = {
   respostas: "As respostas",
   verificar: "A carta revisada",
   reprovacao: "A análise de reprovação",
+  revisao_perfil: "A revisão do perfil",
 }
 const PRONTO: Record<string, string> = {
   reprovacao: " saiu: responda as perguntas no fim da janela da vaga.",
+  revisao_perfil: " está pronta: confira o que entra no seu perfil e grave.",
   respostas: " estão prontas: confira e responda as que são só suas.",
   carta: " saiu e foi conferida.",
   verificar: " saiu e foi conferida: a versão anterior continua na lista.",
@@ -104,9 +106,11 @@ export function useGeracao(): ValorGeracao {
   return v
 }
 
-/** A geração em curso (ou a última) é deste alvo? alvo: id da vaga, ou null para o currículo base. */
+/** A geração em curso (ou a última) é deste alvo? alvo: id da vaga, "perfil" (revisão pedida em Seus relatos) ou null
+ * para o currículo base. */
 export function ehDoAlvo(e: EstadoGeracao | null, alvo: string | null, tipos: string[]): boolean {
   if (!e || !e.alvo) return false
   if (!tipos.includes(e.tipo || "curriculo")) return false
+  if (alvo === "perfil") return Boolean(e.alvo.perfil)
   return alvo ? e.alvo.vaga_id === alvo : Boolean(e.alvo.base)
 }

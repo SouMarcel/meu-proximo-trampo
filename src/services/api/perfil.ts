@@ -1,6 +1,7 @@
 /** Meu perfil / Primeiros passos e "Já tenho currículo" (dash/API.md §3.6). Nada vai para o perfil.md sem PUT /api/perfil. */
 import { pedir } from "../api"
 import type { Filtros } from "./config"
+import type { EstadoGeracao } from "./curriculo"
 
 export type EtapaPerfil =
   | "ia"
@@ -208,3 +209,87 @@ export const apagarRelato = (id: string) =>
   pedir<{ relatos: Relato[] }>("DELETE", `/api/perfil/relatos/${encodeURIComponent(id)}`, {})
 export const levarRelatoAoPerfil = (id: string) =>
   pedir<{ relatos: Relato[]; anterior: string | null }>("POST", `/api/perfil/relatos/${encodeURIComponent(id)}/perfil`, {})
+
+// ---------- revisão do perfil ao levar relatos (spec 050) ----------
+
+/** Um item da proposta: entra (linha nova), muda (troca uma linha) ou sai (tira uma linha) num lugar do perfil. */
+export interface ItemRevisao {
+  id: string
+  tipo: "entra" | "muda" | "sai"
+  secao: string
+  cargo: string | null
+  atual: string | null
+  novo: string | null
+  relatos: string[]
+  avisos: string[]
+  /** false = a linha ou o lugar não existe no perfil: não pode ser aceito. */
+  valido: boolean
+  aceito: boolean
+  origem: "ia" | "ferramenta" | "discordancia"
+}
+
+/** O relato discorda do perfil: a pessoa escolhe manter o perfil, usar o relato ou escrever a correção. */
+export interface DiscordanciaRevisao {
+  id: string
+  assunto: string
+  trecho_relato: string
+  /** null = a dúvida é de lugar (em qual cargo aconteceu). */
+  trecho_perfil: string | null
+  relatos: string[]
+  avisos: string[]
+  valido: boolean
+  opcao_relato: ItemRevisao | null
+  escolha: "perfil" | "relato" | "correcao" | null
+  correcao: string
+}
+
+export interface RevisaoPerfil {
+  origem: string
+  vaga: { id: string; titulo: string; empresa: string } | null
+  relatos: string[]
+  criada_em: string
+  itens: ItemRevisao[]
+  discordancias: DiscordanciaRevisao[]
+  sem_fato: string[]
+  avisos: string[]
+  ia?: { provedor: string; modelo: string; reserva?: boolean; aviso?: string }
+  gravada_em: string | null
+  anterior: string | null
+  aceitos: number | null
+  situacao: "pronta" | "gravada"
+  pode_gravar: boolean
+  motivo: string
+  relatos_info: { id: string; pergunta: string; relato: string; no_perfil: boolean }[]
+}
+
+/** Sem IA, "Revisar e levar ao perfil" leva os relatos como antes (seção Relatos do perfil) e avisa. */
+export interface RevisaoSemIa {
+  sem_ia: true
+  levados: string[]
+  anterior: string | null
+  aviso: string
+}
+
+export type DecisoesRevisao = {
+  itens?: Record<string, boolean>
+  discordancias?: Record<string, { escolha: "perfil" | "relato" | "correcao"; correcao?: string }>
+}
+
+const origemDe = (origem: string) => `?origem=${encodeURIComponent(origem)}`
+
+/** "Revisar e levar ao perfil": origem "vaga:<id>" (as respostas da análise) ou "relatos" (os ids marcados). */
+export const revisarPerfil = (origem: string, relatos?: string[]) =>
+  pedir<EstadoGeracao | RevisaoSemIa>("POST", "/api/perfil/revisao", { origem, relatos })
+
+export const obterRevisao = (origem: string) =>
+  pedir<{ revisao: RevisaoPerfil | null; pode_alterar: boolean }>("GET", `/api/perfil/revisao${origemDe(origem)}`)
+
+export const decidirRevisao = (origem: string, decisoes: DecisoesRevisao) =>
+  pedir<{ revisao: RevisaoPerfil }>("PUT", "/api/perfil/revisao/decisoes", { origem, ...decisoes })
+
+export const gravarRevisao = (origem: string) =>
+  pedir<{ revisao: RevisaoPerfil; anterior: string | null; aceitos: number; relatos: string[] }>("POST", "/api/perfil/revisao/gravar", {
+    origem,
+  })
+
+export const descartarRevisao = (origem: string) => pedir<{ revisao: null }>("DELETE", `/api/perfil/revisao${origemDe(origem)}`, {})

@@ -16,6 +16,7 @@ export type SituacaoGeracao =
   | "ociosa"
   | "analisando"
   | "reescrevendo"
+  | "revisando"
   | "escrevendo"
   | "gerando"
   | "conferindo"
@@ -24,8 +25,9 @@ export type SituacaoGeracao =
 
 export interface EstadoGeracao {
   situacao: SituacaoGeracao
-  tipo?: "curriculo" | "carta" | "respostas" | "verificar" | "reprovacao"
-  alvo?: { vaga_id?: string; titulo?: string; empresa?: string; base?: boolean }
+  tipo?: "curriculo" | "carta" | "respostas" | "verificar" | "reprovacao" | "revisao_perfil"
+  /** perfil = a revisão do perfil pedida em Meu perfil → Seus relatos (spec 050). */
+  alvo?: { vaga_id?: string; titulo?: string; empresa?: string; base?: boolean; perfil?: boolean }
   tecnicas?: Record<string, unknown>
   inicio?: string
   fim?: string
@@ -101,8 +103,10 @@ export interface RespostaReprovacao {
   resposta: "nao" | "tenho" | "pular"
   relato?: string
   destino?: "perfil" | "so_aqui"
-  /** Id do relato quando já foi para o perfil: o destino não muda mais. */
+  /** Id do relato quando já foi guardado em Seus relatos (à espera da revisão do perfil): a resposta não muda mais. */
   levado?: string
+  /** Quando a revisão do perfil gravou esse relato (spec 050). */
+  revisado_em?: string
 }
 
 export interface Reescrito {
@@ -126,13 +130,17 @@ export interface Reprovacao {
   curriculo_gerado: string | null
   gerado_em: string | null
   levados: string[]
+  /** Relatos "Levar ao meu perfil" que ainda esperam a revisão do perfil (spec 050). */
+  para_revisar: string[]
+  /** Quando a última revisão do perfil desta vaga foi gravada. */
+  levadas_em: string | null
   resumo: { nao_tenho: number; tenho: number; sem_resposta: number }
   pronta_para_gerar: boolean
   respostas_mudaram: boolean
   grupos: Record<GrupoReprovacao, string>
 }
 
-export const SITUACOES_ATIVAS: SituacaoGeracao[] = ["analisando", "reescrevendo", "escrevendo", "gerando", "conferindo"]
+export const SITUACOES_ATIVAS: SituacaoGeracao[] = ["analisando", "reescrevendo", "revisando", "escrevendo", "gerando", "conferindo"]
 
 const consulta = (vagaId: string | null) => (vagaId ? `?vaga=${encodeURIComponent(vagaId)}` : "")
 
