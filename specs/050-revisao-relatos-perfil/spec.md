@@ -10,8 +10,8 @@
 **Input**: Pedido do usuário depois de testar a spec 049. As respostas da análise de reprovação ajudaram a melhorar o
 perfil, mas só depois de uma revisão feita no chat:
 - cada fato foi para a experiência certa, escrito como item de currículo;
-- as discordâncias com o perfil foram perguntadas ("3 anos como SM" × datas que somam menos; "LeSS" no relato ×
-  "SAFe" no perfil; em qual cargo aconteceu o trabalho com Protheus);
+- as discordâncias com o perfil foram perguntadas ("5 anos com análise de dados" × datas que somam menos; "Kanban" no relato ×
+  "Scrum" no perfil; em qual cargo aconteceu o trabalho com SAP);
 - a pessoa viu o que entra, sai e muda antes de gravar.
 
 Ele quer que essa revisão aconteça também nas próximas vezes, pela página.
@@ -61,7 +61,7 @@ discordância e gravar, o perfil tem só o item aceito e a escolha feita, a vers
    currículo, **Then** o currículo usa essas respostas como fatos confirmados, como hoje, mas o perfil não muda; a
    seção mostra "N respostas para levar ao seu perfil" e o botão Revisar e levar ao perfil.
 2. **Given** o clique em Revisar e levar ao perfil, **When** a proposta fica pronta, **Then** a seção mostra cada
-   item com o lugar no perfil (ex.: "Agile Master — ART IT"), o tipo (entra, muda, sai), o texto antes e depois
+   item com o lugar no perfil (ex.: "Analista de Dados — Empresa Alfa"), o tipo (entra, muda, sai), o texto antes e depois
    quando muda, e de qual resposta ele veio.
 3. **Given** uma resposta "Usar só neste currículo", **When** a revisão é montada, **Then** ela não entra no pedido à
    IA nem na proposta.
@@ -77,8 +77,8 @@ discordância e gravar, o perfil tem só o item aceito e a escolha feita, a vers
 
 Quando um relato discorda do perfil, a proposta não escolhe sozinha. Ela mostra o trecho do relato e o trecho do
 perfil e pergunta qual vale. Exemplos:
-- "3 anos como Scrum Master" no relato, e as datas dos cargos no perfil que somam menos;
-- "LeSS" no relato e "SAFe" no perfil, para a mesma empresa;
+- "5 anos com análise de dados" no relato, e as datas dos cargos no perfil que somam menos;
+- "Kanban" no relato e "Scrum" no perfil, para a mesma empresa;
 - um relato que não deixa claro em qual cargo aconteceu um fato.
 
 A pessoa escolhe uma das opções ou escreve a correção. A escolha vira item da proposta (ou nenhum item, se ela
@@ -87,8 +87,8 @@ escolher manter o perfil).
 **Why this priority**: sem isso, o perfil passa a dizer duas coisas diferentes, e a IA do currículo escolhe uma ao
 acaso. Foi o ponto que mais pesou na revisão feita pelo chat.
 
-**Independent Test**: IA falsa que devolve uma discordância entre "LeSS" (relato) e "SAFe" (perfil). A revisão mostra
-os dois trechos e as opções. Com "manter o perfil", nada muda na linha do SAFe. Com "usar o relato", a linha muda
+**Independent Test**: IA falsa que devolve uma discordância entre "Kanban" (relato) e "Scrum" (perfil). A revisão mostra
+os dois trechos e as opções. Com "manter o perfil", nada muda na linha do Scrum. Com "usar o relato", a linha muda
 como na proposta. O botão Gravar no perfil fica desabilitado até a discordância ter uma escolha.
 
 **Acceptance Scenarios**:

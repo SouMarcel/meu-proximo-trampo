@@ -45,7 +45,7 @@ estado do gerador.
 | Campo | Tipo | Regra |
 |---|---|---|
 | `id` | str | `d1`, `d2`… |
-| `assunto` | str (≤ 200) | Ex.: "Método de escala na Leroy Merlin" |
+| `assunto` | str (≤ 200) | Ex.: "Método de trabalho na Empresa Alfa" |
 | `trecho_relato` | str (≤ 500) | Precisa estar no relato |
 | `trecho_perfil` | str (≤ 500) \| null | Precisa estar no perfil; null quando a dúvida é de lugar (em qual cargo) |
 | `relatos` | `[str]` | |

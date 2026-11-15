@@ -164,7 +164,7 @@ só o aceito, a versão anterior está guardada, o relato aceito está `no_perfi
 **Goal**: a proposta mostra o trecho do relato e o do perfil, com manter o perfil / usar o relato / correção; o
 Gravar espera a escolha.
 
-**Independent Test**: IA falsa com a discordância "LeSS" × "SAFe"; a revisão mostra os dois trechos; com "manter o
+**Independent Test**: IA falsa com a discordância "Kanban" × "Scrum"; a revisão mostra os dois trechos; com "manter o
 perfil" a linha fica; com "usar o relato" a linha muda; o Gravar fica desabilitado até a escolha.
 
 - [X] T022 [US2] Em `revisao_perfil.py`, `montar_pedido` ganha o formato das discordâncias (`assunto`,
