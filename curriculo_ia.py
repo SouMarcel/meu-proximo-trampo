@@ -4,7 +4,8 @@
   montar_pedido(perfil, vaga, tecnicas)   o pedido à IA: regras, técnicas, guia, modelo, perfil (sem
                                           documentos de identificação), vaga e os requisitos dela
                                           (tem, sustentado, lacuna)
-  ler_resposta(texto, tecnicas)           o JSON do currículo, validado pelo curriculo.py
+  ler_resposta(texto, tecnicas, nome)     o JSON do currículo, validado pelo curriculo.py; nome: o dos dados de
+                                          contato (candidatura/contato.py), que vale mais que o da IA
   gerar(vaga, tecnicas)                   pedido → IA → .json, .docx, .pdf → conferência → .meta.json
   listar(vaga_id=None, base=False)        os currículos gerados pela página, mais recentes primeiro
 
@@ -138,7 +139,18 @@ def montar_pedido(perfil: str, vaga: dict | None, tecnicas: dict, adicional: str
     ])
 
 
-def ler_resposta(texto: str, tecnicas: dict) -> dict:
+def nome_do_contato() -> str:
+    """Nome e sobrenome dos dados de contato que a pessoa salvou (spec 033); "" sem eles. Não vai à IA: entra no
+    currículo depois da resposta, porque o perfil.md não costuma trazer o nome."""
+    try:
+        from candidatura import contato
+        d = contato.ler() or {}
+    except Exception:  # sem dash/ no caminho ou arquivo ilegível: segue com o nome da IA
+        return ""
+    return " ".join(x for x in (d.get("nome"), d.get("sobrenome")) if x).strip()
+
+
+def ler_resposta(texto: str, tecnicas: dict, nome: str = "") -> dict:
     a, b = str(texto or "").find("{"), str(texto or "").rfind("}")
     if a < 0 or b < a:
         raise GeracaoErro("a resposta da IA não trouxe o currículo em JSON")
@@ -151,6 +163,8 @@ def ler_resposta(texto: str, tecnicas: dict) -> dict:
     cv = {k: v for k, v in cv.items() if k in curriculo.CHAVES and k not in ("tecnicas", "idioma")}
     cv["idioma"] = curriculo.FORMATOS[tecnicas["formato"]]["idioma"]
     cv["tecnicas"] = dict(tecnicas)
+    if nome:  # o nome confirmado pela pessoa; a IA às vezes o deixa vazio ou o tira de outro lugar
+        cv["nome"] = nome
     if isinstance(cv.get("destaques"), list):
         cv["destaques"] = cv["destaques"][:curriculo.MAX_DESTAQUES]
     import contextlib
@@ -192,7 +206,7 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
         resposta = ia.responder(montar_pedido(perfil, vaga, tecnicas, adicional), tempo=TEMPO_IA)
     except ia.IAErro as e:
         raise GeracaoErro(f"a IA não conseguiu escrever o currículo: {ia.mascarar(str(e))}") from None
-    cv = ler_resposta(resposta, tecnicas)
+    cv = ler_resposta(resposta, tecnicas, nome_do_contato())
 
     avisar("gerando")
     CURRICULOS.mkdir(parents=True, exist_ok=True)

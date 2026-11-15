@@ -74,6 +74,24 @@ class TestResposta(unittest.TestCase):
         self.assertEqual(cv["idioma"], "en")
         self.assertNotIn("outra", cv)
 
+    def test_nome_dos_dados_de_contato(self):
+        sem_nome = {k: v for k, v in cv_fiel().items() if k != "nome"}
+        with self.assertRaises(cia.GeracaoErro):
+            cia.ler_resposta(json.dumps(sem_nome), TEC)
+        self.assertEqual(cia.ler_resposta(json.dumps(sem_nome), TEC, "Pessoa Fictícia")["nome"], "Pessoa Fictícia")
+        self.assertEqual(cia.ler_resposta(json.dumps(cv_fiel()), TEC, "Pessoa Fictícia")["nome"], "Pessoa Fictícia")
+
+    def test_nome_do_contato(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            (tmp / "contato.json").write_text(json.dumps({"nome": "Pessoa", "sobrenome": "Fictícia"}), encoding="utf-8")
+            with mock.patch.object(banco, "ARQUIVO", tmp / "banco.db"):
+                self.assertEqual(cia.nome_do_contato(), "Pessoa Fictícia")
+            with mock.patch.object(banco, "ARQUIVO", tmp / "outro" / "banco.db"):
+                self.assertEqual(cia.nome_do_contato(), "")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     def test_invalida(self):
         for texto in ("sem json", "{quebrado", json.dumps({"experiencia": []})):
             with self.assertRaises(cia.GeracaoErro):
