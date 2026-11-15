@@ -1118,7 +1118,9 @@ def _rascunho_do_markdown(texto: str) -> tuple[dict, dict]:
     resp, atual, secao = {}, None, None
     texto = re.sub(r"<!--.*?-->", "", texto, flags=re.S)
     for linha in texto.splitlines():
-        m = re.match(r"###\s+(.+?)(?:\s+\((.+)\))?\s*$", linha)
+        # o período é o ÚLTIMO parêntese do título, e só se tiver número: "### Analista (Pleno) — Empresa Alfa
+        # (terceirizado na Beta) (01/2024–atual)" tem o período "01/2024–atual"; os outros parênteses ficam no título
+        m = re.match(r"###\s+(.+?)(?:\s+\(([^()]*\d[^()]*)\))?\s*$", linha)
         if m:
             cargo, _, empresa = m.group(1).partition(" — ")
             ini, _, fim = (m.group(2) or "").partition("–")

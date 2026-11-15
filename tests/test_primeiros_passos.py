@@ -724,5 +724,29 @@ class TestLinhaDeComando(Base):
             self.assertEqual(pp.main(["gravar", str(pendente)]), 1)
 
 
+class TestDiagnosticoDoMarkdown(unittest.TestCase):
+    """O diagnóstico pela linha de comando lê o perfil.md: o período é o último parêntese do título do cargo."""
+
+    def test_parenteses_no_titulo_do_cargo(self):
+        texto = "\n".join([
+            "## Objetivo", "- Cargos que procuro: Analista de Dados", "", "## Resumo", "Analista de dados.", "",
+            "## Experiência", "",
+            "### Analista (Pleno/Sênior) — Empresa Alfa – Serviços (terceirizado na Empresa Beta) (01/2024–atual)",
+            "- Painéis para a diretoria.", "",
+            "### Assistente de BI — Empresa Gama (03/2021–12/2023)", "- Relatórios.", "",
+            "### Estagiário (meio período) — Empresa Delta", "- Planilhas.", "",
+            "## Formação", "- Tecnologia em Dados — Faculdade Ômega (2020)",
+        ])
+        r, resp = pp._rascunho_do_markdown(texto)
+        alfa, gama, delta = r["experiencias"]
+        self.assertEqual((alfa["cargo"], alfa["inicio"], alfa["fim"]), ("Analista (Pleno/Sênior)", "01/2024", "atual"))
+        self.assertEqual(alfa["empresa"], "Empresa Alfa – Serviços (terceirizado na Empresa Beta)")
+        self.assertEqual((gama["inicio"], gama["fim"]), ("03/2021", "12/2023"))
+        self.assertEqual((delta["cargo"], delta["inicio"]), ("Estagiário (meio período)", ""))  # parêntese sem número fica
+        mensagens = " ".join(a["mensagem"] for a in pp.diagnosticar(r, resp))
+        self.assertNotIn("Datas sem mês", mensagens)
+        self.assertNotIn("Intervalo", mensagens)  # 12/2023 → 01/2024: sem buraco
+
+
 if __name__ == "__main__":
     unittest.main()
