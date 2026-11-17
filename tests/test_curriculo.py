@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
@@ -63,6 +64,16 @@ class TestValidacao(unittest.TestCase):
         self.assertIsNone(curriculo.ler_tecnicas(base()))
         tec = curriculo.ler_tecnicas({"tecnicas": {"xyz": True}})
         self.assertEqual((tec["xyz"], tec["ats"], tec["formato"], tec["estilo"], tec["paginas"]), (True, True, "br", "padrao", 2))
+        self.assertFalse(tec["paginas_obrigatorio"])
+
+    def test_ler_tecnicas_sem_paginas_obrigatorio(self):
+        tec = curriculo.ler_tecnicas({"tecnicas": {"xyz": True}})
+        self.assertFalse(tec["paginas_obrigatorio"])
+
+    def test_validar_completo_e_obrigatorio(self):
+        cv = {**base(), "tecnicas": {"paginas": 0, "paginas_obrigatorio": True}}
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(curriculo.validar(cv), [])
 
 
 class TestMotor(Base):
@@ -119,9 +130,20 @@ class TestSugestaoECortes(unittest.TestCase):
 
     def test_catalogo(self):
         c = curriculo.catalogo()
-        self.assertEqual(set(c["tecnicas"]), {"ats", "foco", "xyz", "resultado_primeiro", "competencias_primeiro"})
-        self.assertEqual(set(c["escolhas"]["paginas"]["opcoes"]), {"1", "2"})
+        self.assertEqual(set(c["tecnicas"]), {"ats", "foco", "xyz", "resultado_primeiro",
+                                              "competencias_primeiro", "paginas_obrigatorio"})
+        self.assertEqual(set(c["escolhas"]["paginas"]["opcoes"]), {"0", "1", "2"})
         json.dumps(c)  # serializável para a skill e a página
+
+    def test_catalogo_com_vaga(self):
+        c = curriculo.catalogo({"titulo": "Analista de Dados"})
+        self.assertEqual(set(c["escolhas"]["paginas"]["opcoes"]), {"1", "2"})
+        # Não altera o dicionário global ESCOLHAS
+        self.assertIn(0, curriculo.ESCOLHAS["paginas"]["opcoes"])
+
+    def test_descrever_tecnicas_sem_limite(self):
+        tec = {"formato": "br", "estilo": "padrao", "paginas": 0}
+        self.assertIn("sem limite de páginas", curriculo.descrever_tecnicas(tec))
 
     def test_sugestoes_corte(self):
         cv = base()
@@ -132,6 +154,42 @@ class TestSugestaoECortes(unittest.TestCase):
         self.assertIn("Empresa 2, Empresa 3", texto)
         self.assertIn("até 5 itens", texto)
         self.assertIn("resumo", texto)
+
+
+class TestMain(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_main_paginas_zero_nunca_acima_do_limite(self):
+        cv = {**base(), "tecnicas": {"paginas": 0}}
+        arquivo = self.tmp / "cv.json"
+        arquivo.write_text(json.dumps(cv), encoding="utf-8")
+        out = io.StringIO()
+        with mock.patch("sys.argv", ["curriculo.py", str(arquivo)]), \
+             mock.patch.object(curriculo, "para_pdf", return_value=(self.tmp / "cv.pdf", "")), \
+             mock.patch.object(curriculo, "paginas", return_value=5), \
+             mock.patch.object(curriculo, "rodar_conferencia", return_value=0), \
+             redirect_stdout(out):
+            codigo = curriculo.main()
+        self.assertEqual(codigo, 0)
+        self.assertNotIn("acima do limite", out.getvalue())
+
+    def test_main_paginas_com_limite_acima_sai_com_3(self):
+        cv = {**base(), "tecnicas": {"paginas": 2}}
+        arquivo = self.tmp / "cv.json"
+        arquivo.write_text(json.dumps(cv), encoding="utf-8")
+        out = io.StringIO()
+        with mock.patch("sys.argv", ["curriculo.py", str(arquivo)]), \
+             mock.patch.object(curriculo, "para_pdf", return_value=(self.tmp / "cv.pdf", "")), \
+             mock.patch.object(curriculo, "paginas", return_value=5), \
+             mock.patch.object(curriculo, "rodar_conferencia", return_value=0), \
+             redirect_stdout(out):
+            codigo = curriculo.main()
+        self.assertEqual(codigo, 3)
+        self.assertIn("acima do limite", out.getvalue())
 
 
 if __name__ == "__main__":

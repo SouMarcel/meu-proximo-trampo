@@ -17,13 +17,13 @@ São sequenciais porque mexem nos mesmos arquivos.
 
 ## Phase 1: Catálogo (US2, US3)
 
-- [ ] T001 [D minor] [US2][US3] Em `curriculo.py`, mudar o catálogo:
+- [X] T001 [D minor] [US2][US3] Em `curriculo.py`, mudar o catálogo:
   - criar a técnica `paginas_obrigatorio` (padrão False);
   - criar a opção `paginas` 0 "Completo (sem limite, tudo do perfil)";
   - `catalogo(vaga)` tira a opção 0 com vaga;
   - `descrever_tecnicas` e o `main` tratam 0 como sem limite.
 
-  Testes em `tests/test_curriculo.py`.
+  Testes em `tests/test_curriculo.py`. → agy, GO na tentativa 1
 
 ## Phase 2: Pedido (US1, US3)
 

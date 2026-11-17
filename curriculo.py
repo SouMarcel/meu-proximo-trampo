@@ -73,9 +73,13 @@ TECNICAS = {
                            "explicacao": "Cada item começa pelo resultado e depois diz como foi feito."},
     "competencias_primeiro": {"nome": "Competências primeiro", "padrao": False,
                               "explicacao": "A seção de competências vem antes da experiência."},
+    "paginas_obrigatorio": {"nome": "Limite de páginas obrigatório", "padrao": False,
+                            "explicacao": "Se passar do limite, a IA encurta: mantém completas as 3 experiências mais "
+                                          "recentes e resume ou tira as mais antigas, sem acrescentar nada."},
 }
 ESCOLHAS = {
-    "paginas": {"nome": "Páginas", "padrao": 2, "opcoes": {1: "1 página", 2: "Até 2 páginas"}},
+    "paginas": {"nome": "Páginas", "padrao": 2,
+                "opcoes": {1: "1 página", 2: "Até 2 páginas", 0: "Completo (sem limite, tudo do perfil)"}},
     "formato": {"nome": "Formato do país", "padrao": "br",
                 "opcoes": {"br": "Brasil (A4, português)",
                            "us": "Estados Unidos (Letter, inglês, sem foto nem dados pessoais)",
@@ -148,9 +152,12 @@ def sugerir(vaga: dict | None = None) -> dict:
 
 def catalogo(vaga: dict | None = None) -> dict:
     """O que a skill e a página mostram como caixas de marcar e escolhas, com a sugestão para o alvo."""
-    return {"tecnicas": TECNICAS, "escolhas": {k: {**v, "opcoes": {str(o): r for o, r in v["opcoes"].items()}}
-                                              for k, v in ESCOLHAS.items()},
-            "sugestao": sugerir(vaga)}
+    escolhas = {}
+    for k, v in ESCOLHAS.items():
+        opcoes = {str(o): r for o, r in v["opcoes"].items()
+                  if not (vaga and k == "paginas" and str(o) == "0")}
+        escolhas[k] = {**v, "opcoes": opcoes}
+    return {"tecnicas": TECNICAS, "escolhas": escolhas, "sugestao": sugerir(vaga)}
 
 
 
@@ -431,8 +438,9 @@ def ordem_das_secoes(cv: dict, tec: dict | None) -> list[str]:
 
 def descrever_tecnicas(tec: dict) -> str:
     marcadas = [TECNICAS[k]["nome"] for k in TECNICAS if tec.get(k)]
+    limite = "sem limite de páginas" if tec.get("paginas") == 0 else f"até {tec['paginas']} página(s)"
     return (f"Técnicas: {', '.join(marcadas) or 'nenhuma'}; formato {tec['formato']}; estilo {tec['estilo']}; "
-            f"até {tec['paginas']} página(s)")
+            f"{limite}")
 
 
 def sugestoes_corte(cv: dict) -> list[str]:
@@ -587,12 +595,12 @@ def main() -> int:
             n = paginas(pdf)
             print(f"Gerado: {pdf}" + (f" ({n} página{'s' if n != 1 else ''})" if n else ""))
             limite = tec["paginas"] if tec else 2
-            if n and n > limite and tec:
+            if n and tec and tec["paginas"] > 0 and n > limite:
                 print(f"acima do limite: deu {n} páginas; o limite é {limite}. Em vez de encolher a fonte, corte:")
                 for sugestao in sugestoes_corte(cv):
                     print(f"  - {sugestao}")
                 codigo = 3
-            elif n and n > limite:
+            elif n and not tec and n > limite:
                 print(f"aviso: {n} páginas; o alvo é no máximo 2.")
             elif not n and tec:
                 print("aviso: as páginas não foram medidas.")
