@@ -76,9 +76,8 @@ class TestNomesEPedido(Base):
     def test_pedido_orcamento_1_pagina(self):
         tec1 = cia.validar_tecnicas({"paginas": 1})
         pedido = cia.montar_pedido(PERFIL_CPF, VAGA_DOC, tec1)
-        self.assertIn("450 palavras", pedido)
-        self.assertNotIn("800 palavras", pedido)
-        self.assertIn("Limite: até 1 página(s)", pedido)
+        self.assertIn("Limite: até 1 página(s). Para caber, siga este orçamento:\n" + cia.ORCAMENTO[1], pedido)
+        self.assertNotIn(cia.ORCAMENTO[2], pedido)  # o guia cita os dois números; o bloco do limite é só o de 1
 
     def test_pedido_completo(self):
         tec0 = cia.validar_tecnicas({"paginas": 0})
