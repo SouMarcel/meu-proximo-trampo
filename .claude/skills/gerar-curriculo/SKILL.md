@@ -110,9 +110,9 @@ Rode `PY curriculo.py --tecnicas` (com `--vaga-id ID` numa vaga do dashboard) e 
 rodada só:
 
 - **Técnicas** (múltipla escolha, cada uma com a explicação do catálogo): ATS, foco, XYZ,
-  resultado primeiro, competências primeiro;
-- **Páginas** (1 ou 2), **formato do país** (Brasil, Estados Unidos, Europa) e **estilo** (padrão,
-  compacto, executivo).
+  resultado primeiro, competências primeiro, limite de páginas obrigatório;
+- **Páginas** (1, 2 ou, só no currículo base, Completo, sem limite), **formato do país** (Brasil,
+  Estados Unidos, Europa) e **estilo** (padrão, compacto, executivo).
 
 Use a ferramenta de opções do assistente (AskUserQuestion no Claude Code, com múltipla escolha para
 as técnicas; ask_user no Gemini CLI; question no OpenCode); sem ela, escreva as opções numeradas.

@@ -44,9 +44,9 @@ São sequenciais porque mexem nos mesmos arquivos.
 
 ## Phase 4: Fechamento (eu)
 
-- [ ] T004 [US2] Conferir que `reprovacao.reescrever_e_gerar` passa pelo `cia.gerar` com as técnicas da análise e herda
+- [X] T004 [US2] Conferir que `reprovacao.reescrever_e_gerar` passa pelo `cia.gerar` com as técnicas da análise e herda
   o encurtar. Rodar `tests/test_reprovacao.py`.
-- [ ] T005 Documentação: limite concreto, opção obrigatória (no chat, quem encurta é o assistente) e Completo.
+- [X] T005 Documentação: limite concreto, opção obrigatória (no chat, quem encurta é o assistente) e Completo.
   - `.agents/skills/gerar-curriculo/tecnicas.md` e `SKILL.md`, depois `python sincronizar_skills.py`;
   - `dash/API.md` (catálogo, técnica, etapa, `meta.encurtado`).
 - [ ] T006 Teste real na `marcel` com o perfil do usuário e ajuste dos números de `ORCAMENTO`. Os 3 cenários do

@@ -65,5 +65,19 @@ só de "tem" ou "sustentado" na conferência de requisitos, no nível confirmado
 
 - Estilos: padrão; compacto (cabe mais por página); executivo (fonte maior, mais respiro). O corpo
   nunca fica abaixo de 10 pt.
+- Orçamento para caber (a IA não mede páginas; siga os números):
+  - **2 páginas**: resumo com até 4 linhas (cerca de 450 caracteres); as 3 experiências mais recentes
+    com até 5 itens; as anteriores com no máximo 1 item ou só a linha de empresa, cargo e período;
+    até 3 cursos; cerca de 800 palavras.
+  - **1 página**: resumo com até 3 linhas; as 2 experiências mais recentes com até 4 itens; as
+    anteriores só com a linha; até 2 cursos; sem projetos; cerca de 450 palavras.
+  - Estilo executivo: a fonte é maior, conte com menos espaço.
 - Passou do limite de páginas: o motor sai com código 3 e sugere cortes. Corte detalhe antigo ou
   pouco ligado ao alvo; não encolha a fonte.
+- **Limite de páginas obrigatório** (técnica `paginas_obrigatorio`): passou do limite, encurte
+  e gere de novo, até 2 vezes. Mantenha completas as 3 experiências mais recentes, resuma as antigas
+  para a linha de empresa, cargo e período, corte itens pouco ligados ao alvo e o resumo. Só tire ou
+  condense; nunca acrescente fato. Pela página, quem encurta é a IA escolhida; no chat, é você.
+- **Completo** (`paginas: 0`, só no currículo base): todos os fatos do perfil e dos relatos, sem
+  cortar e sem limite de páginas (todas as experiências com todos os itens, formação,
+  certificações, cursos, projetos e idiomas). Continua com o layout para ATS e só fatos confirmados.

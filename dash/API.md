@@ -522,25 +522,31 @@ A leitura grava só `requisitos` (a nota, a análise, a triagem e a etapa não m
 Uma geração por vez no servidor (currículo, carta ou respostas dividem a mesma fila).
 
 **`GET /api/curriculo/catalogo?vaga={id}`** (sem `vaga` = currículo base) — o diálogo "Gerar currículo".
-`{tecnicas: {ats|foco|xyz|resultado_primeiro|competencias_primeiro: {nome, padrao, explicacao}}, escolhas:
+`{tecnicas: {ats|foco|xyz|resultado_primeiro|competencias_primeiro|paginas_obrigatorio: {nome, padrao, explicacao}}, escolhas:
 {paginas|formato|estilo: {nome, padrao, opcoes: {valor: rótulo}}}, sugestao: {<técnica>: bool, paginas, formato,
 estilo, motivo}, ia: {ligada, nome, modelo, cobranca: "uso"|"assinatura"|"gratuito"|""}, perfil_ok, pode_alterar}`. Erro 404 vaga não encontrada.
-Opções: `paginas` 1|2; `formato` br|us|eu; `estilo` padrao|compacto|executivo (curriculo.py:62-86).
+Opções: `paginas` 1|2|0 (0 = Completo, sem limite; só sem `vaga`); `formato` br|us|eu; `estilo`
+padrao|compacto|executivo (curriculo.py:62-90). `paginas_obrigatorio` (spec 051): passou do limite, a IA encurta
+(até 2 tentativas).
 
 **`POST /api/curriculo`** **[local]** — "Gerar". Corpo `{vaga_id: string|null, tecnicas: {ats, foco, xyz,
-resultado_primeiro, competencias_primeiro: bool, paginas: number, formato, estilo}}`. Resposta 202 = estado.
-Erros: 400 (sem IA, sem perfil, técnica inválida); 409 `{erro, estado}` (outra geração rodando).
+resultado_primeiro, competencias_primeiro, paginas_obrigatorio: bool, paginas: number, formato, estilo}}`. Resposta
+202 = estado. Erros: 400 (sem IA, sem perfil, técnica inválida, `paginas: 0` com vaga); 409 `{erro, estado}` (outra
+geração rodando).
 
 **`POST /api/curriculo/tentar`** **[local]** — "Tentar de novo" o último pedido que falhou. Corpo `{}`. 202 = estado; 409 sem falha.
 
-**`GET /api/curriculo/estado`** — `{situacao: ociosa|escrevendo|gerando|conferindo|pronto|falha, tipo: curriculo|carta|respostas,
+**`GET /api/curriculo/estado`** — `{situacao: ociosa|escrevendo|gerando|encurtando|conferindo|pronto|falha, tipo: curriculo|carta|respostas,
 alvo: {vaga_id, titulo, empresa} | {base: true}, tecnicas?, inicio, fim, nome, mensagem, veredito: ok|conferir|bloquear,
 pronto: bool, pode_tentar: bool, etapa_texto, pode_alterar}` (gerador.py:64-69, 104-106).
 
 **`GET /api/curriculo/lista?vaga={id}`** ou **`?base=1`** — `{curriculos: [meta]}`, mais recentes primeiro. Meta:
 `{nome, alvo, tecnicas, arquivos: {json, docx, pdf|null}, disponivel: {pdf, docx, json: bool}, paginas|null, acima_do_limite,
 sugestoes_corte, conferencia: {veredito, fatos: [{nivel, mensagem, valor?, trecho?}], ats: [...], requisitos: [{situacao,
-texto}], cobertura: {achadas, total, faltando}|null}, pronto, ia, criado_em, reprovacao?: true}` (curriculo_ia.py:202-213; conferir.py:380-387).
+texto}], cobertura: {achadas, total, faltando}|null}, pronto, ia, criado_em, reprovacao?: true, encurtado?: {de, para,
+tentativas}}` (curriculo_ia.py; conferir.py:380-387). Acima do limite no fim, `conferencia.ats` ganha um ponto
+`{nivel: "conferir", trecho: "N páginas", mensagem}` e o veredito "ok" vira "conferir" (spec 051). Com `paginas: 0`,
+`acima_do_limite` é sempre false.
 Os links de download são `/arquivos/curriculos/{arquivos.pdf|docx}`.
 
 #### Análise de reprovação (checkbox no diálogo "Gerar currículo" de uma vaga; spec 049)
