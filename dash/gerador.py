@@ -16,6 +16,7 @@ import banco
 
 RAIZ = banco.DASH.parent
 ETAPAS = {"escrevendo": "Escrevendo com a IA…", "gerando": "Gerando os arquivos…", "conferindo": "Conferindo…",
+          "encurtando": "A IA está encurtando para caber no limite…",
           "analisando": "Analisando como um recrutador…", "reescrevendo": "Reescrevendo os trechos genéricos…",
           "revisando": "Revisando o seu perfil…"}
 

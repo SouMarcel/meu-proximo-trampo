@@ -28,6 +28,7 @@ SKILL = RAIZ / ".agents" / "skills" / "gerar-curriculo"
 GUIA = SKILL / "tecnicas.md"
 MODELO = SKILL / "modelo.json"
 TEMPO_IA = 600
+MAX_ENCURTAR = 2
 NOME_VALIDO = re.compile(r"^[a-z0-9-]{1,90}$")
 ORCAMENTO = {
     2: ("- Resumo com até 4 linhas (cerca de 450 caracteres);\n"
@@ -164,6 +165,30 @@ def montar_pedido(perfil: str, vaga: dict | None, tecnicas: dict, adicional: str
     ])
 
 
+def montar_pedido_encurtar(cv: dict, tecnicas: dict, paginas: int) -> str:
+    limite = tecnicas.get("paginas", 2)
+    orcamento = ORCAMENTO.get(limite, "")
+    cv_sem_tecnicas = {k: v for k, v in cv.items() if k != "tecnicas"}
+    return "\n".join([
+        f"o currículo abaixo deu {paginas} páginas; o limite é {limite}",
+        "",
+        "Regras:",
+        "- só tire ou condense;",
+        "- nunca acrescente fato, número, empresa, cargo, data ou ferramenta;",
+        "- mantenha completas as 3 experiências mais recentes (as primeiras da lista);",
+        "- resuma as mais antigas para só a linha de empresa, cargo e período, ou tire os itens delas;",
+        "- corte os itens menos ligados ao alvo;",
+        "- encurte o resumo;",
+        "- números só como estão;",
+        "",
+        orcamento,
+        "",
+        "Responda SOMENTE com o JSON no mesmo formato, sem texto antes ou depois e sem a chave tecnicas",
+        "",
+        json.dumps(cv_sem_tecnicas, ensure_ascii=False),
+    ])
+
+
 def nome_do_contato() -> str:
     """Nome e sobrenome dos dados de contato que a pessoa salvou (spec 033); "" sem eles. Não vai à IA: entra no
     currículo depois da resposta, porque o perfil.md não costuma trazer o nome."""
@@ -219,6 +244,14 @@ def validar_tecnicas(dados, vaga: dict | None = None) -> dict:
     return tec
 
 
+def _cresceu(novo: dict, antigo: dict) -> bool:
+    novo_exp = novo.get("experiencia") or []
+    antigo_exp = antigo.get("experiencia") or []
+    if len(novo_exp) > len(antigo_exp):
+        return True
+    return len(json.dumps(novo, ensure_ascii=False)) > len(json.dumps(antigo, ensure_ascii=False))
+
+
 def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None = None, adicional: str = "",
           marca: dict | None = None) -> dict:
     """Pede o currículo à IA e gera os arquivos e o meta. Em falha, nada fica pela metade. adicional vai ao fim do
@@ -246,8 +279,42 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
         curriculo.Montador(cv).montar().save(arq_docx)
         pdf, _ = curriculo.para_pdf(arq_docx)
         paginas = curriculo.paginas(pdf) if pdf else None
+        encurtado = None
+        limite = tecnicas["paginas"]
+        if tecnicas.get("paginas_obrigatorio") and limite > 0 and paginas and paginas > limite:
+            de = paginas
+            tentativas = 0
+            for _ in range(MAX_ENCURTAR):
+                tentativas += 1
+                avisar("encurtando")
+                try:
+                    resposta = ia.responder(montar_pedido_encurtar(cv, tecnicas, paginas), tempo=TEMPO_IA)
+                    novo = ler_resposta(resposta, tecnicas, nome_do_contato())
+                except (ia.IAErro, GeracaoErro):
+                    break
+                if _cresceu(novo, cv):
+                    continue
+                arq_json.write_text(json.dumps(novo, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                curriculo.Montador(novo).montar().save(arq_docx)
+                pdf, _ = curriculo.para_pdf(arq_docx)
+                paginas = curriculo.paginas(pdf) if pdf else None
+                cv = novo
+                if paginas and paginas <= limite:
+                    break
+            encurtado = {"de": de, "para": paginas, "tentativas": tentativas}
+
         avisar("conferindo")
         conf = conferir.conferir(cv, perfil, texto_da_vaga(vaga) or None, arq_docx)
+        if limite > 0 and paginas and paginas > limite:
+            if tecnicas.get("paginas_obrigatorio"):
+                msg = f"a IA não conseguiu deixar em {limite} página(s); dá para cortar: " + "; ".join(curriculo.sugestoes_corte(cv))
+            else:
+                msg = (f"acima do objetivo de {limite} página(s): o perfil tem conteúdo demais para esse limite; "
+                       "marque 'Limite de páginas obrigatório' para a IA encurtar")
+            conf["ats"].append({"nivel": "conferir", "trecho": f"{paginas} páginas", "mensagem": msg})
+            if conf["veredito"] == "ok":
+                conf["veredito"] = "conferir"
+
         # Com completo (paginas == 0), nunca marca acima do limite
         acima = False if tecnicas["paginas"] == 0 else bool(paginas and paginas > tecnicas["paginas"])
         sugestoes = [] if tecnicas["paginas"] == 0 else (curriculo.sugestoes_corte(cv) if paginas and paginas > tecnicas["paginas"] else [])
@@ -264,6 +331,8 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
             "criado_em": datetime.now().isoformat(timespec="seconds"),
             **(marca or {}),
         }
+        if encurtado:
+            meta["encurtado"] = encurtado
         (CURRICULOS / f"{nome}.meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     except PermissionError:
         _apagar(criados)

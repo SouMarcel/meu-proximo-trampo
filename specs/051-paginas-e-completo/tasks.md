@@ -38,9 +38,9 @@ São sequenciais porque mexem nos mesmos arquivos.
 
 ## Phase 3: Encurtar e avisar (US1, US2)
 
-- [ ] T003 [D minor] [US1][US2] Em `curriculo_ia.py`, criar `montar_pedido_encurtar` e o laço de encurtar em `gerar`
+- [X] T003 [D minor] [US1][US2] Em `curriculo_ia.py`, criar `montar_pedido_encurtar` e o laço de encurtar em `gerar`
   (D3), mais o ponto de aviso e o veredito recalculado (D4). Em `dash/gerador.py`, `ETAPAS["encurtando"]` (D5).
-  Testes com IA e páginas falsas em `tests/test_curriculo_ia.py`.
+  Testes com IA e páginas falsas em `tests/test_curriculo_ia.py`. → agy, GO na tentativa 1
 
 ## Phase 4: Fechamento (eu)
 

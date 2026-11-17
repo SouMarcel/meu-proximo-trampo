@@ -198,5 +198,124 @@ class TestGerar(Base):
             banco.registrar_curriculo("v1", "../x")
 
 
+def cv_menor():
+    c = cv_fiel()
+    c["resumo"] = "Analista de dados."
+    return c
+
+
+def cv_maior():
+    c = cv_fiel()
+    c["experiencia"].append({
+        "empresa": "Empresa Gama", "periodo": "01/2015 – 12/2017",
+        "cargos": [{"cargo": "Estagiário de Dados", "itens": ["Auxílio em relatórios"]}]
+    })
+    return c
+
+
+class TestEncurtar(Base):
+    def setUp(self):
+        super().setUp()
+        self.patch_pdf = mock.patch.object(curriculo, "para_pdf", lambda docx: (docx.with_suffix(".pdf"), ""))
+        self.patch_pdf.start()
+
+    def tearDown(self):
+        self.patch_pdf.stop()
+        super().tearDown()
+
+    def test_encurtou(self):
+        tec = cia.validar_tecnicas({"paginas": 2, "paginas_obrigatorio": True})
+        respostas = [json.dumps(cv_fiel()), json.dumps(cv_menor())]
+        with mock.patch.object(curriculo, "paginas", side_effect=[3, 2]), \
+                mock.patch.object(ia, "responder", side_effect=respostas) as resp:
+            meta = cia.gerar(VAGA_DOC, tec, perfil=PERFIL)
+        self.assertEqual(meta["encurtado"], {"de": 3, "para": 2, "tentativas": 1})
+        self.assertFalse(meta["acima_do_limite"])
+        self.assertEqual(meta["paginas"], 2)
+        self.assertEqual(resp.call_count, 2)
+        mensagens = [p["mensagem"] for p in meta["conferencia"]["ats"]]
+        self.assertFalse(any("página" in m for m in mensagens))
+
+    def test_maior_descartada(self):
+        tec = cia.validar_tecnicas({"paginas": 2, "paginas_obrigatorio": True})
+        respostas = [json.dumps(cv_fiel()), json.dumps(cv_maior()), json.dumps(cv_maior())]
+        with mock.patch.object(curriculo, "paginas", side_effect=[3]), \
+                mock.patch.object(ia, "responder", side_effect=respostas) as resp:
+            meta = cia.gerar(VAGA_DOC, tec, perfil=PERFIL)
+        self.assertEqual(meta["encurtado"]["tentativas"], 2)
+        self.assertTrue(meta["acima_do_limite"])
+        self.assertEqual(resp.call_count, 3)
+        gravado = json.loads((self.tmp / "curriculos" / f"{meta['nome']}.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(gravado["experiencia"]), len(cv_fiel()["experiencia"]))
+        pontos = [p for p in meta["conferencia"]["ats"] if "não conseguiu" in p["mensagem"]]
+        self.assertTrue(bool(pontos))
+        self.assertEqual(pontos[0]["nivel"], "conferir")
+        self.assertEqual(pontos[0]["trecho"], "3 páginas")
+        self.assertEqual(meta["conferencia"]["veredito"], "conferir")
+
+    def test_ia_falha_ao_encurtar(self):
+        tec = cia.validar_tecnicas({"paginas": 2, "paginas_obrigatorio": True})
+        respostas = [json.dumps(cv_fiel()), ia.IAErro("fora")]
+        with mock.patch.object(curriculo, "paginas", side_effect=[3]), \
+                mock.patch.object(ia, "responder", side_effect=respostas) as resp:
+            meta = cia.gerar(VAGA_DOC, tec, perfil=PERFIL)
+        self.assertTrue(meta["acima_do_limite"])
+        self.assertEqual(resp.call_count, 2)
+        pasta = self.tmp / "curriculos"
+        self.assertTrue((pasta / f"{meta['nome']}.json").exists())
+        self.assertTrue((pasta / f"{meta['nome']}.docx").exists())
+        mensagens = [p["mensagem"] for p in meta["conferencia"]["ats"]]
+        self.assertTrue(any("não conseguiu" in m for m in mensagens))
+        self.assertEqual(meta["conferencia"]["veredito"], "conferir")
+
+    def test_sem_a_tecnica(self):
+        tec = cia.validar_tecnicas({"paginas": 2, "paginas_obrigatorio": False})
+        with mock.patch.object(curriculo, "paginas", side_effect=[3]), \
+                mock.patch.object(ia, "responder", return_value=json.dumps(cv_fiel())) as resp:
+            meta = cia.gerar(VAGA_DOC, tec, perfil=PERFIL)
+        self.assertEqual(resp.call_count, 1)
+        self.assertNotIn("encurtado", meta)
+        self.assertTrue(meta["acima_do_limite"])
+        pontos = [p for p in meta["conferencia"]["ats"] if "Limite de páginas obrigatório" in p["mensagem"]]
+        self.assertTrue(bool(pontos))
+        self.assertEqual(pontos[0]["nivel"], "conferir")
+        self.assertEqual(pontos[0]["trecho"], "3 páginas")
+        self.assertEqual(meta["conferencia"]["veredito"], "conferir")
+
+    def test_completo_zero(self):
+        tec = cia.validar_tecnicas({"paginas": 0, "paginas_obrigatorio": True})
+        with mock.patch.object(curriculo, "paginas", side_effect=[5]), \
+                mock.patch.object(ia, "responder", return_value=json.dumps(cv_fiel())) as resp:
+            meta = cia.gerar(None, tec, perfil=PERFIL)
+        self.assertEqual(resp.call_count, 1)
+        self.assertNotIn("encurtado", meta)
+        self.assertFalse(meta["acima_do_limite"])
+        mensagens = [p["mensagem"] for p in meta["conferencia"]["ats"]]
+        self.assertFalse(any("página" in m or "limite" in m for m in mensagens))
+
+
+class TestEncurtarFuncoesPuras(unittest.TestCase):
+    def test_cresceu(self):
+        base = cv_fiel()
+        maior = cv_maior()
+        menor = cv_menor()
+        self.assertTrue(cia._cresceu(maior, base))
+        self.assertFalse(cia._cresceu(menor, base))
+        self.assertFalse(cia._cresceu(base, base))
+        com_mais_texto = cv_fiel()
+        com_mais_texto["resumo"] = com_mais_texto["resumo"] + " Texto adicional muito longo para teste."
+        self.assertTrue(cia._cresceu(com_mais_texto, base))
+
+    def test_montar_pedido_encurtar(self):
+        tec = cia.validar_tecnicas({"paginas": 2, "paginas_obrigatorio": True})
+        pedido = cia.montar_pedido_encurtar(cv_fiel(), tec, 3)
+        self.assertIn("deu 3 páginas; o limite é 2", pedido)
+        self.assertIn("só tire ou condense", pedido)
+        self.assertIn("mantenha completas as 3 experiências mais recentes", pedido)
+        self.assertIn("800 palavras", pedido)
+        self.assertIn("Responda SOMENTE com o JSON no mesmo formato, sem texto antes ou depois e sem a chave tecnicas", pedido)
+        self.assertNotIn('"tecnicas":', pedido)
+
+
 if __name__ == "__main__":
     unittest.main()
