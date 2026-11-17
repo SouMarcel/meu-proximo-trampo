@@ -7,8 +7,8 @@
 **Status**: Aprovada em 2026-11-17
 
 **Input**: Pedido do usuário depois de gerar currículos pela página. O limite de páginas escolhido (até 2) não é
-respeitado: dos 6 currículos gerados até aqui, 4 saíram com 3 páginas, entre eles todos os currículos base (7
-experiências e de 24 a 28 itens). Ele também quer um currículo novo, completo e livre, com todos os dados que a
+respeitado: a maior parte dos currículos gerados sai com 3 páginas, entre eles os currículos base de perfis com
+muitas experiências. Ele também quer um currículo novo, completo e livre, com todos os dados que a
 ferramenta tem dele, "tipo o perfil do LinkedIn".
 
 **Decisões do usuário (17/11)**:
@@ -44,7 +44,7 @@ encurtar.
 
 **Why this priority**: é a queixa principal e beneficia todo currículo gerado, sem a pessoa mudar nada.
 
-**Independent Test**: gerar um currículo base com "Até 2 páginas" a partir de um perfil com 7 experiências. O pedido à
+**Independent Test**: gerar um currículo base com "Até 2 páginas" a partir de um perfil com 6 ou mais experiências. O pedido à
 IA traz o limite de conteúdo. Se o PDF passar de 2 páginas, a lista mostra o aviso com a sugestão da opção
 obrigatória.
 
@@ -182,7 +182,7 @@ um currículo longo. Não corrige um problema, por isso fica atrás das US1 e US
 
 ### Measurable Outcomes
 
-- **SC-001**: Com o perfil do usuário (7 experiências), o currículo base com "Até 2 páginas" e a opção obrigatória
+- **SC-001**: Com um perfil de 6 ou mais experiências, o currículo base com "Até 2 páginas" e a opção obrigatória
   sai com 2 páginas em pelo menos 4 de 5 gerações.
 - **SC-002**: Sem a opção obrigatória, todo currículo que passa do limite mostra o aviso com a sugestão. Nenhum fica
   só com "(acima do limite de 2)".

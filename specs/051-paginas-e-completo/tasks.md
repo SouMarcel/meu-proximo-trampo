@@ -49,5 +49,5 @@ São sequenciais porque mexem nos mesmos arquivos.
 - [X] T005 Documentação: limite concreto, opção obrigatória (no chat, quem encurta é o assistente) e Completo.
   - `.agents/skills/gerar-curriculo/tecnicas.md` e `SKILL.md`, depois `python sincronizar_skills.py`;
   - `dash/API.md` (catálogo, técnica, etapa, `meta.encurtado`).
-- [ ] T006 Teste real na `marcel` com o perfil do usuário e ajuste dos números de `ORCAMENTO`. Os 3 cenários do
-  quickstart estão no plano da sessão.
+- [X] T006 Teste real na branch de teste com o perfil do usuário e ajuste dos números de `ORCAMENTO`. Os 3 cenários do
+  quickstart estão no plano da sessão. Validado pelo usuário em 17/11, sem ajuste nos números.

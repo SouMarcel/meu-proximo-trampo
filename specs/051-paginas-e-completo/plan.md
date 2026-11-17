@@ -2,7 +2,7 @@
 
 **Branch**: `051-paginas-e-completo` | **Date**: 2026-11-17 | **Spec**: [spec.md](spec.md)
 
-**Input**: a spec aprovada em 17/11. O usuário pediu para seguir direto até o merge na `marcel`.
+**Input**: a spec aprovada em 17/11. O usuário pediu para seguir direto até o merge na branch de teste.
 
 ## Summary
 
@@ -40,7 +40,7 @@ não muda, porque desenha o catálogo e o estado da geração de forma genérica
 - **V (a pessoa decide)**: o encurtamento só acontece com a caixa marcada pela pessoa. O aviso indica o que fazer, sem
   agir sozinho.
 - **Fluxo de desenvolvimento**: Spec Kit; worktree saída da `master`; delegação (constituição 5.4.0,
-  `docs/delegacao.md`), com GO/NO GO meu em cada entrega; merge na `marcel` para o teste do usuário; a `master` só com
+  `docs/delegacao.md`), com GO/NO GO meu em cada entrega; merge na branch de teste do usuário; a `master` só com
   o OK dele.
 
 Resultado: sem violações.
