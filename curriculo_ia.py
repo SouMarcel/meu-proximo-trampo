@@ -29,6 +29,22 @@ GUIA = SKILL / "tecnicas.md"
 MODELO = SKILL / "modelo.json"
 TEMPO_IA = 600
 NOME_VALIDO = re.compile(r"^[a-z0-9-]{1,90}$")
+ORCAMENTO = {
+    2: ("- Resumo com até 4 linhas (cerca de 450 caracteres);\n"
+        "- As 3 experiências mais recentes com até 5 itens cada;\n"
+        "- As anteriores com no máximo 1 item, ou só a linha de empresa, cargo e período;\n"
+        "- Até 3 cursos;\n"
+        "- Cerca de 800 palavras no total."),
+    1: ("- Resumo com até 3 linhas;\n"
+        "- As 2 experiências mais recentes com até 4 itens;\n"
+        "- As anteriores só com a linha;\n"
+        "- Até 2 cursos;\n"
+        "- Sem projetos;\n"
+        "- Cerca de 450 palavras."),
+}
+COMPLETO = ("Currículo completo: use todos os fatos do perfil e dos relatos — todas as experiências com todos os itens, "
+            "formação, certificações, cursos, projetos e idiomas; não corte nada; não há limite de páginas. "
+            "Destaques continua com até 3 itens. Layout continua o de ATS.")
 
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
@@ -46,15 +62,15 @@ def _slug(texto, tamanho=36) -> str:
     return re.sub(r"[^a-z0-9]+", "-", t).strip("-")[:tamanho].strip("-")
 
 
-def nome_arquivo(vaga: dict | None, data: datetime | None = None, pasta: Path | None = None) -> str:
-    """AAAA-MM-DD-empresa-cargo (ou AAAA-MM-DD-base), sem colidir com um currículo que já existe."""
+def nome_arquivo(vaga: dict | None, data: datetime | None = None, pasta: Path | None = None, completo: bool = False) -> str:
+    """AAAA-MM-DD-empresa-cargo (ou AAAA-MM-DD-base-completo com completo=True), sem colidir com um currículo que já existe."""
     pasta = pasta or CURRICULOS
     dia = (data or datetime.now()).strftime("%Y-%m-%d")
     if vaga:
         partes = [p for p in (_slug(vaga.get("empresa"), 30), _slug(vaga.get("titulo"), 40)) if p]
         base = "-".join([dia, *partes]) if partes else f"{dia}-vaga"
     else:
-        base = f"{dia}-base"
+        base = f"{dia}-base" + ("-completo" if completo else "")
     base = base[:80].strip("-")
     nome, n = base, 2
     while any((pasta / f"{nome}{ext}").exists() for ext in (".json", ".meta.json", ".docx", ".pdf")):
@@ -107,6 +123,15 @@ def montar_pedido(perfil: str, vaga: dict | None, tecnicas: dict, adicional: str
                 + (", ".join(cargos) if cargos else "os do objetivo do perfil") + "."]
     guia = GUIA.read_text(encoding="utf-8") if GUIA.exists() else ""
     modelo = MODELO.read_text(encoding="utf-8") if MODELO.exists() else "{}"
+    if tecnicas["paginas"] == 0:
+        paginas_linha = [f"- {COMPLETO} Estilo: {tecnicas['estilo']}."]
+    else:
+        orcamento = ORCAMENTO.get(tecnicas["paginas"], "")
+        paginas_linha = [f"- Limite: até {tecnicas['paginas']} página(s). Para caber, siga este orçamento:",
+                         orcamento,
+                         f"Estilo: {tecnicas['estilo']}."]
+        if tecnicas["estilo"] == "executivo" and tecnicas["paginas"] > 0:
+            paginas_linha.append("A fonte do estilo executivo é maior: conte com menos espaço.")
     return "\n".join([
         "Você escreve o conteúdo de um currículo para a ferramenta meu-proximo-trampo. Você não tem ferramentas: "
         "tudo de que precisa está aqui.",
@@ -123,7 +148,7 @@ def montar_pedido(perfil: str, vaga: dict | None, tecnicas: dict, adicional: str
         "",
         "## Técnicas escolhidas pela pessoa",
         *(marcadas or ["- nenhuma além do layout padrão"]),
-        f"- Páginas: até {tecnicas['paginas']}. Estilo: {tecnicas['estilo']}.",
+        *paginas_linha,
         "",
         "## Como aplicar as técnicas",
         guia,
@@ -176,7 +201,7 @@ def ler_resposta(texto: str, tecnicas: dict, nome: str = "") -> dict:
     return cv
 
 
-def validar_tecnicas(dados) -> dict:
+def validar_tecnicas(dados, vaga: dict | None = None) -> dict:
     """As técnicas escolhidas na página, completas e com valores do catálogo."""
     if not isinstance(dados, dict):
         raise GeracaoErro("técnicas inválidas")
@@ -188,6 +213,9 @@ def validar_tecnicas(dados) -> dict:
         if valor not in v["opcoes"]:
             raise GeracaoErro(f"escolha inválida em {v['nome']}")
         tec[k] = valor
+    # Currículo completo é só para o currículo base
+    if vaga and tec["paginas"] == 0:
+        raise GeracaoErro("o currículo completo é só para o currículo base")
     return tec
 
 
@@ -200,7 +228,7 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
     perfil = perfil_texto() if perfil is None else perfil
     if not perfil:
         raise GeracaoErro("monte o perfil antes (botão Meu perfil): o currículo sai só dos fatos dele")
-    tecnicas = validar_tecnicas(tecnicas)
+    tecnicas = validar_tecnicas(tecnicas, vaga)
     avisar("escrevendo")
     try:
         resposta = ia.responder(montar_pedido(perfil, vaga, tecnicas, adicional), tempo=TEMPO_IA)
@@ -210,7 +238,7 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
 
     avisar("gerando")
     CURRICULOS.mkdir(parents=True, exist_ok=True)
-    nome = nome_arquivo(vaga)
+    nome = nome_arquivo(vaga, completo=tecnicas["paginas"] == 0)
     arq_json, arq_docx = CURRICULOS / f"{nome}.json", CURRICULOS / f"{nome}.docx"
     criados = [arq_json, arq_docx, CURRICULOS / f"{nome}.pdf"]
     try:
@@ -220,14 +248,17 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
         paginas = curriculo.paginas(pdf) if pdf else None
         avisar("conferindo")
         conf = conferir.conferir(cv, perfil, texto_da_vaga(vaga) or None, arq_docx)
+        # Com completo (paginas == 0), nunca marca acima do limite
+        acima = False if tecnicas["paginas"] == 0 else bool(paginas and paginas > tecnicas["paginas"])
+        sugestoes = [] if tecnicas["paginas"] == 0 else (curriculo.sugestoes_corte(cv) if paginas and paginas > tecnicas["paginas"] else [])
         meta = {
             "nome": nome,
             "alvo": ({"tipo": "vaga", "id": vaga.get("id"), "titulo": vaga.get("titulo"), "empresa": vaga.get("empresa")}
                      if vaga else {"tipo": "base"}),
             "tecnicas": tecnicas,
             "arquivos": {"json": arq_json.name, "docx": arq_docx.name, "pdf": pdf.name if pdf else None},
-            "paginas": paginas, "acima_do_limite": bool(paginas and paginas > tecnicas["paginas"]),
-            "sugestoes_corte": curriculo.sugestoes_corte(cv) if paginas and paginas > tecnicas["paginas"] else [],
+            "paginas": paginas, "acima_do_limite": acima,
+            "sugestoes_corte": sugestoes,
             "conferencia": conf, "pronto": conf["veredito"] != "bloquear",
             "ia": ia.marca(),  # quem respondeu de fato (a principal ou uma reserva, spec 032)
             "criado_em": datetime.now().isoformat(timespec="seconds"),

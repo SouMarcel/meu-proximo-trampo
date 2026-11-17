@@ -27,14 +27,14 @@ São sequenciais porque mexem nos mesmos arquivos.
 
 ## Phase 2: Pedido (US1, US3)
 
-- [ ] T002 [D minor] [US1][US3] Em `curriculo_ia.py`, criar `ORCAMENTO` (D1) e usá-lo em `montar_pedido` para 1 e 2
+- [X] T002 [D minor] [US1][US3] Em `curriculo_ia.py`, criar `ORCAMENTO` (D1) e usá-lo em `montar_pedido` para 1 e 2
   páginas. Com 0, a instrução de completo.
   - `validar_tecnicas(dados, vaga=None)` recusa 0 com vaga;
   - `gerar` repassa a vaga;
   - `nome_arquivo(..., completo=False)` gera `-base-completo`;
   - `dash/gerador.py` passa a vaga nas duas chamadas de `validar_tecnicas`.
 
-  Testes em `tests/test_curriculo_ia.py`.
+  Testes em `tests/test_curriculo_ia.py`. → copilot, GO na tentativa 1
 
 ## Phase 3: Encurtar e avisar (US1, US2)
 

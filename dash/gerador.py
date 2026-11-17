@@ -117,7 +117,7 @@ class Geracao:
         if vaga_id and not vaga:
             raise ValueError("vaga não encontrada")
         try:
-            tec = cia.validar_tecnicas(tecnicas)
+            tec = cia.validar_tecnicas(tecnicas, vaga)
         except cia.GeracaoErro as e:
             raise ValueError(str(e)) from None
         self._ultimo_pedido = ("curriculo", vaga_id, tec)
@@ -200,7 +200,7 @@ class Geracao:
         if not ok:
             raise ValueError(motivo)
         try:
-            tec = cia.validar_tecnicas(tecnicas)
+            tec = cia.validar_tecnicas(tecnicas, vaga)
         except cia.GeracaoErro as e:
             raise ValueError(str(e)) from None
         self._ultimo_pedido = ("reprovacao", vaga_id, tec)

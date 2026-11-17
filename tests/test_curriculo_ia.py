@@ -47,6 +47,13 @@ class TestNomesEPedido(Base):
         self.assertEqual(cia.nome_arquivo(None, dia, self.tmp), "2026-10-09-base")
         self.assertTrue(cia.NOME_VALIDO.match(nome))
 
+    def test_nome_completo(self):
+        dia = datetime(2026, 10, 9)
+        nome = cia.nome_arquivo(None, dia, self.tmp, completo=True)
+        self.assertEqual(nome, "2026-10-09-base-completo")
+        (self.tmp / f"{nome}.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(cia.nome_arquivo(None, dia, self.tmp, completo=True), nome + "-2")
+
     def test_pedido(self):
         pedido = cia.montar_pedido(PERFIL_CPF, VAGA_DOC, TEC)
         self.assertNotIn("123.456.789-09", pedido)
@@ -59,10 +66,33 @@ class TestNomesEPedido(Base):
         self.assertIn("Analista de Dados, Cientista de Dados", base)
         self.assertNotIn("## Vaga", base)
 
+    def test_pedido_orcamento_2_paginas(self):
+        tec2 = cia.validar_tecnicas({"paginas": 2})
+        pedido = cia.montar_pedido(PERFIL_CPF, VAGA_DOC, tec2)
+        self.assertIn("800 palavras", pedido)
+        self.assertIn("3 experiências mais recentes", pedido)
+        self.assertIn("Limite: até 2 página(s)", pedido)
+
+    def test_pedido_orcamento_1_pagina(self):
+        tec1 = cia.validar_tecnicas({"paginas": 1})
+        pedido = cia.montar_pedido(PERFIL_CPF, VAGA_DOC, tec1)
+        self.assertIn("450 palavras", pedido)
+        self.assertNotIn("800 palavras", pedido)
+        self.assertIn("Limite: até 1 página(s)", pedido)
+
+    def test_pedido_completo(self):
+        tec0 = cia.validar_tecnicas({"paginas": 0})
+        pedido = cia.montar_pedido(PERFIL_CPF, None, tec0)
+        self.assertIn("Currículo completo", pedido)
+        self.assertNotIn("Limite: até", pedido)
+
     def test_validar_tecnicas(self):
         self.assertEqual(cia.validar_tecnicas({"paginas": "1", "formato": "us"})["paginas"], 1)
         with self.assertRaises(cia.GeracaoErro):
             cia.validar_tecnicas({"formato": "jp"})
+        with self.assertRaises(cia.GeracaoErro):
+            cia.validar_tecnicas({"paginas": 0}, VAGA_DOC)
+        self.assertEqual(cia.validar_tecnicas({"paginas": 0})["paginas"], 0)
 
 
 class TestResposta(unittest.TestCase):
@@ -141,6 +171,14 @@ class TestGerar(Base):
             b = cia.gerar(None, TEC, perfil=PERFIL)
         self.assertNotEqual(a["nome"], b["nome"])
         self.assertEqual(len(cia.listar(base=True)), 2)
+
+    def test_base_completo(self):
+        tec0 = cia.validar_tecnicas({"paginas": 0})
+        with mock.patch.object(ia, "responder", return_value=json.dumps(cv_fiel())):
+            meta = cia.gerar(None, tec0, perfil=PERFIL)
+        self.assertTrue(meta["nome"].endswith("-base-completo"))
+        self.assertFalse(meta["acima_do_limite"])
+        self.assertEqual(meta["sugestoes_corte"], [])
 
     def test_arquivo_servivel(self):
         with mock.patch.object(ia, "responder", return_value=json.dumps(cv_fiel())):
