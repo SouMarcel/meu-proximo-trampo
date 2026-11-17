@@ -169,6 +169,16 @@ class Ollama(unittest.TestCase):
         run.assert_not_called()
 
 
+class Rodizio(unittest.TestCase):
+    def test_sem_historico_comeca_pelo_primeiro(self):
+        self.assertEqual(delegar.proximo_do_rodizio({}), "agy")
+
+    def test_pega_quem_esta_ha_mais_tempo_parado(self):
+        self.assertEqual(delegar.proximo_do_rodizio({"ultimo_uso": {"agy": 100.0}}), "copilot")
+        self.assertEqual(delegar.proximo_do_rodizio({"ultimo_uso": {"agy": 100.0, "copilot": 200.0}}), "agy")
+        self.assertEqual(delegar.proximo_do_rodizio({"ultimo_uso": {"agy": 300.0, "copilot": 200.0}}), "copilot")
+
+
 class NomeDaSpec(unittest.TestCase):
     def test_dentro_e_fora_de_specs(self):
         self.assertEqual(delegar.nome_da_spec(Path("specs/051-exemplo/delegacao/T007.md")), "051-exemplo")

@@ -14,7 +14,8 @@ O processo inteiro está em docs/delegacao.md.
 
 Códigos de saída de `rodar`: 0 pronto para validar; 2 diff fora do escopo ou HEAD mudou; 3 testes
 falharam; 4 funcionário não terminou, não encontrado ou Ollama fora; 5 cota esgotada (tentar o
-próximo da fila). O Ollama nunca é iniciado por aqui: só um GET na API, com 2 s de espera.
+próximo). Os funcionários se revezam (quem ficou mais tempo sem tarefa pega a próxima), para não
+gastar a cota de um só. O Ollama nunca é iniciado por aqui: só um GET na API, com 2 s de espera.
 Só biblioteca padrão.
 """
 from __future__ import annotations
@@ -37,7 +38,7 @@ ARQUIVO_STATUS = CACHE / "status.json"
 
 OK, USO, ESCOPO, TESTES, FALHOU, COTA = 0, 1, 2, 3, 4, 5
 
-FILA = ("agy", "copilot")
+FILA = ("agy", "copilot")  # quem se reveza nas tarefas minor e major
 FUNCIONARIOS = ("agy", "copilot", "ollama")
 MODELOS = {
     "agy": {"minor": "gemini-3.8-flash-medium", "major": "gemini-4-argon-medium"},
@@ -236,6 +237,12 @@ def resumo(dados: dict) -> tuple[str, int]:
     return "\n".join(linhas), codigo
 
 
+def proximo_do_rodizio(status: dict, fila: tuple[str, ...] = FILA) -> str:
+    """Quem pega a próxima tarefa: o da fila que está há mais tempo sem rodar (empate: ordem da fila)."""
+    ultimo = status.get("ultimo_uso", {})
+    return min(fila, key=lambda f: (ultimo.get(f, 0.0), fila.index(f)))
+
+
 def _proximo(funcionario: str) -> str | None:
     if funcionario in FILA:
         i = FILA.index(funcionario)
@@ -304,6 +311,7 @@ def marcar_inicio(spec: str, pasta: Path, tarefa: str, funcionario: str, modelo:
     entrada["pasta"] = str(pasta)
     entrada["andamento"] = {"tarefa": tarefa, "funcionario": funcionario, "modelo": modelo,
                             "tentativa": tentativa, "inicio": time.time()}
+    status.setdefault("ultimo_uso", {})[funcionario] = time.time()
     gravar_status(status)
 
 
@@ -371,7 +379,8 @@ def limpar_escopo(pasta: Path, permitidos: list[str]) -> None:
 def cmd_funcionarios() -> int:
     for nome, estado in disponiveis().items():
         print(f"{nome:8} {'disponível' if estado else 'fora'}" + (f"  ({estado})" if estado else ""))
-    print(f"Fila: {' → '.join(FILA)}; Ollama só para texto puro, e só se já estiver ligado.")
+    print(f"Rodízio: {' e '.join(FILA)}; próximo: {proximo_do_rodizio(carregar_status())}. "
+          "Ollama só para texto puro, e só se já estiver ligado.")
     return OK
 
 
@@ -413,7 +422,7 @@ def cmd_rodar(args: argparse.Namespace) -> int:
     if not (pasta / ".git").exists():
         print(f"A pasta não é uma worktree do Git: {pasta}")
         return USO
-    funcionario = args.funcionario or ("ollama" if info["tamanho"] == "patch" else FILA[0])
+    funcionario = args.funcionario or ("ollama" if info["tamanho"] == "patch" else proximo_do_rodizio(carregar_status()))
     modelo = args.modelo or MODELOS[funcionario].get(info["tamanho"])
     spec = nome_da_spec(brief)
     tarefa = info["tarefa"]

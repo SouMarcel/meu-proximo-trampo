@@ -12,7 +12,7 @@ uma vez por sessão. Objetivo: gastar os seus tokens em brief, diff e decisão, 
 
 - **patch** (1 arquivo, sem lógica nova): faça você. Texto puro (rascunho, tradução, resumo):
   Ollama se `PY delegar.py funcionarios` disser que está ligado; senão você.
-- **minor** (até ~3 arquivos, critério testável): delegue ao agy.
+- **minor** (até ~3 arquivos, critério testável): delegue (agy e Copilot em rodízio; o script escolhe).
 - **major**: quebre em tarefas minor no `tasks.md` e delegue uma por brief. Nunca uma major inteira.
 - Nunca delegue: spec/plan/tasks, emenda da constituição, commit, merge, push, qualquer coisa que
   toque `config.json`, `perfil.md`, `.env` ou dados pessoais.
@@ -33,9 +33,9 @@ ambiguidade; se você não sabe explicar em um brief, a tarefa está mal cortada
 PY delegar.py rodar specs/NNN-nome/delegacao/T0XX.md --pasta <worktree-da-feature>
 ```
 
-- Funcionário e modelo vêm do tamanho (agy, `gemini-3.8-flash-medium` para minor,
-  `gemini-4-argon-medium` para major). `--funcionario copilot` força a reserva; `--modelo` força
-  outro modelo.
+- Sem `--funcionario`, o script escolhe no rodízio quem está há mais tempo parado (agy ou Copilot),
+  para não gastar a cota de um só; o modelo vem do tamanho (agy: `gemini-3.8-flash-medium` para
+  minor, `gemini-4-argon-medium` para major; Copilot: o padrão). `--funcionario` e `--modelo` forçam.
 - Tempo padrão 1800 s. Rode em background (o Bash foreground para em 10 min) e espere a
   notificação; não fique lendo o log.
 - Antes de rodar, mande no chat a linha de status: `NNN-nome · X/Y tarefas (Z%) · agora: T0XX →
@@ -48,8 +48,8 @@ Código de saída:
 | 0 | entregou; testes verdes; escopo ok | valide (passo 4) |
 | 2 | arquivo fora do escopo ou HEAD mudou | se HEAD mudou, `git reset --soft HEAD~1` na worktree e trate como NO GO; arquivo fora do escopo: veja se o brief esqueceu dele (corrija o brief) ou o funcionário extrapolou (NO GO) |
 | 3 | testes falharam | NO GO com o teste que falhou na nota |
-| 4 | não terminou, não achou o CLI ou Ollama fora | tente o próximo da fila (`--funcionario copilot`); Ollama fora: faça você |
-| 5 | cota esgotada | **avise a pessoa** e rode o mesmo brief no próximo da fila; fila esgotada: faça você e avise que está gastando tokens do Claude |
+| 4 | não terminou, não achou o CLI ou Ollama fora | rode o mesmo brief no outro (`--funcionario <outro>`); Ollama fora: faça você |
+| 5 | cota esgotada | **avise a pessoa** e rode o mesmo brief no outro; os dois sem cota: faça você e avise que está gastando tokens do Claude |
 
 ## 4. Validar (GO/NO GO)
 

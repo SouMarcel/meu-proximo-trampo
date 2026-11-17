@@ -9,12 +9,14 @@ outro assistente de código, rodando sem interação na worktree da feature, que
 
 | Funcionário | Comando | Como roda | Quando entra |
 |---|---|---|---|
-| Antigravity CLI | `agy` | `agy --print="<prompt>" --dangerously-skip-permissions --print-timeout 1800s --model <m>` | principal, nas tarefas minor e major |
-| Copilot CLI | `copilot` | `copilot -p "<prompt>" --allow-all-tools --allow-all-paths --no-ask-user -s` | reserva: quando o agy falha, está fora ou sem cota |
+| Antigravity CLI | `agy` | `agy --print="<prompt>" --dangerously-skip-permissions --print-timeout 1800s --model <m>` | revezamento com o Copilot nas tarefas minor e major |
+| Copilot CLI | `copilot` | `copilot -p "<prompt>" --allow-all-tools --allow-all-paths --no-ask-user -s` | revezamento com o agy; também reserva quando o outro falha, está fora ou sem cota |
 | Ollama (local) | API em `127.0.0.1:11434` | `POST /api/generate` com o brief; a resposta vai para `<brief>.resposta.md` | só texto puro (rascunho, tradução, resumo) e só se a API já estiver no ar: a ferramenta **nunca inicia o serviço** |
 
-O Gemini CLI fica de fora (exige chave paga). A fila é `agy → copilot`; depois dela, o assistente
-principal assume a tarefa e avisa a pessoa de que está gastando os próprios tokens.
+O Gemini CLI fica de fora (exige chave paga). O agy e o Copilot **se revezam**: a próxima tarefa vai
+para quem está há mais tempo sem rodar, para não gastar a cota de um só (`delegar.py funcionarios`
+diz quem é o próximo). Quando um falha ou fica sem cota, o outro assume; sem os dois, o assistente
+principal faz a tarefa e avisa a pessoa de que está gastando os próprios tokens.
 
 Modelos: sempre o mais básico que resolve. O agy começa em `gemini-3.8-flash-medium` (minor) ou
 `gemini-4-argon-medium` (major) e só sobe de nível na segunda tentativa, se o NO GO foi por
@@ -28,7 +30,7 @@ Mesma ideia da versão semântica da constituição, aplicada à tarefa:
 |---|---|---|
 | patch | 1 arquivo, sem lógica nova: texto, docstring, mensagem, rename local, README | o assistente principal (escrever o brief custa mais que fazer) |
 | patch de texto puro | rascunho de doc, tradução, mensagem de commit, resumo | Ollama, se já estiver ligado; senão o assistente principal |
-| minor | função, endpoint, teste ou ajuste contido em até ~3 arquivos, com critério de aceite testável | funcionário (agy; reserva Copilot) |
+| minor | função, endpoint, teste ou ajuste contido em até ~3 arquivos, com critério de aceite testável | funcionário (agy e Copilot em rodízio) |
 | major | spec inteira, fase do tasks.md com vários módulos, portal novo, front React | o assistente quebra em tarefas minor e delega **uma por brief** |
 
 Nunca vai a um funcionário: decisão de produto, emenda da constituição, spec/plan/tasks, commit,
