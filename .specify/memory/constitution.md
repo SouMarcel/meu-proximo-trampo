@@ -1,5 +1,18 @@
 <!--
-Relatório de impacto da emenda (2026-11-01)
+Relatório de impacto da emenda (2026-11-17)
+- Versão: 5.3.0 → 5.4.0 (MINOR: item novo em "Fluxo de desenvolvimento")
+- Fluxo de desenvolvimento: entra "Delegação". O assistente principal planeja e valida; a implementação de tarefa
+  minor ou major pode ir a um funcionário (outro assistente de código, sem interação, na worktree da feature, sem
+  commit); patch o próprio assistente faz. Entrega delegada só entra com GO (testes, escopo, dados pessoais,
+  critério de aceite); NO GO → um refazer com o motivo; segundo NO GO → volta ao plano com a pessoa. Registro em
+  specs/NNN/delegacao/.
+- Motivo: economia de tokens do assistente principal (pedido do usuário em 17/11/2026); os outros assistentes da
+  máquina (Antigravity CLI, Copilot CLI, Ollama) passam a executar as tarefas.
+- Arquivos atualizados: AGENTS.md (Desenvolvimento), docs/delegacao.md, delegar.py, tests/test_delegar.py,
+  .specify/templates/delegacao-template.md e tasks-template.md, skill delegar (.claude/skills/).
+- Pendências: nenhuma.
+
+Emenda anterior (2026-11-01)
 - Versão: 5.2.0 → 5.3.0 (MINOR: seção nova no princípio VI)
 - Princípio VI: entra "Busca com login". Um portal que só mostra a busca de vagas depois do login pode entrar numa área
   própria ("Portais com login"), portal por portal, desligado por padrão, com o login feito pela pessoa na janela da
@@ -254,6 +267,11 @@ de uma candidatura na janela dela, só nestas condições:
 - Funções puras novas ganham testes com `unittest`; toda entrega é verificada rodando de
   verdade (busca, página, geração de arquivo), não só lendo o código.
 - Economia: agentes, subagentes e ferramentas caras só quando compensam.
+- Delegação: o assistente principal planeja e valida; a implementação de tarefa minor ou
+  major pode ir a um funcionário (outro assistente de código, sem interação, na worktree da
+  feature, sem commit); patch o próprio assistente faz. Entrega delegada só entra com GO (testes,
+  escopo, dados pessoais, critério de aceite); NO GO → um refazer com o motivo; segundo NO GO →
+  volta ao plano com a pessoa. Registro em `specs/NNN/delegacao/`; processo em `docs/delegacao.md`.
 
 ## Governança
 
@@ -263,4 +281,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 5.3.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-11-01
+**Version**: 5.4.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-11-17

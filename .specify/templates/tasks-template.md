@@ -17,6 +17,7 @@ description: "Task list template for feature implementation"
 
 - **[P]**: Can run in parallel (different files, no dependencies)
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
+- **[D minor|major]**: delegável a um funcionário por `delegar.py` (ver `docs/delegacao.md`); sem a marca, o assistente principal faz
 - Include exact file paths in descriptions
 
 ## Path Conventions

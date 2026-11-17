@@ -121,6 +121,11 @@ As skills pedem duas coisas que cada assistente faz de um jeito:
   arquivos que ele toca).
 - Python com biblioteca padrão; dependência nova só com motivo. Testes com
   `python -m unittest discover -s tests`.
+- Delegação (`docs/delegacao.md`): o assistente principal planeja e valida; a tarefa marcada `[D]` no
+  `tasks.md` vai a um funcionário (Antigravity CLI, Copilot CLI ou Ollama) por `PY delegar.py rodar
+  <brief> --pasta <worktree>`, com o brief em `specs/NNN/delegacao/`. O funcionário nunca commita nem
+  toca dados pessoais; a entrega só entra com GO; um refazer, depois volta ao plano.
+  `PY delegar.py status` diz quem está fazendo o quê.
 - A página da ferramenta (`dash/front/`, em `/`) é o React da branch `frontend-react`, montado pelo GitHub
   Actions, que abre o PR `front/atualizacao`; não edite `dash/front/` à mão: o código-fonte fica na
   `frontend-react`. O contrato da API está em `dash/API.md` e o processo em `specs/022-front-react/` e
