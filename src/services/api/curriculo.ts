@@ -169,3 +169,5 @@ export const gerarComReprovacao = (vagaId: string) =>
 
 export const lista = (vagaId: string | null) =>
   pedir<{ curriculos: MetaCurriculo[] }>("GET", `/api/curriculo/lista${vagaId ? `?vaga=${encodeURIComponent(vagaId)}` : "?base=1"}`)
+
+export const apagar = (nome: string) => pedir<{ apagado: string }>("DELETE", `/api/curriculo/${encodeURIComponent(nome)}`)

@@ -3,7 +3,7 @@
  * seção com o andamento e os currículos gerados para uma vaga ou o currículo base, com a conferência sem IA.
  */
 import React, { useEffect, useState } from "react"
-import { X, FileText, Loader2, AlertTriangle } from "lucide-react"
+import { X, FileText, Loader2, AlertTriangle, Trash2 } from "lucide-react"
 import * as curriculoApi from "../../services/api/curriculo"
 import type { Catalogo, MetaCurriculo } from "../../services/api/curriculo"
 import { mensagemDeErro, urlArquivo } from "../../services/api"
@@ -296,7 +296,21 @@ export function GerarCurriculo({
 
 // ---------- seção com o andamento e a lista ----------
 
-function ItemCurriculo({ m }: { m: MetaCurriculo }) {
+function ItemCurriculo({ m, onApagado }: { m: MetaCurriculo; onApagado: () => void }) {
+  const [apagando, setApagando] = useState(false)
+  const [erroApagar, setErroApagar] = useState("")
+  const apagar = async () => {
+    if (!window.confirm("Apagar este currículo de vez? O PDF, o .docx e os dados dele somem da pasta.")) return
+    setApagando(true)
+    setErroApagar("")
+    try {
+      await curriculoApi.apagar(m.nome)
+      onApagado()
+    } catch (e) {
+      setErroApagar(mensagemDeErro(e, "Não deu para apagar o currículo."))
+      setApagando(false)
+    }
+  }
   const c = m.conferencia || {}
   const t = m.tecnicas || {}
   const d = m.disponivel || {}
@@ -321,8 +335,12 @@ function ItemCurriculo({ m }: { m: MetaCurriculo }) {
         <span className="flex gap-1.5 ml-auto">
           {d.pdf ? <LinkArquivo arquivo={m.arquivos.pdf} rotulo="PDF" /> : <span className={DICA}>PDF indisponível</span>}
           {d.docx ? <LinkArquivo arquivo={m.arquivos.docx} rotulo=".docx" /> : <span className={DICA}>.docx indisponível</span>}
+          <button type="button" className={BTN_MINI} title="Apagar este currículo" aria-label="Apagar este currículo" disabled={apagando} onClick={apagar}>
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </span>
       </div>
+      {erroApagar && <p className="text-xs text-rose-700 dark:text-rose-300">{erroApagar}</p>}
       {(nomes.length > 0 || m.reprovacao) && (
         <p className={DICA}>
           {nomes.length > 0 && `Técnicas: ${nomes.join(", ")}`}
@@ -424,7 +442,7 @@ export function SecaoCurriculos({ vagaId, onGerar }: { vagaId: string | null; on
       ) : (
         <ul className="space-y-2">
           {lista.map((m) => (
-            <ItemCurriculo key={m.nome} m={m} />
+            <ItemCurriculo key={m.nome} m={m} onApagado={() => setLista((l) => (l || []).filter((x) => x.nome !== m.nome))} />
           ))}
         </ul>
       )}
