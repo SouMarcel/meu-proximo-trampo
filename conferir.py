@@ -9,7 +9,8 @@
   python conferir.py --carta msg.txt --vaga-id ID --limite 400                      mensagem curta
 
 Veredito: ok, conferir ou bloquear (o mais grave dos pontos). Bloqueia número que não está no perfil,
-lacuna da vaga listada como competência e dado pessoal no formato dos Estados Unidos. Códigos de saída:
+lacuna da vaga listada como competência, texto copiado do exemplo fictício do modelo do JSON e dado pessoal
+no formato dos Estados Unidos. Projeto e curso que não aparecem no perfil ficam para conferir. Códigos de saída:
 0 ok, 1 conferir, 3 bloquear, 2 erro de uso. O .docx conferido é o que está ao lado do JSON.
 
 Na carta: número ou data que não estão no perfil nem nas respostas da pessoa bloqueiam; tamanho fora de
@@ -241,6 +242,84 @@ def conferir_fatos(cv: dict, perfil: str) -> list[dict]:
                 pontos.append({"tipo": "cargo", "valor": c.get("cargo"), "trecho": c.get("cargo"), "nivel": "conferir",
                                "mensagem": "cargo que não aparece no perfil (se foi traduzido, confira a tradução)"})
         pontos += _conferir_datas(" ".join(str(x) for x in [emp.get("periodo")] + [c.get("periodo") for c in cargos] if x), perfil)
+    pontos += _conferir_nomes(cv, perfil_n)
+    pontos += conferir_modelo(cv, perfil_n)
+    return pontos
+
+
+def _nome_curto(texto) -> str:
+    """O nome sem o que vem depois (parênteses, travessão): "Curso X – Escola (2022)" → "curso x"."""
+    t = re.split(r"\(|\s[–—-]\s", str(texto or ""))[0]
+    return norm(t).strip(" .,;:")
+
+
+def _conferir_nomes(cv: dict, perfil_n: str) -> list[dict]:
+    """Projeto ou curso cujo nome não aparece no perfil."""
+    pontos = []
+    for pj in _lista(cv.get("projetos")):
+        bruto = pj.get("nome") if isinstance(pj, dict) else pj
+        nome = _nome_curto(bruto)
+        if nome and nome not in perfil_n:
+            pontos.append({"tipo": "projeto", "valor": str(bruto), "trecho": str(bruto)[:160], "nivel": "conferir",
+                           "mensagem": "projeto que não aparece no perfil"})
+    for curso in _lista(cv.get("cursos")):
+        nome = _nome_curto(curso)
+        if nome and nome not in perfil_n:
+            pontos.append({"tipo": "curso", "valor": str(curso), "trecho": str(curso)[:160], "nivel": "conferir",
+                           "mensagem": "curso que não aparece no perfil"})
+    return pontos
+
+
+MODELO_CV = RAIZ / ".agents" / "skills" / "gerar-curriculo" / "modelo.json"
+_MINIMO_MODELO = 12  # textos menores do exemplo ("Scrum", "Jira") são comuns demais para acusar
+
+
+def _textos(valor, secao="") -> list[tuple[str, str]]:
+    """(seção, texto) de todos os textos de um currículo em JSON, sem técnicas, contato, ordem e idioma."""
+    if isinstance(valor, str):
+        return [(secao, valor)]
+    if isinstance(valor, list):
+        return [t for v in valor for t in _textos(v, secao)]
+    if isinstance(valor, dict):
+        return [t for k, v in valor.items() if k not in ("tecnicas", "contato", "ordem", "idioma")
+                for t in _textos(v, secao or k)]
+    return []
+
+
+def _modelo(caminho: Path | None = None) -> list[str]:
+    caminho = caminho or MODELO_CV
+    if not caminho.exists():
+        caminho = RAIZ / ".claude" / "skills" / "gerar-curriculo" / "modelo.json"
+    try:
+        dados = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [t for _, t in ((s, norm(x)) for s, x in _textos(dados)) if len(t) >= _MINIMO_MODELO]
+
+
+def _parecido(t: str, ex: str) -> bool:
+    """Um contém o outro e o menor é longo (uma frase do exemplo dentro do texto) ou é quase o maior (o mesmo item,
+    talvez com um pedaço a mais ou a menos). "product owner" dentro de uma frase sobre POs não conta."""
+    curto, longo = sorted((t, ex), key=len)
+    return curto in longo and (len(curto) >= 25 or len(curto) >= 0.6 * len(longo))
+
+
+def conferir_modelo(cv: dict, perfil_n: str, modelo: Path | None = None) -> list[dict]:
+    """Texto copiado do exemplo fictício do modelo do JSON, que a IA recebe para ver o formato. Bloqueia, salvo em
+    competências e idiomas (itens genéricos que a pessoa pode ter de verdade), que ficam para conferir. Não acusa o
+    que também está no perfil."""
+    exemplo = [t for t in _modelo(modelo) if t not in perfil_n]
+    pontos = []
+    for secao, texto in _textos(cv):
+        t = norm(texto)
+        if len(t) < _MINIMO_MODELO or t in perfil_n:
+            continue
+        if any(_parecido(t, ex) for ex in exemplo):
+            generico = secao in ("competencias", "idiomas")
+            pontos.append({"tipo": "modelo", "valor": texto[:160], "trecho": texto[:160],
+                           "nivel": "conferir" if generico else "bloquear",
+                           "mensagem": ("igual ao exemplo do modelo e não está no perfil: confirme se é seu"
+                                        if generico else "copiado do exemplo fictício do modelo, não do perfil: tire")})
     return pontos
 
 

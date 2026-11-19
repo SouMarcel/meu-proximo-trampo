@@ -153,7 +153,8 @@ combinado ou ele mandar seguir.
    passou do limite de páginas (corte o que ele sugerir; não encolha a fonte) ou a conferência
    deu "bloquear".
 3. **Conferência.** Com "bloquear" (número que não está no perfil, lacuna da vaga listada como
-   competência, dado pessoal no formato dos Estados Unidos), **não entregue**: confirme o fato
+   competência, texto copiado do exemplo fictício do `modelo.json`, dado pessoal no formato dos
+   Estados Unidos), **não entregue**: confirme o fato
    com a pessoa ou tire, e gere de novo. Com "conferir", mostre os pontos e decida com ela.
    Para conferir de novo sem gerar: `PY conferir.py curriculos/<nome>.json [--vaga-id ID]`.
 4. **Leia o PDF e olhe cada página.** Confira: dentro do limite de páginas, título de seção
