@@ -270,6 +270,63 @@ class TestGerar(Base):
             banco.registrar_curriculo("v1", "../x")
 
 
+class TestApagar(Base):
+    def _gerar(self, vaga=None):
+        with mock.patch.object(ia, "responder", return_value=json.dumps(cv_fiel())):
+            return cia.gerar(vaga, TEC, perfil=PERFIL)
+
+    def _arquivos(self, nome):
+        return [cia.CURRICULOS / f"{nome}{s}" for s in (".json", ".docx", ".pdf", ".meta.json")]
+
+    def test_apaga_so_o_pedido(self):
+        a = self._gerar()
+        b = self._gerar()
+        ret = cia.apagar(a["nome"])
+        self.assertEqual(ret["nome"], a["nome"])
+        self.assertFalse(any(p.exists() for p in self._arquivos(a["nome"])))
+        self.assertTrue(all(p.exists() for p in self._arquivos(b["nome"]) if not p.name.endswith(".pdf")))
+        self.assertEqual(len(cia.listar(base=True)), 1)
+        self.assertEqual(list(cia.CURRICULOS.glob("*.apagando")), [])
+
+    def test_retorna_alvo(self):
+        meta = self._gerar(VAGA_DOC)
+        alvo = cia.apagar(meta["nome"])["alvo"]
+        self.assertEqual((alvo["tipo"], alvo["id"]), ("vaga", "v1"))
+
+    def test_nomes_invalidos_e_inexistente(self):
+        for ruim in ("../x", "A"):
+            with self.assertRaises(cia.GeracaoErro):
+                cia.apagar(ruim)
+        with self.assertRaises(FileNotFoundError):
+            cia.apagar("nao-existe")
+
+    def test_carta_nao_e_apagada(self):
+        cia.CURRICULOS.mkdir(parents=True, exist_ok=True)
+        for sufixo in (".json", ".meta.json"):
+            (cia.CURRICULOS / f"carta-x{sufixo}").write_text(json.dumps({"tipo": "carta"}), encoding="utf-8")
+        with self.assertRaises(cia.GeracaoErro):
+            cia.apagar("carta-x")
+        self.assertTrue((cia.CURRICULOS / "carta-x.json").exists())
+        self.assertTrue((cia.CURRICULOS / "carta-x.meta.json").exists())
+
+    def test_falha_no_meio_desfaz(self):
+        nome = self._gerar()["nome"]
+        antes = sorted(p.name for p in cia.CURRICULOS.iterdir())
+        original = Path.rename
+        chamadas = {"n": 0}
+
+        def rename(self_, destino):
+            chamadas["n"] += 1
+            if chamadas["n"] == 2:
+                raise PermissionError("aberto")
+            return original(self_, destino)
+
+        with mock.patch.object(Path, "rename", rename):
+            with self.assertRaises(cia.GeracaoErro):
+                cia.apagar(nome)
+        self.assertEqual(sorted(p.name for p in cia.CURRICULOS.iterdir()), antes)
+
+
 def cv_menor():
     c = cv_fiel()
     c["resumo"] = "Analista de dados."
