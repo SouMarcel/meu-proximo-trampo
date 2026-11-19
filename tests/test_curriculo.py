@@ -48,10 +48,19 @@ class Base(unittest.TestCase):
 class TestValidacao(unittest.TestCase):
     def test_tecnicas_invalidas(self):
         with redirect_stdout(io.StringIO()):
-            erros = curriculo.validar({**base(), "tecnicas": {"formato": "jp", "paginas": 3, "xyz": "sim", "outra": 1}})
+            erros = curriculo.validar({**base(), "tecnicas": {"formato": "jp", "paginas": 6, "xyz": "sim", "outra": 1}})
         texto = " ".join(erros)
         for trecho in ("tecnicas.formato", "tecnicas.paginas", "tecnicas.xyz", "'outra'"):
             self.assertIn(trecho, texto)
+
+    def test_validar_paginas_5_e_6(self):
+        cv5 = {**base(), "tecnicas": {"paginas": 5}}
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(curriculo.validar(cv5), [])
+        cv6 = {**base(), "tecnicas": {"paginas": 6}}
+        with redirect_stdout(io.StringIO()):
+            erros = curriculo.validar(cv6)
+        self.assertTrue(any("tecnicas.paginas" in e for e in erros))
 
     def test_destaques_e_dados_pessoais_no_us(self):
         with redirect_stdout(io.StringIO()):
@@ -132,12 +141,12 @@ class TestSugestaoECortes(unittest.TestCase):
         c = curriculo.catalogo()
         self.assertEqual(set(c["tecnicas"]), {"ats", "foco", "xyz", "resultado_primeiro",
                                               "competencias_primeiro", "paginas_obrigatorio"})
-        self.assertEqual(set(c["escolhas"]["paginas"]["opcoes"]), {"0", "1", "2"})
+        self.assertEqual(set(c["escolhas"]["paginas"]["opcoes"]), {"0", "1", "2", "3", "4", "5"})
         json.dumps(c)  # serializável para a skill e a página
 
     def test_catalogo_com_vaga(self):
         c = curriculo.catalogo({"titulo": "Analista de Dados"})
-        self.assertEqual(set(c["escolhas"]["paginas"]["opcoes"]), {"1", "2"})
+        self.assertEqual(set(c["escolhas"]["paginas"]["opcoes"]), {"1", "2", "3", "4", "5"})
         # Não altera o dicionário global ESCOLHAS
         self.assertIn(0, curriculo.ESCOLHAS["paginas"]["opcoes"])
 

@@ -635,6 +635,26 @@ class Handler(BaseHTTPRequestHandler):
                 except candidatura_ia.GeracaoErro as e:
                     return self._erro(400, str(e))
                 return self._json(200, {"documento": meta})
+            if metodo == "DELETE" and caminho.startswith("/api/curriculo/"):
+                partes = caminho.split("/")
+                if len(partes) == 4:
+                    nome = unquote(partes[3])
+                    import curriculo_ia
+                    try:
+                        res = curriculo_ia.apagar(nome)
+                    except curriculo_ia.GeracaoErro as e:
+                        if "aberto em outro programa" in str(e):
+                            return self._erro(409, str(e))
+                        return self._erro(400, str(e))
+                    except FileNotFoundError:
+                        return self._erro(404, "currículo não encontrado")
+                    alvo = res.get("alvo") if isinstance(res.get("alvo"), dict) else {}
+                    if alvo.get("tipo") == "vaga":
+                        banco.desligar_curriculo(alvo["id"], nome)
+                        sys.path.insert(0, str(banco.DASH.parent))
+                        import reprovacao
+                        reprovacao.esquecer_curriculo(alvo["id"], nome)
+                    return self._json(200, {"apagado": nome})
         except gerador.GeracaoOcupada as e:
             return self._json(409, {"erro": str(e), "estado": gerador.GERACAO.estado()})
         return self._erro(404, "rota não encontrada")

@@ -11,6 +11,8 @@
                                           do currículo e da carta (nunca vão à IA)
   gerar(vaga, tecnicas)                   pedido → IA → .json, .docx, .pdf → conferência → .meta.json
   listar(vaga_id=None, base=False)        os currículos gerados pela página, mais recentes primeiro
+  apagar(nome)                            apaga um currículo gerado (os quatro arquivos), desfazendo tudo se um
+                                          arquivo estiver aberto em outro programa
 
 Os arquivos ficam em curriculos/ (fora do Git), com nome AAAA-MM-DD-empresa-cargo (ou -base) e um
 sufixo -2, -3… quando o nome já existe: nada é sobrescrito. O .meta.json ao lado guarda as técnicas,
@@ -45,6 +47,21 @@ ORCAMENTO = {
         "- Até 2 cursos;\n"
         "- Sem projetos;\n"
         "- Cerca de 450 palavras."),
+    3: ("- Resumo com até 4 linhas;\n"
+        "- As 4 experiências mais recentes com até 5 itens cada;\n"
+        "- As anteriores com no máximo 2 itens, ou só a linha de empresa, cargo e período;\n"
+        "- Até 4 cursos;\n"
+        "- Cerca de 1200 palavras no total."),
+    4: ("- Resumo com até 5 linhas;\n"
+        "- As 5 experiências mais recentes com até 6 itens cada;\n"
+        "- As anteriores com no máximo 2 itens, ou só a linha;\n"
+        "- Até 5 cursos;\n"
+        "- Cerca de 1600 palavras no total."),
+    5: ("- Resumo com até 5 linhas;\n"
+        "- As 6 experiências mais recentes com até 6 itens cada;\n"
+        "- As anteriores com no máximo 3 itens, ou só a linha;\n"
+        "- Até 6 cursos;\n"
+        "- Cerca de 2000 palavras no total."),
 }
 COMPLETO = ("Currículo completo: use todos os fatos do perfil e dos relatos — todas as experiências com todos os itens, "
             "formação, certificações, cursos, projetos e idiomas; não corte nada; não há limite de páginas. "
@@ -408,6 +425,38 @@ def listar(vaga_id: str | None = None, base: bool = False) -> list[dict]:
             meta["disponivel"] = {k: bool(v) and (CURRICULOS / v).exists() for k, v in (meta.get("arquivos") or {}).items()}
             saida.append(meta)
     return sorted(saida, key=lambda m: m.get("criado_em") or "", reverse=True)
+
+
+def apagar(nome: str) -> dict:
+    """Apaga um currículo gerado (.json, .docx, .pdf e .meta.json) em duas fases, sem deixar pela metade."""
+    if not NOME_VALIDO.match(str(nome or "")):
+        raise GeracaoErro("nome de currículo inválido")
+    arq_meta = CURRICULOS / f"{nome}.meta.json"
+    if not arq_meta.is_file():
+        raise FileNotFoundError(nome)
+    try:
+        meta = json.loads(arq_meta.read_text(encoding="utf-8"))
+        if not isinstance(meta, dict) or meta.get("tipo") in ("carta", "respostas"):
+            raise ValueError
+    except (OSError, ValueError):
+        raise GeracaoErro("só currículos gerados podem ser apagados aqui") from None
+    renomeados = []
+    try:
+        for sufixo in (".json", ".docx", ".pdf", ".meta.json"):
+            origem = CURRICULOS / f"{nome}{sufixo}"
+            if origem.exists():
+                destino = origem.with_name(origem.name + ".apagando")
+                origem.rename(destino)
+                renomeados.append((origem, destino))
+    except OSError:
+        for origem, destino in reversed(renomeados):
+            try:
+                destino.rename(origem)
+            except OSError:
+                pass
+        raise GeracaoErro("um arquivo do currículo está aberto em outro programa; feche e tente de novo") from None
+    _apagar([destino for _, destino in renomeados])
+    return {"nome": nome, "alvo": meta.get("alvo") or {}}
 
 
 def arquivo_servivel(nome: str) -> Path | None:

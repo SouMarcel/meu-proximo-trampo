@@ -71,10 +71,16 @@ só de "tem" ou "sustentado" na conferência de requisitos, no nível confirmado
     até 3 cursos; cerca de 800 palavras.
   - **1 página**: resumo com até 3 linhas; as 2 experiências mais recentes com até 4 itens; as
     anteriores só com a linha; até 2 cursos; sem projetos; cerca de 450 palavras.
+  - **3 páginas**: resumo com até 4 linhas; as 4 experiências mais recentes com até 5 itens; as
+    anteriores com no máximo 2 itens ou só a linha; até 4 cursos; cerca de 1200 palavras.
+  - **4 páginas**: resumo com até 5 linhas; as 5 experiências mais recentes com até 6 itens; as
+    anteriores com no máximo 2 itens ou só a linha; até 5 cursos; cerca de 1600 palavras.
+  - **5 páginas**: resumo com até 5 linhas; as 6 experiências mais recentes com até 6 itens; as
+    anteriores com no máximo 3 itens ou só a linha; até 6 cursos; cerca de 2000 palavras.
   - Estilo executivo: a fonte é maior, conte com menos espaço.
 - Passou do limite de páginas: o motor sai com código 3 e sugere cortes. Corte detalhe antigo ou
   pouco ligado ao alvo; não encolha a fonte.
-- **Limite de páginas obrigatório** (técnica `paginas_obrigatorio`): passou do limite, encurte
+- **Limite de páginas obrigatório** (técnica `paginas_obrigatorio`, só com "Até N páginas"): passou do limite, encurte
   e gere de novo, até 2 vezes. Mantenha completas as 3 experiências mais recentes, resuma as antigas
   para a linha de empresa, cargo e período, corte itens pouco ligados ao alvo e o resumo. Só tire ou
   condense; nunca acrescente fato. Pela página, quem encurta é a IA escolhida; no chat, é você.

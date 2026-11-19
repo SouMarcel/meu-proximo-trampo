@@ -692,6 +692,20 @@ def registrar_curriculo(vid: str, nome: str) -> dict:
     return doc
 
 
+def desligar_curriculo(vid: str, nome: str) -> None:
+    """Desliga da vaga um currículo gerado apagado (tira nome de doc['curriculos'])."""
+    with escrita() as con:
+        doc = _ler(con, vid)
+        if doc is None:
+            return
+        curriculos = doc.get("curriculos") or []
+        if nome not in curriculos:
+            return
+        doc["curriculos"] = [c for c in curriculos if c != nome]
+        doc["atualizada_em"] = agora()
+        _gravar(con, vid, doc)
+
+
 def registrar_documento(vid: str, tipo: str, nome: str) -> dict:
     """Liga à vaga uma carta ou um conjunto de respostas gerado pela página (nome dos arquivos em curriculos/)."""
     if tipo not in ("carta", "respostas") or not re.fullmatch(r"[a-z0-9-]{1,90}", str(nome or "")):
