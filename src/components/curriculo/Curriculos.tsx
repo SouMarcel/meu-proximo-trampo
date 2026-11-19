@@ -55,6 +55,7 @@ export function GerarCurriculo({
   const { comecou } = useGeracao()
   const [c, setC] = useState<Catalogo | null>(null)
   const [escolha, setEscolha] = useState<Record<string, unknown>>({})
+  const [ultimoN, setUltimoN] = useState(2)
   const [erro, setErro] = useState("")
   const [enviando, setEnviando] = useState(false)
   const [reprovar, setReprovar] = useState(false)
@@ -68,6 +69,8 @@ export function GerarCurriculo({
         const ini: Record<string, unknown> = {}
         Object.keys(j.tecnicas).forEach((k) => (ini[k] = Boolean(s[k])))
         Object.entries(j.escolhas).forEach(([k, es]) => (ini[k] = s[k] ?? es.padrao))
+        const n = Number(ini.paginas)
+        setUltimoN(n >= 1 && n <= 5 ? n : 2)
         setEscolha(ini)
       })
       .catch((e) => setErro(mensagemDeErro(e, "Não deu para abrir o diálogo do currículo.")))
@@ -78,7 +81,10 @@ export function GerarCurriculo({
     setErro("")
     try {
       const tec: Record<string, unknown> = { ...escolha }
-      if ("paginas" in tec) tec.paginas = Number(tec.paginas)
+      if ("paginas" in tec) {
+        tec.paginas = Number(tec.paginas)
+        if (tec.paginas === 0) tec.paginas_obrigatorio = false
+      }
       comecou(vagaId && reprovar ? await curriculoApi.reprovacao(vagaId, tec) : await curriculoApi.gerar(vagaId, tec))
       onClose()
     } catch (e) {
@@ -121,16 +127,19 @@ export function GerarCurriculo({
       <>
         <section className="space-y-2">
           <h4 className="font-bold text-sm text-slate-900 dark:text-white">Técnicas</h4>
-          {Object.entries(c.tecnicas).map(([k, t]) => (
-            <label key={k} className="flex items-start gap-2 cursor-pointer">
-              <input type="checkbox" className="mt-0.5" checked={Boolean(escolha[k])} onChange={(ev) => setEscolha((x) => ({ ...x, [k]: ev.target.checked }))} />
-              <span>
-                <b>{t.nome}</b> <span className={DICA}>{t.explicacao}</span>
-              </span>
-            </label>
-          ))}
+          {Object.entries(c.tecnicas)
+            .filter(([k]) => k !== "paginas_obrigatorio")
+            .map(([k, t]) => (
+              <label key={k} className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" className="mt-0.5" checked={Boolean(escolha[k])} onChange={(ev) => setEscolha((x) => ({ ...x, [k]: ev.target.checked }))} />
+                <span>
+                  <b>{t.nome}</b> <span className={DICA}>{t.explicacao}</span>
+                </span>
+              </label>
+            ))}
         </section>
-        {Object.entries(c.escolhas).map(([k, es]) => (
+        {Object.entries(c.escolhas).map(([k, es]) => {
+          if (k !== "paginas") return (
           <section key={k} className="space-y-1.5">
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">{es.nome}</h4>
             <div className="flex flex-wrap gap-3">
@@ -142,7 +151,59 @@ export function GerarCurriculo({
               ))}
             </div>
           </section>
-        ))}
+          )
+          const completo = "0" in es.opcoes
+          const emCompleto = completo && String(escolha.paginas) === "0"
+          const ns = Object.keys(es.opcoes).filter((o) => o !== "0").sort((a, b) => Number(a) - Number(b))
+          const obrig = c.tecnicas.paginas_obrigatorio
+          const nAtual = emCompleto ? ultimoN : Number(escolha.paginas)
+          return (
+            <section key={k} className="space-y-1.5">
+              <h4 className="font-bold text-sm text-slate-900 dark:text-white">{es.nome}</h4>
+              <div className="flex flex-wrap items-center gap-3">
+                {completo && (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="cv-paginas" checked={emCompleto} onChange={() => setEscolha((x) => ({ ...x, paginas: "0" }))} />
+                    {es.opcoes["0"]}
+                  </label>
+                )}
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  {completo && (
+                    <input type="radio" name="cv-paginas" checked={!emCompleto} onChange={() => setEscolha((x) => ({ ...x, paginas: String(ultimoN) }))} />
+                  )}
+                  Até
+                  <select
+                    value={String(nAtual)}
+                    onChange={(ev) => {
+                      setUltimoN(Number(ev.target.value))
+                      setEscolha((x) => ({ ...x, paginas: ev.target.value }))
+                    }}
+                    className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs"
+                  >
+                    {ns.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                  {nAtual === 1 ? "página" : "páginas"}
+                </label>
+              </div>
+              {obrig && (
+                <label className={`flex items-start gap-2 ${emCompleto ? "opacity-60" : "cursor-pointer"}`}>
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    disabled={emCompleto}
+                    checked={Boolean(escolha.paginas_obrigatorio)}
+                    onChange={(ev) => setEscolha((x) => ({ ...x, paginas_obrigatorio: ev.target.checked }))}
+                  />
+                  <span>
+                    <b>{obrig.nome}</b> <span className={DICA}>{obrig.explicacao}</span>
+                  </span>
+                </label>
+              )}
+            </section>
+          )
+        })}
         {vagaId && c.reprovacao && (
           <section className="space-y-1.5 p-3 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20">
             <label className={`flex items-start gap-2 ${c.reprovacao.disponivel ? "cursor-pointer" : "opacity-60"}`}>
