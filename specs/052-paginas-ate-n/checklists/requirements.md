@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Páginas em duas opções, Completo ou Até N páginas
+# Specification Quality Checklist: Páginas em duas opções (Completo ou Até N) e apagar currículo gerado
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-11-19
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- FR-010 cita o processo do front (branch e Action) porque é regra do projeto, não escolha de implementação.
+- FR-014 cita o processo do front (branch e Action) porque é regra do projeto, não escolha de implementação.
 - Os limites de conteúdo de 3 a 5 páginas ficam como suposição, com ajuste no teste real, como na spec 051.

@@ -1,4 +1,4 @@
-# Feature Specification: Páginas em duas opções, Completo ou Até N páginas
+# Feature Specification: Páginas em duas opções (Completo ou Até N) e apagar currículo gerado
 
 **Feature Branch**: `052-paginas-ate-n` (worktree saída da `master`)
 
@@ -9,6 +9,8 @@
 **Input**: Pedido do usuário no diálogo Gerar currículo. Hoje o campo Páginas tem três opções: "Completo (sem limite,
 tudo do perfil)", "1 página" e "Até 2 páginas". Ele quer só duas: **Completo** e **Até N páginas**, com N escolhido de
 1 a 5. A caixa "Limite de páginas obrigatório", que hoje fica na lista de Técnicas, passa para a área de Páginas.
+No mesmo dia, ele pediu um botão de lixeira para apagar um currículo gerado, depois dos botões PDF e .docx de cada
+currículo da lista.
 
 ## Contexto
 
@@ -77,6 +79,33 @@ caixa desabilitada. Voltar para "Até N páginas" e ver a caixa habilitada de no
 
 ---
 
+### User Story 3 - Apagar um currículo gerado (Priority: P2)
+
+Na lista de currículos gerados (do currículo base, em Meu perfil, e do currículo de uma vaga), cada currículo ganha
+um botão de **lixeira**, depois dos botões PDF e .docx. Ao clicar, a página pede confirmação, dizendo que o currículo
+será apagado de vez. Com a confirmação, a ferramenta apaga todos os arquivos daquele currículo (PDF, .docx e os dados
+dele) e o tira da lista e da vaga a que estava ligado.
+
+**Why this priority**: a pasta acumula versões de teste e currículos que a pessoa não vai usar, e hoje só dá para
+apagá-los à mão na pasta. Não muda como o currículo é gerado, por isso fica atrás das US1 e US2.
+
+**Independent Test**: gerar dois currículos base, clicar na lixeira do mais antigo e confirmar. Ele some da lista, os
+arquivos dele somem da pasta e o outro continua. Clicar na lixeira e cancelar não apaga nada.
+
+**Acceptance Scenarios**:
+
+1. **Given** a lista de currículos, **When** a pessoa olha um currículo, **Then** vê a lixeira depois dos botões PDF e
+   .docx, com a dica "Apagar este currículo".
+2. **Given** um clique na lixeira, **When** a pessoa cancela a confirmação, **Then** nada é apagado.
+3. **Given** a confirmação, **When** a ferramenta apaga, **Then** somem o PDF, o .docx e os dados do currículo, ele
+   sai da lista e deixa de estar ligado à vaga. Os outros currículos, cartas e respostas não mudam.
+4. **Given** um arquivo do currículo aberto em outro programa (por exemplo, o .docx no Word), **When** a ferramenta
+   tenta apagar, **Then** nada fica pela metade e a página diz para fechar o arquivo e tentar de novo.
+5. **Given** um pedido para apagar algo que não é um currículo gerado (outro nome, caminho fora da pasta, carta ou
+   respostas), **When** ele chega à ferramenta, **Then** é recusado.
+
+---
+
 ### Edge Cases
 
 - **Currículos já gerados** com limite 1 ou 2: continuam válidos e aparecem na lista como antes.
@@ -88,6 +117,12 @@ caixa desabilitada. Voltar para "Até N páginas" e ver a caixa habilitada de no
 - **Encurtar com limite alto** (4 ou 5 páginas) e poucas experiências: a regra das 3 experiências recentes completas
   continua; se não couber, vale a regra da falha da spec 051.
 - **Sem programa para gerar o PDF**: as páginas não são medidas, e nada muda em relação a hoje.
+- **Apagar o currículo que saiu de uma análise de reprovação** (spec 049): a análise continua, e o currículo apagado
+  deixa de aparecer como o currículo gerado por ela.
+- **Apagar enquanto uma geração está em andamento**: o currículo que está sendo gerado ainda não está na lista; os
+  outros podem ser apagados normalmente.
+- **Currículo marcado como "seu currículo"** (o arquivo que a pessoa enviou, em anexos/): não é um currículo gerado,
+  não aparece nessa lista e não tem lixeira.
 
 ## Requirements *(mandatory)*
 
@@ -109,7 +144,13 @@ caixa desabilitada. Voltar para "Até N páginas" e ver a caixa habilitada de no
 - **FR-008**: Os rótulos MUST usar o singular para 1 ("Até 1 página") e o plural de 2 a 5 ("Até 3 páginas").
 - **FR-009**: As instruções do chat (skill gerar-curriculo e guia de técnicas) e o contrato da API MUST descrever as
   opções novas e os limites de conteúdo de 3 a 5 páginas.
-- **FR-010**: A mudança na página MUST seguir o processo do front (código na branch `frontend-react`, montado pela
+- **FR-010**: Cada currículo da lista de currículos gerados MUST ter um botão de lixeira depois dos botões PDF e .docx.
+- **FR-011**: Apagar MUST pedir confirmação antes e MUST NOT apagar nada sem ela.
+- **FR-012**: Apagar MUST remover todos os arquivos daquele currículo e a ligação dele com a vaga, e MUST NOT mexer em
+  outros currículos, cartas, respostas ou no "seu currículo" de anexos/.
+- **FR-013**: A ferramenta MUST aceitar apagar só currículos gerados, pelo nome validado, dentro da pasta de
+  currículos. Uma falha no meio MUST NOT deixar o currículo pela metade sem avisar a pessoa.
+- **FR-014**: A mudança na página MUST seguir o processo do front (código na branch `frontend-react`, montado pela
   Action no PR `front/atualizacao`), sem edição à mão em `dash/front/`.
 
 ### Key Entities
@@ -128,7 +169,8 @@ caixa desabilitada. Voltar para "Até N páginas" e ver a caixa habilitada de no
   técnicas de escrita.
 - **SC-003**: Com um perfil de 6 ou mais experiências, "Até 3 páginas" com a caixa obrigatória sai com no máximo 3
   páginas em pelo menos 4 de 5 gerações.
-- **SC-004**: Os currículos e testes que já existem continuam funcionando: a suíte inteira fica verde.
+- **SC-004**: A pessoa apaga um currículo gerado em dois cliques (lixeira e confirmação), sem abrir a pasta.
+- **SC-005**: Os currículos e testes que já existem continuam funcionando: a suíte inteira fica verde.
 
 ## Assumptions
 
