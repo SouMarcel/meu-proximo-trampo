@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-19
 
-**Status**: Rascunho, aguardando aprovação
+**Status**: Aprovada e concluída em 2026-11-19
 
 **Input**: Pedido do usuário no diálogo Gerar currículo. Hoje o campo Páginas tem três opções: "Completo (sem limite,
 tudo do perfil)", "1 página" e "Até 2 páginas". Ele quer só duas: **Completo** e **Até N páginas**, com N escolhido de
