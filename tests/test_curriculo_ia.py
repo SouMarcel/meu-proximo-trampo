@@ -20,6 +20,13 @@ PERFIL_CPF = PERFIL + "\nCPF: 123.456.789-09\n- Cargos que procuro: Analista de 
 VAGA_DOC = {"id": "v1", "titulo": "Analista de Dados Pleno", "empresa": "Empresa Ômega S.A.", "local": "Remoto",
             "descricao": VAGA}
 TEC = cia.validar_tecnicas({"foco": True, "formato": "br"})
+CONTATO = {"nome": "Pessoa", "sobrenome": "Fictícia", "email": "pessoa@exemplo.com", "telefone": "+5511900000000",
+           "cidade": "São Paulo", "estado": "SP", "pais": "Brasil", "linkedin": "https://www.linkedin.com/in/pessoa-ficticia/"}
+
+
+def salvar_contato(pasta: Path, dados: dict = CONTATO):
+    pasta.mkdir(parents=True, exist_ok=True)
+    (pasta / "contato.json").write_text(json.dumps(dados, ensure_ascii=False), encoding="utf-8")
 
 
 class Base(unittest.TestCase):
@@ -121,6 +128,26 @@ class TestResposta(unittest.TestCase):
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
+    def test_contato_dos_dados_de_contato(self):
+        salvos = ["São Paulo, SP, Brasil", "pessoa@exemplo.com", "+55 11 90000-0000"]
+        self.assertEqual(cia.ler_resposta(json.dumps(cv_fiel()), TEC, "", salvos)["contato"], salvos)
+        self.assertEqual(cia.ler_resposta(json.dumps(cv_fiel()), TEC, "", [])["contato"], ["ana@exemplo.com"])
+
+    def test_linha_de_contato(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            salvar_contato(tmp)
+            with mock.patch.object(banco, "ARQUIVO", tmp / "banco.db"):
+                self.assertEqual(cia.linha_de_contato("pt"), ["São Paulo, SP, Brasil", "pessoa@exemplo.com",
+                                                             "+55 11 90000-0000", "linkedin.com/in/pessoa-ficticia"])
+                self.assertEqual(cia.linha_de_contato("en")[0], "São Paulo, SP, Brazil")
+            with mock.patch.object(banco, "ARQUIVO", tmp / "outro" / "banco.db"):
+                self.assertEqual(cia.linha_de_contato("pt"), [])
+            self.assertEqual(cia.linha_de_contato("pt", {"email": "a@b.co", "telefone": "(11) 3333-4444"}),
+                             ["a@b.co", "(11) 3333-4444"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     def test_invalida(self):
         for texto in ("sem json", "{quebrado", json.dumps({"experiencia": []})):
             with self.assertRaises(cia.GeracaoErro):
@@ -143,6 +170,25 @@ class TestGerar(Base):
         self.assertEqual([m["nome"] for m in lista], [meta["nome"]])
         self.assertEqual(lista[0]["disponivel"], {"json": True, "docx": True, "pdf": False})
         self.assertEqual(cia.listar(base=True), [])
+
+    def test_contato_salvo_no_cabecalho_sem_ir_a_ia(self):
+        salvar_contato(self.tmp)
+        with mock.patch.object(ia, "responder", return_value=json.dumps(cv_fiel())) as resp:
+            meta = cia.gerar(VAGA_DOC, TEC, perfil=PERFIL)
+        cv = json.loads((self.tmp / "curriculos" / f"{meta['nome']}.json").read_text(encoding="utf-8"))
+        self.assertEqual(cv["nome"], "Pessoa Fictícia")
+        self.assertIn("pessoa@exemplo.com", cv["contato"])
+        self.assertIn("+55 11 90000-0000", cv["contato"])
+        self.assertNotIn("pessoa@exemplo.com", resp.call_args[0][0])
+        from docx import Document
+        texto = "\n".join(par.text for par in Document(str(self.tmp / "curriculos" / f"{meta['nome']}.docx")).paragraphs)
+        self.assertIn("pessoa@exemplo.com | +55 11 90000-0000", texto)
+
+    def test_sem_dados_de_contato_fica_o_da_ia(self):
+        with mock.patch.object(ia, "responder", return_value=json.dumps(cv_fiel())):
+            meta = cia.gerar(VAGA_DOC, TEC, perfil=PERFIL)
+        cv = json.loads((self.tmp / "curriculos" / f"{meta['nome']}.json").read_text(encoding="utf-8"))
+        self.assertEqual(cv["contato"], ["ana@exemplo.com"])
 
     def test_numero_inventado_nao_pronto(self):
         c = cv_fiel()
@@ -235,6 +281,18 @@ class TestEncurtar(Base):
         mensagens = [p["mensagem"] for p in meta["conferencia"]["ats"]]
         self.assertFalse(any("página" in m for m in mensagens))
 
+    def test_encurtar_mantem_contato_sem_ir_a_ia(self):
+        salvar_contato(self.tmp)
+        tec = cia.validar_tecnicas({"paginas": 2, "paginas_obrigatorio": True})
+        respostas = [json.dumps(cv_fiel()), json.dumps(cv_menor())]
+        with mock.patch.object(curriculo, "paginas", side_effect=[3, 2]),                 mock.patch.object(ia, "responder", side_effect=respostas) as resp:
+            meta = cia.gerar(VAGA_DOC, tec, perfil=PERFIL)
+        self.assertEqual(meta["paginas"], 2)
+        for chamada in resp.call_args_list:
+            self.assertNotIn("pessoa@exemplo.com", chamada[0][0])
+        cv = json.loads((self.tmp / "curriculos" / f"{meta['nome']}.json").read_text(encoding="utf-8"))
+        self.assertIn("pessoa@exemplo.com", cv["contato"])
+
     def test_maior_descartada(self):
         tec = cia.validar_tecnicas({"paginas": 2, "paginas_obrigatorio": True})
         respostas = [json.dumps(cv_fiel()), json.dumps(cv_maior()), json.dumps(cv_maior())]
@@ -314,6 +372,7 @@ class TestEncurtarFuncoesPuras(unittest.TestCase):
         self.assertIn("800 palavras", pedido)
         self.assertIn("Responda SOMENTE com o JSON no mesmo formato, sem texto antes ou depois e sem a chave tecnicas", pedido)
         self.assertNotIn('"tecnicas":', pedido)
+        self.assertNotIn("ana@exemplo.com", pedido)  # o contato nunca vai à IA
 
 
 if __name__ == "__main__":

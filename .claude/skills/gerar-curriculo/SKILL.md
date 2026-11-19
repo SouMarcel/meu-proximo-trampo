@@ -143,7 +143,10 @@ combinado ou ele mandar seguir.
    `experiencia`, cada empresa tem seus `cargos`; assim um cargo nunca vai parar
    debaixo da empresa errada. Formação em andamento leva `"status": "em andamento"`.
    `certificacoes` e `cursos` são listas separadas. `ordem` define a sequência das
-   seções (a mais relevante para o alvo primeiro).
+   seções (a mais relevante para o alvo primeiro). O `nome` e o `contato` saem dos dados de
+   contato que a pessoa salvou em `dash/dados/contato.json` (Meu perfil → Informações básicas),
+   na ordem cidade/estado/país, e-mail, telefone e LinkedIn; sem esse arquivo, pergunte o
+   e-mail e o telefone em vez de deixá-los de fora ou inventá-los.
 2. Rode `PY curriculo.py curriculos/<nome>.json` (com `--vaga-id ID` numa vaga do dashboard).
    Ele gera o `.docx` e o `.pdf`, diz quantas páginas deu e roda a **conferência**. Código 3:
    passou do limite de páginas (corte o que ele sugerir; não encolha a fonte) ou a conferência

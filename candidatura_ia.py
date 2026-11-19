@@ -64,8 +64,7 @@ PEDE = {"pt": ("A vaga pede", "A vaga também destaca"), "en": ("The posting ask
         "it": ("L'annuncio richiede", "L'annuncio evidenzia anche")}
 DESPEDIDA = {"pt": "Atenciosamente,", "en": "Sincerely,", "es": "Atentamente,", "fr": "Cordialement,",
              "de": "Mit freundlichen Grüßen,", "it": "Cordiali saluti,"}
-PAIS = {"en": {"brasil": "Brazil"}, "es": {"brasil": "Brasil"}, "fr": {"brasil": "Brésil"}, "de": {"brasil": "Brasilien"},
-        "it": {"brasil": "Brasile"}}
+PAIS = curriculo_ia.PAIS
 FECHOS = re.compile(r"^(sincerely|best regards|kind regards|regards|yours (sincerely|truly)|atenciosamente|cordialmente|"
                     r"abra[cç]os|um abra[cç]o|saludos|atentamente|cordialement|mit freundlichen gr[uü]ßen|cordiali saluti)\b",
                     re.I)
@@ -396,11 +395,7 @@ def moldura_da_carta(idioma: str) -> tuple[str, str, str | None]:
     from candidatura import contato
     d = contato.ler() or {}
     nome = " ".join(x for x in (d.get("nome"), d.get("sobrenome")) if x).strip()
-    pais = d.get("pais") or ""
-    pais = PAIS.get(idioma, {}).get(_sem_acento(pais), pais)
-    local = ", ".join(x for x in (d.get("cidade"), d.get("estado"), pais) if x)
-    linkedin = re.sub(r"^https?://(www\.)?", "", d.get("linkedin") or "").rstrip("/")
-    linha = " | ".join(x for x in (local, d.get("email"), telefone_legivel(d.get("telefone")), linkedin) if x)
+    linha = " | ".join(curriculo_ia.linha_de_contato(idioma, d))
     cabecalho = "\n".join(x for x in (nome, linha) if x)
     despedida = DESPEDIDA.get(idioma, DESPEDIDA["en"]) + (f"\n{nome}" if nome else "")
     aviso = None if nome else ("Sem os seus dados de contato, a carta saiu sem cabeçalho e sem o seu nome na despedida: "
@@ -408,12 +403,7 @@ def moldura_da_carta(idioma: str) -> tuple[str, str, str | None]:
     return cabecalho, despedida, aviso
 
 
-def telefone_legivel(telefone) -> str:
-    """O celular ou fixo brasileiro guardado só com dígitos ("+5511900000000") escrito para ler: "+55 11 90000-0000".
-    Outro formato fica como a pessoa salvou."""
-    t = str(telefone or "").strip()
-    m = re.fullmatch(r"\+?55(\d{2})(\d{4,5})(\d{4})", t)
-    return f"+55 {m.group(1)} {m.group(2)}-{m.group(3)}" if m else t
+telefone_legivel = curriculo_ia.telefone_legivel
 
 
 def _juntar(cabecalho: str, corpo: str, despedida: str) -> str:
