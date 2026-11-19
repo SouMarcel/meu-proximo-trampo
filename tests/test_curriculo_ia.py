@@ -1,5 +1,6 @@
 """Testes do curriculo_ia.py e do registro do currículo na vaga, com a IA substituída. Conteúdo fictício."""
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -92,8 +93,24 @@ class TestNomesEPedido(Base):
         self.assertIn("Currículo completo", pedido)
         self.assertNotIn("Limite: até", pedido)
 
+    def test_orcamento_1_a_5(self):
+        palavras = []
+        for n in range(1, 6):
+            self.assertIn(n, cia.ORCAMENTO)
+            tec = cia.validar_tecnicas({"paginas": n})
+            pedido = cia.montar_pedido(PERFIL_CPF, VAGA_DOC, tec)
+            self.assertIn(cia.ORCAMENTO[n], pedido)
+            m = re.search(r"cerca de (\d+) palavras", cia.ORCAMENTO[n], re.IGNORECASE)
+            self.assertIsNotNone(m)
+            palavras.append(int(m.group(1)))
+        for i in range(len(palavras) - 1):
+            self.assertLess(palavras[i], palavras[i + 1])
+
     def test_validar_tecnicas(self):
         self.assertEqual(cia.validar_tecnicas({"paginas": "1", "formato": "us"})["paginas"], 1)
+        self.assertEqual(cia.validar_tecnicas({"paginas": 4})["paginas"], 4)
+        with self.assertRaises(cia.GeracaoErro):
+            cia.validar_tecnicas({"paginas": 6})
         with self.assertRaises(cia.GeracaoErro):
             cia.validar_tecnicas({"formato": "jp"})
         with self.assertRaises(cia.GeracaoErro):

@@ -79,7 +79,8 @@ TECNICAS = {
 }
 ESCOLHAS = {
     "paginas": {"nome": "Páginas", "padrao": 2,
-                "opcoes": {1: "1 página", 2: "Até 2 páginas", 0: "Completo (sem limite, tudo do perfil)"}},
+                "opcoes": {0: "Completo (sem limite, tudo do perfil)", 1: "Até 1 página", 2: "Até 2 páginas",
+                           3: "Até 3 páginas", 4: "Até 4 páginas", 5: "Até 5 páginas"}},
     "formato": {"nome": "Formato do país", "padrao": "br",
                 "opcoes": {"br": "Brasil (A4, português)",
                            "us": "Estados Unidos (Letter, inglês, sem foto nem dados pessoais)",

@@ -18,18 +18,18 @@ São sequenciais dentro de cada lado (backend e front), porque mexem nos mesmos 
 
 ## Phase 1: Backend
 
-- [ ] T001 [D minor] [US1] Opções de páginas de 1 a 5 (D1) em `curriculo.py` e orçamento de 3 a 5 (D2) em
-  `curriculo_ia.py`. Testes em `tests/test_curriculo.py` e `tests/test_curriculo_ia.py`.
+- [X] T001 [D minor] [US1] Opções de páginas de 1 a 5 (D1) em `curriculo.py` e orçamento de 3 a 5 (D2) em
+  `curriculo_ia.py`. Testes em `tests/test_curriculo.py` e `tests/test_curriculo_ia.py`. → agy, GO na tentativa 1
 - [ ] T002 [D minor] [US3] `curriculo_ia.apagar(nome)` em duas fases (D3). Testes em `tests/test_curriculo_ia.py`.
 - [ ] T003 [D minor] [US3] `banco.desligar_curriculo`, `reprovacao.esquecer_curriculo` (D4) e a rota
   `DELETE /api/curriculo/<nome>` (D5). Testes em `tests/test_curriculo_ia.py` e `tests/test_reprovacao.py`.
 
 ## Phase 2: Front (branch `frontend-react`)
 
-- [ ] T004 [D minor] [US1][US2] Área Páginas com Completo ou "Até [N]" e a caixa do limite obrigatório junto (D6), em
-  `src/components/curriculo/Curriculos.tsx`.
-- [ ] T005 [D minor] [US3] Lixeira em cada currículo da lista (D7), em `src/components/curriculo/Curriculos.tsx` e
-  `src/services/api/curriculo.ts`.
+- [X] T004 [D minor] [US1][US2] Área Páginas com Completo ou "Até [N]" e a caixa do limite obrigatório junto (D6), em
+  `src/components/curriculo/Curriculos.tsx`. → copilot, GO na tentativa 1
+- [X] T005 [D minor] [US3] Lixeira em cada currículo da lista (D7), em `src/components/curriculo/Curriculos.tsx` e
+  `src/services/api/curriculo.ts`. → copilot, GO na tentativa 1
 
 ## Phase 3: Fechamento (eu)
 

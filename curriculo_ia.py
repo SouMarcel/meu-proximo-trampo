@@ -45,6 +45,21 @@ ORCAMENTO = {
         "- Até 2 cursos;\n"
         "- Sem projetos;\n"
         "- Cerca de 450 palavras."),
+    3: ("- Resumo com até 4 linhas;\n"
+        "- As 4 experiências mais recentes com até 5 itens cada;\n"
+        "- As anteriores com no máximo 2 itens, ou só a linha de empresa, cargo e período;\n"
+        "- Até 4 cursos;\n"
+        "- Cerca de 1200 palavras no total."),
+    4: ("- Resumo com até 5 linhas;\n"
+        "- As 5 experiências mais recentes com até 6 itens cada;\n"
+        "- As anteriores com no máximo 2 itens, ou só a linha;\n"
+        "- Até 5 cursos;\n"
+        "- Cerca de 1600 palavras no total."),
+    5: ("- Resumo com até 5 linhas;\n"
+        "- As 6 experiências mais recentes com até 6 itens cada;\n"
+        "- As anteriores com no máximo 3 itens, ou só a linha;\n"
+        "- Até 6 cursos;\n"
+        "- Cerca de 2000 palavras no total."),
 }
 COMPLETO = ("Currículo completo: use todos os fatos do perfil e dos relatos — todas as experiências com todos os itens, "
             "formação, certificações, cursos, projetos e idiomas; não corte nada; não há limite de páginas. "
