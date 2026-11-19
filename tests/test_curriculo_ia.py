@@ -184,6 +184,16 @@ class TestGerar(Base):
         texto = "\n".join(par.text for par in Document(str(self.tmp / "curriculos" / f"{meta['nome']}.docx")).paragraphs)
         self.assertIn("pessoa@exemplo.com | +55 11 90000-0000", texto)
 
+    def test_contato_salvo_no_curriculo_base(self):
+        salvar_contato(self.tmp)
+        for tec in (TEC, cia.validar_tecnicas({"paginas": 0})):  # base e base completo
+            with mock.patch.object(ia, "responder", return_value=json.dumps(cv_fiel())):
+                meta = cia.gerar(None, tec, perfil=PERFIL)
+            self.assertIn("-base", meta["nome"])
+            cv = json.loads((self.tmp / "curriculos" / f"{meta['nome']}.json").read_text(encoding="utf-8"))
+            self.assertIn("pessoa@exemplo.com", cv["contato"])
+            self.assertIn("+55 11 90000-0000", cv["contato"])
+
     def test_sem_dados_de_contato_fica_o_da_ia(self):
         with mock.patch.object(ia, "responder", return_value=json.dumps(cv_fiel())):
             meta = cia.gerar(VAGA_DOC, TEC, perfil=PERFIL)
