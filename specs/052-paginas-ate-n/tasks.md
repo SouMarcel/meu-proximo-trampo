@@ -33,7 +33,7 @@ São sequenciais dentro de cada lado (backend e front), porque mexem nos mesmos 
 
 ## Phase 3: Fechamento (eu)
 
-- [ ] T006 Documentação: `dash/API.md` (opções de páginas, rota de apagar), `.agents/skills/gerar-curriculo/tecnicas.md`
+- [X] T006 Documentação: `dash/API.md` (opções de páginas, rota de apagar), `.agents/skills/gerar-curriculo/tecnicas.md`
   e `SKILL.md` (1 a 5 páginas e orçamentos), depois `python sincronizar_skills.py`.
 - [ ] T007 Teste na branch pessoal: backend mesclado, `dist/` do front copiado para `dash/front/`, dashboard
   reiniciado; conferir o diálogo, gerar com "Até 3 páginas" e apagar um currículo de teste.

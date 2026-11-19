@@ -525,9 +525,10 @@ Uma geração por vez no servidor (currículo, carta ou respostas dividem a mesm
 `{tecnicas: {ats|foco|xyz|resultado_primeiro|competencias_primeiro|paginas_obrigatorio: {nome, padrao, explicacao}}, escolhas:
 {paginas|formato|estilo: {nome, padrao, opcoes: {valor: rótulo}}}, sugestao: {<técnica>: bool, paginas, formato,
 estilo, motivo}, ia: {ligada, nome, modelo, cobranca: "uso"|"assinatura"|"gratuito"|""}, perfil_ok, pode_alterar}`. Erro 404 vaga não encontrada.
-Opções: `paginas` 1|2|0 (0 = Completo, sem limite; só sem `vaga`); `formato` br|us|eu; `estilo`
-padrao|compacto|executivo (curriculo.py:62-90). `paginas_obrigatorio` (spec 051): passou do limite, a IA encurta
-(até 2 tentativas).
+Opções: `paginas` 0|1|2|3|4|5 (0 = Completo, sem limite; só sem `vaga`; 1 a 5 = "Até N páginas", cada um com o
+seu orçamento de conteúdo no pedido à IA, spec 052); `formato` br|us|eu; `estilo` padrao|compacto|executivo
+(curriculo.py:62-90). `paginas_obrigatorio` (spec 051): passou do limite, a IA encurta (até 2 tentativas). A página
+mostra essa caixa na área Páginas, e não entre as técnicas, e a envia `false` com Completo (spec 052).
 
 **`POST /api/curriculo`** **[local]** — "Gerar". Corpo `{vaga_id: string|null, tecnicas: {ats, foco, xyz,
 resultado_primeiro, competencias_primeiro, paginas_obrigatorio: bool, paginas: number, formato, estilo}}`. Resposta
@@ -548,6 +549,12 @@ tentativas}}` (curriculo_ia.py; conferir.py:380-387). Acima do limite no fim, `c
 `{nivel: "conferir", trecho: "N páginas", mensagem}` e o veredito "ok" vira "conferir" (spec 051). Com `paginas: 0`,
 `acima_do_limite` é sempre false.
 Os links de download são `/arquivos/curriculos/{arquivos.pdf|docx}`.
+
+**`DELETE /api/curriculo/{nome}`** **[local]** — a lixeira de um currículo da lista (spec 052). Apaga o `.json`, o
+`.docx`, o `.pdf` e o `.meta.json` em duas fases (renomeia todos e só então apaga; se um estiver aberto em outro
+programa, desfaz e nada some), tira o nome da vaga (`curriculos`) e da análise de reprovação (`curriculo_gerado`).
+200 `{apagado: nome}`; 400 nome inválido ou não é currículo gerado (cartas e respostas não são apagadas aqui); 404
+não encontrado; 409 arquivo aberto em outro programa.
 
 #### Análise de reprovação (checkbox no diálogo "Gerar currículo" de uma vaga; spec 049)
 
