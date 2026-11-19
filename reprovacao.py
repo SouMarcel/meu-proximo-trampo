@@ -430,6 +430,18 @@ def marcar_revisadas(vaga_id: str, ids) -> None:
         _gravar(d)
 
 
+def esquecer_curriculo(vaga_id: str, nome: str) -> None:
+    """Se a análise da vaga gerou este currículo, esquece a ligação (troca curriculo_gerado e gerado_em para None)."""
+    with TRAVA:
+        d = _carregar()
+        a = d.get(str(vaga_id))
+        if not isinstance(a, dict) or a.get("curriculo_gerado") != nome:
+            return
+        a["curriculo_gerado"] = None
+        a["gerado_em"] = None
+        _gravar(d)
+
+
 # ---------------------------------------------------------------- etapa 1: analisar
 
 def analisar(vaga: dict, tecnicas: dict, progresso=None) -> dict:

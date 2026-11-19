@@ -338,8 +338,9 @@ class TestGeradorERotas(Base):  # T008, T020, T025, T035
     def pedir(self, metodo, caminho, corpo=None):
         con = self.http.HTTPConnection("127.0.0.1", self.srv.server_address[1], timeout=10)
         self.addCleanup(con.close)
-        dados = json.dumps(corpo).encode("utf-8") if corpo is not None else None
-        con.request(metodo, caminho, dados, {"Content-Type": "application/json"} if dados is not None else {})
+        dados = json.dumps(corpo).encode("utf-8") if corpo is not None else (b"{}" if metodo != "GET" else None)
+        headers = {"Content-Type": "application/json"} if (dados is not None or metodo != "GET") else {}
+        con.request(metodo, caminho, dados, headers)
         r = con.getresponse()
         return r.status, json.loads(r.read())
 
@@ -409,6 +410,61 @@ class TestGeradorERotas(Base):  # T008, T020, T025, T035
             self.assertEqual(self.pedir("PUT", "/api/curriculo/reprovacao/v1/respostas", {"respostas": {}})[0], 403)
             self.assertEqual(self.pedir("POST", "/api/curriculo/reprovacao/v1/gerar", {})[0], 403)
             self.assertFalse(self.pedir("GET", "/api/curriculo/reprovacao?vaga=v1")[1]["pode_alterar"])
+
+    def test_apagar_curriculo_pela_rota(self):
+        meta = self.gerar_cv_da_vaga("v1")
+        nome = meta["nome"]
+        banco.registrar_curriculo("v1", nome)
+        self.analisar("v1")
+        rep._atualizar("v1", curriculo_gerado=nome, gerado_em="2026-11-19T10:00:00")
+
+        self.assertIn(nome, banco.obter("v1")["curriculos"])
+        self.assertEqual(rep.obter("v1")["curriculo_gerado"], nome)
+        self.assertTrue((self.tmp / "curriculos" / f"{nome}.json").exists())
+
+        status, j = self.pedir("DELETE", f"/api/curriculo/{nome}")
+        self.assertEqual((status, j), (200, {"apagado": nome}))
+        self.assertFalse((self.tmp / "curriculos" / f"{nome}.json").exists())
+        self.assertFalse((self.tmp / "curriculos" / f"{nome}.meta.json").exists())
+        self.assertNotIn(nome, banco.obter("v1")["curriculos"])
+        self.assertIsNone(rep.obter("v1")["curriculo_gerado"])
+        self.assertIsNone(rep.obter("v1")["gerado_em"])
+
+        self.assertEqual(self.pedir("DELETE", "/api/curriculo/nao-existe")[0], 404)
+        self.assertEqual(self.pedir("DELETE", "/api/curriculo/Nome%20Ruim")[0], 400)
+
+        with mock.patch("curriculo_ia.apagar", side_effect=cia.GeracaoErro("um arquivo do currículo está aberto em outro programa; feche e tente de novo")):
+            st, err = self.pedir("DELETE", "/api/curriculo/cv-bloqueado")
+            self.assertEqual(st, 409)
+            self.assertIn("aberto em outro programa", err.get("erro", ""))
+
+        # currículo base (sem vaga ligada)
+        self.respostas_ia.append(cv_fiel())
+        meta_base = cia.gerar(None, TEC)
+        nome_base = meta_base["nome"]
+        self.assertTrue((self.tmp / "curriculos" / f"{nome_base}.json").exists())
+        st, j_base = self.pedir("DELETE", f"/api/curriculo/{nome_base}")
+        self.assertEqual((st, j_base), (200, {"apagado": nome_base}))
+        self.assertFalse((self.tmp / "curriculos" / f"{nome_base}.json").exists())
+
+    def test_desligar_curriculo_direto(self):
+        banco.desligar_curriculo("vaga_inexistente", "cv-teste")
+        banco.registrar_curriculo("v1", "cv-teste")
+        self.assertIn("cv-teste", banco.obter("v1")["curriculos"])
+        banco.desligar_curriculo("v1", "outro-cv")
+        self.assertIn("cv-teste", banco.obter("v1")["curriculos"])
+        banco.desligar_curriculo("v1", "cv-teste")
+        self.assertNotIn("cv-teste", banco.obter("v1")["curriculos"])
+
+    def test_esquecer_curriculo_direto(self):
+        rep.esquecer_curriculo("v1", "cv-teste")
+        self.analisar("v1")
+        rep._atualizar("v1", curriculo_gerado="cv-original", gerado_em="2026-11-19T10:00:00")
+        rep.esquecer_curriculo("v1", "cv-diferente")
+        self.assertEqual(rep.obter("v1")["curriculo_gerado"], "cv-original")
+        rep.esquecer_curriculo("v1", "cv-original")
+        self.assertIsNone(rep.obter("v1")["curriculo_gerado"])
+        self.assertIsNone(rep.obter("v1")["gerado_em"])
 
 
 if __name__ == "__main__":
