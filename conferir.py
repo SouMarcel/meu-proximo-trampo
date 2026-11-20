@@ -51,7 +51,8 @@ CABECALHOS_OUTROS = ("responsabilidades", "atividades", "atribuicoes", "benefici
                      "about", "perks", "we offer", "salario", "remuneracao", "what you will do", "what youll do",
                      "key responsibilities", "your responsibilities", "your role", "the role", "what we offer",
                      "why join", "why join us", "equal opportunity", "our benefits", "compensation", "o que voce vai fazer",
-                     "suas responsabilidades", "nossos beneficios", "o que oferecemos")
+                     "suas responsabilidades", "nossos beneficios", "o que oferecemos", "informacoes adicionais",
+                     "etapas do processo", "principais responsabilidades")
 FAMILIAS = [{"jira", "azure boards", "azure devops", "trello", "clickup", "asana"},
             {"power bi", "tableau", "looker", "metabase", "qlik", "data studio"},
             {"scrum", "kanban", "agil", "agile", "safe", "lean"},
@@ -305,9 +306,40 @@ def _conferir_datas(texto: str, perfil: str) -> list[dict]:
 
 _CABECALHOS = {" ".join(re.sub(r"[^a-z ]", "", c).split()) for c in CABECALHOS_REQ + CABECALHOS_OUTROS}
 
+# Texto achatado: a descrição chega numa linha só (Nerdin: itens " - " no meio e títulos com emoji; Gupy: os <p> da
+# API viram texto colado, "talentos!Somos", "atribuiçõesOrientação"). Só linhas longas são refeitas.
+LINHA_ACHATADA = 200
+PARAGRAFO = 120  # requisito mais longo que isso, com várias frases, é um parágrafo: uma frase por requisito
+_EMOJI = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B50-\u2B55\uFE0F\u200D]+")
+# títulos de seção que os portais escrevem sempre igual (os da Gupy e os da Nerdin), com maiúscula, no meio do texto
+_SECOES_COLADAS = re.compile(r"(Responsabilidades e atribuições|Requisitos e qualificações|Informações adicionais|"
+                             r"Etapas do processo|Principais responsabilidades|Diferenciais)")
+# "-Requisitos: Sólida experiência…", "-Desejáveis: Certificações…": título com dois-pontos no meio do parágrafo
+_SECAO_COM_DOIS_PONTOS = re.compile(r"(?:^|(?<=\s))-?\s?((?:Requisitos|Qualificações|Desejáveis|Diferenciais|"
+                                    r"Responsabilidades|Atividades|Atribuições|Benefícios)[^:.\n]{0,40}:)\s*")
+_COLADO = re.compile(r"([.!?:;)])(?=[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ])")  # "talentos!Somos", "um(a)Agile"; não "Node.JS"
+_FRASES = re.compile(r"(?<=[.;])(?<!\b[A-Z]\.)\s+(?=[A-ZÀ-ÖØ-Þ])")  # não corta abreviação ("U.S. Citizens")
+_ITEM_NA_LINHA = re.compile(r"\s+[-–•▪]\s+(?=[A-ZÀ-ÖØ-Þ0-9])")
+
+
+def _desachatar(texto: str) -> str:
+    """Devolve as quebras de linha de uma descrição gravada numa linha só; texto com linhas curtas não muda."""
+    saida = []
+    for linha in str(texto or "").splitlines():
+        if len(linha) > LINHA_ACHATADA:
+            itens = len(_ITEM_NA_LINHA.findall(linha))
+            linha = _EMOJI.sub("\n", linha)
+            linha = _SECOES_COLADAS.sub(r"\n\1\n", linha)
+            linha = _SECAO_COM_DOIS_PONTOS.sub(r"\n\1\n", linha)
+            linha = _COLADO.sub("\\1\n", linha)
+            if itens >= 3:  # "Requisitos - Scrum. - Jira. - Kanban."; um " - " solto ("Pleno - Remoto") fica
+                linha = _ITEM_NA_LINHA.sub("\n- ", linha)
+        saida.append(linha)
+    return "\n".join(saida)
+
 
 def requisitos_da_vaga(vaga: str) -> list[str]:
-    linhas = [l.strip() for l in str(vaga or "").splitlines()]
+    linhas = [l.strip() for l in _desachatar(vaga).splitlines()]
     reqs, dentro = [], False
     for l in linhas:
         if not l:
@@ -328,7 +360,9 @@ def requisitos_da_vaga(vaga: str) -> list[str]:
             dentro = False  # outra seção (benefícios, modelo de trabalho…): acabaram os requisitos
             continue
         if dentro:
-            reqs.append(re.sub(r"^(?:[\-*•·▪◦‣–]\s*|\d{1,2}[.)]\s+)+", "", l).strip())  # marcador ou "1." (não o "5+")
+            l = re.sub(r"^(?:[\-*•·▪◦‣–]\s*|\d{1,2}[.)]\s+)+", "", l).strip()  # marcador ou "1." (não o "5+")
+            # parágrafo longo de requisitos (texto achatado): uma frase por requisito
+            reqs.extend(_FRASES.split(l) if len(l) > PARAGRAFO else [l])
     if not reqs:  # sem cabeçalho: as linhas com marcador
         reqs = [re.sub(r"^[\-*•·▪◦‣–\s]+", "", l).strip() for l in linhas if re.match(r"^[\-*•·▪◦‣–]\s+", l)]
     return [r for r in reqs if termos(r)][:40]
