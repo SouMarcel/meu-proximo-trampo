@@ -100,6 +100,43 @@ class TestRequisitos(unittest.TestCase):
         reqs = conferir.requisitos_da_vaga("Venha trabalhar conosco.\n- SQL\n- Excel avançado\n")
         self.assertEqual(reqs, ["SQL", "Excel avançado"])
 
+    # Texto achatado (exemplos fictícios no formato de cada portal)
+    def test_vaga_numa_linha_com_itens_e_emoji(self):  # Nerdin
+        vaga = ("💼 Principais responsabilidades - Organizar o quadro do time. - Conduzir as reuniões semanais. "
+                "- Acompanhar os indicadores do time. 🎯 Requisitos e qualificações - Experiência com Trello. "
+                "- Conhecimento de Kanban. - Boa comunicação. ⭐ Diferenciais - Inglês intermediário")
+        self.assertEqual(conferir.requisitos_da_vaga(vaga),
+                         ["Experiência com Trello.", "Conhecimento de Kanban.", "Boa comunicação.", "Inglês intermediário"])
+
+    def test_vaga_com_secoes_coladas(self):  # Gupy
+        vaga = ("A Empresa Exemplo procura talentos!Buscamos um(a)Analista Pleno para o nosso time de operações, com "
+                "foco em melhoria contínua e atendimento.Responsabilidades e atribuiçõesOrganizar a fila de chamados do "
+                "time.Requisitos e qualificaçõesExperiência com Excel avançado.Vivência com JavaScript em planilhas."
+                "Informações adicionaisVale refeição e plano de saúde.")
+        self.assertEqual(conferir.requisitos_da_vaga(vaga),
+                         ["Experiência com Excel avançado.", "Vivência com JavaScript em planilhas."])
+
+    def test_paragrafo_com_titulo_e_dois_pontos(self):
+        vaga = ("Vaga para Analista Pleno, remoto, com contratação imediata e time distribuído pelo Brasil. "
+                "-Requisitos: Experiência com Excel avançado em controles financeiros. Vivência com Power BI em "
+                "relatórios gerenciais para a diretoria. Boa comunicação com as áreas de negócio e com fornecedores. "
+                "-Desejáveis: Inglês intermediário.")
+        self.assertEqual(conferir.requisitos_da_vaga(vaga),
+                         ["Experiência com Excel avançado em controles financeiros.",
+                          "Vivência com Power BI em relatórios gerenciais para a diretoria.",
+                          "Boa comunicação com as áreas de negócio e com fornecedores.", "Inglês intermediário."])
+
+    def test_paragrafo_nao_corta_abreviacao(self):
+        vaga = ("Requirements:\nThis role is open for U.S. Citizens living in any state of the country. Experience "
+                "with SQL. Strong written English for documentation and stakeholder updates.")
+        self.assertEqual(conferir.requisitos_da_vaga(vaga),
+                         ["This role is open for U.S. Citizens living in any state of the country.",
+                          "Experience with SQL.", "Strong written English for documentation and stakeholder updates."])
+
+    def test_linha_curta_nao_e_desachatada(self):
+        texto = "Analista Pleno - Remoto\nRequisitos:\n- JavaScript e TypeScript.Node\n- SQL"
+        self.assertEqual(conferir._desachatar(texto), texto)
+
 
 class TestATS(unittest.TestCase):
     def setUp(self):
