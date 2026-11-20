@@ -75,6 +75,32 @@ class TestFatos(unittest.TestCase):
         self.assertEqual(tipos, {"empresa", "cargo", "data"})
         self.assertEqual(conferir.conferir(c, PERFIL)["veredito"], "conferir")
 
+    def test_copiado_do_modelo_bloqueia(self):
+        # a IA copiou o projeto e o curso do exemplo fictício do modelo.json (aconteceu com um modelo gratuito)
+        c = cv(projetos=[{"nome": "Aplicativo de receitas (projeto pessoal)", "periodo": "2021",
+                          "descricao": "Fase de validação com 20 entrevistas; ainda sem código."}],
+               cursos=["Product Discovery – Curso Exemplo (2022, certificado de conclusão)"])
+        r = conferir.conferir(c, PERFIL)
+        self.assertEqual(r["veredito"], "bloquear")
+        modelo = [p for p in r["fatos"] if p["tipo"] == "modelo"]
+        self.assertEqual({p["nivel"] for p in modelo}, {"bloquear"})
+        self.assertTrue(any("receitas" in p["valor"] for p in modelo))
+        self.assertTrue(any("Curso Exemplo" in p["valor"] for p in modelo))
+        self.assertTrue({"projeto", "curso"} <= {p["tipo"] for p in r["fatos"]})
+
+    def test_competencia_do_modelo_so_para_conferir(self):
+        c = cv(competencias=[{"grupo": "Produto", "itens": ["SQL", "Histórias de usuário"]}])
+        pontos = conferir.conferir_fatos(c, PERFIL)
+        self.assertEqual([(p["tipo"], p["nivel"]) for p in pontos], [("modelo", "conferir")])
+        # o que está no perfil não é acusado, mesmo igual ao exemplo
+        self.assertEqual(conferir.conferir_fatos(c, PERFIL + "- Histórias de usuário — avançado\n"), [])
+
+    def test_projeto_e_curso_do_perfil_passam(self):
+        perfil = PERFIL + "## Projetos\n- Painel de vendas (pessoal)\n## Cursos\n- Python para Dados — Escola Delta\n"
+        c = cv(projetos=[{"nome": "Painel de vendas (projeto pessoal)", "descricao": "Consultas em SQL"}],
+               cursos=["Python para Dados – Escola Delta (concluído)"])
+        self.assertEqual(conferir.conferir_fatos(c, perfil), [])
+
 
 TAREFA = ["Responsável pelo backlog de 2 squads.", "Atua no suporte aos usuários do sistema.",
           "Participou das reuniões de planejamento.", "Facilitou as cerimônias do time.",

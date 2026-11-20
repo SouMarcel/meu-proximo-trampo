@@ -437,7 +437,8 @@ vaga e você troca o que quiser (`python curriculo.py --tecnicas` mostra o catá
 
 Antes de entregar, uma **conferência sem IA** (`python conferir.py curriculos/<nome>.json`,
 também rodada no fim de cada geração) dá o veredito ok, conferir ou bloquear: números, empresas,
-cargos e datas que não estão no seu perfil; cada requisito da vaga como tem, sustentado ou lacuna
+cargos, datas, projetos e cursos que não estão no seu perfil; texto copiado do exemplo fictício que a
+IA recebe para ver o formato; cada requisito da vaga como tem, sustentado ou lacuna
 (lacuna nunca vira competência); e problemas de ATS (tabelas, imagens, contato no cabeçalho,
 cobertura das palavras-chave). Número fora do perfil bloqueia a entrega até você confirmar ou
 tirar. Passou do limite de páginas, o gerador avisa e sugere o que cortar, sem encolher a fonte.
