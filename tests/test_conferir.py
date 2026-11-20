@@ -76,6 +76,51 @@ class TestFatos(unittest.TestCase):
         self.assertEqual(conferir.conferir(c, PERFIL)["veredito"], "conferir")
 
 
+TAREFA = ["Responsável pelo backlog de 2 squads.", "Atua no suporte aos usuários do sistema.",
+          "Participou das reuniões de planejamento.", "Facilitou as cerimônias do time.",
+          "Auxiliou a equipe no atendimento.", "Apoiou a migração dos relatórios.",
+          "Responsible for the release notes.", "Assisted users with the reports.",
+          "Manutenção dos painéis da diretoria.", "Elaboração de relatórios semanais."]
+RESULTADO = ["Reduziu o tempo de fechamento de 10 para 6 dias.",
+             "Negociou um prazo novo com a área, o que permitiu entregar a versão.",
+             "Atendimento de 15 a 20 solicitações por dia.", "Automatizou a carga, reduzindo erros manuais.",
+             "Treinou 30 pessoas no novo sistema.", "Evitando retrabalho, organizou a fila de pedidos.",
+             "Migrou 5 painéis para a nuvem.", "Aumentou a adesão ao novo processo.",
+             "Liderou 3 projetos entregues no prazo.", "Garantiu a entrega da versão sem falhas."]
+
+
+def cv_com_itens(itens):
+    return cv(experiencia=[{"empresa": "Empresa Alfa", "periodo": "03/2021 – atual",
+                            "cargos": [{"cargo": "Analista", "itens": itens}]}])
+
+
+class TestItensDeTarefa(unittest.TestCase):
+    def test_classifica_20_itens(self):
+        acertos = sum(conferir.item_de_tarefa(i) for i in TAREFA) + sum(not conferir.item_de_tarefa(i) for i in RESULTADO)
+        self.assertGreaterEqual(acertos, 18)
+
+    def test_quatro_de_dez(self):
+        pontos = conferir.itens_de_tarefa(cv_com_itens(TAREFA[:4] + RESULTADO[:6]))
+        self.assertEqual(pontos[0]["tipo"], "tarefa")
+        self.assertEqual(pontos[0]["valor"], "4 de 10")
+        self.assertEqual(sum(p["tipo"] == "tarefa_item" for p in pontos), 4)
+
+    def test_no_maximo_oito_itens(self):
+        pontos = conferir.itens_de_tarefa(cv_com_itens(TAREFA + TAREFA[:2]))
+        self.assertEqual(len(pontos), 9)
+        self.assertEqual(sum(p["tipo"] == "tarefa_item" for p in pontos), 8)
+
+    def test_cv_padrao_um_de_tres(self):
+        pontos = conferir.itens_de_tarefa(cv())
+        self.assertEqual(pontos[0]["valor"], "1 de 3")
+
+    def test_todos_com_resultado(self):
+        self.assertEqual(conferir.itens_de_tarefa(cv_com_itens(RESULTADO)), [])
+
+    def test_veredito_conferir_nunca_bloquear(self):
+        self.assertEqual(conferir.conferir(cv(), PERFIL)["veredito"], "conferir")
+
+
 class TestRequisitos(unittest.TestCase):
     def test_tem_sustentado_lacuna_e_cobertura(self):
         reqs, cob, lacunas = conferir.conferir_requisitos(cv(), PERFIL, VAGA)

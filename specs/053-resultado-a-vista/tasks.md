@@ -20,8 +20,8 @@ Rodam uma depois da outra, porque mexem nos mesmos arquivos (`conferir.py` e `te
 
 - [X] T001 [D minor] [US2] Avisos de contato sem e-mail e, no formato Brasil, sem telefone (D2), em
   `conferir.conferir_ats`. Testes em `tests/test_conferir.py`. → agy, GO na tentativa 1
-- [ ] T002 [D minor] [US2] `conferir.itens_de_tarefa(cv)` e os pontos "N de M itens…" em `conferir()` (D3). Testes
-  com 20 itens fictícios marcados à mão em `tests/test_conferir.py`.
+- [X] T002 [D minor] [US2] `conferir.itens_de_tarefa(cv)` e os pontos "N de M itens…" em `conferir()` (D3). Testes
+  com 20 itens fictícios marcados à mão em `tests/test_conferir.py`. → copilot, GO na tentativa 1
 - [ ] T003 [D minor] [US4] `avaliar_requisitos`: "em preparação" não conta como "tem" (D4) e requisito de vários
   idiomas com um faltando sai "lacuna" (D5). Testes em `tests/test_conferir.py`.
 - [ ] T004 [D minor] [US3] Confissão de lacuna em `conferir_carta` e `conferir_respostas` (D6). Testes em

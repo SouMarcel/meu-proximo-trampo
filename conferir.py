@@ -127,6 +127,40 @@ def trechos(cv: dict) -> list[tuple[str, str]]:
     return [(s, t) for s, t in out if t.strip()]
 
 
+VAGAS_INICIO = ("responsavel por", "responsavel pelo", "responsavel pela", "atua ", "atuou ", "atuando ",
+                "auxiliou", "auxilio", "apoiou", "participou", "participacao", "suporte a", "responsible for",
+                "assisted", "helped", "participated", "worked on", "involved in")
+MARCAS_EFEITO = ("o que permitiu", "permitindo", "reduzindo", "reduziu", "aumentando", "aumentou", "resultando",
+                 "resultou", "garantindo", "garantiu", "o que levou", "evitando", "viabilizando", "which enabled",
+                 "resulting in", "reducing", "increasing", "leading to", "enabling")
+
+
+def item_de_tarefa(item: str) -> bool:
+    """Item que descreve tarefa, sem resultado: começa como atribuição ou não tem número nem efeito."""
+    n = norm(item).strip()
+    if n.startswith(VAGAS_INICIO):
+        return True
+    return not re.search(r"\d", n) and not any(m in n for m in MARCAS_EFEITO)
+
+
+def itens_de_tarefa(cv: dict) -> list[dict]:
+    """Pontos 'conferir' para os itens das experiências que só descrevem tarefa."""
+    itens: list[str] = []
+    for emp in _lista(cv.get("experiencia")):
+        for c in emp.get("cargos") or [{"itens": emp.get("itens")}]:
+            itens += [str(i) for i in _lista(c.get("itens")) if str(i).strip()]
+    tarefas = [i for i in itens if item_de_tarefa(i)]
+    if not tarefas:
+        return []
+    n, m = len(tarefas), len(itens)
+    pontos = [{"tipo": "tarefa", "nivel": "conferir", "valor": f"{n} de {m}", "trecho": "",
+               "mensagem": f"{n} de {m} itens das experiências descrevem tarefa, sem resultado: "
+                           "se houver um resultado, conte-o (vira relato)"}]
+    pontos += [{"tipo": "tarefa_item", "nivel": "conferir", "valor": i[:160], "trecho": i[:160],
+                "mensagem": "item só de tarefa"} for i in tarefas[:8]]
+    return pontos
+
+
 # ---------------------------------------------------------------- números e datas
 
 DATA = re.compile(r"\b(\d{1,2})\s*/\s*(\d{4})\b|\b(\d{4})\s*-\s*(\d{1,2})\b|\b([a-zç]{3})[a-zç]*\.?\s*(?:de\s+)?/?\s*(\d{4})\b", re.I)
@@ -417,7 +451,7 @@ def conferir_ats(cv: dict, docx: Path | None) -> list[dict]:
 # ---------------------------------------------------------------- tudo junto
 
 def conferir(cv: dict, perfil: str, vaga: str | None = None, docx: Path | None = None) -> dict:
-    fatos = conferir_fatos(cv, perfil or "")
+    fatos = conferir_fatos(cv, perfil or "") + itens_de_tarefa(cv)
     requisitos, cobertura, lacunas = conferir_requisitos(cv, perfil or "", vaga) if vaga else ([], None, [])
     ats = conferir_ats(cv, docx)
     todos = fatos + lacunas + ats
