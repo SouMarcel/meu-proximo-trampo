@@ -68,6 +68,9 @@ priorizado.
   específica ("quantas pessoas?", "o que mudou depois?", "qual medida mostra isso?"). A resposta vira relato (spec
   035) e vai ao perfil pela revisão item a item (spec 050). Sem sugerir métrica nem reescrever o item com verbo mais
   forte: só pergunta o que a pessoa pode contar.
+- **Marcar como visto** (pedido do usuário em 2026-11-20): na conferência do currículo, um ponto "conferir" que a
+  pessoa já leu e aceitou pode ser marcado como visto e sai da lista daquele currículo. Só vale para "conferir";
+  "não pronto" continua bloqueando até a correção.
 
 ## Faixa salarial (spec 028)
 

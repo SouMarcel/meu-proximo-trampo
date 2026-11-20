@@ -38,5 +38,5 @@ Rodam uma depois da outra, porque mexem nos mesmos arquivos (`conferir.py` e `te
 
 ## Phase 3: Fechamento (eu)
 
-- [ ] T008 Suíte inteira verde; merge na branch pessoal; dashboard reiniciado; teste do usuário (currículo base e
+- [X] T008 Suíte inteira verde; merge na branch pessoal; dashboard reiniciado; teste do usuário (currículo base e
   carta de uma vaga com diferencial que o perfil não tem).
