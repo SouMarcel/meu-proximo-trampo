@@ -269,5 +269,37 @@ class TestATS(unittest.TestCase):
         self.assertLess(time.time() - inicio, 5)
 
 
+class TestConfissoes(unittest.TestCase):
+    def test_acha_so_a_frase_que_confessa(self):
+        r = conferir.confissoes("Tenho 5 anos com Scrum. Sendo transparente: não tenho a certificação X.")
+        self.assertEqual(r, ["Sendo transparente: não tenho a certificação X"])
+
+    def test_ingles_com_apostrofo_reto_e_curvo(self):
+        self.assertEqual(len(conferir.confissoes("I don't have the certification yet.")), 1)
+        self.assertEqual(len(conferir.confissoes("I don’t have the certification yet.")), 1)
+
+    def test_frase_longa_tambem_conta(self):
+        frase = ("Sendo transparente com vocês sobre a minha trajetória até aqui e sobre o que a vaga descreve, "
+                 "não tenho a certificação X nem a ferramenta Y, mas trabalho com as equivalentes há anos")
+        r = conferir.confissoes(frase + ".")
+        self.assertEqual(r, [frase[:160]])
+
+    def test_sem_confissao(self):
+        self.assertEqual(conferir.confissoes("Trabalho com Scrum há anos."), [])
+
+    def test_carta_ganha_ponto_de_confissao(self):
+        r = conferir.conferir_carta("Trabalho com Scrum. Não tenho a certificação X.", "Scrum")
+        pts = [p for p in r["pontos"] if p["tipo"] == "confissao"]
+        self.assertEqual(len(pts), 1)
+        self.assertEqual(pts[0]["nivel"], "conferir")
+
+    def test_so_resposta_da_ia_ganha_mensagem(self):
+        itens = [{"resposta": "Não tenho a certificação X."},
+                 {"resposta": "Não tenho a certificação X.", "da_pessoa": True}]
+        r = conferir.conferir_respostas(itens, "perfil")
+        self.assertTrue(any("confessa uma falta" in m for m in r[0]["conferir"]))
+        self.assertEqual(r[1]["conferir"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

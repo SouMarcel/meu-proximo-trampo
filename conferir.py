@@ -499,6 +499,26 @@ EXPRESSOES_VAZIAS = (
     "passionate about", "think outside the box", "fast-paced environment", "go-getter", "hard worker",
     "results-driven", "dynamic environment", "i believe i would be a great fit", "perfect fit",
 )
+CONFISSOES = ("nao tenho", "nao possuo", "ainda nao tenho", "ainda nao possuo", "nao sou certificad", "nao conto com",
+              "i don't have", "i do not have", "i lack", "i am not certified", "i'm not certified")
+
+
+def _sem_apostrofo(texto: str) -> str:
+    # norm troca o apóstrofo curvo por espaço; o reto fica: igualar os dois
+    return re.sub(r"\s+", " ", norm(texto).replace("'", " ")).strip()
+
+
+def confissoes(texto: str) -> list[str]:
+    """Frases em que o texto confessa uma falta, em português ou inglês (cada uma cortada em 160 caracteres)."""
+    alvos = [_sem_apostrofo(c) for c in CONFISSOES]
+    achadas = []
+    for frase in re.split(r"[.!?\n]+", str(texto or "")):
+        frase = frase.strip()
+        if frase and any(c in _sem_apostrofo(frase) for c in alvos):
+            achadas.append(frase[:160])
+    return achadas
+
+
 NOMES_COMUNS = {
     "i", "i'm", "i've", "i'd", "i'll", "dear", "hiring", "manager", "team", "sincerely", "regards", "best", "thank",
     "thanks", "hello", "hi", "prezado", "prezada", "prezados", "atenciosamente", "obrigado", "obrigada", "ola",
@@ -590,6 +610,9 @@ def conferir_carta(carta: str, perfil: str, vaga: str = "", empresa: str = "", r
         if _contem(carta_n, norm(e)):
             pontos.append({"tipo": "vazia", "valor": e, "nivel": "conferir",
                            "mensagem": "expressão vazia; troque por um fato do perfil"})
+    for frase in confissoes(carta):
+        pontos.append({"tipo": "confissao", "valor": frase, "nivel": "conferir",
+                       "mensagem": "a carta confessa uma falta: tire, a menos que a vaga exija esse ponto"})
     referencia = norm(f"{perfil} {vaga} {empresa} {respostas_txt}")
     for nome in _nomes_proprios(carta):
         if not _contem(referencia, norm(nome)):
@@ -605,7 +628,10 @@ def conferir_respostas(itens: list[dict], perfil: str) -> list[dict]:
     saida = []
     for i in itens:
         pontos = [] if i.get("da_pessoa") or not i.get("resposta") else _fatos_do_texto(i["resposta"], perfil or "", "conferir")
-        saida.append({**i, "conferir": [p["mensagem"] + (f": {p['valor']}" if p["valor"] else "") for p in pontos]})
+        msgs = [p["mensagem"] + (f": {p['valor']}" if p["valor"] else "") for p in pontos]
+        if not i.get("da_pessoa") and i.get("resposta"):
+            msgs += [f"confessa uma falta: tire, a menos que a pergunta peça: {f}" for f in confissoes(i["resposta"])]
+        saida.append({**i, "conferir": msgs})
     return saida
 
 

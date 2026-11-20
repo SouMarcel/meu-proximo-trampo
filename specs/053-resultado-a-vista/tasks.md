@@ -25,8 +25,8 @@ Rodam uma depois da outra, porque mexem nos mesmos arquivos (`conferir.py` e `te
 - [X] T003 [D minor] [US4] `avaliar_requisitos`: "em preparação" não conta como "tem" (D4) e requisito de vários
   idiomas com um faltando sai "lacuna" (D5). Testes em `tests/test_conferir.py`. → agy, GO na tentativa 1 (marca só
   entre parênteses: ajuste meu depois do teste com perfil real)
-- [ ] T004 [D minor] [US3] Confissão de lacuna em `conferir_carta` e `conferir_respostas` (D6). Testes em
-  `tests/test_conferir.py`.
+- [X] T004 [D minor] [US3] Confissão de lacuna em `conferir_carta` e `conferir_respostas` (D6). Testes em
+  `tests/test_conferir.py`. → copilot, GO na tentativa 1 (frase longa: ajuste meu)
 
 ## Phase 2: Instruções e documentação (eu)
 
