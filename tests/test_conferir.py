@@ -146,6 +146,66 @@ class TestRequisitos(unittest.TestCase):
         self.assertEqual(reqs, ["SQL", "Excel avançado"])
 
 
+class TestRequisitosConservadores(unittest.TestCase):
+    def test_certificacao_em_preparacao_vira_sustentado(self):
+        perfil = (
+            "## Experiência\n"
+            "- Atuação com metodologia ágil no time\n"
+            "- Facilitação de cerimônias ágil e promoção de práticas de desenvolvimento ágil\n"
+            "## Certificações\n"
+            "- Certificação Ágil Avançada (em preparação)\n"
+        )
+        vaga = "Requisitos:\n- Certificação Ágil Avançada\n"
+        reqs = conferir.avaliar_requisitos(perfil, vaga)
+        self.assertEqual(len(reqs), 1)
+        self.assertEqual(reqs[0]["situacao"], "sustentado")
+        self.assertTrue(reqs[0]["evidencia"].startswith("em preparação:"))
+
+    def test_andamento_fora_dos_parenteses_nao_conta(self):
+        perfil = ("## Experiência\n- Usa o quadro do time para ver o que está em andamento e o que falta\n"
+                  "## Formação\n- Pós em Gestão de Projetos (2025–2026, em andamento)\n")
+        vaga = "Requisitos:\n- Quadro do time\n- Pós em Gestão de Projetos\n"
+        sit = {r["texto"]: r["situacao"] for r in conferir.avaliar_requisitos(perfil, vaga)}
+        self.assertEqual(sit["Quadro do time"], "tem")
+        self.assertEqual(sit["Pós em Gestão de Projetos"], "sustentado")
+
+    def test_certificacao_sem_em_preparacao_sai_tem(self):
+        perfil = (
+            "## Experiência\n"
+            "- Atuação com metodologia ágil no time\n"
+            "- Facilitação de cerimônias ágil e promoção de práticas de desenvolvimento ágil\n"
+            "## Certificações\n"
+            "- Certificação Ágil Avançada\n"
+        )
+        vaga = "Requisitos:\n- Certificação Ágil Avançada\n"
+        reqs = conferir.avaliar_requisitos(perfil, vaga)
+        self.assertEqual(len(reqs), 1)
+        self.assertEqual(reqs[0]["situacao"], "tem")
+
+    def test_dois_idiomas_com_um_faltando_sai_lacuna(self):
+        perfil = (
+            "## Idiomas\n"
+            "- Inglês — avançado\n"
+        )
+        vaga = "Requisitos:\n- Inglês e Espanhol\n"
+        reqs = conferir.avaliar_requisitos(perfil, vaga)
+        self.assertEqual(len(reqs), 1)
+        self.assertEqual(reqs[0]["situacao"], "lacuna")
+        self.assertEqual(reqs[0]["evidencia"], "falta: Espanhol")
+
+    def test_dois_idiomas_com_ambos_presentes_nao_sai_lacuna(self):
+        perfil = (
+            "## Idiomas\n"
+            "- Inglês — avançado\n"
+            "- Espanhol — intermediário\n"
+        )
+        vaga = "Requisitos:\n- Inglês e Espanhol\n"
+        reqs = conferir.avaliar_requisitos(perfil, vaga)
+        self.assertEqual(len(reqs), 1)
+        self.assertNotEqual(reqs[0]["situacao"], "lacuna")
+        self.assertEqual(reqs[0]["situacao"], "tem")
+
+
 class TestATS(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())

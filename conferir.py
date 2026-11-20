@@ -73,6 +73,11 @@ NUMEROS_PALAVRAS = {"um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "quatro"
                     "ninety": 90, "hundred": 100}
 DADOS_PESSOAIS = re.compile(r"\b(nascimento|nascid[oa]|born|date of birth|casad[oa]|solteir[oa]|married|single|"
                             r"estado civil|marital|nacionalidade|nationality|cpf|rg|ssn|idade|age|anos de idade)\b", re.I)
+ANDAMENTO = ("em preparacao", "em andamento", "cursando", "estudando", "nao concluid", "in progress",
+             "preparing", "ongoing")
+IDIOMAS = {"Inglês": ("ingles", "english"), "Espanhol": ("espanhol", "spanish"), "Francês": ("frances", "french"),
+           "Alemão": ("alemao", "german"), "Italiano": ("italiano", "italian"),
+           "Mandarim": ("mandarim", "chines", "mandarin", "chinese"), "Japonês": ("japones", "japanese")}
 
 
 def norm(texto) -> str:
@@ -93,6 +98,12 @@ def termos(texto: str) -> list[str]:
 
 def _contem(base_norm: str, termo: str) -> bool:
     return re.search(r"(?<![a-z0-9])" + re.escape(termo) + r"(?![a-z0-9])", base_norm) is not None
+
+
+def _em_andamento(linha: str) -> bool:
+    """Item do perfil marcado como não concluído, entre parênteses: "PSM I (em preparação)", "(2025–2026, em
+    andamento)". Fora dos parênteses ("acompanhar o que está em andamento") não conta."""
+    return any(m in norm(p) for p in re.findall(r"\(([^)]*)\)", linha) for m in ANDAMENTO)
 
 
 # ---------------------------------------------------------------- texto do currículo
@@ -341,9 +352,10 @@ def avaliar_requisitos(perfil: str, vaga: str) -> list[dict]:
     linhas_perfil = [l for l in str(perfil).splitlines() if l.strip()]
     saida = []
     for req in requisitos_da_vaga(vaga):
+        req_n = norm(req)
         ts = termos(req)
         achados = [t for t in ts if _contem(perfil_n, t)]
-        equivalente = _familia(norm(req), perfil_n)
+        equivalente = _familia(req_n, perfil_n)
         if len(achados) / len(ts) >= 0.6:
             situacao = "tem"
         elif achados or equivalente:
@@ -356,6 +368,22 @@ def avaliar_requisitos(perfil: str, vaga: str) -> list[dict]:
         elif equivalente:
             linha = next((l.strip() for l in linhas_perfil if _contem(norm(l), equivalente)), "")
             evid = f"equivalente no perfil: {equivalente}" + (f" ({linha[:140]})" if linha else "")
+
+        if situacao == "tem":
+            for t in achados:
+                linhas_t = [l for l in linhas_perfil if _contem(norm(l), t)]
+                if linhas_t and all(_em_andamento(l) for l in linhas_t):
+                    situacao = "sustentado"
+                    evid = "em preparação: " + linhas_t[0].strip()[:140]
+                    break
+
+        citados = [nome for nome, sins in IDIOMAS.items() if any(_contem(req_n, s) for s in sins)]
+        if len(citados) >= 2:
+            faltam = [nome for nome in citados if not any(_contem(perfil_n, s) for s in IDIOMAS[nome])]
+            if faltam:
+                situacao = "lacuna"
+                evid = "falta: " + ", ".join(faltam)
+
         saida.append({"texto": req[:200], "situacao": situacao, "evidencia": evid, "termos": ts, "achados": achados})
     return saida
 
