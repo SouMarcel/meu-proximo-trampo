@@ -365,6 +365,13 @@ def conferir_ats(cv: dict, docx: Path | None) -> list[dict]:
     contato = [str(c) for c in _lista(cv.get("contato"))]
     if not contato:
         pontos.append({"nivel": "conferir", "mensagem": "sem contato no currículo", "trecho": ""})
+    else:
+        if not any(re.search(r"[^@\s]+@[^@\s]+\.[A-Za-z]{2,}", c) for c in contato):
+            pontos.append({"nivel": "conferir", "tipo": "contato", "trecho": "",
+                           "mensagem": "o contato não tem e-mail: recrutadores respondem por e-mail"})
+        if formato == "br" and not any(sum(1 for ch in c if ch.isdigit()) >= 8 for c in contato):
+            pontos.append({"nivel": "conferir", "tipo": "contato", "trecho": "",
+                           "mensagem": "o contato não tem telefone: no Brasil, recrutadores costumam ligar ou chamar no WhatsApp"})
     if formato == "us":
         for c in contato:
             if DADOS_PESSOAIS.search(c) or re.search(r"\d{3}\.?\d{3}\.?\d{3}-?\d{2}", c):

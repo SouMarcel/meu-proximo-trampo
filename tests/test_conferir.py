@@ -129,6 +129,35 @@ class TestATS(unittest.TestCase):
         self.assertEqual([p["nivel"] for p in pontos], ["bloquear"])
         self.assertEqual(conferir.conferir_ats(cv(), caminho), [])
 
+    def test_contato_sem_email(self):
+        c = cv(contato=["São Paulo, SP", "linkedin.com/in/exemplo"])
+        pontos = [p for p in conferir.conferir_ats(c, None) if p.get("tipo") == "contato"]
+        self.assertEqual(len(pontos), 1)
+        self.assertEqual(pontos[0]["nivel"], "conferir")
+        self.assertEqual(pontos[0]["mensagem"], "o contato não tem e-mail: recrutadores respondem por e-mail")
+
+    def test_contato_br_sem_telefone(self):
+        c = cv(contato=["ana@exemplo.com"], tecnicas={"formato": "br"})
+        pontos = [p for p in conferir.conferir_ats(c, None) if p.get("tipo") == "contato"]
+        self.assertEqual(len(pontos), 1)
+        self.assertEqual(pontos[0]["nivel"], "conferir")
+        self.assertEqual(pontos[0]["mensagem"], "o contato não tem telefone: no Brasil, recrutadores costumam ligar ou chamar no WhatsApp")
+
+    def test_contato_br_completo(self):
+        c = cv(contato=["ana@exemplo.com", "+55 11 90000-0000"], tecnicas={"formato": "br"})
+        pontos = [p for p in conferir.conferir_ats(c, None) if p.get("tipo") == "contato"]
+        self.assertEqual(pontos, [])
+
+    def test_contato_us_sem_telefone(self):
+        c = cv(contato=["ana@exemplo.com"], tecnicas={"formato": "us"})
+        pontos = [p for p in conferir.conferir_ats(c, None) if p.get("tipo") == "contato"]
+        self.assertEqual(pontos, [])
+
+    def test_contato_vazio(self):
+        c = cv(contato=[])
+        pontos = [p for p in conferir.conferir_ats(c, None) if p.get("tipo") == "contato"]
+        self.assertEqual(pontos, [])
+
     def test_rapido(self):
         inicio = time.time()
         conferir.conferir(cv(), PERFIL * 20, VAGA * 10)
