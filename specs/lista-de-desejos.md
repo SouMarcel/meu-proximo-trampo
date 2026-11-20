@@ -62,6 +62,13 @@ priorizado.
   Nos dois, sem dependência obrigatória e com a mesma saída de `ocr.ler_pdf`.
 - **Imagem solta** (JPG, PNG) como material: a mesma leitura do OCR, sem precisar converter em PDF.
 
+## Currículo com resultado (spec 053)
+
+- **Caça de números**: para cada item que a conferência marca como só de tarefa, a página faz uma pergunta curta e
+  específica ("quantas pessoas?", "o que mudou depois?", "qual medida mostra isso?"). A resposta vira relato (spec
+  035) e vai ao perfil pela revisão item a item (spec 050). Sem sugerir métrica nem reescrever o item com verbo mais
+  forte: só pergunta o que a pessoa pode contar.
+
 ## Faixa salarial (spec 028)
 
 - **Novo CAGED** (dado oficial: salário de admissão por ocupação e estado): os microdados são arquivos mensais

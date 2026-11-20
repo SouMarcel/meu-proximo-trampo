@@ -62,8 +62,8 @@ por expressão vaga.
 andamento", "cursando", "estudando", "nao concluid", "in progress", "preparing", "ongoing"), comparado em `norm()`.
 Para cada termo achado, ver se **todas** as linhas do perfil que o contêm têm marca de andamento. Se algum termo
 achado só aparece em linha com marca, e a situação seria "tem", ela vira "sustentado", e a evidência passa a ser
-`"em preparação: " + <essa linha[:140]>`. Assim, "Certificações (CSM, PSM ou equivalentes)" contra "Scrum Master…" e
-"PSM I (em preparação)" sai "sustentado" (o "psm" só existe na linha em preparação).
+`"em preparação: " + <essa linha[:140]>`. Assim, "Certificação X ou equivalente" contra um perfil que cita a área de
+X em vários cargos e "Certificação X (em preparação)" sai "sustentado" (o "x" só existe na linha em preparação).
 
 **D5. Vários idiomas** (`conferir.avaliar_requisitos`): IDIOMAS = {"Inglês": ("ingles", "english"), "Espanhol":
 ("espanhol", "spanish"), "Francês": ("frances", "french"), "Alemão": ("alemao", "german"), "Italiano": ("italiano",

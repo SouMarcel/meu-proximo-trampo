@@ -30,10 +30,10 @@ Rodam uma depois da outra, porque mexem nos mesmos arquivos (`conferir.py` e `te
 
 ## Phase 2: Instruções e documentação (eu)
 
-- [ ] T005 [US1] Guia de técnicas com resultado primeiro e exemplo do `modelo.json` sem expressão vaga (D1), em
+- [X] T005 [US1] Guia de técnicas com resultado primeiro e exemplo do `modelo.json` sem expressão vaga (D1), em
   `.agents/skills/gerar-curriculo/`, depois `python sincronizar_skills.py`.
-- [ ] T006 [US3] `REGRA_FALTAS` nos pedidos da carta, do Verificar e das respostas (D7), em `candidatura_ia.py`.
-- [ ] T007 Documentação (D8): `dash/API.md` (pontos novos da conferência) e `specs/lista-de-desejos.md` ("caça de
+- [X] T006 [US3] `REGRA_FALTAS` nos pedidos da carta, do Verificar e das respostas (D7), em `candidatura_ia.py`.
+- [X] T007 Documentação (D8): `dash/API.md` (pontos novos da conferência) e `specs/lista-de-desejos.md` ("caça de
   números").
 
 ## Phase 3: Fechamento (eu)

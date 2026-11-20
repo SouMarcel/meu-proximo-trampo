@@ -15,6 +15,15 @@ Expressões vazias a evitar: "responsável por", "atuação em", "auxílio em", 
 "proativo", "trabalho em equipe", "comunicação assertiva", "orientado a resultados", "hands-on",
 "results-driven", "team player", "go-getter". Troque pelo que foi feito.
 
+**Resultado à vista (vale sempre):** em cada experiência, os itens com resultado confirmado (número,
+percentual, valor ou efeito escrito no perfil ou nos relatos, como "o que permitiu encerrar os cards")
+vêm primeiro; os que só descrevem tarefa vêm depois. Só a ordem muda: o texto do fato fica como está,
+sem verbo mais forte nem resultado que a pessoa não contou. A conferência mostra quantos itens ficaram
+só de tarefa, para a pessoa contar um resultado, se houver.
+
+Ressalva do perfil fica no texto: "sem grandes impactos", "cerca de", "~" e "em preparação" não somem
+na reescrita.
+
 ## ATS
 
 - Títulos de seção padrão (o motor já usa); contato no corpo; sem tabelas, colunas, imagens ou
@@ -30,7 +39,8 @@ Expressões vazias a evitar: "responsável por", "atuação em", "auxílio em", 
 - Escolha o cargo ou a carreira-alvo e ordene: experiências e itens que mais servem ao alvo
   primeiro; o que não serve fica curto ou sai.
 - Seção `destaques` (até 3 itens) logo depois do resumo: as três provas mais fortes para o alvo, cada
-  uma rastreável até um fato confirmado.
+  uma rastreável até um fato confirmado. Prefira os itens com número ligados ao alvo; item só de tarefa
+  entra nos destaques apenas se não houver prova com resultado.
 - Nunca mude o que foi feito para "caber" no alvo; mude só o que aparece primeiro.
 
 ## XYZ (estilo Google)
@@ -39,7 +49,7 @@ Expressões vazias a evitar: "responsável por", "atuação em", "auxílio em", 
 confirmado, escreva X e Z sem medida e pergunte se há uma medida; nunca estime ("cerca de", "mais de")
 sem que a pessoa tenha dito. Exemplo com fato confirmado: "Reduzi o fechamento mensal de 10 para 6
 dias automatizando o relatório em Python." Sem medida: "Automatizei o relatório do fechamento mensal
-em Python, o que acelerou a entrega à diretoria."
+em Python, o que acelerou a entrega à diretoria." Em cada experiência, os itens com medida vêm antes.
 
 ## Resultado primeiro
 

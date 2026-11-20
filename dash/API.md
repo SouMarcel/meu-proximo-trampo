@@ -548,6 +548,13 @@ texto}], cobertura: {achadas, total, faltando}|null}, pronto, ia, criado_em, rep
 tentativas}}` (curriculo_ia.py; conferir.py:380-387). Acima do limite no fim, `conferencia.ats` ganha um ponto
 `{nivel: "conferir", trecho: "N páginas", mensagem}` e o veredito "ok" vira "conferir" (spec 051). Com `paginas: 0`,
 `acima_do_limite` é sempre false.
+Spec 053, todos no nível "conferir" (a página já mostra `fatos` e `ats` numa lista só): `conferencia.ats` ganha
+`{tipo: "contato", mensagem}` quando o contato não tem e-mail e, no formato `br`, quando não tem telefone;
+`conferencia.fatos` ganha `{tipo: "tarefa", valor: "N de M", mensagem}` quando há itens das experiências só de tarefa
+(sem número nem marca de efeito, ou começando por expressão vaga), seguido de até 8 `{tipo: "tarefa_item", valor,
+trecho, mensagem}`. Em `requisitos`, item do perfil marcado entre parênteses como em preparação ou em andamento não
+conta como "tem" (sai "sustentado", evidência "em preparação: …"), e requisito com dois ou mais idiomas e um faltando
+sai "lacuna" (evidência "falta: …").
 Os links de download são `/arquivos/curriculos/{arquivos.pdf|docx}`.
 
 **`DELETE /api/curriculo/{nome}`** **[local]** — a lixeira de um currículo da lista (spec 052). Apaga o `.json`, o
@@ -660,7 +667,10 @@ relato e, com `guardar_relatos`, fica em `dash/dados/relatos.json` (a carta pron
 A carta vende a pessoa no primeiro parágrafo, com foco no problema da empresa que ela ajuda a resolver, em formato que
 o ATS lê. O pedido leva as palavras-chave da vaga que o perfil sustenta (`conferir.avaliar_requisitos`); a conferência
 da carta traz `palavras_chave: {citadas, total, faltando}` e aponta quando a carta usa menos da metade delas. 202 =
-estado de geração (§3.8).
+estado de geração (§3.8). Spec 053: o pedido proíbe citar diferencial que o perfil não tem e confessar falta; a
+conferência da carta ganha um ponto `{tipo: "confissao", valor: <frase>, nivel: "conferir"}` para cada frase com "não
+tenho", "não possuo", "I don't have" e parecidas, e a das respostas da IA (não as da pessoa) acrescenta a mensagem
+"confessa uma falta…" em `conferir`.
 
 A carta segue o padrão da spec 035 (US7): o corpo vem da IA (saudação, introdução com a vaga, "a vaga pede…",
 "a vaga também destaca…", base técnica e fechamento), e o cabeçalho e a despedida vêm dos dados de contato salvos

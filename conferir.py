@@ -101,7 +101,7 @@ def _contem(base_norm: str, termo: str) -> bool:
 
 
 def _em_andamento(linha: str) -> bool:
-    """Item do perfil marcado como não concluído, entre parênteses: "PSM I (em preparação)", "(2025–2026, em
+    """Item do perfil marcado como não concluído, entre parênteses: "Certificação X (em preparação)", "(2025–2026, em
     andamento)". Fora dos parênteses ("acompanhar o que está em andamento") não conta."""
     return any(m in norm(p) for p in re.findall(r"\(([^)]*)\)", linha) for m in ANDAMENTO)
 

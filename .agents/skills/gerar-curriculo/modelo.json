@@ -5,7 +5,7 @@
   "titulo": "Product Owner | Discovery, backlog e métricas de produto",
   "contato": ["São Paulo, SP", "ana.exemplo@email.com", "(11) 90000-0000", "linkedin.com/in/ana-exemplo"],
   "resumo": "Product Owner com 4 anos em produtos digitais de varejo, responsável pelo backlog de 2 squads e pela priorização com base em dados de uso. Conduziu o discovery que levou a nova jornada de checkout ao ar e acompanha conversão, NPS e lead time com o time.",
-  "destaques": ["Conduziu o discovery da nova jornada de checkout, do problema ao lançamento.", "Responsável pelo backlog de 2 squads (14 pessoas) do checkout e da área logada."],
+  "destaques": ["Conduziu o discovery da nova jornada de checkout com 12 entrevistas; a versão final reduziu o abandono do carrinho.", "Prioriza o backlog de 2 squads (14 pessoas) do checkout e da área logada com base em dados de uso."],
   "competencias": [
     {"grupo": "Produto", "itens": ["Discovery", "Gestão de backlog", "Priorização (RICE)", "Histórias de usuário", "OKRs"]},
     {"grupo": "Agilidade", "itens": ["Scrum", "Kanban", "Métricas de fluxo"]},
@@ -21,8 +21,8 @@
           "cargo": "Product Owner",
           "periodo": "jan/2023 – atual",
           "itens": [
-            "Responsável pelo backlog de 2 squads (14 pessoas) do checkout e da área logada.",
             "Conduziu o discovery da nova jornada de checkout com 12 entrevistas e testes de protótipo; a versão final reduziu o abandono do carrinho.",
+            "Prioriza o backlog de 2 squads (14 pessoas) do checkout e da área logada com base em dados de uso.",
             "Definiu com o time as métricas de acompanhamento (conversão, lead time, NPS) e o ritual mensal de revisão."
           ]
         },
