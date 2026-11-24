@@ -1,5 +1,5 @@
 /** Rótulos dos códigos do servidor (os mesmos de dash/kit.py e do dashboard antigo). */
-import type { Etapa, Resultado } from "../types/api"
+import type { Etapa, GrupoLimpeza, Resultado, ResultadoLimpeza } from "../types/api"
 
 export const ETAPAS: { valor: Etapa; rotulo: string }[] = [
   { valor: "salva", rotulo: "Salva" },
@@ -13,7 +13,23 @@ export const RESULTADOS: Record<Resultado, string> = {
   nao_aprovado: "Não aprovado",
   desisti: "Desisti",
   cancelada: "Vaga cancelada",
+  sem_resposta: "Sem resposta",
   contratado: "Contratado",
+}
+
+export const GRUPOS_LIMPEZA: Record<GrupoLimpeza, string> = {
+  fora: "Fora dos critérios",
+  pendente: "Pendentes sem decisão",
+  dispensadas: "Visitadas e encerradas",
+  sem_resposta: "Aplicadas sem retorno",
+}
+
+export const RESULTADOS_LIMPEZA: Record<ResultadoLimpeza, string> = {
+  nao_aprovado: "Não aprovado",
+  desisti: "Desisti",
+  cancelada: "Vaga cancelada",
+  sem_resposta: "Sem resposta",
+  sem_resultado: "Sem resultado escolhido",
 }
 
 /** Como a ferramenta lê cada empresa acompanhada (os mesmos rótulos de POST /api/empresas/reconhecer, spec 042). */

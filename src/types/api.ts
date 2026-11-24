@@ -63,7 +63,7 @@ export const PLATAFORMAS: Plataforma[] = [
 export type Origem = "busca" | "link" | "manual"
 export type Triagem = "pendente" | "seguir" | "visitada" | "fora"
 export type Etapa = "salva" | "aplicada" | "entrevista" | "proposta" | "encerrada"
-export type Resultado = "nao_aprovado" | "desisti" | "cancelada" | "contratado"
+export type Resultado = "nao_aprovado" | "desisti" | "cancelada" | "sem_resposta" | "contratado"
 export type ModeloTrabalho = "remoto" | "hibrido" | "presencial" | "nao_informado"
 export type Senioridade = "junior" | "pleno" | "senior"
 export type Area = "nacional" | "internacional"
@@ -133,6 +133,8 @@ export interface Vaga {
   encontrada_em?: string
   criada_em?: string
   atualizada_em?: string
+  /** a vaga arquivada pela limpeza (spec 054): só a ficha curta */
+  arquivada_em?: string | null
   // anúncio
   titulo: string
   empresa: string
@@ -478,4 +480,52 @@ export interface EstadoPendentes {
   pendentes?: number
   espera?: EsperaPortal[]
   pode_alterar?: boolean
+}
+
+/** Limpeza de vagas antigas (spec 054). */
+export type GrupoLimpeza = "fora" | "pendente" | "dispensadas" | "sem_resposta"
+export type ResultadoLimpeza = "nao_aprovado" | "desisti" | "cancelada" | "sem_resposta" | "sem_resultado"
+export interface CriterioGrupo {
+  ligado: boolean
+  dias: number
+}
+export interface CriteriosLimpeza {
+  fora: CriterioGrupo
+  pendente: CriterioGrupo & { nota_abaixo_de: number | null }
+  dispensadas: CriterioGrupo & { resultados: ResultadoLimpeza[] }
+  sem_resposta: CriterioGrupo
+}
+export interface EstadoLimpeza {
+  criterios: CriteriosLimpeza
+  arquivadas: number
+  tamanho_kb: number
+}
+export interface VagaNaPrevia {
+  id: string
+  titulo: string
+  empresa: string
+  plataforma: string
+  dias: number
+  destaques: string[]
+}
+export interface GrupoNaPrevia {
+  acao: "arquivar" | "encerrar"
+  ligado: boolean
+  dias: number
+  vagas: VagaNaPrevia[]
+}
+export interface PreviaLimpeza {
+  grupos: Record<GrupoLimpeza, GrupoNaPrevia>
+  total: number
+  destacadas: number
+  arquivadas: number
+  tamanho_kb: number
+}
+export interface RespostaAplicarLimpeza {
+  arquivadas: number
+  encerradas: number
+  ignoradas: string[]
+  antes_kb: number
+  depois_kb: number
+  backup: string | null
 }

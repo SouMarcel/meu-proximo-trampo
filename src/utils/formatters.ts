@@ -348,11 +348,13 @@ export function modoDe(vaga: Vaga): ModeloTrabalho {
 
 /** No quadro: tem etapa e (foi adicionada direto no quadro ou a pessoa seguiu com ela). */
 export function noQuadro(vaga: Vaga): boolean {
+  if (vaga.arquivada_em) return false
   return Boolean(vaga.etapa) && (vaga.origem === "manual" || vaga.triagem === "seguir")
 }
 
 /** No Relatório: tudo o que não foi adicionado direto no quadro. */
 export function noRelatorio(vaga: Vaga): boolean {
+  if (vaga.arquivada_em) return false
   return vaga.origem !== "manual"
 }
 
