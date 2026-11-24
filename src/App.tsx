@@ -111,6 +111,13 @@ function Pagina({
     ScreenPreferencesService.setActiveTab(tab)
   }
 
+  // Ocultar empresas excluídas (preferência global em todas as listas, spec 055)
+  const [ocultarExcluidas, setOcultarExcluidasEstado] = useState(() => ScreenPreferencesService.getOcultarExcluidas())
+  const mudarOcultarExcluidas = useCallback((sim: boolean) => {
+    setOcultarExcluidasEstado(sim)
+    ScreenPreferencesService.setOcultarExcluidas(sim)
+  }, [])
+
   // Modais
   const [detalheId, setDetalheId] = useState<string | null>(null)
   const [entrevistaVagaId, setEntrevistaVagaId] = useState<string | null>(null)
@@ -493,6 +500,8 @@ function Pagina({
         {activeTab === "quadro" && (
           <KanbanBoard
             vagas={vagas}
+            ocultarExcluidas={ocultarExcluidas}
+            onOcultarExcluidas={mudarOcultarExcluidas}
             onSelectVaga={(v) => setDetalheId(v.id)}
             onMoveStage={handleMoveStage}
             onDeleteVaga={handleDeleteVaga}
@@ -529,6 +538,8 @@ function Pagina({
               vagas={vagasRelatorio}
               versao={versaoInfo}
               semIA={semIA}
+              ocultarExcluidas={ocultarExcluidas}
+              onOcultarExcluidas={mudarOcultarExcluidas}
               onSelectVaga={(v) => setDetalheId(v.id)}
               onSeguirVaga={handleSeguirVaga}
               onNaoSeguirVaga={handleNaoSeguirVaga}
@@ -558,6 +569,8 @@ function Pagina({
               vagas={vagasInternacional}
               versao={versaoInfo}
               semIA={semIA}
+              ocultarExcluidas={ocultarExcluidas}
+              onOcultarExcluidas={mudarOcultarExcluidas}
               onSelectVaga={(v) => setDetalheId(v.id)}
               onSeguirVaga={handleSeguirVaga}
               onNaoSeguirVaga={handleNaoSeguirVaga}

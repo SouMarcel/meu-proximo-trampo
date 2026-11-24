@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import {
   Search,
   LayoutGrid,
@@ -13,10 +13,13 @@ import {
   Calendar,
   ExternalLink,
   Clock,
+  ArrowUpDown,
 } from "lucide-react"
 import type { CamposEditaveis, Vaga, Etapa } from "../types/api"
 import JobCard from "./JobCard"
 import { SeloIntegridade } from "./Integridade"
+import { ScreenPreferencesService } from "../services/storage"
+import { type OrdemVaga, ORDENS_VAGAS, ordenar } from "../utils/ordenacao"
 import {
   getEtapaInfo,
   getPlataformaStyle,
@@ -32,6 +35,8 @@ import {
 
 interface KanbanBoardProps {
   vagas: Vaga[]
+  ocultarExcluidas: boolean
+  onOcultarExcluidas: (sim: boolean) => void
   onSelectVaga: (vaga: Vaga) => void
   onMoveStage: (id: string, stage: Etapa) => void
   onDeleteVaga: (id: string) => void
@@ -40,6 +45,17 @@ interface KanbanBoardProps {
   onPreparar: (id: string) => void
   onAviso?: (m: string, t?: "info" | "erro") => void
 }
+
+const ORDENS_KANBAN: OrdemVaga[] = [
+  "etapa_recente",
+  "etapa_antiga",
+  "aderencia",
+  "menor_nota",
+  "publicacao",
+  "encontrada",
+  "empresa",
+  "plataforma",
+]
 
 const ETAPAS: {
   key: Etapa
@@ -90,6 +106,8 @@ const ETAPAS: {
 
 export default function KanbanBoard({
   vagas,
+  ocultarExcluidas,
+  onOcultarExcluidas,
   onSelectVaga,
   onMoveStage,
   onDeleteVaga,
@@ -104,6 +122,16 @@ export default function KanbanBoard({
   const [filterModo, setFilterModo] = useState<string>("")
   const [viewMode, setViewMode] = useState<"board" | "list">("board")
   const [draggedVagaId, setDraggedVagaId] = useState<string | null>(null)
+  const [ordem, setOrdem] = useState<OrdemVaga>(() => {
+    const saved = ScreenPreferencesService.getOrdemAplicacoes()
+    return saved && (ORDENS_KANBAN as string[]).includes(saved)
+      ? (saved as OrdemVaga)
+      : "etapa_recente"
+  })
+
+  useEffect(() => {
+    ScreenPreferencesService.saveOrdemAplicacoes(ordem)
+  }, [ordem])
 
   // Todas as plataformas presentes nas vagas
   const availablePlatforms = useMemo(() => {
@@ -114,10 +142,16 @@ export default function KanbanBoard({
     return Array.from(set).sort()
   }, [vagas])
 
+  const noQuadroVagas = useMemo(() => vagas.filter(noQuadro), [vagas])
+  const excluidasOcultas = useMemo(
+    () => (ocultarExcluidas ? noQuadroVagas.filter((v) => v.empresa_excluida).length : 0),
+    [noQuadroVagas, ocultarExcluidas],
+  )
+
   // Filtrar apenas vagas que possuem etapa (isto é, estão no funil)
   const pipelineVagas = useMemo(() => {
-    return vagas.filter((v) => {
-      if (!noQuadro(v)) return false
+    const base = ocultarExcluidas ? noQuadroVagas.filter((v) => !v.empresa_excluida) : noQuadroVagas
+    const filtradas = base.filter((v) => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         const matchTitulo = v.titulo.toLowerCase().includes(q)
@@ -137,7 +171,8 @@ export default function KanbanBoard({
       if (filterModo && modoDe(v) !== filterModo) return false
       return true
     })
-  }, [vagas, searchQuery, filterPlataforma, filterArea, filterModo])
+    return ordenar(filtradas, ordem, modoDe)
+  }, [noQuadroVagas, ocultarExcluidas, searchQuery, filterPlataforma, filterArea, filterModo, ordem])
 
   // Agrupar vagas por etapa
   const vagasPorEtapa = useMemo(() => {
@@ -214,6 +249,25 @@ export default function KanbanBoard({
               </option>
             </select>
 
+            {/* Sort selection */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0">
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                Ordenar:
+              </span>
+              <select
+                value={ordem}
+                onChange={(e) => setOrdem(e.target.value as OrdemVaga)}
+                className="px-3 py-2 rounded-xl text-xs font-medium bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                {ORDENS_KANBAN.map((key) => (
+                  <option key={key} value={key}>
+                    {ORDENS_VAGAS[key]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Modality pills */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700 text-xs">
               <button
@@ -248,6 +302,20 @@ export default function KanbanBoard({
               </button>
             </div>
 
+            {/* Ocultar empresas excluídas */}
+            <label
+              className="flex items-center gap-1.5 cursor-pointer text-xs"
+              title="Esconde as vagas das empresas que estão na sua lista de exclusão (Filtros da busca → Empresas)"
+            >
+              <input
+                type="checkbox"
+                checked={ocultarExcluidas}
+                onChange={(e) => onOcultarExcluidas(e.target.checked)}
+                className="w-3.5 h-3.5 accent-indigo-600"
+              />
+              <span className="font-semibold text-slate-500">Ocultar empresas excluídas</span>
+            </label>
+
             {/* View Mode Toggle */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
               <button
@@ -276,6 +344,12 @@ export default function KanbanBoard({
           </div>
         </div>
       </div>
+
+      {ocultarExcluidas && excluidasOcultas > 0 && (
+        <p className="text-[11px] text-slate-500 px-1">
+          {excluidasOcultas} {excluidasOcultas === 1 ? "vaga de empresas excluídas oculta" : "vagas de empresas excluídas ocultas"}
+        </p>
+      )}
 
       {/* Board View */}
       {viewMode === "board" ? (

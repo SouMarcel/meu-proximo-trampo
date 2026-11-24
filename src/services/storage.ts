@@ -15,6 +15,8 @@ const PREF_KEYS = {
   METRICAS_REQUISITOS: "mpt_pref_metricas_requisitos",
   /** Posição e tamanho dos widgets de Métricas & Funil (spec 046); o formato está em components/painel/layout.ts. */
   METRICAS_LAYOUT: "mpt_pref_metricas_layout",
+  ORDEM_APLICACOES: "mpt_pref_aplicacoes_ordem",
+  OCULTAR_EXCLUIDAS: "mpt_pref_ocultar_excluidas",
   THEME: "mpt_pref_theme",
 }
 
@@ -111,6 +113,35 @@ export class ScreenPreferencesService {
   public static apagarLayoutMetricas(): void {
     try {
       localStorage.removeItem(PREF_KEYS.METRICAS_LAYOUT)
+    } catch {}
+  }
+
+  public static getOrdemAplicacoes(): string | null {
+    try {
+      return localStorage.getItem(PREF_KEYS.ORDEM_APLICACOES)
+    } catch {
+      return null
+    }
+  }
+
+  public static saveOrdemAplicacoes(ordem: string): void {
+    try {
+      localStorage.setItem(PREF_KEYS.ORDEM_APLICACOES, ordem)
+    } catch {}
+  }
+
+  public static getOcultarExcluidas(): boolean {
+    try {
+      const val = localStorage.getItem(PREF_KEYS.OCULTAR_EXCLUIDAS)
+      return val !== "0"
+    } catch {
+      return true
+    }
+  }
+
+  public static setOcultarExcluidas(sim: boolean): void {
+    try {
+      localStorage.setItem(PREF_KEYS.OCULTAR_EXCLUIDAS, sim ? "1" : "0")
     } catch {}
   }
 

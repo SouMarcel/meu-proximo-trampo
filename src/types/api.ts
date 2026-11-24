@@ -138,6 +138,8 @@ export interface Vaga {
   // anúncio
   titulo: string
   empresa: string
+  /** calculado pelo servidor: a empresa está hoje na lista de exclusão dos filtros (spec 055) */
+  empresa_excluida?: boolean
   local?: string
   url?: string
   url_candidatura?: string

@@ -26,6 +26,7 @@ import { useFerramenta, AvisoSoLeitura } from "../contexto/Ferramenta"
 import { ScreenPreferencesService, type AreaRelatorio } from "../services/storage"
 import { SeloIntegridade } from "./Integridade"
 import { CONTRATACAO } from "../utils/rotulos"
+import { ordenar, ORDENS_VAGAS } from "../utils/ordenacao"
 import {
   paisDe,
   getPlataformaStyle,
@@ -47,6 +48,8 @@ interface TriageReportProps {
   versao: Versao | null
   /** Vagas em que o Forçar verificar voltou "ligue uma IA". */
   semIA: Record<string, boolean>
+  ocultarExcluidas: boolean
+  onOcultarExcluidas: (sim: boolean) => void
   onSelectVaga: (vaga: Vaga) => void
   onSeguirVaga: (id: string) => void
   onNaoSeguirVaga: (id: string) => void
@@ -75,7 +78,15 @@ function temVisto(v: Vaga): boolean {
   return Boolean(v.sinais?.some((s) => /visto|relocation/.test(s.toLowerCase())))
 }
 
-const ORDENS = ["aderencia", "publicacao", "plataforma", "modo"]
+const ORDENS: OrdemFiltro[] = [
+  "aderencia",
+  "menor_nota",
+  "publicacao",
+  "encontrada",
+  "empresa",
+  "plataforma",
+  "modo",
+]
 const NIVEIS = ["junior", "pleno", "senior", "ni"]
 const MODOS = ["remoto", "hibrido", "presencial", "ni"]
 
@@ -162,12 +173,21 @@ function BotaoMarcarTodas({
     </span>
   )
 }
-type OrdemFiltro = "aderencia" | "publicacao" | "plataforma" | "modo"
+export type OrdemFiltro =
+  | "aderencia"
+  | "menor_nota"
+  | "publicacao"
+  | "encontrada"
+  | "empresa"
+  | "plataforma"
+  | "modo"
 
 export default function TriageReport({
   vagas,
   versao,
   semIA,
+  ocultarExcluidas,
+  onOcultarExcluidas,
   onSelectVaga,
   onSeguirVaga,
   onNaoSeguirVaga,
@@ -197,7 +217,7 @@ export default function TriageReport({
   // cada área guarda a sua ordem e os seus filtros (spec 044); o que não vale volta ao padrão
   const prefs = useMemo(() => ScreenPreferencesService.getTriagePreferences(area), [area])
   const [ordem, setOrdem] = useState<OrdemFiltro>(
-    ORDENS.includes(String(prefs.triageOrdem)) ? (prefs.triageOrdem as OrdemFiltro) : "aderencia",
+    (ORDENS as string[]).includes(String(prefs.triageOrdem)) ? (prefs.triageOrdem as OrdemFiltro) : "aderencia",
   )
   const [niveis, setNiveis] = useState<string[]>(lidos(prefs.niveis, NIVEIS))
   const [modos, setModos] = useState<string[]>(lidos(prefs.modos, MODOS))
@@ -251,56 +271,50 @@ export default function TriageReport({
   }, [vagas, soAnalisadas])
 
   // Filtragem e ordem da aba ativa (as regras do dashboard antigo; "ni" = não informado)
-  const naAba = useMemo(() => vagas.filter((v) => v.triagem === subTab), [vagas, subTab])
+  const naAbaBruta = useMemo(() => vagas.filter((v) => v.triagem === subTab), [vagas, subTab])
+  const excluidasOcultas = useMemo(
+    () => (ocultarExcluidas ? naAbaBruta.filter((v) => v.empresa_excluida).length : 0),
+    [naAbaBruta, ocultarExcluidas],
+  )
+  const naAba = useMemo(
+    () => (ocultarExcluidas ? naAbaBruta.filter((v) => !v.empresa_excluida) : naAbaBruta),
+    [naAbaBruta, ocultarExcluidas],
+  )
   const daTriagem = useMemo(() => (soAnalisadas ? naAba.filter(temNota) : naAba), [naAba, soAnalisadas])
   const ocultas = naAba.length - daTriagem.length
   const lista = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    const nota = (v: Vaga) => (temNota(v) ? (v.aderencia as number) : -1)
-    const recente = (a: Vaga, b: Vaga) => String(b.publicada_em || "").localeCompare(String(a.publicada_em || ""))
-    const ordemModo = ["remoto", "hibrido", "presencial", "ni"]
-    const criterio: Record<OrdemFiltro, (a: Vaga, b: Vaga) => number> = {
-      aderencia: () => 0,
-      publicacao: recente,
-      plataforma: (a, b) => {
-        const pa = a.plataforma || "Outra"
-        const pb = b.plataforma || "Outra"
-        return Number(pa === "Outra") - Number(pb === "Outra") || pa.localeCompare(pb, "pt-BR")
-      },
-      modo: (a, b) => ordemModo.indexOf(modoFiltro(a)) - ordemModo.indexOf(modoFiltro(b)),
-    }
-    return daTriagem
-      .filter((v) => {
-        if (q) {
-          const achou =
-            v.titulo.toLowerCase().includes(q) ||
-            v.empresa.toLowerCase().includes(q) ||
-            Boolean(v.descricao?.toLowerCase().includes(q)) ||
-            Boolean(v.termos?.some((t) => t.toLowerCase().includes(q))) ||
-            // na Internacional, também o local e o país, como na aba antiga (spec 044)
-            (internacional &&
-              ((v.local || "").toLowerCase().includes(q) || paisDe(v).toLowerCase().includes(q)))
-          if (!achou) return false
-        }
-        // moeda e visto não dependem da análise: valem também para a vaga sem nota (spec 044)
-        if (!naMoeda(v, moeda)) return false
-        if (visto && !temVisto(v)) return false
-        // vaga ainda sem nota (aguardando a IA, descrição pendente, falha): os outros filtros dependem da análise ou
-        // a escondiam sem aviso; ela aparece sempre, salvo com Analisadas marcada (spec 038)
-        if (!temNota(v)) return true
-        if (niveis.length) {
-          const nv = niveisDa(v)
-          if (!(nv.length ? nv.some((x) => niveis.includes(x)) : niveis.includes("ni"))) return false
-        }
-        if (modos.length && !modos.includes(modoFiltro(v))) return false
-        if (aderMin != null && !(temNota(v) && (v.aderencia as number) >= aderMin)) return false
-        if (diasMax != null) {
-          const d = diasDesde(v.publicada_em)
-          if (d == null || d > diasMax) return false
-        }
-        return true
-      })
-      .sort((a, b) => criterio[ordem](a, b) || nota(b) - nota(a) || recente(a, b))
+    const filtradas = daTriagem.filter((v) => {
+      if (q) {
+        const achou =
+          v.titulo.toLowerCase().includes(q) ||
+          v.empresa.toLowerCase().includes(q) ||
+          Boolean(v.descricao?.toLowerCase().includes(q)) ||
+          Boolean(v.termos?.some((t) => t.toLowerCase().includes(q))) ||
+          // na Internacional, também o local e o país, como na aba antiga (spec 044)
+          (internacional &&
+            ((v.local || "").toLowerCase().includes(q) || paisDe(v).toLowerCase().includes(q)))
+        if (!achou) return false
+      }
+      // moeda e visto não dependem da análise: valem também para a vaga sem nota (spec 044)
+      if (!naMoeda(v, moeda)) return false
+      if (visto && !temVisto(v)) return false
+      // vaga ainda sem nota (aguardando a IA, descrição pendente, falha): os outros filtros dependem da análise ou
+      // a escondiam sem aviso; ela aparece sempre, salvo com Analisadas marcada (spec 038)
+      if (!temNota(v)) return true
+      if (niveis.length) {
+        const nv = niveisDa(v)
+        if (!(nv.length ? nv.some((x) => niveis.includes(x)) : niveis.includes("ni"))) return false
+      }
+      if (modos.length && !modos.includes(modoFiltro(v))) return false
+      if (aderMin != null && !(temNota(v) && (v.aderencia as number) >= aderMin)) return false
+      if (diasMax != null) {
+        const d = diasDesde(v.publicada_em)
+        if (d == null || d > diasMax) return false
+      }
+      return true
+    })
+    return ordenar(filtradas, ordem, modoFiltro)
   }, [daTriagem, searchQuery, niveis, modos, aderMin, diasMax, ordem, moeda, visto, internacional])
 
   // Em Para decidir, as de nota abaixo de 50 ficam recolhidas, como no dashboard antigo
@@ -811,10 +825,11 @@ export default function TriageReport({
               onChange={(e) => setOrdem(e.target.value as OrdemFiltro)}
               className="px-3 py-2 rounded-xl text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none"
             >
-              <option value="aderencia">Maior Aderência</option>
-              <option value="publicacao">Mais Recentes</option>
-              <option value="plataforma">Por Plataforma</option>
-              <option value="modo">Modo de Trabalho</option>
+              {ORDENS.map((key) => (
+                <option key={key} value={key}>
+                  {ORDENS_VAGAS[key]}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -988,6 +1003,18 @@ export default function TriageReport({
               />
               <span className="font-semibold text-slate-500">Analisadas</span>
             </label>
+            <label
+              className="flex items-center gap-1.5 cursor-pointer"
+              title="Esconde as vagas das empresas que estão na sua lista de exclusão (Filtros da busca → Empresas)"
+            >
+              <input
+                type="checkbox"
+                checked={ocultarExcluidas}
+                onChange={(e) => onOcultarExcluidas(e.target.checked)}
+                className="w-3.5 h-3.5 accent-indigo-600"
+              />
+              <span className="font-semibold text-slate-500">Ocultar empresas excluídas</span>
+            </label>
           </div>
         </div>
       </div>
@@ -1007,6 +1034,11 @@ export default function TriageReport({
 
       {/* Job Cards List */}
       <div className="space-y-3">
+        {ocultarExcluidas && excluidasOcultas > 0 && (
+          <p className="text-[11px] text-slate-500 px-1">
+            {excluidasOcultas} {excluidasOcultas === 1 ? "vaga de empresas excluídas oculta" : "vagas de empresas excluídas ocultas"}
+          </p>
+        )}
         {filtrando && naAba.length > 0 && (
           <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
             Mostrando {lista.length} de {daTriagem.length} {daTriagem.length === 1 ? "vaga" : "vagas"}
