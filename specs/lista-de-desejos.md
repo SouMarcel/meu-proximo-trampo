@@ -106,6 +106,11 @@ priorizado.
 
 - **Ver e restaurar as vagas arquivadas**: uma lista das arquivadas (ficha curta) com a opção de voltar uma delas às
   listas. A descrição não volta (só pelo backup); a vaga pode ser lida de novo no portal, se ainda estiver aberta.
+## Empresas excluídas (spec 055)
+
+- **Levar para Fora as vagas antigas de empresas excluídas**: a vaga gravada antes de a empresa entrar na lista de
+  exclusão fica onde estava (a caixa "Ocultar empresas excluídas" só a esconde). Um comando com prévia, como o
+  `regioes`, poderia levá-la para Fora dos critérios com o OK da pessoa.
 
 ## Divulgação
 

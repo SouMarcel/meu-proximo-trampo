@@ -737,10 +737,32 @@ def curriculos_base() -> dict:
     return {k: {"nome": Path(v).name, "url": f"/arquivos/curriculo-base/{k}"} if v else None for k, v in marcados.items()}
 
 
-def com_kit(v: dict, base: dict | None = None) -> dict:
-    """A vaga com o checklist e o lembrete calculados (o que a página e a skill mostram)."""
+def _filtros():
+    """filtros.py, na raiz do projeto, carregado sob demanda."""
+    raiz = str(DASH.parent)
+    if raiz not in sys.path:
+        sys.path.insert(0, raiz)
+    import filtros
+    return filtros
+
+
+def empresas_excluir() -> list[str]:
+    """A lista de exclusão de empresas dos filtros da busca ([] com o config ausente ou com erro)."""
+    try:
+        filtros = _filtros()
+        return filtros.efetivos(filtros.ler_config())["empresas_excluir"]
+    except Exception:
+        return []
+
+
+def com_kit(v: dict, base: dict | None = None, excluir: list[str] | None = None) -> dict:
+    """A vaga com o checklist, o lembrete e a marca de empresa excluída calculados (o que a página e a skill
+    mostram); a marca segue a lista de exclusão atual e nunca é gravada (spec 055)."""
     base = curriculos_base() if base is None else base
-    return {**v, "checklist": kit.checklist(v, base), "lembretes_pendentes": kit.lembretes(v)}
+    excluir = empresas_excluir() if excluir is None else excluir
+    excluida = bool(excluir) and _filtros().empresa_excluida(v.get("empresa"), excluir) is not None
+    return {**v, "checklist": kit.checklist(v, base), "lembretes_pendentes": kit.lembretes(v),
+            "empresa_excluida": excluida}
 
 
 def remover(vid: str) -> None:
