@@ -20,8 +20,8 @@ import { useFerramenta } from "../contexto/Ferramenta"
 import CandidaturaModal from "./modals/CandidaturaModal"
 import SalarioModal from "./modals/SalarioModal"
 import { SeloIntegridade } from "./Integridade"
+import EtiquetasPortais from "./EtiquetasPortais"
 import {
-  getPlataformaStyle,
   getAderenciaBadge,
   formatarDataRelativa,
   formatarModelo,
@@ -49,7 +49,6 @@ export default function JobCard({
   onPreparar,
   onAviso,
 }: JobCardProps) {
-  const platStyle = getPlataformaStyle(vaga.plataforma)
   const aderenciaInfo = getAderenciaBadge(vaga.aderencia)
   const { podeGravar } = useFerramenta()
   const [confirmarRemocao, setConfirmarRemocao] = useState(false)
@@ -69,11 +68,7 @@ export default function JobCard({
         <div className="flex items-center justify-between gap-2 mb-2.5">
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Platform Tag */}
-            <span
-              className={`px-2 py-0.5 rounded-lg text-xs font-semibold border ${platStyle.bg} ${platStyle.text} ${platStyle.border}`}
-            >
-              {vaga.plataforma}
-            </span>
+            <EtiquetasPortais vaga={vaga} />
 
             {/* International Flag */}
             {areaDe(vaga) === "internacional" && (

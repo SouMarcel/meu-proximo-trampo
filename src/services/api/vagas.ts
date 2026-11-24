@@ -34,6 +34,13 @@ export const colarDescricao = (vagaId: string, descricao: string) =>
     { descricao },
   )
 
+export const linkOriginal = (vagaId: string, url: string) =>
+  pedir<{ juntada: string | null; vaga: Vaga; verificando?: string[]; verificando_agora?: string | null }>(
+    "PUT",
+    `/api/vagas/${id(vagaId)}/link-original`,
+    { url },
+  )
+
 export const porLink = (url: string) => pedir<RespostaLink>("POST", "/api/vagas/link", { url })
 
 export const extrair = (texto: string, autor?: string, autor_tipo?: string) =>

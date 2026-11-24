@@ -21,7 +21,6 @@ import {
 } from "lucide-react"
 import type { CamposEditaveis, Etapa, Resultado, Vaga, Versao } from "../../types/api"
 import {
-  getPlataformaStyle,
   getAderenciaBadge,
   getEtapaInfo,
   formatarDataRelativa,
@@ -40,6 +39,7 @@ import { useFerramenta, AvisoSoLeitura } from "../../contexto/Ferramenta"
 import { mensagemDeErro } from "../../services/api"
 import * as vagasApi from "../../services/api/vagas"
 import TextoDaVaga from "../TextoDaVaga"
+import EtiquetasPortais from "../EtiquetasPortais"
 import { BlocoIntegridade, LembreteNota, OrigemDoLink, SeloIntegridade } from "../Integridade"
 import { KitDaVaga, Lembrete } from "../kit/Kit"
 import { GerarCurriculo, SecaoCurriculos } from "../curriculo/Curriculos"
@@ -127,6 +127,69 @@ function ColarDescricao({
   )
 }
 
+function LinkOriginal({
+  vagaId,
+  onAviso,
+  onClose,
+}: {
+  vagaId: string
+  onAviso: (mensagem: string, tipo?: "info" | "erro") => void
+  onClose: () => void
+}) {
+  const { podeGravar } = useFerramenta()
+  const [url, setUrl] = useState("")
+  const [lendo, setLendo] = useState(false)
+
+  const desabilitado = !url.trim() || !podeGravar || lendo
+
+  const ler = async () => {
+    if (desabilitado) return
+    setLendo(true)
+    try {
+      const r = await vagasApi.linkOriginal(vagaId, url.trim())
+      setUrl("")
+      if (r.juntada && r.juntada !== vagaId) {
+        onAviso("A vaga já estava no dashboard: as duas foram juntadas.")
+        onClose()
+        return
+      }
+      if (r.juntada === vagaId) onAviso("A vaga já estava no dashboard: as duas foram juntadas nesta.")
+      else onAviso("Link lido: a vaga ganhou a descrição e entrou na fila de verificação.")
+    } catch (e) {
+      onAviso(mensagemDeErro(e, "Não deu para ler o link."), "erro")
+    } finally {
+      setLendo(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <h4 className="font-bold text-sm text-slate-900 dark:text-white">Link do anúncio original</h4>
+      <p className="text-xs text-slate-500">
+        Quando um portal só repassa a vaga (o JobGether, por exemplo), cole o link do anúncio de origem: a ferramenta
+        lê a descrição por ele e junta com a vaga, se ela já estiver aqui.
+      </p>
+      <input
+        type="url"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="Cole o link para onde o portal leva a candidatura (ex.: o da Gupy)"
+        className={CAMPO}
+      />
+      <div className="flex justify-end">
+        <button
+          type="button"
+          disabled={desabilitado}
+          onClick={ler}
+          className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-xs disabled:opacity-50"
+        >
+          {lendo ? "Lendo…" : "Ler o link"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function JobDetailModal({
   vaga,
   versao,
@@ -148,7 +211,6 @@ export default function JobDetailModal({
   const [confirmarRemocao, setConfirmarRemocao] = useState(false)
   const [gerarCv, setGerarCv] = useState(false)
 
-  const platStyle = getPlataformaStyle(vaga.plataforma)
   const aderBadge = getAderenciaBadge(vaga.aderencia)
   const etapaInfo = getEtapaInfo(vaga.etapa)
   const nota = situacaoNota(vaga, versao)
@@ -201,9 +263,7 @@ export default function JobDetailModal({
         <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/40">
           <div className="space-y-1.5 flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${platStyle.bg} ${platStyle.text} ${platStyle.border}`}>
-                {vaga.plataforma}
-              </span>
+              <EtiquetasPortais vaga={vaga} tamanho="md" />
               <SeloIntegridade vaga={vaga} />
               {estaNoQuadro && (
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${etapaInfo.badgeBg} ${etapaInfo.badgeText}`}>
@@ -318,6 +378,8 @@ export default function JobDetailModal({
               {(!vaga.descricao || vaga.descricao_pendente || vaga.nota_dados_portal) && (
                 <ColarDescricao vagaId={vaga.id} onAviso={onAviso} />
               )}
+
+              <LinkOriginal vagaId={vaga.id} onAviso={onAviso} onClose={onClose} />
 
               <div className="space-y-2">
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white">Texto do anúncio</h4>

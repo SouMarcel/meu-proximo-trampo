@@ -26,11 +26,11 @@ import type { Vaga, Senioridade, Versao } from "../types/api"
 import { useFerramenta, AvisoSoLeitura } from "../contexto/Ferramenta"
 import { ScreenPreferencesService, type AreaRelatorio } from "../services/storage"
 import { SeloIntegridade } from "./Integridade"
+import EtiquetasPortais from "./EtiquetasPortais"
 import { CONTRATACAO } from "../utils/rotulos"
 import { ordenar, ORDENS_VAGAS } from "../utils/ordenacao"
 import {
   paisDe,
-  getPlataformaStyle,
   getAderenciaBadge,
   formatarDataRelativa,
   formatarModelo,
@@ -334,7 +334,6 @@ export default function TriageReport({
   )
 
   const cartao = (vaga: Vaga) => {
-          const platStyle = getPlataformaStyle(vaga.plataforma)
           const aderBadge = getAderenciaBadge(vaga.aderencia)
           const nota = situacaoNota(vaga, versao)
           const aguardando = nota.tipo === "aguardando" ? nota : null
@@ -429,11 +428,7 @@ export default function TriageReport({
                   <div className="space-y-3 flex-1 min-w-0">
                   {/* Top tags: Platform, Seniority, Modality, Search term */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${platStyle.bg} ${platStyle.text} ${platStyle.border}`}
-                    >
-                      {vaga.plataforma}
-                    </span>
+                    <EtiquetasPortais vaga={vaga} tamanho="md" />
                     <span className="text-xs text-slate-500 font-medium">
                       {formatarModelo(vaga.modelo_trabalho, vaga.remoto)}
                     </span>
