@@ -7,13 +7,16 @@ import { Loader2 } from "lucide-react"
 import * as limpezaApi from "../../services/api/limpeza"
 import { mensagemDeErro } from "../../services/api"
 import { AvisoSoLeitura } from "../../contexto/Ferramenta"
-import { GRUPOS_LIMPEZA, RESULTADOS_LIMPEZA } from "../../utils/rotulos"
+import { ETAPAS, GRUPOS_LIMPEZA, RESULTADOS_LIMPEZA } from "../../utils/rotulos"
 import type {
   CriteriosLimpeza,
   GrupoLimpeza,
+  GrupoRepetido,
   PreviaLimpeza,
   RespostaAplicarLimpeza,
+  RespostaJuntar,
   ResultadoLimpeza,
+  ResumoRepetida,
 } from "../../types/api"
 
 const SEC = "space-y-2 pb-4 border-b border-slate-100 dark:border-slate-800 last:border-0"
@@ -36,6 +39,19 @@ const ORIGEM_DO_PRAZO: Record<GrupoLimpeza, string> = {
   sem_resposta: "conta do dia em que a candidatura foi enviada; a vaga passa para Encerrada, Sem resposta",
 }
 
+function rotuloEtapa(etapa: string | null): string {
+  if (!etapa) return ""
+  return ETAPAS.find((e) => e.valor === etapa)?.rotulo ?? etapa
+}
+
+function formatarLinhaVaga(v: ResumoRepetida): string {
+  const partes = [`${v.titulo} · ${v.empresa} · ${v.plataforma}`]
+  const rotulo = rotuloEtapa(v.etapa)
+  if (rotulo) partes.push(rotulo)
+  if (v.aderencia !== null && v.aderencia !== undefined) partes.push(`nota ${v.aderencia}`)
+  return partes.join(" · ")
+}
+
 export default function LimpezaAba({ podeSalvar }: { podeSalvar: boolean }) {
   const [criterios, setCriterios] = useState<CriteriosLimpeza | null>(null)
   const [arquivadas, setArquivadas] = useState(0)
@@ -46,6 +62,13 @@ export default function LimpezaAba({ podeSalvar }: { podeSalvar: boolean }) {
   const [aplicando, setAplicando] = useState(false)
   const [erro, setErro] = useState("")
   const [resultado, setResultado] = useState<RespostaAplicarLimpeza | null>(null)
+
+  const [gruposRepetidos, setGruposRepetidos] = useState<GrupoRepetido[] | null>(null)
+  const [marcadosRepetidos, setMarcadosRepetidos] = useState<Set<string>>(new Set())
+  const [buscandoRepetidas, setBuscandoRepetidas] = useState(false)
+  const [juntandoRepetidos, setJuntandoRepetidos] = useState(false)
+  const [erroRepetidas, setErroRepetidas] = useState("")
+  const [resultadoRepetidas, setResultadoRepetidas] = useState<RespostaJuntar | null>(null)
 
   useEffect(() => {
     let vivo = true
@@ -115,6 +138,60 @@ export default function LimpezaAba({ podeSalvar }: { podeSalvar: boolean }) {
     })
 
   const n = marcadas.size
+
+  const procurarRepetidas = async () => {
+    setBuscandoRepetidas(true)
+    setErroRepetidas("")
+    setResultadoRepetidas(null)
+    try {
+      const r = await limpezaApi.repetidas()
+      setGruposRepetidos(r.grupos)
+      setMarcadosRepetidos(new Set(r.grupos.map((g) => g.ids[0])))
+    } catch (e) {
+      setErroRepetidas(mensagemDeErro(e, "Não foi possível procurar vagas repetidas."))
+    } finally {
+      setBuscandoRepetidas(false)
+    }
+  }
+
+  const alternarGrupoRepetido = (idPrincipal: string) => {
+    setMarcadosRepetidos((prev) => {
+      const prox = new Set(prev)
+      if (prox.has(idPrincipal)) prox.delete(idPrincipal)
+      else prox.add(idPrincipal)
+      return prox
+    })
+  }
+
+  const gruposRepetidosMarcados = (gruposRepetidos ?? []).filter((g) => marcadosRepetidos.has(g.ids[0]))
+  const nRepetidos = gruposRepetidosMarcados.length
+
+  const juntarRepetidas = async () => {
+    if (!gruposRepetidos) return
+    const gruposParaJuntar = gruposRepetidos.filter((g) => marcadosRepetidos.has(g.ids[0]))
+    const nGrupos = gruposParaJuntar.length
+    if (nGrupos === 0) return
+    if (
+      !window.confirm(
+        `Juntar ${nGrupos} grupos de vagas repetidas? As outras vagas de cada grupo saem das listas (fica uma cópia do banco de antes).`,
+      )
+    ) {
+      return
+    }
+    setJuntandoRepetidos(true)
+    setErroRepetidas("")
+    setResultadoRepetidas(null)
+    try {
+      const r = await limpezaApi.juntar(gruposParaJuntar.map((g) => g.ids))
+      setResultadoRepetidas(r)
+      setGruposRepetidos(null)
+      setMarcadosRepetidos(new Set())
+    } catch (e) {
+      setErroRepetidas(mensagemDeErro(e, "Não foi possível juntar as vagas repetidas."))
+    } finally {
+      setJuntandoRepetidos(false)
+    }
+  }
 
   const arquivar = async () => {
     if (
@@ -307,6 +384,94 @@ export default function LimpezaAba({ podeSalvar }: { podeSalvar: boolean }) {
       <p className={DICA}>
         Já arquivadas: {arquivadas} · banco com {tamanhoKb} KB.
       </p>
+
+      <section className={SEC}>
+        <h4 className={H}>Vagas repetidas</h4>
+        <p className={DICA}>
+          A mesma vaga anunciada em mais de um portal, ou com a empresa escrita de outro jeito. Juntar
+          deixa uma vaga só (a principal) com as etiquetas de todos os portais, a etapa mais adiantada, as anotações e os
+          currículos das outras; as outras saem das listas. Antes, a ferramenta guarda uma cópia do banco.
+        </p>
+
+        <button
+          type="button"
+          onClick={procurarRepetidas}
+          disabled={!podeSalvar || buscandoRepetidas}
+          className={BOTAO}
+        >
+          {buscandoRepetidas ? "Procurando…" : "Procurar repetidas"}
+        </button>
+
+        {erroRepetidas && (
+          <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">
+            {erroRepetidas}
+          </p>
+        )}
+
+        {gruposRepetidos && gruposRepetidos.length === 0 && (
+          <p className={DICA}>Nenhuma vaga repetida.</p>
+        )}
+
+        {gruposRepetidos && gruposRepetidos.length > 0 && (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              {gruposRepetidos.map((g) => {
+                const idPrincipal = g.ids[0]
+                const marcado = marcadosRepetidos.has(idPrincipal)
+                return (
+                  <div
+                    key={idPrincipal}
+                    className="rounded-xl border border-slate-200 dark:border-slate-700 p-2"
+                  >
+                    <label className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={marcado}
+                        disabled={!podeSalvar}
+                        onChange={() => alternarGrupoRepetido(idPrincipal)}
+                      />
+                      <div className="space-y-1">
+                        <div>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">Fica:</span>{" "}
+                          {formatarLinhaVaga(g.principal)}
+                        </div>
+                        {g.outras.map((outra) => (
+                          <div key={outra.id}>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">Junta:</span>{" "}
+                            {formatarLinhaVaga(outra)}
+                          </div>
+                        ))}
+                        {g.etapa_final && g.etapa_final !== g.principal.etapa && (
+                          <div className="text-amber-900 dark:text-amber-200 font-medium">
+                            Etapa final: {rotuloEtapa(g.etapa_final)}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                )
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={juntarRepetidas}
+              disabled={nRepetidos === 0 || !podeSalvar || juntandoRepetidos}
+              className={BOTAO}
+            >
+              {juntandoRepetidos ? "Juntando…" : `Juntar ${nRepetidos} grupos`}
+            </button>
+          </div>
+        )}
+
+        {resultadoRepetidas && (
+          <p className={`${DICA} !text-emerald-700 dark:!text-emerald-400`}>
+            {resultadoRepetidas.juntados} grupo(s) juntado(s), {resultadoRepetidas.vagas} vaga(s) a menos. Cópia de antes: {resultadoRepetidas.backup}.
+            {resultadoRepetidas.ignorados.length > 0 &&
+              ` ${resultadoRepetidas.ignorados.length} grupo(s) mudaram desde a prévia e ficaram de fora.`}
+          </p>
+        )}
+      </section>
 
       {!podeSalvar && <AvisoSoLeitura />}
     </>

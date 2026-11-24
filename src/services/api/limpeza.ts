@@ -3,11 +3,16 @@ import { pedir } from "../api"
 import type {
   CriteriosLimpeza,
   EstadoLimpeza,
+  GrupoRepetido,
   PreviaLimpeza,
   RespostaAplicarLimpeza,
+  RespostaJuntar,
 } from "../../types/api"
 
 export const ler = () => pedir<EstadoLimpeza>("GET", "/api/limpeza")
 export const gravar = (criterios: CriteriosLimpeza) => pedir<EstadoLimpeza>("PUT", "/api/limpeza", { criterios })
 export const previa = () => pedir<PreviaLimpeza>("GET", "/api/limpeza/previa")
 export const aplicar = (ids: string[]) => pedir<RespostaAplicarLimpeza>("POST", "/api/limpeza/aplicar", { ids })
+export const repetidas = () => pedir<{ grupos: GrupoRepetido[] }>("GET", "/api/repetidas")
+export const juntar = (grupos: string[][]) => pedir<RespostaJuntar>("POST", "/api/repetidas/juntar", { grupos })
+

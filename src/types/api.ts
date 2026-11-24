@@ -545,3 +545,30 @@ export interface RespostaAplicarLimpeza {
   depois_kb: number
   backup: string | null
 }
+
+/** Vagas repetidas (spec 058). */
+export interface ResumoRepetida {
+  id: string
+  titulo: string
+  empresa: string
+  plataforma: string
+  etapa: string | null
+  triagem: string | null
+  aderencia: number | null
+  tem_descricao: boolean
+}
+
+export interface GrupoRepetido {
+  ids: string[]
+  principal: ResumoRepetida
+  outras: ResumoRepetida[]
+  etapa_final: string | null
+}
+
+export interface RespostaJuntar {
+  juntados: number
+  vagas: number
+  ignorados: string[][]
+  backup: string | null
+}
+
