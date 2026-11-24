@@ -20,6 +20,12 @@ description: "Tarefas da spec 056: Forçar verificar em fila, uma vaga por vez"
 - [X] T004 [D minor] [US2] D5 em `src/types/api.ts`, `src/utils/formatters.ts`, `src/components/TriageReport.tsx`,
   `src/components/modals/JobDetailModal.tsx` e `src/App.tsx`.
 
+## Ajuste pedido no teste (eu)
+
+- [X] T006 [US2] O botão da vaga com nota provisória (spec 021) passa a dizer "Reverificar", com a dica "Pede de novo a nota
+  desta vaga à IA, agora tentando ler a descrição", em `src/components/TriageReport.tsx`. Só o texto: a vaga com nota normal
+  continua sem o botão.
+
 ## Phase 3: Fechamento (eu)
 
 - [ ] T005 Fechamento:
