@@ -17,6 +17,7 @@ import json
 import re
 import sys
 import threading
+import time
 from datetime import datetime
 
 import banco
@@ -28,6 +29,7 @@ TEMPO_MAXIMO = 600
 LIMITE_PERFIL = 40000
 LIMITE_DESCRICAO = 12000
 LOTE = 10  # vagas por chamada (as APIs têm limite de tamanho)
+PAUSA_IA_PADRAO, PAUSA_IA_MAX = 5.0, 60.0  # FORCAR_PAUSA: segundos entre dois pedidos do Forçar verificar (spec 056)
 
 
 def _raiz():
@@ -51,6 +53,21 @@ def _vagas():
     _raiz()
     import vagas
     return vagas
+
+
+def pausa_ia() -> float:
+    """FORCAR_PAUSA do .env (spec 056): de 0 a PAUSA_IA_MAX (fora da faixa, o limite mais próximo); inválida ou
+    ausente, PAUSA_IA_PADRAO."""
+    _raiz()
+    import segredos
+    bruto = (segredos.ler("FORCAR_PAUSA") or "").strip().replace(",", ".")
+    try:
+        n = float(bruto)
+    except ValueError:
+        return PAUSA_IA_PADRAO
+    if n != n or n in (float("inf"), float("-inf")):  # NaN e infinito
+        return PAUSA_IA_PADRAO
+    return min(max(n, 0.0), PAUSA_IA_MAX)
 
 
 def _integridade():
@@ -235,14 +252,20 @@ def analisar(vagas: list[dict], sem_descricao=frozenset()) -> tuple[list[str], l
 
 
 class Fila:
-    """Uma análise por vez; pedidos que chegam durante uma análise disparam outra rodada no fim. As vagas que a
-    pessoa forçou (forcar) vêm primeiro em cada rodada."""
+    """Uma análise por vez. As vagas que a pessoa forçou (forcar) formam uma fila, na ordem dos cliques, e são
+    verificadas uma por vez antes das automáticas (spec 056): a descrição que falta, com a pausa do portal, e o
+    pedido à IA só com ela, com a pausa FORCAR_PAUSA entre dois pedidos. Pedidos que chegam durante uma análise
+    disparam outra rodada no fim. `dormir` e `relogio` são trocados nos testes."""
 
-    def __init__(self):
+    def __init__(self, dormir=time.sleep, relogio=time.monotonic):
         self._trava = threading.Lock()
         self._pedido = False
         self._thread: threading.Thread | None = None
-        self._forcadas: set[str] = set()
+        self._forcadas: list[str] = []  # a fila, na ordem dos cliques
+        self._atual: str | None = None  # a forçada em verificação agora
+        self._dormir, self._relogio = dormir, relogio
+        self._ultima_ia: float | None = None  # o último pedido da fila à IA
+        self._ultima_leitura: dict[str, float] = {}  # plataforma -> a última leitura de descrição da fila
         self.falhas: dict[str, dict] = {}  # id -> {motivo, em}: a última verificação forçada que não deu nota
         self.rodando = False
         self.ultimo_erro: dict | None = None
@@ -252,9 +275,14 @@ class Fila:
         return self.ultimo_erro
 
     def verificando(self) -> list[str]:
-        """As vagas forçadas que ainda não voltaram da IA."""
+        """As vagas forçadas que ainda não voltaram da IA: a atual primeiro, depois a fila, na ordem."""
         with self._trava:
-            return sorted(self._forcadas)
+            return ([self._atual] if self._atual else []) + list(self._forcadas)
+
+    def agora(self) -> str | None:
+        """A vaga forçada em verificação agora (as outras de verificando() esperam a vez)."""
+        with self._trava:
+            return self._atual
 
     def _acordar(self) -> None:  # com a trava
         self._pedido = True
@@ -271,13 +299,14 @@ class Fila:
         return True
 
     def forcar(self, vid: str) -> bool:
-        """A pessoa pediu a nota desta vaga (botão Forçar verificar): ela passa na frente das automáticas, mesmo
-        já tentada. Não duplica. Devolve False se não há IA ligada (nada muda)."""
+        """A pessoa pediu a nota desta vaga (botão Forçar verificar): ela entra no fim da fila, que passa na frente
+        das automáticas, mesmo já tentada. Não duplica. Devolve False se não há IA ligada (nada muda)."""
         if not ligada():
             return False
         with self._trava:
             self.falhas.pop(vid, None)
-            self._forcadas.add(vid)
+            if vid != self._atual and vid not in self._forcadas:
+                self._forcadas.append(vid)
             self._acordar()
         return True
 
@@ -289,58 +318,77 @@ class Fila:
         with self._trava:
             self.falhas[vid] = {"motivo": motivo, "em": datetime.now().isoformat(timespec="minutes")}
 
-    def _verificar(self, ids: set[str]) -> None:
-        """As vagas forçadas: a descrição que falta (uma leitura, se der) e a nota; quem não ganha nota fica em
-        falhas com o motivo."""
-        vagas, sem_descricao = [], set()
+    def _esperar(self, desde: float | None, segundos: float) -> None:
+        if desde is not None and segundos > 0:
+            falta = desde + segundos - self._relogio()
+            if falta > 0:
+                self._dormir(falta)
+
+    def _pausar_portal(self, plataforma) -> None:
+        """A pausa do portal (vagas.pausa_leitura) desde a última leitura da fila naquele portal."""
+        chave = str(plataforma or "")
+        self._esperar(self._ultima_leitura.get(chave), _vagas().pausa_leitura(plataforma))
+        self._ultima_leitura[chave] = self._relogio()
+
+    def _pausar_ia(self) -> None:
+        """FORCAR_PAUSA desde o último pedido da fila à IA (não antes do primeiro)."""
+        self._esperar(self._ultima_ia, pausa_ia())
+        self._ultima_ia = self._relogio()
+
+    def _verificar_uma(self, vid: str) -> None:
+        """Uma vaga forçada: a descrição que falta (uma leitura, se der) e a nota; sem nota, ela fica em falhas com
+        o motivo. A falha desta vaga não afeta as outras da fila."""
+        sem_descricao: set[str] = set()
         try:
-            for vid in sorted(ids):
-                v = banco.obter(vid)
-                if v is None or (_tem_nota(v) and not v.get("nota_sem_descricao")):
-                    continue  # removida ou já com nota
+            v = banco.obter(vid)
+            if v is None or (_tem_nota(v) and not v.get("nota_sem_descricao")):
+                return  # removida ou já com nota (a análise automática chegou antes)
+            if v.get("descricao_pendente") or not v.get("descricao"):
+                self._pausar_portal(v.get("plataforma"))
+                _vagas().descrever_uma(vid)
+                v = banco.obter(vid) or v
                 if v.get("descricao_pendente") or not v.get("descricao"):
-                    _vagas().descrever_uma(vid)
-                    v = banco.obter(vid) or v
-                    if v.get("descricao_pendente") or not v.get("descricao"):
-                        sem_descricao.add(vid)
-                vagas.append(v)
-            ok, problemas = analisar(vagas, sem_descricao) if vagas else ([], [])
-            for v in vagas:
-                doc = banco.obter(v["id"])
-                if v["id"] in ok and doc and doc.get("analise_status") == "feita":
-                    continue
-                motivo = next((p.split(": ", 1)[1] for p in problemas if p.startswith(v["id"] + ":")), None)
-                padrao = ("a IA não conseguiu dar nota sem a descrição" if v["id"] in sem_descricao
-                          else "a IA não devolveu a nota desta vaga")
-                self._falhar(v["id"], motivo or padrao)
-            print(f"[forçar verificar] {len(ok)} de {len(vagas)} vaga(s) com nota")
+                    sem_descricao.add(vid)
+            self._pausar_ia()
+            ok, problemas = analisar([v], sem_descricao)
+            doc = banco.obter(vid)
+            if vid in ok and doc and doc.get("analise_status") == "feita":
+                print(f"[forçar verificar] {vid}: com nota")
+                return
+            motivo = next((p.split(": ", 1)[1] for p in problemas if p.startswith(vid + ":")), None)
+            padrao = ("a IA não conseguiu dar nota sem a descrição" if sem_descricao
+                      else "a IA não devolveu a nota desta vaga")
+            self._falhar(vid, motivo or padrao)
         except Exception as e:  # nunca derruba o servidor; o cartão volta a mostrar o botão com o motivo
             motivo = _ia().mascarar(str(e)) or "falha desconhecida"
-            for vid in ids:
-                self._falhar(vid, motivo)
-            print(f"[forçar verificar] não rodou: {motivo}", file=sys.stderr)
-        finally:
-            with self._trava:
-                self._forcadas -= ids
+            self._falhar(vid, motivo)
+            print(f"[forçar verificar] {vid}: não rodou: {motivo}", file=sys.stderr)
+
+    def _proxima_forcada(self) -> str | None:
+        with self._trava:
+            self._atual = self._forcadas.pop(0) if self._forcadas else None
+            return self._atual
 
     def _rodar(self):
         tentadas: set[str] = set()  # uma tentativa por vaga a cada rodada do servidor
         while True:
             with self._trava:
-                if not self._pedido:
+                if not self._pedido and not self._forcadas:
                     self.rodando = False
                     self._thread = None
                     return
                 self._pedido = False
-                forcadas = set(self._forcadas)
-            if forcadas:
+            while (vid := self._proxima_forcada()) is not None:  # as forçadas, uma por vez, na ordem
                 self.rodando = True
                 try:
-                    self._verificar(forcadas)
+                    self._verificar_uma(vid)
                 finally:
+                    with self._trava:
+                        self._atual = None
                     self.rodando = False
+            espera = set(self.verificando())
             pendentes = [v for v in banco.listar_vagas()
-                         if precisa(v) and v["id"] not in tentadas and v["id"] not in forcadas]
+                         if precisa(v) and v["id"] not in tentadas and v["id"] not in espera]
             if not pendentes:
                 continue
             tentadas.update(v["id"] for v in pendentes)

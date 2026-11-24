@@ -207,9 +207,11 @@ padrão no `checklist`.
 (viram `triagem: visitada`, `etapa: null`). Resposta `{ok: true}`. Erro 404.
 
 **`POST /api/vagas/{id}/analisar`** **[local]** — "Forçar verificar" (Vagas Nacionais e Vagas Internacionais, vaga sem nota ou com
-`nota_sem_descricao`, triagem pendente ou fora). Corpo `{}`. Resposta 202 `{verificando: string[]}` (ids na
-fila). Erros: 404; 409 "a vaga já tem nota"; 409 `{erro: "Para dar nota, ligue uma IA", sem_ia: true}`.
-O andamento chega por `/api/versao` (`verificando`, `falhas`).
+`nota_sem_descricao`, triagem pendente ou fora). Corpo `{}`. Resposta 202 `{verificando: string[], verificando_agora: string|null}`
+(a atual primeiro, depois a fila, na ordem dos cliques; spec 056). Erros: 404; 409 "a vaga já tem nota"; 409 `{erro: "Para dar nota, ligue uma IA", sem_ia: true}`.
+O andamento chega por `/api/versao` (`verificando`, `verificando_agora`, `falhas`). As vagas forçadas vão uma por vez
+(spec 056): a descrição que falta, com a pausa do portal, e o pedido à IA só com ela, com `FORCAR_PAUSA` (.env, 0 a
+60 s, padrão 5) entre dois pedidos; a página mostra "Na fila (posição N)" para as que esperam.
 
 ### 3.1b Faixa salarial (botão no card de Aplicações e seção na aba Candidatura do detalhe)
 
@@ -890,7 +892,7 @@ Na página, são links `<a target="_blank">` com o endereço da API na frente (`
 **`GET /api/versao`** — consultado a cada 4 s. `{versao: number (sobe a cada escrita no banco; mudou =
 recarregar /api/vagas), analisando: bool (IA dando notas), ia_erro: {motivo, em}|null (última análise automática
 falhou), ia_alerta: {nome, modelo, motivo, em, em_uso}|null (a IA principal falhou na última tentativa; spec 032; `em_uso`, a reserva que respondeu depois, ver §3.5), busca: {situacao, origem} (inclui `externa` para busca do terminal/chat), verificando: string[] (vagas do
-Forçar verificar na fila), falhas: {id: {motivo, em}} (Forçar verificar que não deu nota)}`. Também serve para saber
+Forçar verificar: a atual e a fila), verificando_agora: string|null (a vaga em verificação agora; spec 056), falhas: {id: {motivo, em}} (Forçar verificar que não deu nota)}`. Também serve para saber
 se o servidor está no ar.
 
 ## 4. Comportamentos que a página mantém

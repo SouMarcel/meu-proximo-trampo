@@ -562,6 +562,21 @@ def descrever_uma(vid: str) -> dict:
     return {"descricao": texto, "motivo": None}
 
 
+PAUSA_LEITURA_MIN = 3.0  # segundos entre duas leituras do Forçar verificar no mesmo portal (spec 056)
+
+
+def pausa_leitura(plataforma) -> float:
+    """Segundos entre duas leituras de descrição no mesmo portal pelo Forçar verificar (spec 056): o mínimo da faixa
+    da pausa do portal (<NOME>_PAUSA ou o padrão dele), com piso de PAUSA_LEITURA_MIN; portal sem pausa própria (lido
+    por API) fica no piso."""
+    fonte = next((f for f in FONTES.values() if f.PLATAFORMA == plataforma), None)
+    try:
+        faixa = fonte.pausa()["faixa"] if fonte is not None and hasattr(fonte, "pausa") else None
+        return max(PAUSA_LEITURA_MIN, float(faixa[0])) if faixa else PAUSA_LEITURA_MIN
+    except Exception:  # pausa mal configurada não impede a leitura: vale o piso
+        return PAUSA_LEITURA_MIN
+
+
 def salvar_candidatas(resultado: dict, pasta: Path | None = None, trecho: int = 3500) -> None:
     pasta = pasta or CACHE
     pasta.mkdir(parents=True, exist_ok=True)

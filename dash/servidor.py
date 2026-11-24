@@ -858,7 +858,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._erro(409, "a vaga já tem nota")
         if not analise.FILA.forcar(vid):
             return self._json(409, {"erro": "Para dar nota, ligue uma IA", "sem_ia": True})
-        return self._json(202, {"verificando": analise.FILA.verificando()})
+        return self._json(202, {"verificando": analise.FILA.verificando(),
+                                "verificando_agora": analise.FILA.agora()})
 
     def _salario(self, metodo: str, caminho: str):
         """Faixa salarial (spec 028): só números com fonte (vaga, vagas parecidas do banco, anotações da pessoa) e
@@ -1028,7 +1029,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando,
                                     "ia_erro": analise.FILA.erro(), "ia_alerta": ia.alerta(),
                                     "busca": buscador.BUSCA.resumo(),
-                                    "verificando": analise.FILA.verificando(), "falhas": analise.FILA.falhas_atuais()})
+                                    "verificando": analise.FILA.verificando(), "verificando_agora": analise.FILA.agora(),
+                                    "falhas": analise.FILA.falhas_atuais()})
         if caminho == "/api/ia":
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))
         if caminho.startswith(("/api/contas", "/api/candidaturas")):

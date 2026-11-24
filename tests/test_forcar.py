@@ -244,6 +244,115 @@ class TestFila(Base):
         self.assertEqual((f["aderencia"], f["triagem"]), (70, "fora"))
 
 
+class TestFilaSequencial(Base):
+    """Spec 056: as forçadas uma por vez, na ordem dos cliques, com a pausa do portal entre leituras do mesmo portal e
+    FORCAR_PAUSA entre pedidos à IA. Relógio falso: só anda quando a fila dorme."""
+
+    def setUp(self):
+        super().setUp()
+        self.t, self.sonos = 0.0, []
+
+        def dormir(s):
+            self.sonos.append(round(s, 3))
+            self.t += s
+        self.fila = analise.Fila(dormir=dormir, relogio=lambda: self.t)
+        p = mock.patch.object(analise, "pausa_ia", return_value=5.0)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def rodar(self, *ids):
+        """Põe as vagas na fila (sem acordar a thread) e roda a fila aqui mesmo, até o fim."""
+        with mock.patch.object(analise, "ligada", return_value=True), mock.patch.object(self.fila, "_acordar"):
+            for vid in ids:
+                self.assertTrue(self.fila.forcar(vid))
+        self.assertEqual(self.fila.verificando(), list(dict.fromkeys(ids)))
+        self.fila._pedido = True
+        self.fila._rodar()
+        self.assertEqual((self.fila.verificando(), self.fila.agora()), ([], None))
+
+    def ids_dos_pedidos(self):
+        return [re.findall(r"^### id: (\S+)$", p, re.M) for p in self.pedidos_ia]
+
+    def test_uma_por_vez_na_ordem_com_a_pausa_da_ia(self):  # FR-001, FR-002, FR-004, SC-001
+        self.ia_falsa()
+        gravar(vaga("c"), vaga("a"), vaga("b"))
+        self.rodar("c", "a", "b", "a")
+        self.assertEqual(self.ids_dos_pedidos(), [["c"], ["a"], ["b"]])
+        self.assertEqual(self.sonos, [5.0, 5.0])  # nenhuma pausa antes do primeiro pedido
+        self.assertTrue(all(banco.obter(v)["analise_status"] == "feita" for v in "abc"))
+
+    def test_pausa_do_portal_entre_leituras_do_mesmo_portal(self):  # FR-003, SC-002
+        self.ia_falsa()
+        self.fonte.pausa = lambda: {"faixa": (8.0, 12.0)}
+        outra = fonte_falsa()
+        outra.PLATAFORMA = "Outra Falsa"
+        p = mock.patch.dict(vagas.FONTES, {"outra": outra})
+        p.start()
+        self.addCleanup(p.stop)
+        with mock.patch.object(analise, "pausa_ia", return_value=0.0):
+            gravar(vaga("a", descricao="", descricao_pendente=True),
+                   vaga("x", descricao="", descricao_pendente=True, plataforma="Outra Falsa"),
+                   vaga("b", descricao="", descricao_pendente=True))
+            self.rodar("a", "x", "b")
+        self.assertEqual((self.fonte.lidas, outra.lidas), (["a", "b"], ["x"]))
+        self.assertEqual(self.sonos, [8.0])  # só entre a e b (mesmo portal); x é de outro portal
+
+    def test_falha_de_uma_nao_afeta_as_outras(self):  # FR-005, SC-003
+        padrao = None
+
+        def responder(pedido, **_):
+            if "### id: b" in pedido:
+                raise ia.IAErro("limite de pedidos da IA")
+            return padrao(pedido)
+        self.ia_falsa()
+        padrao = ia.responder.side_effect
+        ia.responder.side_effect = responder
+        gravar(vaga("a"), vaga("b"), vaga("c"))
+        self.rodar("a", "b", "c")
+        self.assertEqual(list(self.fila.falhas_atuais()), ["b"])
+        self.assertIn("limite de pedidos", self.fila.falhas_atuais()["b"]["motivo"])
+        self.assertEqual((banco.obter("a")["aderencia"], banco.obter("c")["aderencia"]), (70, 70))
+
+    def test_atual_e_fila_durante_a_rodada(self):  # FR-006
+        vistos = []
+
+        def responder(pedido, **_):
+            vistos.append((self.fila.agora(), self.fila.verificando()))
+            vid = re.findall(r"^### id: (\S+)$", pedido, re.M)[0]
+            return json.dumps([{"id": vid, "aderencia": 70, "resumo": "Bate.", "modelo_trabalho": "remoto"}])
+        self.ia_falsa(responder)
+        gravar(vaga("a"), vaga("b"))
+        self.rodar("a", "b")
+        self.assertEqual(vistos, [("a", ["a", "b"]), ("b", ["b"])])
+
+    def test_forcar_a_atual_nao_duplica(self):
+        with mock.patch.object(analise, "ligada", return_value=True), mock.patch.object(self.fila, "_acordar"):
+            self.fila.forcar("a")
+            self.fila._proxima_forcada()  # "a" virou a atual
+            self.fila.forcar("a")
+            self.fila.forcar("b")
+        self.assertEqual((self.fila.agora(), self.fila.verificando()), ("a", ["a", "b"]))
+
+
+class TestPausas(unittest.TestCase):
+    def test_pausa_ia(self):  # FR-004, US3
+        import segredos
+        for bruto, esperado in (("0", 0.0), ("90", 60.0), ("-3", 0.0), ("2,5", 2.5), ("abc", 5.0), ("nan", 5.0),
+                                ("", 5.0), (None, 5.0)):
+            with self.subTest(bruto=bruto), mock.patch.object(segredos, "ler", return_value=bruto):
+                self.assertEqual(analise.pausa_ia(), esperado)
+
+    def test_pausa_leitura(self):  # FR-003
+        f = fonte_falsa()
+        with mock.patch.dict(vagas.FONTES, {"falsa": f}):
+            self.assertEqual(vagas.pausa_leitura("Falsa"), 3.0)  # sem pausa própria: o piso
+            f.pausa = lambda: {"faixa": (1.0, 2.0)}
+            self.assertEqual(vagas.pausa_leitura("Falsa"), 3.0)  # abaixo do piso
+            f.pausa = lambda: {"faixa": (7.5, 9.0)}
+            self.assertEqual(vagas.pausa_leitura("Falsa"), 7.5)
+        self.assertEqual(vagas.pausa_leitura("Portal que não existe"), 3.0)
+
+
 class TestServidor(Base):
     def setUp(self):
         super().setUp()
@@ -271,8 +380,8 @@ class TestServidor(Base):
         gravar(vaga("a"), vaga("n", aderencia=80, analise_status="feita"))
         with mock.patch.object(analise, "ligada", return_value=True), \
                 mock.patch.object(analise.FILA, "_acordar"):
-            self.assertEqual(self.pedir("POST", "/api/vagas/a/analisar", {}), (202, {"verificando": ["a"]}))
-            self.assertEqual(self.pedir("POST", "/api/vagas/a/analisar", {}), (202, {"verificando": ["a"]}))
+            self.assertEqual(self.pedir("POST", "/api/vagas/a/analisar", {}), (202, {"verificando": ["a"], "verificando_agora": None}))
+            self.assertEqual(self.pedir("POST", "/api/vagas/a/analisar", {}), (202, {"verificando": ["a"], "verificando_agora": None}))
             status, j = self.pedir("GET", "/api/versao")
             self.assertEqual((status, j["verificando"], j["falhas"]), (200, ["a"], {}))
             self.assertEqual(self.pedir("POST", "/api/vagas/n/analisar", {}), (409, {"erro": "a vaga já tem nota"}))
