@@ -17,7 +17,7 @@ description: "Tarefas da spec 058: a mesma vaga em vários portais"
 ## Phase 2: Front (funcionários, pelo rodízio)
 
 - [X] T006 [D minor] [US2] [US4] Etiquetas de todos os portais e o "Link do anúncio original" no detalhe.
-- [ ] T007 [D minor] [US3] A seção "Vagas repetidas" na aba Limpeza.
+- [X] T007 [D minor] [US3] A seção "Vagas repetidas" na aba Limpeza.
 
 ## Phase 3: Fechamento (eu)
 
