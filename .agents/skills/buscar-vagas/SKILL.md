@@ -354,6 +354,10 @@ Encerrada, Sem resposta. Só rode `--gravar` com o OK da pessoa; as vagas com cu
 anotação (marcadas com ⚑) só entram com `--incluir-destacadas` e um OK específico para elas. Para
 mudar os critérios, indique a aba Limpeza em Filtros da busca.
 
+"Tem vaga repetida?", "junta as vagas iguais": rode `PY dash/banco.py repetidas` e mostre os grupos (a mesma vaga
+em vários portais, com a empresa escrita de outro jeito) e qual vaga fica. Só rode `--gravar` com o OK da pessoa: a
+principal ganha as etiquetas, a etapa mais adiantada, as anotações e os currículos das outras, que saem das listas.
+
 ## Como dar a nota (0 a 100)
 
 A nota responde a uma pergunta: vale o tempo do usuário se candidatar a esta vaga,

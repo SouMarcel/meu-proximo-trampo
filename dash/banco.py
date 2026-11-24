@@ -14,6 +14,7 @@ comandos para consultar e analisar vagas sem abrir o navegador:
   python dash/banco.py integridade [--gravar]         passa o filtro de integridade (spec 034) nas vagas já gravadas
   python dash/banco.py regioes [--gravar]             revê as vagas em Fora por região ou lugar (spec 047)
   python dash/banco.py limpar [--gravar]              limpeza de vagas antigas: prévia; arquiva com --gravar (spec 054)
+  python dash/banco.py repetidas [--gravar]           a mesma vaga em vários portais: prévia; junta com --gravar (spec 058)
 
 O arquivo do banco é dash/dados/candidaturas.db (ou o caminho em TRAMPO_BANCO).
 """
@@ -199,14 +200,53 @@ def ids_da_vaga(doc: dict, id_gupy=None) -> set[str]:
     return ids
 
 
+# O que só muda a escrita do nome da empresa (spec 058): sufixos societários e palavras de página de carreira
+SUFIXOS_EMPRESA = frozenset("ltda sa s a me epp eireli inc llc ltd corp corporation co company group grupo holding".split())
+PREFIXOS_EMPRESA = frozenset("seja carreiras carreira trabalhe conosco na no".split())
+EMPRESA_MIN = 5  # letras do nome-base contido no outro para contar como a mesma empresa
+
+
+def empresa_base(nome) -> str:
+    """O nome da empresa sem caixa, acento, pontuação, sufixo societário e palavras de página de carreira, com as
+    palavras coladas: "Alfaweb", "Alfaweb Corp", "Seja Alfaweb" e "Alfa Web Ltda." dão "alfaweb". Empresa
+    genérica ("Empresa confidencial") dá "" (spec 058)."""
+    texto = " ".join(_sem_acento(nome).split())
+    if texto in EMPRESAS_GENERICAS:
+        return ""
+    palavras = re.sub(r"[^a-z0-9]+", " ", texto).split()
+    while palavras and palavras[0] in PREFIXOS_EMPRESA:
+        palavras.pop(0)
+    return "".join(p for p in palavras if p not in SUFIXOS_EMPRESA)
+
+
+def mesma_empresa(a, b) -> bool:
+    """Os dois nomes-base são iguais, ou o menor (com pelo menos EMPRESA_MIN letras) está contido no maior."""
+    x, y = sorted((empresa_base(a), empresa_base(b)), key=len)
+    return bool(x) and (x == y or (len(x) >= EMPRESA_MIN and x in y))
+
+
+def _da_conta(v: dict) -> bool:
+    """A vaga veio da leitura das candidaturas da conta (Atualizar candidaturas, spec 018)."""
+    return str(v.get("id") or "").startswith("gupya-") or "/candidates/applications/" in str(v.get("url") or "")
+
+
+def _contida_vale(a: dict, b: dict) -> bool:
+    """A empresa contida (não igual) só junta vagas de portais diferentes, ou quando uma veio da conta: no mesmo portal,
+    "Omega Data North America" e "Omega Data Europe" são vagas diferentes (spec 058)."""
+    return a.get("plataforma") != b.get("plataforma") or _da_conta(a) or _da_conta(b)
+
+
+def _cargo(titulo) -> str:
+    return " ".join(_sem_acento(titulo).split())
+
+
 def chave_vaga(titulo, empresa) -> str | None:
-    """Cargo + empresa sem acento, caixa e espaços extras: o mesmo anúncio em outro portal tem a mesma chave.
-    Sem empresa conhecida não há chave (dois "Analista" de empresas confidenciais não são a mesma vaga)."""
-    empresa = " ".join(_sem_acento(empresa).split())
-    titulo = " ".join(_sem_acento(titulo).split())
-    if not titulo or empresa in EMPRESAS_GENERICAS:
+    """Cargo + nome-base da empresa (empresa_base): o mesmo anúncio em outro portal tem a mesma chave. Sem empresa
+    conhecida não há chave (dois "Analista" de empresas confidenciais não são a mesma vaga)."""
+    titulo, base = _cargo(titulo), empresa_base(empresa)
+    if not titulo or not base:
         return None
-    return f"{titulo}|{empresa}"
+    return f"{titulo}|{base}"
 
 
 def _recente(doc: dict) -> bool:
@@ -216,26 +256,42 @@ def _recente(doc: dict) -> bool:
 
 class IndiceVistas:
     """Acha a vaga já registrada que é a mesma que uma vaga nova: por um id em comum (ids_da_vaga, inclusive pelos
-    links) ou pelo mesmo cargo + empresa encontrado nos últimos REPETIDA_DIAS dias (depois disso, a mesma vaga
-    reaberta pela empresa conta como nova)."""
+    links) ou pelo mesmo cargo com a mesma empresa (mesma_empresa: o nome escrito de outro jeito conta, spec 058),
+    encontrado nos últimos REPETIDA_DIAS dias (depois disso, a mesma vaga reaberta pela empresa conta como nova). A
+    vaga juntada a outra (juntada_a) aponta para a que ficou. `vagas` e `so_recentes=False` servem à leitura das
+    contas, que casa com o banco inteiro."""
 
-    def __init__(self):
+    def __init__(self, vagas: list[dict] | None = None, so_recentes: bool = True, contida_mesmo_portal: bool = False):
         self._id_gupy = _id_gupy()
         self.por_id: dict[str, str] = {}
         self.por_chave: dict[str, str] = {}
-        for doc in listar_vagas():
+        self.por_cargo: dict[str, list[tuple[str, str, dict]]] = {}  # cargo -> [(nome-base, id, vaga)]
+        self._contida_mesmo_portal = contida_mesmo_portal
+        docs = listar_vagas() if vagas is None else vagas
+        for doc in sorted(docs, key=lambda d: bool(d.get("arquivada_em"))):  # as que estão à vista primeiro
+            alvo = doc.get("juntada_a") or doc["id"]
             for i in ids_da_vaga(doc, self._id_gupy):
-                self.por_id.setdefault(i, doc["id"])
-            chave = chave_vaga(doc.get("titulo"), doc.get("empresa")) if _recente(doc) else None
+                self.por_id.setdefault(i, alvo)
+            if doc.get("juntada_a") or (so_recentes and not _recente(doc)):
+                continue
+            chave = chave_vaga(doc.get("titulo"), doc.get("empresa"))
             if chave:
-                self.por_chave.setdefault(chave, doc["id"])
+                self.por_chave.setdefault(chave, alvo)
+                self.por_cargo.setdefault(_cargo(doc.get("titulo")), []).append((empresa_base(doc.get("empresa")), alvo, doc))
 
     def achar(self, doc: dict) -> str | None:
         """ID da vaga registrada que é a mesma que `doc`, ou None."""
         for i in ids_da_vaga(doc, self._id_gupy):
             if i in self.por_id:
                 return self.por_id[i]
-        return self.por_chave.get(chave_vaga(doc.get("titulo"), doc.get("empresa")) or "")
+        chave = chave_vaga(doc.get("titulo"), doc.get("empresa"))
+        if not chave:
+            return None
+        if chave in self.por_chave:
+            return self.por_chave[chave]
+        base = empresa_base(doc.get("empresa"))
+        return next((vid for outra, vid, d in self.por_cargo.get(_cargo(doc.get("titulo")), [])
+                     if mesma_empresa(base, outra) and (self._contida_mesmo_portal or _contida_vale(doc, d))), None)
 
 
 def ids_vistos() -> set[str]:
@@ -1075,6 +1131,194 @@ def limpar(ids: list[str] | None = None, crit: dict | None = None, incluir_desta
             "antes_kb": antes, "depois_kb": tamanho_kb(), "backup": copia.name if copia else None}
 
 
+# ---------------------------------------------------------------- a mesma vaga em vários portais (spec 058)
+
+def _definitiva(v: dict) -> bool:
+    return isinstance(v.get("aderencia"), (int, float)) and not isinstance(v.get("aderencia"), bool) \
+        and not v.get("nota_sem_descricao")
+
+
+def _principal(docs: list[dict]) -> dict:
+    """A vaga que fica quando várias são a mesma: a que está em Aplicações, depois a que tem descrição, a que tem
+    nota definitiva e a mais antiga."""
+    return min(docs, key=lambda v: (not v.get("etapa"), not v.get("descricao"), not _definitiva(v),
+                                    str(v.get("encontrada_em") or v.get("criada_em") or "9999"), str(v["id"])))
+
+
+def _etapa_final(docs: list[dict]) -> dict:
+    """A vaga com a etapa mais adiantada (ordem de ETAPAS; encerrada é a última); no empate, a primeira da lista."""
+    com_etapa = [v for v in docs if v.get("etapa") in ETAPAS]
+    return max(com_etapa, key=lambda v: ETAPAS.index(v["etapa"])) if com_etapa else {}
+
+
+def _juntar_docs(principal: dict, outras: list[dict]) -> tuple[dict, list[dict]]:
+    """A principal com o que as outras têm (portais, ids, descrição, etapa, anotações, currículos) e as outras como
+    ficha curta apontando para ela (juntada_a). Não grava."""
+    p = dict(principal)
+    extras = list(p.get("outras_plataformas") or [])
+    relacionados = list(p.get("ids_relacionados") or [])
+    for o in outras:
+        for plat in [o.get("plataforma"), *(o.get("outras_plataformas") or [])]:
+            if plat and plat in PLATAFORMAS and plat != "Outra" and plat != p.get("plataforma") and plat not in extras:
+                extras.append(plat)
+        for i in [o["id"], *(o.get("ids_relacionados") or [])]:
+            if i and i != p["id"] and i not in relacionados:
+                relacionados.append(str(i))
+    p.update(outras_plataformas=extras, ids_relacionados=relacionados)
+    if not p.get("descricao"):
+        texto = next((o["descricao"] for o in outras if o.get("descricao") and not o.get("descricao_pendente")), "")
+        if texto:
+            p["descricao"] = texto
+            aplicar_integridade(p)
+            p.pop("descricao_pendente", None)
+            p.pop("nota_dados_portal", None)
+            if not _definitiva(p):
+                p.pop("nota_sem_descricao", None)
+                p["analise_status"] = "pendente"
+    final = _etapa_final([p, *outras])
+    if final and final is not p and final.get("etapa") != p.get("etapa"):
+        p.update(etapa=final["etapa"], etapa_em=final.get("etapa_em"), resultado=final.get("resultado"))
+    if any(o.get("etapa") for o in outras) and p.get("etapa"):
+        p["triagem"] = "seguir"
+    notas = [p.get("anotacao") or ""] + [o.get("anotacao") or "" for o in outras]
+    p["anotacao"] = _texto("\n".join(dict.fromkeys(n.strip() for n in notas if n.strip())), 5000)
+    p["curriculos"] = list(dict.fromkeys([*(p.get("curriculos") or []), *(c for o in outras for c in o.get("curriculos") or [])]))
+    vistos = {d.get("nome") for d in p.get("documentos") or []}
+    p["documentos"] = [*(p.get("documentos") or []),
+                       *(d for o in outras for d in o.get("documentos") or [] if d.get("nome") not in vistos)]
+    for campo in ("curriculos", "documentos"):
+        if not p[campo]:
+            p.pop(campo)
+    p["url_candidatura"] = p.get("url_candidatura") or next((o["url_candidatura"] for o in outras
+                                                            if o.get("url_candidatura")), None)
+    p["atualizada_em"] = agora()
+    fichas = [{**_ficha_curta(o), "juntada_a": p["id"]} for o in outras]
+    return p, fichas
+
+
+def juntar(principal_id: str, outros_ids: list[str]) -> dict:
+    """Junta as vagas `outros_ids` na `principal_id` (_juntar_docs) e grava. Devolve a principal."""
+    with escrita() as con:
+        p = _ler(con, principal_id)
+        if p is None:
+            raise KeyError(principal_id)
+        outras = [o for o in (_ler(con, i) for i in outros_ids if i != principal_id) if o is not None]
+        p, fichas = _juntar_docs(p, outras)
+        _gravar(con, p["id"], p)
+        for f in fichas:
+            _gravar(con, f["id"], f)
+    return p
+
+
+def _resumo(v: dict) -> dict:
+    return {"id": v["id"], "titulo": v.get("titulo") or "", "empresa": v.get("empresa") or "",
+            "plataforma": v.get("plataforma") or "", "etapa": v.get("etapa"), "triagem": v.get("triagem"),
+            "aderencia": v.get("aderencia") if _definitiva(v) else None, "tem_descricao": bool(v.get("descricao"))}
+
+
+def _perto(a: dict, b: dict) -> bool:
+    """Encontradas até REPETIDA_DIAS dias uma da outra (a mesma vaga reaberta meses depois conta como outra)."""
+    da = str(a.get("encontrada_em") or a.get("criada_em") or "")[:10]
+    db = str(b.get("encontrada_em") or b.get("criada_em") or "")[:10]
+    try:
+        return abs((date.fromisoformat(da) - date.fromisoformat(db)).days) <= REPETIDA_DIAS
+    except ValueError:
+        return True
+
+
+def grupos_repetidos(vagas: list[dict] | None = None) -> list[dict]:
+    """As vagas à vista que são a mesma (um id em comum, ou o mesmo cargo com mesma_empresa e encontradas perto uma
+    da outra), em grupos: [{"ids": [principal, ...], "principal": resumo, "outras": [resumo], "etapa_final"}]."""
+    docs = [v for v in (listar_vagas() if vagas is None else vagas) if not v.get("arquivada_em")]
+    id_gupy = _id_gupy()
+    pai = {v["id"]: v["id"] for v in docs}
+
+    def raiz(x):
+        while pai[x] != x:
+            pai[x] = pai[pai[x]]
+            x = pai[x]
+        return x
+
+    def unir(a, b):
+        pai[raiz(a)] = raiz(b)
+    dono: dict[str, str] = {}
+    for v in docs:
+        for i in ids_da_vaga(v, id_gupy):
+            if i in dono:
+                unir(v["id"], dono[i])
+            else:
+                dono[i] = v["id"]
+    por_cargo: dict[str, list[dict]] = {}
+    for v in docs:
+        if empresa_base(v.get("empresa")) and _cargo(v.get("titulo")):
+            por_cargo.setdefault(_cargo(v.get("titulo")), []).append(v)
+    for lista in por_cargo.values():
+        for i, a in enumerate(lista):
+            for b in lista[i + 1:]:
+                if (chave_vaga(a.get("titulo"), a.get("empresa")) == chave_vaga(b.get("titulo"), b.get("empresa"))
+                        or (mesma_empresa(a.get("empresa"), b.get("empresa")) and _contida_vale(a, b))) and _perto(a, b):
+                    unir(a["id"], b["id"])
+    grupos: dict[str, list[dict]] = {}
+    for v in docs:
+        grupos.setdefault(raiz(v["id"]), []).append(v)
+    saida = []
+    for membros in grupos.values():
+        if len(membros) < 2:
+            continue
+        p = _principal(membros)
+        outras = sorted((v for v in membros if v is not p), key=lambda v: v["id"])
+        final = _etapa_final(membros)
+        saida.append({"ids": [p["id"], *(o["id"] for o in outras)], "principal": _resumo(p),
+                      "outras": [_resumo(o) for o in outras], "etapa_final": final.get("etapa")})
+    return sorted(saida, key=lambda g: (g["principal"]["titulo"].lower(), g["principal"]["empresa"].lower()))
+
+
+def juntar_repetidas(pedidos: list[list[str]] | None = None) -> dict:
+    """Junta os grupos de grupos_repetidos (spec 058). `pedidos` (a página): só os grupos pedidos, cada um como a lista
+    de ids da prévia, se ainda baterem; None (terminal): todos. Antes, uma cópia do banco."""
+    atuais = {tuple(g["ids"]): g for g in grupos_repetidos()}
+    escolhidos, ignorados = [], []
+    for ids in (pedidos if pedidos is not None else list(atuais)):
+        chave = tuple(str(i) for i in ids)
+        (escolhidos if chave in atuais else ignorados).append(chave)
+    copia = backup_diario("repetidas") if escolhidos else None
+    vagas_juntadas = 0
+    for ids in escolhidos:
+        juntar(ids[0], list(ids[1:]))
+        vagas_juntadas += len(ids) - 1
+    return {"juntados": len(escolhidos), "vagas": vagas_juntadas, "ignorados": [list(i) for i in ignorados],
+            "backup": copia.name if copia else None}
+
+
+def completar_pelo_link(vid: str, dados: dict, url: str) -> dict:
+    """O link do anúncio original (spec 058) de uma vaga que não está no dashboard por outro portal: a vaga ganha a
+    descrição lida (se veio), o link de candidatura, o id e a etiqueta do portal do link; sem nota definitiva, volta a
+    esperar nota."""
+    with escrita() as con:
+        doc = _ler(con, vid)
+        if doc is None:
+            raise KeyError(vid)
+        texto = _texto(dados.get("descricao"), 20000)
+        if texto and (not doc.get("descricao") or doc.get("descricao_pendente")):
+            doc["descricao"] = texto
+            aplicar_integridade(doc)
+            doc.pop("descricao_pendente", None)
+            doc.pop("nota_dados_portal", None)
+            if not _definitiva(doc):
+                doc.pop("nota_sem_descricao", None)
+                doc["analise_status"] = "pendente"
+        doc["url_candidatura"] = _texto(url, 1000) or doc.get("url_candidatura")
+        lid, plat = str(dados.get("id") or ""), dados.get("plataforma")
+        if lid and lid != vid and lid not in (doc.get("ids_relacionados") or []):
+            doc["ids_relacionados"] = [*(doc.get("ids_relacionados") or []), lid]
+        if plat in PLATAFORMAS and plat not in ("Outra", doc.get("plataforma")) and plat not in (doc.get("outras_plataformas") or []):
+            doc["outras_plataformas"] = [*(doc.get("outras_plataformas") or []), plat]
+        aplicar_criterios(doc)
+        doc["atualizada_em"] = agora()
+        _gravar(con, vid, doc)
+    return doc
+
+
 # ---------------------------------------------------------------- linha de comando
 
 def _cmd_quadro(args) -> int:
@@ -1367,6 +1611,29 @@ def _cmd_limpar(args) -> int:
     return 0
 
 
+def _cmd_repetidas(args) -> int:
+    grupos = grupos_repetidos()
+    if not grupos:
+        print("Nenhuma vaga repetida.")
+        return 0
+    linha = lambda r: (f"{r['id']} | {r['titulo']} | {r['empresa']} | {r['plataforma']}"
+                       + (f" | {r['etapa']}" if r["etapa"] else "") + (f" | nota {r['aderencia']}" if r["aderencia"] else ""))
+    print(f"{len(grupos)} grupo(s) de vagas repetidas:")
+    for g in grupos:
+        print(f"\n- fica: {linha(g['principal'])}")
+        for o in g["outras"]:
+            print(f"  junta: {linha(o)}")
+        if g["etapa_final"] and g["etapa_final"] != g["principal"]["etapa"]:
+            print(f"  etapa final: {g['etapa_final']}")
+    if not args.gravar:
+        print("\nNada foi gravado. Para juntar: python dash/banco.py repetidas --gravar")
+        return 0
+    r = juntar_repetidas()
+    print(f"\nJuntados: {r['juntados']} grupo(s), {r['vagas']} vaga(s) a menos. Cópia de antes: {r['backup']} "
+          f"(em {BACKUPS}).")
+    return 0
+
+
 def main() -> int:
     for fluxo in (sys.stdout, sys.stderr):
         try:
@@ -1396,10 +1663,13 @@ def main() -> int:
     lp.add_argument("--gravar", action="store_true", help="arquiva as vagas e encerra as aplicações sem retorno")
     lp.add_argument("--incluir-destacadas", action="store_true",
                     help="com --gravar, inclui as vagas com currículo, carta ou anotação")
+    rp = sub.add_parser("repetidas", help="a mesma vaga em vários portais (mostra; junta com --gravar)")
+    rp.add_argument("--gravar", action="store_true", help="junta cada grupo na vaga principal")
     args = ap.parse_args()
     return {"quadro": _cmd_quadro, "pendentes": _cmd_pendentes, "analisar": _cmd_analisar,
             "vaga": _cmd_vaga, "anotar": _cmd_anotar, "kit": _cmd_kit, "lembretes": _cmd_lembretes,
-            "integridade": _cmd_integridade, "regioes": _cmd_regioes, "limpar": _cmd_limpar}[args.cmd](args)
+            "integridade": _cmd_integridade, "regioes": _cmd_regioes, "limpar": _cmd_limpar,
+            "repetidas": _cmd_repetidas}[args.cmd](args)
 
 
 if __name__ == "__main__":

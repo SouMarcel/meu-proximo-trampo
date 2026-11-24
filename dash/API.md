@@ -139,6 +139,7 @@ Regras do front: a vaga está **em Aplicações** quando `etapa` não é nula e 
 | `nota_dados_portal` | boolean | a nota provisória saiu pelos dados do portal (funções, experiência, contrato; spec 057) |
 | `funcoes`, `experiencia`, `contrato_portal` | string[], string, string | dados que o portal informa além do texto (JobGether; spec 057); vão no pedido à IA |
 | `descricao_colada` | ISO | quando a pessoa colou a descrição no detalhe da vaga (spec 057) |
+| `juntada_a` | id | a vaga foi juntada a esta (spec 058): fica só a ficha curta, com `arquivada_em`, fora das listas; a busca continua reconhecendo os ids dela |
 | `resumo` | string (até 400) | |
 | `encaixe`, `lacunas`, `alertas` | string[] (até 6) | facetas Encaixe, Lacunas, Atenção |
 | `senioridade` | string[] de `junior, pleno, senior` | |
@@ -219,6 +220,23 @@ tentativa quando a IA falha; a página mostra "Na fila (posição N)" para as qu
 (spec 057): com uma busca rodando ou o portal em espera, a vaga vai para `aguardando` e volta sozinha; portal que não
 entrega o texto (JobGether) dá a nota provisória pelos dados do portal (`nota_dados_portal`) ou, sem eles, uma falha
 que pede para colar a descrição.
+
+**`PUT /api/vagas/{id}/link-original`** **[local]** — Link do anúncio original (spec 058). Corpo `{url}`. Lido como no
+Adicionar Vaga (`fontes/link.py`). Se a vaga do link já está no dashboard, as duas são juntadas na principal (em
+Aplicações → com descrição → com nota → a mais antiga): 200 `{juntada: id_da_principal, vaga}`. Senão, a vaga atual
+ganha a descrição, `url_candidatura`, o id e a etiqueta do portal do link e entra na fila: 200 `{juntada: null, vaga,
+verificando, verificando_agora}`. Link ilegível: 422 `{erro}`.
+
+**`GET /api/repetidas`** **[local]** — a mesma vaga em vários portais (spec 058): `{grupos: [{ids, principal, outras,
+etapa_final}]}` (`principal`/`outras`: `{id, titulo, empresa, plataforma, etapa, triagem, aderencia, tem_descricao}`;
+`ids[0]` é a principal). A mesma vaga: um id em comum, ou o mesmo cargo com o mesmo nome-base de empresa
+(`banco.empresa_base`: sem caixa, acento, pontuação, sufixo societário e "Seja"/"Carreiras"), ou com um nome contido
+no outro (5 letras ou mais) entre portais diferentes, encontradas até 60 dias uma da outra.
+
+**`POST /api/repetidas/juntar`** **[local]** — corpo `{grupos: string[][]}` (os `ids` da prévia). Junta os grupos que
+ainda batem, depois da cópia do banco (`candidaturas-AAAA-MM-DD-repetidas.db`): a principal ganha etiquetas, ids,
+descrição (se não tinha), a etapa mais adiantada, as anotações, os currículos e os documentos. Resposta
+`{juntados, vagas, ignorados, backup}`.
 
 **`PUT /api/vagas/{id}/descricao`** **[local]** — Colar a descrição (spec 057). Corpo `{descricao: string}` (50 a 30.000
 caracteres). Grava o texto (filtro de integridade, spec 034) e, sem nota definitiva, põe a vaga na fila do Forçar

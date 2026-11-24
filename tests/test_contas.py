@@ -213,7 +213,7 @@ class TestProposta(Base):
     def criar(self):
         self.vaga("aaaaaaaaaaaaaaa2", "Indeed", "Coordenador Ágil", "Empresa Beta", "aplicada")
         self.vaga("aaaaaaaaaaaaaaa1", "Indeed", "Analista de Projetos", "Empresa Alfa", "entrevista")
-        self.vaga("gupy-9000001", "Gupy", "Analista de Projetos", "Empresa Alfa Gupy")
+        self.vaga("gupy-9000001", "Gupy", "Analista de Projetos", "Empresa Zeta")  # outra empresa: "Empresa Alfa Gupy" contém "Empresa Alfa" (spec 058)
         self.vaga("m-1", "Gupy", "Analista de Dados", "Empresa Gama", "encerrada", "nao_aprovado")
 
     def test_proposta(self):  # US2

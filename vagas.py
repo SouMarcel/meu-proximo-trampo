@@ -384,7 +384,7 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
         if motivo:
             excluidas.append(f'{v["titulo"]} | {v["empresa"]}  ("{motivo}")')
             continue
-        chave = (tn, normalizar(v["empresa"]))  # mesmo anúncio publicado várias vezes
+        chave = (tn, banco.empresa_base(v["empresa"]) or normalizar(v["empresa"]))  # o mesmo anúncio várias vezes (spec 058)
         if chave in grupos:
             g = grupos[chave]
             g["ids_relacionados"].append(v["id"])

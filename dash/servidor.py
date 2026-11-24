@@ -917,6 +917,52 @@ class Handler(BaseHTTPRequestHandler):
             return self._erro(404, "arquivo não encontrado")
         return self._enviar(200, alvo.read_bytes(), TIPOS_FRONT[alvo.suffix.lower()])
 
+    def _repetidas(self, metodo: str, caminho: str):
+        """A mesma vaga em vários portais (spec 058): a prévia dos grupos e juntar os escolhidos. Só deste computador."""
+        corpo = self._corpo() if metodo == "POST" else None
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        if metodo == "GET" and caminho == "/api/repetidas":
+            return self._json(200, {"grupos": banco.grupos_repetidos()})
+        if metodo == "POST" and caminho == "/api/repetidas/juntar":
+            grupos = corpo.get("grupos") if isinstance(corpo, dict) else None
+            if (not isinstance(grupos, list) or not grupos or len(grupos) > 500
+                    or not all(isinstance(g, list) and 2 <= len(g) <= 20
+                               and all(isinstance(i, str) and banco.ID_VALIDO.match(i) for i in g) for g in grupos)):
+                raise ValueError("grupos inválidos: listas de 2 a 20 ids")
+            return self._json(200, banco.juntar_repetidas(grupos))
+        return self._erro(404, "rota não encontrada")
+
+    def _link_original(self, vid: str):
+        """O link do anúncio original (spec 058): lido como no Adicionar Vaga; se a vaga dele já está no dashboard, as
+        duas são juntadas; senão, a vaga atual ganha a descrição, o link e a etiqueta e entra na fila de nota."""
+        corpo = self._corpo()
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        if not banco.ID_VALIDO.match(vid):
+            return self._erro(404, "rota não encontrada")
+        atual = banco.obter(vid)
+        if atual is None:
+            return self._erro(404, "vaga não encontrada")
+        url = str((corpo or {}).get("url") or "").strip()[:1000] if isinstance(corpo, dict) else ""
+        if not url:
+            raise ValueError("cole o link do anúncio")
+        try:
+            dados = link.ler(url)
+        except link.LinkErro as e:
+            return self._json(422, {"erro": str(e)})
+        existente = banco.IndiceVistas().achar({**dados, "id": dados.get("id")})
+        if existente and existente != vid and banco.obter(existente):
+            principal = banco._principal([banco.obter(existente), atual])
+            outra = vid if principal["id"] != vid else existente
+            vaga = banco.juntar(principal["id"], [outra])
+            return self._json(200, {"juntada": principal["id"], "vaga": banco.com_kit(vaga)})
+        vaga = banco.completar_pelo_link(vid, dados, url)
+        if not banco._definitiva(vaga) and vaga.get("descricao"):
+            analise.FILA.forcar(vid)  # sem IA ligada, a vaga fica esperando a nota
+        return self._json(200, {"juntada": None, "vaga": banco.com_kit(vaga), "verificando": analise.FILA.verificando(),
+                                "verificando_agora": analise.FILA.agora()})
+
     def _estado_limpeza(self) -> dict:
         return {"criterios": filtros.efetivos(filtros.ler_config())["limpeza"],
                 "arquivadas": banco.contar_arquivadas(), "tamanho_kb": banco.tamanho_kb()}
@@ -991,6 +1037,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(201 if nova else 200, {"empresa": empresa, "nova": nova, "empresas": empresas})
             if caminho == "/api/ia" or caminho.startswith("/api/ia/"):
                 return self._ia(metodo, caminho)
+            if caminho == "/api/repetidas" or caminho.startswith("/api/repetidas/"):
+                return self._repetidas(metodo, caminho)
+            if metodo == "PUT" and caminho.startswith("/api/vagas/") and caminho.endswith("/link-original"):
+                return self._link_original(unquote(caminho[len("/api/vagas/"):-len("/link-original")]))
             if metodo == "PUT" and caminho.startswith("/api/vagas/") and caminho.endswith("/descricao"):
                 return self._colar_descricao(unquote(caminho[len("/api/vagas/"):-len("/descricao")]))
             if caminho in ("/api/perfil", "/api/curriculo-base") or caminho.startswith("/api/perfil/"):
@@ -1041,6 +1091,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._front(caminho)
         if caminho == "/api/limpeza" or caminho.startswith("/api/limpeza/"):
             return self._limpeza("GET", caminho)
+        if caminho == "/api/repetidas":
+            return self._repetidas("GET", caminho)
         if caminho == "/api/versao":
             return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando,
                                     "ia_erro": analise.FILA.erro(), "ia_alerta": ia.alerta(),

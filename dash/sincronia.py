@@ -41,26 +41,20 @@ def _item(tipo: str, lida: dict, vaga: dict | None, para: dict) -> dict:
 
 def proposta(lidas: list[dict], vagas: list[dict]) -> dict:
     """{"itens": [...], "historico": [...], "sem_mudanca": n}. Casamento: os ids que o banco conhece
-    (banco.ids_da_vaga) e, na falta, cargo + empresa no banco inteiro.
+    (banco.ids_da_vaga) e, na falta, cargo + mesma empresa (banco.mesma_empresa, spec 058) no banco inteiro.
 
     Na lista ("itens") só entra mudança de verdade, já marcada: etapa à frente da do quadro, vaga do Relatório que a
     pessoa já se candidatou e candidatura nova em andamento. Etapa igual (ou o portal atrás) só conta em sem_mudanca.
     Candidatura nova que já acabou no portal (encerrada, vaga fechada) vai para "historico": uma linha na página, com
     o botão para importar tudo como Encerrada (decisão da pessoa, 2026-10-18)."""
-    por_id, por_chave = {}, {}
-    id_gupy = banco._id_gupy()
-    for v in vagas:
-        for i in banco.ids_da_vaga(v, id_gupy):
-            por_id.setdefault(i, v)
-        k = banco.chave_vaga(v.get("titulo"), v.get("empresa"))
-        if k:
-            por_chave.setdefault(k, v)
+    por_doc = {v["id"]: v for v in vagas}
+    indice = banco.IndiceVistas(vagas, so_recentes=False, contida_mesmo_portal=True)  # ids, links e cargo + mesma
+    # empresa (spec 058): a candidatura lida na conta é do mesmo portal da vaga, com a empresa escrita de outro jeito
     escolhidos: dict[str, dict] = {}
     historico: dict[str, dict] = {}
     sem_mudanca = 0
     for x in lidas:
-        vaga = por_id.get(x["id"]) if x.get("id") else None
-        vaga = vaga or por_chave.get(banco.chave_vaga(x["titulo"], x["empresa"]) or "")
+        vaga = por_doc.get(indice.achar({"id": x.get("id"), "titulo": x["titulo"], "empresa": x["empresa"]}) or "")
         para = {"etapa": x["etapa"], "resultado": x["resultado"] if x["etapa"] == "encerrada" else None}
         if vaga is None:
             if not x["etapa"] or not x["id"]:
