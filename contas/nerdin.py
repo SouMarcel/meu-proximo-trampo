@@ -41,11 +41,12 @@ ENDERECO = re.compile(r"^https://(?:www\.)?nerdin\.com\.br/vagas_candidato\.php\
 HREF_MENU = re.compile(r"""href\s*=\s*["']([^"']*vagas_candidato\.php\?id=(\d+)[^"']*)["']""", re.I)
 HREF = re.compile(r"""href\s*=\s*["']([^"']+)["']""", re.I)
 VAGA_PHP = re.compile(r"vaga\.php\?id=(\d+)", re.I)
+VAGA_CURTA = re.compile(r"^https://(?:www\.)?nerdin\.com\.br/vaga/(\d+)\.php(?:[?#]|$)", re.I)  # "Ver Detalhes"
 INSCRITO = re.compile(r"Inscrito em:?\s*(\d{1,2})/(\d{1,2})/(\d{4})", re.I)
 VOID = {"br", "img", "input", "hr", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr"}
 ICONES_EMPRESA = ("building",)
 ICONES_LOCAL = ("map-marker", "map-pin", "location")
-FEITO = ("success", "done", "complet", "check", "active", "ativo")
+FEITO = ("success", "done", "complet", "concluido", "check", "active", "ativo")
 ROTULOS = ("Inscrito", "Currículo recebido", "Perfil visualizado", "Em análise", "Processo aberto",
            "Não selecionado", "Processo encerrado")
 BOTOES = ("ver detalhes", "cancelar candidatura")
@@ -227,6 +228,9 @@ def _link_da_vaga(card: _No) -> tuple[str, str]:
         ident = fonte.id_do_link(absoluto)
         if ident:
             return ident, absoluto
+        m = VAGA_CURTA.match(absoluto)
+        if m:
+            return f"nerdin-{m.group(1)}", f"{SITE}/vaga/{m.group(1)}.php"
         m = VAGA_PHP.search(absoluto)
         if m:
             return f"nerdin-{m.group(1)}", f"{SITE}/vaga.php?id={m.group(1)}"

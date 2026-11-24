@@ -81,6 +81,11 @@ class CartoesTest(unittest.TestCase):
         self.assertEqual(self.lidos[1]["url"], "https://www.nerdin.com.br/vaga.php?id=678")
         self.assertEqual(self.lidos[2]["id"], "")
 
+    def test_link_curto_do_ver_detalhes(self):  # formato real da página: <a href="vaga/NNNNN.php">
+        html = cartao("Dev", "Teta Ltda", "Remoto", "Aberta", ANDAMENTO, "vaga/100200.php")
+        c = nerdin.cartoes(html)[0]
+        self.assertEqual((c["id"], c["url"]), ("nerdin-100200", "https://www.nerdin.com.br/vaga/100200.php"))
+
     def test_sem_icones_usa_as_duas_linhas_depois_do_titulo(self):
         html = ('<div><h3>Dev</h3><span>Aberta</span><div>Eta Ltda</div><div>Natal, RN</div>'
                 '<p>Inscrito em: 02/02/2026</p><h5>Acompanhe sua candidatura</h5><b>Inscrito</b></div>')
