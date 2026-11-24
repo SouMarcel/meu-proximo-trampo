@@ -1014,6 +1014,13 @@ def na_cidade(v: dict, f: dict) -> bool:
     return "local" in (v.get("grupos") or []) or cidade in sem_acento(v.get("local"))
 
 
+def empresa_excluida(empresa, excluir: list[str]) -> str | None:
+    """O nome da lista de exclusão que aparece no nome da empresa (sem acento e caixa, por trecho), ou None. A regra
+    da busca (criterios) e da caixa "Ocultar vagas de empresas excluídas" da página (spec 055)."""
+    nome = sem_acento(empresa)
+    return next((e for e in excluir if sem_acento(e) and sem_acento(e) in nome), None)
+
+
 def criterios(v: dict, f: dict) -> list[str]:
     """Motivos pelos quais a vaga fura os filtros do usuário (lista vazia = passa).
 
@@ -1021,11 +1028,9 @@ def criterios(v: dict, f: dict) -> list[str]:
     também modelo de trabalho, senioridade e tipo de emprego lidos na descrição.
     """
     motivos = []
-    empresa = sem_acento(v.get("empresa"))
-    for e in f["empresas_excluir"]:
-        if sem_acento(e) and sem_acento(e) in empresa:
-            motivos.append(f"Empresa na sua lista de exclusão ({e})")
-            break
+    excluida = empresa_excluida(v.get("empresa"), f["empresas_excluir"])
+    if excluida:
+        motivos.append(f"Empresa na sua lista de exclusão ({excluida})")
     modelo, m = v.get("modelo_trabalho"), f["modelos"]
     internacional = area_da_vaga(v, f)[0] == "internacional"
     if modelo in MODELOS and not internacional:  # no exterior, vale "aceito morar fora" (elegibilidade)

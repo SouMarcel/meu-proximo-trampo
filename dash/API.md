@@ -122,6 +122,7 @@ Fontes: banco.py:498-604, vagas.py:719-739, kit.py.
 | `kit` | `{estados: {item: "a_fazer"\|"pronto"\|"nao_se_aplica"}, extras: string[], removidos: string[]}` | o que a pessoa marcou no checklist |
 | `lembretes` | `{base: "aplicada:AAAA-MM-DD"\|"entrevista:AAAA-MM-DD", parar: bool, follow1?, follow2?, agradecimento?: "feito"\|"dispensado"}` | |
 | `curriculos`, `documentos` | string[], `[{tipo, nome, criado_em}]` | arquivos gerados pela página para a vaga |
+| `empresa_excluida` | bool, calculado a cada leitura (não gravado) | a empresa está hoje na lista `empresas_excluir` dos filtros, pela regra da busca (`filtros.empresa_excluida`: sem acento e caixa, por trecho). A caixa "Ocultar empresas excluídas" das Vagas e das Aplicações esconde essas vagas (spec 055) |
 
 Regras do front: a vaga está **em Aplicações** quando `etapa` não é nula e (`origem == "manual"` ou
 `triagem == "seguir"`). As listas de vagas mostram as de `origem != "manual"`, separadas por `area`

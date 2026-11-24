@@ -1079,8 +1079,9 @@ class Handler(BaseHTTPRequestHandler):
         if caminho.startswith("/api/vagas/") and caminho.endswith("/salario"):
             return self._salario("GET", caminho)
         if caminho == "/api/vagas":
-            base = banco.curriculos_base()
-            return self._json(200, {"versao": banco.versao(), "vagas": [banco.com_kit(v, base) for v in banco.listar_vagas()]})
+            base, excluir = banco.curriculos_base(), banco.empresas_excluir()
+            return self._json(200, {"versao": banco.versao(),
+                                    "vagas": [banco.com_kit(v, base, excluir) for v in banco.listar_vagas()]})
         if caminho == "/api/buscas/ultima":
             return self._json(200, {"busca": banco.ultima_busca()})
         if caminho == "/api/config":

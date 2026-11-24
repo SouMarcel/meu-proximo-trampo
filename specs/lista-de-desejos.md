@@ -102,6 +102,12 @@ priorizado.
   por sobreposição) e prever um comando que mostre quais vagas gravadas mudariam de área. Esse comando só grava com o
   OK da pessoa.
 
+## Empresas excluídas (spec 055)
+
+- **Levar para Fora as vagas antigas de empresas excluídas**: a vaga gravada antes de a empresa entrar na lista de
+  exclusão fica onde estava (a caixa "Ocultar empresas excluídas" só a esconde). Um comando com prévia, como o
+  `regioes`, poderia levá-la para Fora dos critérios com o OK da pessoa.
+
 ## Divulgação
 
 - **Site do projeto no GitHub Pages** (`soumarcel.github.io/meu-proximo-trampo`, pasta `docs/` na master): página de
