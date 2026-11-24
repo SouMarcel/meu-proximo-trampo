@@ -15,7 +15,8 @@ Contrato de cada módulo de portal:
 
 Regras (constituição VI): só leitura. O código de um portal nunca clica em botões, nunca envia formulários e nunca
 pede dados da conta (CPF, celular, perfil): só as rotas de candidaturas. Pede pela API que a própria página usa
-(fetch com a sessão dela, de dentro da aba), então os cookies não saem do navegador.
+(fetch com a sessão dela, de dentro da aba), então os cookies não saem do navegador. A Nerdin não tem API: o módulo
+lê o HTML da página de candidaturas aberta na janela (spec 059).
 """
 from __future__ import annotations
 
@@ -95,7 +96,7 @@ def marcar(portal: str, ligado: bool) -> None:
     ESTADO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
 
 
-from . import gupy, indeed, linkedin  # noqa: E402  (os módulos usam as funções acima)
+from . import gupy, indeed, linkedin, nerdin  # noqa: E402  (os módulos usam as funções acima)
 
-TODAS = {m.NOME: m for m in (gupy, indeed, linkedin)}
+TODAS = {m.NOME: m for m in (gupy, indeed, nerdin, linkedin)}
 CONTAS = {n: m for n, m in TODAS.items() if m.ATIVO}

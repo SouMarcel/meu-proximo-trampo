@@ -64,9 +64,14 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   guarda o e-mail e o assunto e tem o botão "Enviar por e-mail", que só abre o seu
   programa de e-mail; quem envia é você.
 - **Atualizar candidaturas (contas conectadas):** o botão lê o andamento das suas candidaturas
-  na área logada da Gupy e do Indeed e propõe as mudanças em Aplicações: etapa nova, vaga de
+  na área logada da Gupy, do Indeed e da Nerdin e propõe as mudanças em Aplicações: etapa nova, vaga de
   Vagas Nacionais que você já se candidatou e candidaturas feitas fora da ferramenta. Você marca o
   que aplicar; nada é gravado sozinho.
+  - Nerdin (spec 059): os termos dela não permitem acesso automatizado, e ela entra por decisão
+    registrada, só na página "Minhas candidaturas". A trilha vira etapa: "Em análise" fica em
+    Aplicação Enviada e "Não selecionado" vira Encerrada · não aprovado; a Nerdin não mostra entrevista
+    nem proposta. Se a ferramenta não achar a página sozinha, informe o link em
+    `NERDIN_CANDIDATURAS` no `.env`.
   - A leitura acontece numa janela do Edge (ou do Chrome) só da ferramenta, com perfil
     próprio em `.cache/navegador` (fora do Git). Você faz o login nessa janela; a ferramenta
     nunca vê nem guarda a sua senha e não clica em nada nos portais.

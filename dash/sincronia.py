@@ -93,7 +93,7 @@ def _descricao(lida: dict) -> dict:
         if lida["portal"] == "gupy" and lida["id"].startswith("gupy-"):
             from fontes import gupy
             return gupy.ler(lida["id"])
-        if lida["portal"] == "indeed" and lida["url"]:
+        if lida["portal"] in ("indeed", "nerdin") and lida["url"]:
             from fontes import link
             return link.ler(lida["url"])
     except Exception:  # sem descrição a vaga entra assim mesmo; a nota fica pendente

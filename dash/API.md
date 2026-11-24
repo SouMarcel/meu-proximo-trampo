@@ -790,7 +790,7 @@ Erros: 400 com a mensagem (sem IA, IA fora do formato, campos vazios).
 
 ### 3.11 Contas conectadas e candidaturas (botão Atualizar candidaturas)
 
-Todas **[local]**. Portais ativos: `gupy` e `indeed` (LinkedIn desativado: 404 "portal desconhecido"). A
+Todas **[local]**. Portais ativos: `gupy`, `indeed` e `nerdin` (spec 059; LinkedIn desativado: 404 "portal desconhecido"). A
 leitura só lê a área logada numa janela do navegador da própria ferramenta, com o login feito pela pessoa;
 nada é gravado até ela aplicar o que marcou.
 

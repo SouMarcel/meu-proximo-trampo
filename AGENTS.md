@@ -41,10 +41,11 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   LinkedIn, só dos arquivos que ela baixa. Um link de post colado no Adicionar Vaga é uma consulta
   pontual à versão pública do post (`fontes/post.py`), sem login, que para no primeiro bloqueio e não
   mexe na espera da busca. **Conta conectada** (constituição VI): o botão "Atualizar candidaturas" lê
-  a área logada da Gupy e do Indeed numa janela do navegador só da ferramenta (`navegador.py`,
+  a área logada da Gupy, do Indeed e da Nerdin numa janela do navegador só da ferramenta (`navegador.py`,
   `contas/`), com o login feito pela pessoa; só leitura, só no clique, e a proposta só é gravada com
   a marcação dela. Nunca peça nem digite senha; nunca clique em botões dos portais. O LinkedIn
-  fica desativado. **Candidatura assistida** (constituição VI, spec 027): desligada por padrão e ligada
+  fica desativado. A Nerdin, com termos contrários, entra por decisão registrada (spec 059): só a página
+  "Minhas candidaturas", lida pelo HTML. **Candidatura assistida** (constituição VI, spec 027): desligada por padrão e ligada
   vaga a vaga pela pessoa, com o aviso de risco; no detalhe da vaga, "Candidatar com ajuda" preenche campos do formulário na janela da ferramenta
   (`candidatura/`), só em domínio liberado (Indeed e LinkedIn bloqueados pelos termos), com
   o que ela sabe (respostas que a pessoa já deu, em `dash/dados/respostas_formulario.json`, e o perfil) e

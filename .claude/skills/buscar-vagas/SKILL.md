@@ -307,7 +307,7 @@ de post ou mensagem"; você não grava a vaga por ela.
 
 "Em que pé estão minhas candidaturas?", "o que está em entrevista?": rode
 `PY dash/banco.py quadro` (ou `--etapa entrevista`) e responda com o que está lá. Se a pessoa
-quer Aplicações em dia com a Gupy e o Indeed, sugira o botão "Atualizar candidaturas" do
+quer Aplicações em dia com a Gupy, o Indeed e a Nerdin, sugira o botão "Atualizar candidaturas" do
 dashboard (contas conectadas): ele lê a área logada na janela da ferramenta, com o login feito
 por ela, e propõe as mudanças para ela marcar. Você não abre a área logada dos portais nem
 aplica a proposta por ela. Se ela quer ajuda para preencher o formulário de uma candidatura, o

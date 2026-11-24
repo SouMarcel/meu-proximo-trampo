@@ -1,5 +1,14 @@
 <!--
-Relatório de impacto da emenda (2026-11-17)
+Relatório de impacto da emenda (2026-11-24)
+- Versão: 5.4.0 → 5.5.0 (MINOR: portal novo em "Conta conectada")
+- Princípio VI, "Conta conectada": liberados Gupy, Indeed e Nerdin. A Nerdin tem termos contrários a acesso
+  automatizado; entra por decisão do usuário registrada na spec 059, só na página de candidaturas, lida pelo HTML,
+  com o aviso dos termos no painel.
+- Motivo: o usuário quer o quadro em dia com a trilha "Acompanhe sua candidatura" da Nerdin (spec 059).
+- Arquivos atualizados: AGENTS.md, README.md, dash/API.md, .env.exemplo, skill buscar-vagas.
+- Pendências: nenhuma.
+
+Emenda anterior (2026-11-17)
 - Versão: 5.3.0 → 5.4.0 (MINOR: item novo em "Fluxo de desenvolvimento")
 - Fluxo de desenvolvimento: entra "Delegação". O assistente principal planeja e valida; a implementação de tarefa
   minor ou major pode ir a um funcionário (outro assistente de código, sem interação, na worktree da feature, sem
@@ -197,8 +206,9 @@ só nestas condições:
 - **Sessão local e removível:** a sessão fica num perfil local, fora do Git. "Desconectar" apaga esse perfil.
 - **Só leitura, só no clique:** nada de se candidatar, desistir, responder, enviar mensagem ou clicar em botões que
   mudem algo no portal (a candidatura assistida, abaixo, só preenche campos). O que for lido vira uma proposta que a pessoa confirma antes de gravar (princípio V).
-- **Portal por portal:** cada portal é liberado pelo nome, em spec própria, com análise de risco. Liberados: Gupy e
-  Indeed. O LinkedIn fica preparado e desativado, porque restringe contas que considera automatizadas; ativar exige
+- **Portal por portal:** cada portal é liberado pelo nome, em spec própria, com análise de risco. Liberados: Gupy,
+  Indeed e Nerdin (spec 059; os termos da Nerdin proíbem acesso automatizado, e vale também "Termos contrários":
+  decisão de 2026-11-24, só a página de candidaturas, com o aviso no painel). O LinkedIn fica preparado e desativado, porque restringe contas que considera automatizadas; ativar exige
   nova decisão da pessoa.
 - **Parar no bloqueio:** captcha, verificação ou pedido de novo login param a leitura daquele portal, sem tentar
   contornar; quem resolve é a pessoa, na janela.
@@ -281,4 +291,4 @@ semântica: MAJOR para remover ou redefinir princípio, MINOR para princípio ou
 PATCH para esclarecimento. Toda spec e todo plano conferem os princípios; desvio precisa de
 justificativa escrita no plano. Orientações do dia a dia ficam no README e nas skills.
 
-**Version**: 5.4.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-11-17
+**Version**: 5.5.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-11-24

@@ -358,3 +358,36 @@ class TestLeitura(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPropostaNerdin(Base):  # spec 059: as lidas da Nerdin no mesmo fluxo da proposta
+    def lida(self, vid, titulo, empresa, trilha, selo="Aberta"):
+        from contas import nerdin
+        passos = [{"rotulo": r, "feito": True} for r in trilha]
+        return nerdin.traduzir({"id": vid, "titulo": titulo, "empresa": empresa, "local": "Remoto", "selo": selo,
+                                "inscrito": "2026-11-02", "passos": passos, "url": ""}, HOJE)
+
+    def test_proposta(self):
+        self.assertIn("nerdin", contas.CONTAS)
+        criar = lambda vid, t, e, etapa=None: (banco.criar_de_link({"id": vid, "plataforma": "Nerdin", "titulo": t,
+                                                                     "empresa": e, "url": ""}),
+                                                etapa and banco.atualizar_usuario(vid, {"etapa": etapa, "triagem": "seguir"}))
+        criar("nerdin-101", "Scrum Master", "Empresa Alfa", "aplicada")
+        criar("nerdin-102", "Analista de Dados", "Empresa Beta", "aplicada")
+        criar("nerdin-103", "Dev Backend", "Empresa Gama")
+        andamento = ["Inscrito", "Currículo recebido", "Em análise", "Processo aberto"]
+        recusada = ["Inscrito", "Currículo recebido", "Não selecionado", "Processo encerrado"]
+        lidas = [self.lida("nerdin-101", "Scrum Master", "Empresa Alfa", andamento),
+                 self.lida("nerdin-102", "Analista de Dados", "Empresa Beta", recusada, "Expirada"),
+                 self.lida("", "Dev Backend", "Empresa Gama", andamento),  # sem número: casa por cargo + empresa
+                 self.lida("nerdin-104", "QA", "Empresa Delta", recusada, "Expirada"),
+                 self.lida("", "Dev Mobile", "Empresa Épsilon", andamento)]  # sem número e fora do quadro: fica de fora
+        r = sincronia.proposta(lidas, banco.listar_vagas())
+        itens = {i["vaga_id"] or i["chave"]: i for i in r["itens"]}
+        self.assertEqual((itens["nerdin-102"]["tipo"], itens["nerdin-102"]["para"]),
+                         ("mudar", {"etapa": "encerrada", "resultado": "nao_aprovado"}))
+        self.assertEqual((itens["nerdin-103"]["tipo"], itens["nerdin-103"]["para"]["etapa"]), ("quadro", "aplicada"))
+        self.assertNotIn("nerdin-101", itens)
+        self.assertEqual(r["sem_mudanca"], 1)
+        self.assertEqual([i["chave"] for i in r["historico"]], ["nerdin:nerdin-104"])
+        self.assertEqual(len(r["itens"]), 2)
