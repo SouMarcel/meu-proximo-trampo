@@ -947,16 +947,23 @@ class Handler(BaseHTTPRequestHandler):
         url = str((corpo or {}).get("url") or "").strip()[:1000] if isinstance(corpo, dict) else ""
         if not url:
             raise ValueError("cole o link do anúncio")
+
+        def juntar_com(existente: str):
+            principal = banco._principal([banco.obter(existente), atual])
+            outra = vid if principal["id"] != vid else existente
+            vaga = banco.juntar(principal["id"], [outra])
+            return self._json(200, {"juntada": principal["id"], "vaga": banco.com_kit(vaga)})
+        # primeiro, sem pedido ao portal: o número da vaga no link (Gupy, jk do Indeed) já está no dashboard?
+        pelo_link = banco.IndiceVistas().achar({"url": url})
+        if pelo_link and pelo_link != vid and banco.obter(pelo_link):
+            return juntar_com(pelo_link)
         try:
             dados = link.ler(url)
         except link.LinkErro as e:
             return self._json(422, {"erro": str(e)})
         existente = banco.IndiceVistas().achar({**dados, "id": dados.get("id")})
         if existente and existente != vid and banco.obter(existente):
-            principal = banco._principal([banco.obter(existente), atual])
-            outra = vid if principal["id"] != vid else existente
-            vaga = banco.juntar(principal["id"], [outra])
-            return self._json(200, {"juntada": principal["id"], "vaga": banco.com_kit(vaga)})
+            return juntar_com(existente)
         vaga = banco.completar_pelo_link(vid, dados, url)
         if not banco._definitiva(vaga) and vaga.get("descricao"):
             analise.FILA.forcar(vid)  # sem IA ligada, a vaga fica esperando a nota

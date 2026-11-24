@@ -26,6 +26,7 @@ import hashlib
 import html
 import ipaddress
 import json
+import re
 import socket
 import urllib.error
 import urllib.request
@@ -335,11 +336,49 @@ def vaga_linkedin(vid: str, pagina: str) -> dict:
     }
 
 
+def _gupy_da_pagina(conteudo: str, url: str) -> dict | None:
+    """A vaga pelos dados que a página da Gupy traz embutidos (__NEXT_DATA__, props.pageProps.job): a API pública não
+    devolve a vaga de Banco de Talentos, e essa página não tem o JobPosting (spec 058). None sem os dados."""
+    m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', conteudo or "", re.S)
+    try:
+        job = json.loads(m.group(1))["props"]["pageProps"]["job"] if m else None
+    except (ValueError, KeyError, TypeError):
+        return None
+    if not isinstance(job, dict) or not job.get("name"):
+        return None
+    pagina = job.get("careerPage") if isinstance(job.get("careerPage"), dict) else {}
+    partes = [("", job.get("description")), ("Responsabilidades e atribuições", job.get("responsibilities")),
+              ("Requisitos e qualificações", job.get("prerequisites")),
+              ("Experiências relevantes", job.get("relevantExperiences"))]
+    blocos = [(f"{titulo}\n" if titulo else "") + texto_de_html(str(html_parte)) for titulo, html_parte in partes
+              if str(html_parte or "").strip()]
+    modalidade = job.get("workplaceType") or ""
+    extras = [f"modelo {gupy.MODALIDADES[modalidade]}" if modalidade in gupy.MODALIDADES else "",
+              gupy.TIPOS.get(job.get("jobType") or "", ""), "aberta a PCD" if job.get("handicapped") else ""]
+    descricao = "\n\n".join(b.strip() for b in blocos if b.strip())
+    if any(extras):
+        descricao = (descricao + "\n\nNa Gupy: " + " · ".join(x for x in extras if x)).strip()
+    remoto = modalidade == "remote"
+    lugar = ", ".join(x for x in (job.get("addressCity"), job.get("addressStateShortName") or job.get("addressState")) if x)
+    return {"plataforma": "Gupy", "titulo": " ".join(str(job["name"]).split()),
+            "empresa": " ".join(str(pagina.get("name") or "").split()) or "Empresa não informada",
+            "local": "Remoto" if remoto else lugar, "remoto": remoto,
+            "publicada_em": str(job.get("publishedAt") or "")[:10] or None, "url": url,
+            "tipo": gupy.TIPOS.get(job.get("jobType") or ""), "descricao": descricao}
+
+
 def _ler_gupy(url: str, vid: str) -> dict:
     try:
         vaga = gupy.ler(vid)
-    except gupy.GupyErro:
-        vaga = extrair_jobposting(_baixar(url), "Gupy")
+    except gupy.GupyErro as erro:  # a API não devolve, por exemplo, a vaga de Banco de Talentos (spec 058)
+        html = _baixar(url)
+        vaga = _gupy_da_pagina(html, url)
+        if vaga is None:
+            try:
+                vaga = extrair_jobposting(html, "Gupy")
+            except LinkErro:
+                raise LinkErro(f"a Gupy não entregou essa vaga nem pela API nem pela página ({erro})",
+                               {"plataforma": "Gupy", "url": url, "id": vid}) from None
     return {**vaga, "id": vid, "url": url}
 
 

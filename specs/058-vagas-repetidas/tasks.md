@@ -29,3 +29,11 @@ description: "Tarefas da spec 058: a mesma vaga em vários portais"
   - merge na branch pessoal;
   - dashboard reiniciado;
   - teste da pessoa.
+
+## Ajustes do teste (eu)
+
+- [X] T009 [US2] O "Link do anúncio original" procura primeiro, no dashboard, o número da vaga que está no link (Gupy,
+  jk do Indeed). Se achar, junta direto, sem pedido ao portal.
+- [X] T010 [US2] Vaga de Banco de Talentos da Gupy: a API pública não a devolve pelo número. O leitor de links passa a
+  ler os dados embutidos na página (`__NEXT_DATA__`, `props.pageProps.job`): cargo, empresa (`careerPage.name`),
+  descrição, responsabilidades, requisitos, modelo e tipo. Isso vale também no Adicionar Vaga.

@@ -213,6 +213,38 @@ class TestRotas(Base):
         self.assertEqual((v["outras_plataformas"], v["ids_relacionados"]), (["Gupy"], ["gupy-777"]))
         forcar.assert_called_once_with("jobgether-x")
 
+    def test_link_de_vaga_ja_no_dashboard_junta_sem_ler(self):  # a vaga saiu do ar na Gupy, mas já está aqui
+        gravar(vaga("gupy-12803631", "Alfaweb", descricao="x", triagem="seguir", etapa="aplicada"),
+               vaga("jobgether-x", "Alfaweb Corp", titulo="Outro cargo", plataforma="JobGether"))
+        url = ("https://sejaalfaweb.gupy.io/jobs/12803631?utm_source=Jobgether&utm_content=x-scrum-master-pl"
+               "&utm_campaign=search&utm_medium=website")
+        with mock.patch.object(self.servidor.link, "ler", side_effect=AssertionError("não devia ler o link")):
+            st, r = self.pedir("PUT", "/api/vagas/jobgether-x/link-original", {"url": url})
+        self.assertEqual((st, r["juntada"]), (200, "gupy-12803631"))
+        self.assertEqual(banco.obter("jobgether-x")["juntada_a"], "gupy-12803631")
+
+    def test_gupy_banco_de_talentos_pela_pagina(self):  # a API não devolve a vaga de Banco de Talentos
+        from fontes import gupy, link
+        job = {"id": 1, "name": "SCRUM MASTER PL", "jobType": "vacancy_type_talent_pool", "workplaceType": "remote",
+               "publishedAt": "2026-10-29T12:46:57.875Z", "description": "<p>Nosso time é ágil.</p>",
+               "responsibilities": "<ul><li>Facilitar cerimônias</li></ul>", "prerequisites": "<p>Graduação em TI</p>",
+               "relevantExperiences": "", "careerPage": {"name": "Seja Alfaweb"}}
+        pagina = ('<html><script id="__NEXT_DATA__" type="application/json">'
+                  + json.dumps({"props": {"pageProps": {"job": job}}}) + "</script></html>")
+        erro = gupy.GupyErro('a Gupy recusou a consulta ({"details":"Job with ID 1 not found"})')
+        with mock.patch.object(gupy, "ler", side_effect=erro), mock.patch.object(link, "_baixar", return_value=pagina):
+            v = link.ler("https://sejaalfaweb.gupy.io/jobs/1")
+        self.assertEqual((v["id"], v["titulo"], v["empresa"], v["remoto"], v["publicada_em"], v["tipo"]),
+                         ("gupy-1", "SCRUM MASTER PL", "Seja Alfaweb", True, "2026-10-29", "Banco de talentos"))
+        for trecho in ("Nosso time é ágil.", "Responsabilidades e atribuições", "Facilitar cerimônias", "Graduação em TI",
+                       "Na Gupy: modelo remoto · Banco de talentos"):
+            self.assertIn(trecho, v["descricao"])
+        with mock.patch.object(gupy, "ler", side_effect=erro), \
+                mock.patch.object(link, "_baixar", return_value="<html>nada</html>"):
+            with self.assertRaises(link.LinkErro) as c:
+                link.ler("https://sejaalfaweb.gupy.io/jobs/1")
+        self.assertIn("nem pela API nem pela página", str(c.exception))
+
     def test_link_ilegivel(self):
         gravar(vaga("jobgether-x"))
         with mock.patch.object(self.servidor.link, "ler", side_effect=self.servidor.link.LinkErro("não deu", {})):
