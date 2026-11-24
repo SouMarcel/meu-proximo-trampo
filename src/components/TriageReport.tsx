@@ -184,6 +184,22 @@ export type OrdemFiltro =
   | "plataforma"
   | "modo"
 
+/** A data em que a IA deu a nota, pequena, para anotação ("nota de 24/11"; provisória: "nota provisória de 24/11"). */
+function DataDaNota({ vaga }: { vaga: Vaga }) {
+  const d = String(vaga.analisada_em || "")
+  if (!/^\d{4}-\d{2}-\d{2}/.test(d)) return null
+  const quem = [vaga.analise_provedor, vaga.analise_modelo].filter(Boolean).join(" · ")
+  return (
+    <span
+      className="text-[10px] text-slate-400 dark:text-slate-500 text-center sm:text-right"
+      title={`Nota dada pela IA em ${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}${quem ? ` (${quem})` : ""}`}
+    >
+      {vaga.nota_sem_descricao ? "nota provisória de " : "nota de "}
+      {d.slice(8, 10)}/{d.slice(5, 7)}
+    </span>
+  )
+}
+
 export default function TriageReport({
   vagas,
   versao,
@@ -692,6 +708,13 @@ export default function TriageReport({
                             Não deu para verificar: {nota.motivo}
                           </span>
                         )}
+                        {temNota(vaga) && !isVerificando && !aguardando && <DataDaNota vaga={vaga} />}
+                      </div>
+                    )}
+                    {/* nota real (sem o botão): só a data, no mesmo lugar */}
+                    {temNota(vaga) && !podeForcar(vaga) && (
+                      <div className="flex justify-center sm:justify-end w-full sm:w-auto">
+                        <DataDaNota vaga={vaga} />
                       </div>
                     )}
 
