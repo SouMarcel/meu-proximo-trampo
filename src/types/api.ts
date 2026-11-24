@@ -262,6 +262,8 @@ export interface Versao {
   ia_alerta?: AlertaIA | null
   busca?: { situacao: SituacaoBusca; origem?: string }
   verificando?: string[]
+  /** a vaga forçada em verificação agora; as outras de verificando esperam a vez (spec 056) */
+  verificando_agora?: string | null
   falhas?: Record<string, { motivo: string; em: string }>
 }
 

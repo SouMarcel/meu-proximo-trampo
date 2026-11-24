@@ -334,7 +334,7 @@ function Pagina({
     })
     try {
       const res = await vagasApi.analisar(id)
-      setVersaoInfo((v) => (v ? { ...v, verificando: res.verificando || [id] } : v))
+      setVersaoInfo((v) => (v ? { ...v, verificando: res.verificando || [id], verificando_agora: res.verificando_agora ?? null } : v))
       showToast("Verificando a vaga: a nota chega em alguns minutos.")
     } catch (e) {
       if (ehErroApi(e) && e.dados?.sem_ia) {

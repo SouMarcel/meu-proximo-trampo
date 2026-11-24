@@ -20,6 +20,7 @@ import {
   Globe2,
   ShieldCheck,
   Plane,
+  Clock,
 } from "lucide-react"
 import type { Vaga, Senioridade, Versao } from "../types/api"
 import { useFerramenta, AvisoSoLeitura } from "../contexto/Ferramenta"
@@ -335,7 +336,8 @@ export default function TriageReport({
           const platStyle = getPlataformaStyle(vaga.plataforma)
           const aderBadge = getAderenciaBadge(vaga.aderencia)
           const nota = situacaoNota(vaga, versao)
-          const isVerificando = Boolean(verificandoMap[vaga.id] || nota.tipo === "verificando")
+          const naFila = nota.tipo === "na_fila" ? nota.posicao : null
+          const isVerificando = Boolean(verificandoMap[vaga.id] || nota.tipo === "verificando" || naFila !== null)
           const linkVaga = linkSeguro(vaga.url)
 
           return (
@@ -374,16 +376,22 @@ export default function TriageReport({
                             : "border-slate-800"
                         } flex flex-col items-center justify-center p-2 text-center select-none shrink-0`}
                         title={
-                          isVerificando
+                          naFila !== null
+                            ? `Na fila do Forçar verificar (posição ${naFila})`
+                            : isVerificando
                             ? "IA calculando a aderência desta vaga..."
                             : "Vaga sem nota de aderência calculada"
                         }
                       >
                         {isVerificando ? (
                           <>
-                            <Sparkles className="w-5 h-5 text-indigo-400 animate-spin" />
+                            {naFila !== null ? (
+                              <Clock className="w-5 h-5 text-indigo-400" />
+                            ) : (
+                              <Sparkles className="w-5 h-5 text-indigo-400 animate-spin" />
+                            )}
                             <span className="text-[9px] sm:text-[10px] font-bold tracking-wider text-indigo-300 uppercase mt-1 leading-none">
-                              Análise
+                              {naFila !== null ? "Fila" : "Análise"}
                             </span>
                           </>
                         ) : (
@@ -618,22 +626,30 @@ export default function TriageReport({
                           className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 disabled:opacity-60 transition shadow-2xs w-full sm:w-auto"
                           title="Pede a nota desta vaga à IA agora"
                         >
-                          <Sparkles
-                            className={`w-3.5 h-3.5 ${
-                              isVerificando
-                                ? "animate-spin text-indigo-500"
-                                : "text-indigo-600 dark:text-indigo-400"
-                            }`}
-                          />
+                          {naFila !== null ? (
+                            <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                          ) : (
+                            <Sparkles
+                              className={`w-3.5 h-3.5 ${
+                                isVerificando
+                                  ? "animate-spin text-indigo-500"
+                                  : "text-indigo-600 dark:text-indigo-400"
+                              }`}
+                            />
+                          )}
                           <span>
-                            {isVerificando
-                              ? "Verificando…"
-                              : "Forçar verificar"}
+                            {naFila !== null
+                              ? `Na fila (posição ${naFila})`
+                              : isVerificando
+                                ? "Verificando…"
+                                : "Forçar verificar"}
                           </span>
                         </button>
                         {(isVerificando) && (
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 text-center sm:text-right">
-                            A nota chega em alguns minutos.
+                            {naFila !== null
+                              ? "Uma vaga por vez, para espaçar os pedidos aos portais e à IA."
+                              : "A nota chega em alguns minutos."}
                           </span>
                         )}
                         {vaga.descricao_pendente && !isVerificando && (

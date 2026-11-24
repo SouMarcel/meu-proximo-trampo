@@ -25,7 +25,7 @@ export const atualizar = (vagaId: string, campos: CamposEditaveis) =>
 export const remover = (vagaId: string) => pedir<{ ok: boolean }>("DELETE", `/api/vagas/${id(vagaId)}`)
 
 export const analisar = (vagaId: string) =>
-  pedir<{ verificando: string[] }>("POST", `/api/vagas/${id(vagaId)}/analisar`, {})
+  pedir<{ verificando: string[]; verificando_agora?: string | null }>("POST", `/api/vagas/${id(vagaId)}/analisar`, {})
 
 export const porLink = (url: string) => pedir<RespostaLink>("POST", "/api/vagas/link", { url })
 

@@ -364,6 +364,7 @@ export function temNota(vaga: Vaga): boolean {
 
 export type SituacaoNota =
   | { tipo: "verificando" }
+  | { tipo: "na_fila"; posicao: number }
   | { tipo: "falha"; motivo: string }
   | { tipo: "nota"; provisoria: boolean }
   | { tipo: "pendente" } // aguardando a IA
@@ -371,8 +372,15 @@ export type SituacaoNota =
   | { tipo: "sem_nota" }
 
 /** Situação da nota para os selos: verificando → falha → o que a vaga diz (data-model "Estado derivado"). */
-export function situacaoNota(vaga: Vaga, versao?: Pick<Versao, "verificando" | "falhas"> | null): SituacaoNota {
-  if (versao?.verificando?.includes(vaga.id)) return { tipo: "verificando" }
+export function situacaoNota(vaga: Vaga, versao?: Pick<Versao, "verificando" | "verificando_agora" | "falhas"> | null): SituacaoNota {
+  if (versao?.verificando?.includes(vaga.id)) {
+    const agora = versao.verificando_agora
+    if (agora != null && agora !== vaga.id) {
+      const posicao = versao.verificando.filter((x) => x !== agora).indexOf(vaga.id) + 1
+      return { tipo: "na_fila", posicao }
+    }
+    return { tipo: "verificando" }
+  }
   const falha = versao?.falhas?.[vaga.id]
   if (falha && !temNota(vaga)) return { tipo: "falha", motivo: falha.motivo }
   if (temNota(vaga)) return { tipo: "nota", provisoria: Boolean(vaga.nota_sem_descricao) }

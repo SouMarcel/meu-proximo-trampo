@@ -270,6 +270,8 @@ export default function JobDetailModal({
                   <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
                     {nota.tipo === "verificando"
                       ? "Verificando: a nota chega em alguns minutos."
+                      : nota.tipo === "na_fila"
+                        ? `Na fila do Forçar verificar (posição ${nota.posicao}): uma vaga por vez.`
                       : nota.tipo === "pendente"
                         ? "Aguardando a nota da IA."
                         : nota.tipo === "descricao_pendente"
@@ -279,7 +281,7 @@ export default function JobDetailModal({
                   {nota.tipo === "falha" && (
                     <p className="text-xs text-rose-600 dark:text-rose-400">Não deu para verificar: {nota.motivo}</p>
                   )}
-                  {onForcarVerificar && podeForcar(vaga) && nota.tipo !== "verificando" && (
+                  {onForcarVerificar && podeForcar(vaga) && nota.tipo !== "verificando" && nota.tipo !== "na_fila" && (
                     <button
                       disabled={!podeGravar}
                       onClick={() => onForcarVerificar(vaga.id)}
