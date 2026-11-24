@@ -12,8 +12,9 @@ não filtra por cidade. O pedido é um POST com corpo JSON, porque o robots.txt 
 MAX_PAGINAS páginas de POR_PAGINA vagas, parando ao chegar a vagas mais antigas que a janela. A busca da API é ampla,
 então fica só a vaga cujo título bate com o cargo.
 
-A lista não traz a descrição, e a página da vaga recusa a ferramenta (403): as vagas entram sem descrição, e a nota da
-IA fica provisória (spec 021). O id vem do endereço da vaga (/offer/<id>-<slug>), porque o id da API muda quando a vaga
+A API não traz a descrição (conferido de novo em 24/11/2026: só a busca, sem consulta de uma vaga), e a página da vaga
+não é lida (spec 030): as vagas entram sem descrição, com as funções, a experiência e o contrato da API, e a nota da IA
+sai provisória pelos dados do portal (spec 057) até a pessoa colar a descrição. O id vem do endereço da vaga (/offer/<id>-<slug>), porque o id da API muda quando a vaga
 é republicada.
 
 Pausa de 2 segundos entre os pedidos (o Crawl-delay do site; JOBGETHER_PAUSA=N no .env, com N de 2 a 60) e, no
@@ -198,11 +199,19 @@ def normalizar(r: dict) -> dict | None:
         "salario": _comum.salario(numero(m.group(1)), numero(m.group(2)), m.group(3)) if m else None,
         "moeda": _comum.moeda(m.group(3)) if m else None,
         "tipo": tipo,
-        "descricao": "",  # a lista não traz, e a página recusa a ferramenta
+        "descricao": "",  # a API não traz, e a página da vaga não é lida (spec 030)
         "restricao_local": lugares,
     }
     if codigo:
         vaga["tipo_emprego"] = [codigo]
+    # o que a API informa além da lista (spec 057): vai no pedido à IA e permite a nota pelos dados do portal
+    funcoes = [" ".join(str(x).split())[:80] for x in r.get("jobFunctions") or [] if isinstance(x, str) and x.strip()]
+    if funcoes:
+        vaga["funcoes"] = funcoes[:6]
+    for campo, chave in (("experience", "experiencia"), ("contractType", "contrato_portal")):
+        texto = " ".join(str(r.get(campo) or "").split())[:80]
+        if texto:
+            vaga[chave] = texto
     return vaga
 
 

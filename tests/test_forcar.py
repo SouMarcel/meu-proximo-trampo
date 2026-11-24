@@ -59,7 +59,8 @@ class Base(unittest.TestCase):
         (self.tmp / "config.json").write_text(json.dumps(CFG), encoding="utf-8")
         for p in (mock.patch.object(banco, "ARQUIVO", self.tmp / "banco.db"),
                   mock.patch.object(filtros, "CONFIG", self.tmp / "config.json"),
-                  mock.patch.object(vagas, "CACHE", self.tmp / ".cache")):
+                  mock.patch.object(vagas, "CACHE", self.tmp / ".cache"),
+                  mock.patch.object(analise, "pausa_ia", return_value=0.0)):  # sem esperar nos testes (spec 056)
             p.start()
             self.addCleanup(p.stop)
         self.fonte = fonte_falsa()
@@ -216,25 +217,33 @@ class TestFila(Base):
         self.assertEqual(a["aderencia"], 70)
         self.assertNotIn("nota_sem_descricao", a)
 
-    def test_na_espera_nota_sem_a_descricao(self):  # FR-006, FR-007
+    def test_na_espera_aguarda_sem_ia(self):  # spec 057, FR-001, FR-002 (antes: nota provisória, spec 021)
         self.ia_falsa()
         self.fonte.espera = lambda: {"ate": "2026-10-19T20:00", "motivo": "excesso de pedidos"}
         gravar(vaga("a", descricao="", descricao_pendente=True))
-        self.forcar(self.fila, "a")
-        self.assertEqual(self.fonte.lidas, [])  # nenhum pedido na espera
-        self.assertIn(analise.SEM_DESCRICAO, self.pedidos_ia[0])
+        with mock.patch.object(analise, "ligada", return_value=True), mock.patch.object(self.fila, "_acordar"):
+            self.fila.forcar("a")
+        self.fila._proxima_forcada()
+        self.fila._verificar_uma("a")
+        self.assertEqual((self.fonte.lidas, self.pedidos_ia), ([], []))  # nenhum pedido ao portal nem à IA
+        self.assertEqual(self.fila.aguardando(), {"a": {"motivo": "espera", "portal": "Falsa", "ate": "2026-10-19T20:00"}})
+        self.assertNotIn("aderencia", banco.obter("a"))
+        self.assertEqual(self.fila._retomar_aguardando(), [])  # a espera continua
+        self.fonte.espera = lambda: None  # a espera acabou: volta para a fila e ganha a nota com o texto
+        self.assertEqual(self.fila._retomar_aguardando(), ["a"])
+        self.assertEqual((self.fila.verificando(), self.fila.aguardando()), (["a"], {}))
+        self.fila._proxima_forcada()
+        self.fila._verificar_uma("a")
         a = banco.obter("a")
-        self.assertEqual((a["aderencia"], a["nota_sem_descricao"], a["descricao_pendente"]), (70, True, True))
-        banco.completar_descricao("a", "Texto que chegou depois.")  # Completar descrições
-        a = banco.obter("a")
-        self.assertEqual(a["analise_status"], "pendente")
+        self.assertEqual((self.fonte.lidas, a["aderencia"]), (["a"], 70))
         self.assertNotIn("nota_sem_descricao", a)
 
-    def test_sem_dados_sem_a_descricao_e_falha(self):
-        self.ia_falsa(lambda pedido, **_: json.dumps([{"id": "a", "analise_status": "sem_dados", "resumo": "x"}]))
+    def test_portal_sem_leitura_falha_sem_ia(self):  # spec 057, FR-009 (sem os dados do portal)
+        self.ia_falsa()
         gravar(vaga("a", plataforma="Outra", descricao="", analise_status="sem_dados"))
         self.forcar(self.fila, "a")
-        self.assertEqual(self.fila.falhas_atuais()["a"]["motivo"], "a IA não conseguiu dar nota sem a descrição")
+        self.assertEqual(self.pedidos_ia, [])
+        self.assertIn("cole o texto", self.fila.falhas_atuais()["a"]["motivo"])
 
     def test_decisao_da_pessoa_nao_muda(self):  # FR-011, SC-004
         self.ia_falsa()

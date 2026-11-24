@@ -136,6 +136,9 @@ Regras do front: a vaga está **em Aplicações** quando `etapa` não é nula e 
 | `analise_status` | `pendente` \| `feita` \| `sem_dados` \| `sem_analise` | esperando a IA / analisada / sem dados para analisar / gravada sem nota |
 | `aderencia` | inteiro 0-100 | faixas do front: ≥80 forte, ≥65 boa, ≥50 parcial, abaixo baixa; sem número = "sem nota" |
 | `nota_sem_descricao` | boolean | nota provisória, dada sem o texto da vaga; refeita quando a descrição chegar |
+| `nota_dados_portal` | boolean | a nota provisória saiu pelos dados do portal (funções, experiência, contrato; spec 057) |
+| `funcoes`, `experiencia`, `contrato_portal` | string[], string, string | dados que o portal informa além do texto (JobGether; spec 057); vão no pedido à IA |
+| `descricao_colada` | ISO | quando a pessoa colou a descrição no detalhe da vaga (spec 057) |
 | `resumo` | string (até 400) | |
 | `encaixe`, `lacunas`, `alertas` | string[] (até 6) | facetas Encaixe, Lacunas, Atenção |
 | `senioridade` | string[] de `junior, pleno, senior` | |
@@ -209,9 +212,17 @@ padrão no `checklist`.
 **`POST /api/vagas/{id}/analisar`** **[local]** — "Forçar verificar" (Vagas Nacionais e Vagas Internacionais, vaga sem nota ou com
 `nota_sem_descricao`, triagem pendente ou fora). Corpo `{}`. Resposta 202 `{verificando: string[], verificando_agora: string|null}`
 (a atual primeiro, depois a fila, na ordem dos cliques; spec 056). Erros: 404; 409 "a vaga já tem nota"; 409 `{erro: "Para dar nota, ligue uma IA", sem_ia: true}`.
-O andamento chega por `/api/versao` (`verificando`, `verificando_agora`, `falhas`). As vagas forçadas vão uma por vez
-(spec 056): a descrição que falta, com a pausa do portal, e o pedido à IA só com ela, com `FORCAR_PAUSA` (.env, 0 a
-60 s, padrão 5) entre dois pedidos; a página mostra "Na fila (posição N)" para as que esperam.
+O andamento chega por `/api/versao` (`verificando`, `verificando_agora`, `aguardando`, `falhas`). As vagas forçadas vão uma
+por vez (spec 056): a descrição que falta, com a pausa do portal (no LinkedIn, `LINKEDIN_FORCAR_PAUSA`, 30 a 600 s,
+padrão 60), e o pedido à IA só com ela, com `FORCAR_PAUSA` (.env, 0 a 60 s, padrão 5) entre dois pedidos e uma nova
+tentativa quando a IA falha; a página mostra "Na fila (posição N)" para as que esperam. A nota só sai com a descrição
+(spec 057): com uma busca rodando ou o portal em espera, a vaga vai para `aguardando` e volta sozinha; portal que não
+entrega o texto (JobGether) dá a nota provisória pelos dados do portal (`nota_dados_portal`) ou, sem eles, uma falha
+que pede para colar a descrição.
+
+**`PUT /api/vagas/{id}/descricao`** **[local]** — Colar a descrição (spec 057). Corpo `{descricao: string}` (50 a 30.000
+caracteres). Grava o texto (filtro de integridade, spec 034) e, sem nota definitiva, põe a vaga na fila do Forçar
+verificar. Resposta 200 `{vaga, verificando, verificando_agora}`; 400 com a regra; 403 fora deste computador.
 
 ### 3.1b Faixa salarial (botão no card de Aplicações e seção na aba Candidatura do detalhe)
 
@@ -892,7 +903,7 @@ Na página, são links `<a target="_blank">` com o endereço da API na frente (`
 **`GET /api/versao`** — consultado a cada 4 s. `{versao: number (sobe a cada escrita no banco; mudou =
 recarregar /api/vagas), analisando: bool (IA dando notas), ia_erro: {motivo, em}|null (última análise automática
 falhou), ia_alerta: {nome, modelo, motivo, em, em_uso}|null (a IA principal falhou na última tentativa; spec 032; `em_uso`, a reserva que respondeu depois, ver §3.5), busca: {situacao, origem} (inclui `externa` para busca do terminal/chat), verificando: string[] (vagas do
-Forçar verificar: a atual e a fila), verificando_agora: string|null (a vaga em verificação agora; spec 056), falhas: {id: {motivo, em}} (Forçar verificar que não deu nota)}`. Também serve para saber
+Forçar verificar: a atual e a fila), verificando_agora: string|null (a vaga em verificação agora; spec 056), aguardando: {id: {motivo: "busca"|"espera", portal?, ate?}} (spec 057), falhas: {id: {motivo, em}} (Forçar verificar que não deu nota)}`. Também serve para saber
 se o servidor está no ar.
 
 ## 4. Comportamentos que a página mantém

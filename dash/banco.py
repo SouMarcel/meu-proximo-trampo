@@ -249,9 +249,13 @@ def achar_repetida(doc: dict) -> dict | None:
     return obter(vid) if vid else None
 
 
-def registrar_outros_portais(vid: str, plataformas: list[str], ids: list[str]) -> dict | None:
+DADOS_PORTAL = ("funcoes", "experiencia", "contrato_portal")  # o que o portal informa além do texto (spec 057)
+
+
+def registrar_outros_portais(vid: str, plataformas: list[str], ids: list[str], dados: dict | None = None) -> dict | None:
     """A mesma vaga apareceu em outro portal: as plataformas de lá viram etiquetas a mais (outras_plataformas) e os
-    ids de lá passam a contar como dela (ids_relacionados). Não mexe em nada do usuário nem da análise."""
+    ids de lá passam a contar como dela (ids_relacionados). Os dados do portal (DADOS_PORTAL) que a vaga ainda não
+    tem são completados (spec 057). Não mexe em nada do usuário nem da análise."""
     doc = obter(vid)
     if doc is None:
         return None
@@ -263,13 +267,16 @@ def registrar_outros_portais(vid: str, plataformas: list[str], ids: list[str]) -
     for i in map(str, ids):
         if i and i != vid and i not in relacionados:
             relacionados.append(i)
-    if extras == (doc.get("outras_plataformas") or []) and relacionados == (doc.get("ids_relacionados") or []):
+    faltam = {k: v for k, v in (dados or {}).items() if k in DADOS_PORTAL and v and not doc.get(k)}
+    if (extras == (doc.get("outras_plataformas") or []) and relacionados == (doc.get("ids_relacionados") or [])
+            and not faltam):
         return doc
     with escrita() as con:
         doc = _ler(con, vid)
         if doc is None:
             return None
         doc.update(outras_plataformas=extras, ids_relacionados=relacionados, atualizada_em=agora())
+        doc.update({k: v for k, v in faltam.items() if not doc.get(k)})
         _gravar(con, vid, doc)
     return doc
 
@@ -350,14 +357,37 @@ def _validar_usuario(campos: dict) -> dict:
     return limpos
 
 
+def _texto_solto(v, maximo: int) -> str:
+    """Texto de um campo da resposta da IA, tolerante (spec 057): lista de textos vira texto; número ou booleano vira
+    texto; objeto é ignorado."""
+    if isinstance(v, bool) or v is None:
+        return ""
+    if isinstance(v, (int, float)):
+        v = str(v)
+    elif isinstance(v, list):
+        v = "; ".join(str(x).strip() for x in v if isinstance(x, (str, int, float)) and not isinstance(x, bool))
+    elif not isinstance(v, str):
+        return ""
+    return v.strip()[:maximo]
+
+
+def _codigos_soltos(v, validos: tuple) -> list[str]:
+    """Os valores conhecidos de uma lista da resposta da IA (sem acento e caixa); os outros são descartados."""
+    if not isinstance(v, (list, str)):
+        return []
+    return [c for c in validos if c in {_sem_acento(x).strip().replace(" ", "_") for x in _lista(v, 20)}]
+
+
 def validar_analise(a: dict) -> dict:
+    """A análise de uma vaga (pela IA da página ou pelo chat). A nota e a situação são estritas; os campos
+    secundários fora do padrão são descartados ou convertidos, sem perder a nota (spec 057)."""
     status = a.get("analise_status", "feita")
     if status not in ("feita", "sem_dados"):
         raise ValueError("analise_status deve ser 'feita' ou 'sem_dados'")
     limpos = {
         "analise_status": status,
         "analisada_em": hoje(),
-        "resumo": _texto(a.get("resumo"), 400),
+        "resumo": _texto_solto(a.get("resumo"), 400),
         "encaixe": _lista(a.get("encaixe")),
         "lacunas": _lista(a.get("lacunas")),
         "alertas": _lista(a.get("alertas")),
@@ -367,49 +397,35 @@ def validar_analise(a: dict) -> dict:
             limpos["aderencia"] = max(0, min(100, int(round(float(a["aderencia"])))))
         except (KeyError, TypeError, ValueError):
             raise ValueError("'aderencia' ausente ou inválida") from None
-    modelo = a.get("modelo_trabalho")
-    if modelo is not None:
-        if modelo not in MODELOS:
-            raise ValueError(f"modelo_trabalho deve ser um de {MODELOS}")
+    modelo = _sem_acento(a.get("modelo_trabalho")).strip().replace(" ", "_")
+    if modelo in MODELOS:  # valor desconhecido é ignorado (spec 057)
         limpos["modelo_trabalho"] = modelo
-    niveis = a.get("senioridade")
-    if niveis is not None:
-        niveis = _lista(niveis)
-        if any(n not in SENIORIDADES for n in niveis):
-            raise ValueError(f"senioridade deve ser uma lista com {SENIORIDADES}")
-        limpos["senioridade"] = [n for n in SENIORIDADES if n in niveis]
+    if a.get("senioridade") is not None:
+        limpos["senioridade"] = _codigos_soltos(a["senioridade"], SENIORIDADES)
         if limpos["senioridade"]:
             origem = a.get("senioridade_origem")
-            if origem not in ORIGENS_SENIORIDADE:
-                raise ValueError(f"senioridade_origem deve ser um de {ORIGENS_SENIORIDADE}")
-            limpos["senioridade_origem"] = origem
-    tipos = a.get("tipo_emprego")
-    if tipos is not None:
-        tipos = _lista(tipos)
-        if any(t not in TIPOS_EMPREGO for t in tipos):
-            raise ValueError(f"tipo_emprego deve ser uma lista com {TIPOS_EMPREGO}")
-        limpos["tipo_emprego"] = [t for t in TIPOS_EMPREGO if t in tipos]
+            limpos["senioridade_origem"] = origem if origem in ORIGENS_SENIORIDADE else "sugerida"
+    if a.get("tipo_emprego") is not None:
+        limpos["tipo_emprego"] = _codigos_soltos(a["tipo_emprego"], TIPOS_EMPREGO)
     idioma = str(a.get("idioma") or "").strip().lower()
-    if idioma:
-        if not re.fullmatch(r"[a-z]{2}", idioma):
-            raise ValueError("idioma deve ser um código de 2 letras (pt, en, es…)")
+    if re.fullmatch(r"[a-z]{2}", idioma):
         limpos["idioma"] = idioma
     moeda = str(a.get("moeda") or "").strip().upper()
-    if moeda:
-        if len(moeda) != 3 or not moeda.isalpha():
-            raise ValueError("moeda deve ser um código de 3 letras (BRL, USD, EUR…)")
+    if len(moeda) == 3 and moeda.isalpha():
         limpos["moeda"] = moeda
     limpos.update(kit.validar_analise(a))  # o que a candidatura pede e o que pode impedir
     if a.get("fora_dos_criterios"):
-        limpos["fora_dos_criterios"] = _texto(a["fora_dos_criterios"], 200)
+        limpos["fora_dos_criterios"] = _texto_solto(a["fora_dos_criterios"], 200) or "a IA marcou a vaga fora dos seus critérios"
     provedor = str(a.get("analise_provedor") or "").strip()
     if provedor:  # qual IA deu a nota (ia.PROVEDORES); vazio nas análises feitas pelo chat
         if not re.match(r"^[a-z_]{1,32}$", provedor):
             raise ValueError("analise_provedor inválido")
         limpos["analise_provedor"] = provedor
-        limpos["analise_modelo"] = _texto(a.get("analise_modelo"), 120)
+        limpos["analise_modelo"] = _texto_solto(a.get("analise_modelo"), 120)
     if a.get("nota_sem_descricao") and status == "feita":  # nota provisória, sem o texto da vaga (spec 021)
         limpos["nota_sem_descricao"] = True
+        if a.get("nota_dados_portal"):  # provisória pelos dados do portal (spec 057)
+            limpos["nota_dados_portal"] = True
     if isinstance(a.get("requisitos"), dict):  # o que o anúncio pede (spec 045); inválido é cortado, sem custar a nota
         import requisitos  # dash/requisitos.py (aqui, para não importar em círculo)
         limpos["requisitos"] = requisitos.validar(a["requisitos"], provedor, a.get("analise_modelo"))
@@ -493,8 +509,42 @@ def completar_descricao(vid: str, descricao: str, tipo_emprego: list[str] | None
         if tipo_emprego:
             doc["tipo_emprego"] = tipo_emprego
         doc.pop("descricao_pendente", None)
+        if descricao:
+            doc.pop("nota_dados_portal", None)
         if descricao and doc.pop("nota_sem_descricao", None):
             doc["analise_status"] = "pendente"  # a nota provisória é refeita com o texto (spec 021)
+        aplicar_criterios(doc)
+        doc["atualizada_em"] = agora()
+        _gravar(con, vid, doc)
+    return doc
+
+
+COLAR_MIN, COLAR_MAX = 50, 30000  # caracteres do texto colado no detalhe da vaga (spec 057)
+
+
+def colar_descricao(vid: str, texto) -> dict:
+    """A descrição que a pessoa colou no detalhe da vaga (spec 057): o portal não entrega o texto (JobGether) ou ele
+    não chegou. Vale como a descrição da vaga (o filtro de integridade, spec 034, passa nela); sem nota definitiva, a
+    vaga volta a esperar nota. Devolve a vaga."""
+    if not isinstance(texto, str):
+        raise ValueError("cole o texto do anúncio")
+    texto = texto.strip()
+    if len(texto) < COLAR_MIN:
+        raise ValueError(f"o texto é curto demais: cole o anúncio inteiro (pelo menos {COLAR_MIN} caracteres)")
+    if len(texto) > COLAR_MAX:
+        raise ValueError(f"o texto passa de {COLAR_MAX} caracteres: cole só o anúncio")
+    with escrita() as con:
+        doc = _ler(con, vid)
+        if doc is None:
+            raise KeyError(vid)
+        doc["descricao"] = texto
+        aplicar_integridade(doc)
+        doc.pop("descricao_pendente", None)
+        doc.pop("nota_dados_portal", None)
+        definitiva = isinstance(doc.get("aderencia"), (int, float)) and not doc.pop("nota_sem_descricao", None)
+        if not definitiva:
+            doc["analise_status"] = "pendente"
+        doc["descricao_colada"] = agora()
         aplicar_criterios(doc)
         doc["atualizada_em"] = agora()
         _gravar(con, vid, doc)
@@ -818,6 +868,8 @@ def aplicar_analises(analises: list[dict]) -> tuple[list[str], list[str]]:
             doc.update(limpos)
             if not limpos.get("nota_sem_descricao"):
                 doc.pop("nota_sem_descricao", None)
+            if not limpos.get("nota_dados_portal"):
+                doc.pop("nota_dados_portal", None)
             aplicar_criterios(doc)
             doc["atualizada_em"] = agora()
             _gravar(con, vid, doc)

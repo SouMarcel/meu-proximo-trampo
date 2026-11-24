@@ -25,7 +25,9 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   e a busca pergunta antes de seguir sem ele (`vagas.py buscar` sai com código 5; repita com
   `--confirmar-espera` só com o OK da pessoa). A pausa de cada portal que lê páginas é ajustável no
   `.env` (`<PORTAL>_PAUSA`, de 3 a 60 s; exemplos em `.env.exemplo`); o Forçar verificar vai uma vaga por vez, com essa
-  pausa entre leituras e `FORCAR_PAUSA` (0 a 60 s, padrão 5) entre pedidos à IA (spec 056). O JobGether entra só pela API que o
+  pausa entre leituras (no LinkedIn, `LINKEDIN_FORCAR_PAUSA`, 30 a 600 s, padrão 60) e `FORCAR_PAUSA` (0 a 60 s, padrão 5)
+  entre pedidos à IA (spec 056); a nota só sai com a descrição no computador, e com busca rodando ou portal em espera a
+  vaga aguarda e volta sozinha (spec 057). O JobGether entra só pela API que o
   portal oferece a assistentes de IA; os termos dele proíbem acesso automatizado, e ele vem ligado por padrão por
   decisão registrada (constituição VI, "Termos contrários", spec 030); a página da vaga não é lida, e no bloqueio
   ele fica 24 horas de fora (`JOBGETHER_PAUSA`, de 2 a 60 s). A FullStack também tem termos que proíbem acesso

@@ -861,6 +861,20 @@ class Handler(BaseHTTPRequestHandler):
         return self._json(202, {"verificando": analise.FILA.verificando(),
                                 "verificando_agora": analise.FILA.agora()})
 
+    def _colar_descricao(self, vid: str):
+        """Colar a descrição (spec 057): o texto do anúncio que a pessoa colou no detalhe da vaga; sem nota definitiva,
+        a vaga entra na fila do Forçar verificar. Só deste computador, como o Forçar (gasta a IA da pessoa)."""
+        corpo = self._corpo()
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        if not banco.ID_VALIDO.match(vid):
+            return self._erro(404, "rota não encontrada")
+        vaga = banco.colar_descricao(vid, corpo.get("descricao") if isinstance(corpo, dict) else None)
+        if not (analise._tem_nota(vaga) and not vaga.get("nota_sem_descricao")):
+            analise.FILA.forcar(vid)  # sem IA ligada, a vaga fica esperando a nota (a página já avisa)
+        return self._json(200, {"vaga": banco.com_kit(vaga), "verificando": analise.FILA.verificando(),
+                                "verificando_agora": analise.FILA.agora()})
+
     def _salario(self, metodo: str, caminho: str):
         """Faixa salarial (spec 028): só números com fonte (vaga, vagas parecidas do banco, anotações da pessoa) e
         links de pesquisa para ela abrir; nada é buscado na internet nem estimado pela IA."""
@@ -977,6 +991,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(201 if nova else 200, {"empresa": empresa, "nova": nova, "empresas": empresas})
             if caminho == "/api/ia" or caminho.startswith("/api/ia/"):
                 return self._ia(metodo, caminho)
+            if metodo == "PUT" and caminho.startswith("/api/vagas/") and caminho.endswith("/descricao"):
+                return self._colar_descricao(unquote(caminho[len("/api/vagas/"):-len("/descricao")]))
             if caminho in ("/api/perfil", "/api/curriculo-base") or caminho.startswith("/api/perfil/"):
                 return self._perfil(metodo, caminho)
             if caminho.startswith(("/api/contas", "/api/candidaturas")):
@@ -1030,6 +1046,7 @@ class Handler(BaseHTTPRequestHandler):
                                     "ia_erro": analise.FILA.erro(), "ia_alerta": ia.alerta(),
                                     "busca": buscador.BUSCA.resumo(),
                                     "verificando": analise.FILA.verificando(), "verificando_agora": analise.FILA.agora(),
+                                    "aguardando": analise.FILA.aguardando(),
                                     "falhas": analise.FILA.falhas_atuais()})
         if caminho == "/api/ia":
             return self._json(200, ia.estado_para_pagina(self._local(), analise.FILA.erro()))

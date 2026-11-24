@@ -180,8 +180,7 @@ class TestBuscaPorArea(unittest.TestCase):
     def test_analise_com_idioma_e_vaga_por_link(self):
         (self.tmp / "config.json").write_text(json.dumps({**self.config(), "idiomas_aceitos": ["pt", "en"]}), encoding="utf-8")
         self.assertEqual(banco.validar_analise({"aderencia": 70, "idioma": "ES"})["idioma"], "es")
-        with self.assertRaises(ValueError):
-            banco.validar_analise({"aderencia": 70, "idioma": "espanhol"})
+        self.assertNotIn("idioma", banco.validar_analise({"aderencia": 70, "idioma": "espanhol"}))  # ignorado (spec 057)
         doc, nova = banco.criar_de_link({"id": "x-1", "titulo": "Data Analyst", "empresa": "Acme",
                                          "local": "Remote - United States", "descricao": EN})
         self.assertTrue(nova)

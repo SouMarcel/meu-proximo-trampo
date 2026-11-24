@@ -37,6 +37,7 @@ sys.path.insert(0, str(RAIZ / "dash"))
 import banco  # noqa: E402  (dash/banco.py)
 import filtros  # noqa: E402
 import integridade  # noqa: E402
+import segredos  # noqa: E402  (o .env: LINKEDIN_FORCAR_PAUSA, spec 057)
 from fontes import FONTES, _comum, _sessao  # noqa: E402
 
 
@@ -402,9 +403,12 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
         existente = vistas.achar(v)
         if existente:
             ja_vistas += 1
-            reg = outros_portais.setdefault(existente, {"plataformas": [], "ids": []})
+            reg = outros_portais.setdefault(existente, {"plataformas": [], "ids": [], "dados": {}})
             reg["plataformas"] += [p for p in [v["plataforma"], *v["outras_plataformas"]] if p not in reg["plataformas"]]
             reg["ids"] += [i for i in [v["id"], *v["ids_relacionados"]] if i not in reg["ids"]]
+            for k in banco.DADOS_PORTAL:  # funções, experiência e contrato do portal (spec 057)
+                if v.get(k):
+                    reg.setdefault("dados", {}).setdefault(k, v[k])
             continue
         motivos = filtros.criterios(v, f)  # antes da IA: empresa excluída e senioridade do título
         if motivos:
@@ -563,13 +567,44 @@ def descrever_uma(vid: str) -> dict:
 
 
 PAUSA_LEITURA_MIN = 3.0  # segundos entre duas leituras do Forçar verificar no mesmo portal (spec 056)
+# Portais com intervalo próprio no Forçar verificar (spec 057): plataforma -> (variável do .env, padrão, mínimo, máximo)
+PAUSAS_FORCAR = {"LinkedIn": ("LINKEDIN_FORCAR_PAUSA", 60.0, 30.0, 600.0)}
+
+
+def _fonte_da_plataforma(plataforma):
+    return next((f for f in FONTES.values() if f.PLATAFORMA == plataforma), None)
+
+
+def le_descricao(plataforma) -> bool:
+    """A ferramenta sabe ler a descrição de uma vaga deste portal (a fonte tem descrever())."""
+    return hasattr(_fonte_da_plataforma(plataforma), "descrever")
+
+
+def espera_da_plataforma(plataforma) -> dict | None:
+    """{"portal", "ate"} quando o portal está em espera depois de um bloqueio (spec 057), senão None."""
+    fonte = _fonte_da_plataforma(plataforma)
+    esp = getattr(fonte, "espera", None)
+    e = esp() if esp else None
+    return {"portal": fonte.PLATAFORMA, "ate": e["ate"]} if e else None
+
+
+def leitura_livre() -> bool:
+    """Nenhuma busca nem Completar descrições está consultando os portais agora (spec 057: uma coisa de cada vez)."""
+    return not _LEITURA.locked() and ocupada() is None
 
 
 def pausa_leitura(plataforma) -> float:
     """Segundos entre duas leituras de descrição no mesmo portal pelo Forçar verificar (spec 056): o mínimo da faixa
     da pausa do portal (<NOME>_PAUSA ou o padrão dele), com piso de PAUSA_LEITURA_MIN; portal sem pausa própria (lido
-    por API) fica no piso."""
-    fonte = next((f for f in FONTES.values() if f.PLATAFORMA == plataforma), None)
+    por API) fica no piso. O LinkedIn tem intervalo próprio, LINKEDIN_FORCAR_PAUSA (spec 057)."""
+    if plataforma in PAUSAS_FORCAR:
+        var, padrao, minimo, maximo = PAUSAS_FORCAR[plataforma]
+        try:
+            n = float(str(segredos.ler(var) or "").strip().replace(",", "."))
+        except ValueError:
+            return padrao
+        return padrao if n != n or n in (float("inf"), float("-inf")) else min(max(n, minimo), maximo)
+    fonte = _fonte_da_plataforma(plataforma)
     try:
         faixa = fonte.pausa()["faixa"] if fonte is not None and hasattr(fonte, "pausa") else None
         return max(PAUSA_LEITURA_MIN, float(faixa[0])) if faixa else PAUSA_LEITURA_MIN
@@ -829,7 +864,7 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
             "outras_plataformas": c.get("outras_plataformas", []),
             "area": area, "pais_vaga": pais_vaga, "idioma": filtros.idioma_da_vaga(c),
             **{k: c[k] for k in ("restricao_local", "ats", "moeda", "modelo_trabalho", "tipo_emprego",
-                                 "descricao_pendente") if c.get(k)},  # o que a fonte informa
+                                 "descricao_pendente", *banco.DADOS_PORTAL) if c.get(k)},  # o que a fonte informa
             **({"sinais": s} if (s := filtros.sinais(c, f)) else {}),  # patrocínio de visto, relocation…
             **analise,
             "triagem": "pendente", "triada_em": None,
@@ -869,7 +904,7 @@ def gravar_resultado(dados: dict, avals: list[dict] | None = None, sem_avaliacao
 
     novas, existentes = banco.inserir_vagas(docs)
     for vid, reg in dados.get("outros_portais", {}).items():  # vagas já no dashboard que a busca achou em outro portal
-        banco.registrar_outros_portais(vid, reg["plataformas"], reg["ids"])
+        banco.registrar_outros_portais(vid, reg["plataformas"], reg["ids"], reg.get("dados"))
     fora_novas = [d for d in docs if d["triagem"] == "fora" and d["id"] in novas]
     ids_fora = {d["id"] for d in fora_novas}
     faltando = [jid for jid in cand if jid not in avaliadas]

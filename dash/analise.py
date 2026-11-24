@@ -7,9 +7,11 @@ lotes; a resposta é só o JSON das análises, que este módulo grava com banco.
 com o provedor e o modelo que deram a nota. Sem IA, as vagas ficam esperando até o usuário pedir a
 análise no chat. A última falha (já sem chave) fica em FILA.erro() para a página mostrar.
 
-O botão Forçar verificar da página (spec 021) chama FILA.forcar(id): a vaga passa na frente das automáticas, mesmo
-sem estar esperando nota. Se faltar a descrição, ela é lida uma vez (vagas.descrever_uma, fora da espera do portal);
-sem o texto, a nota sai com a marca nota_sem_descricao e é refeita quando a descrição chegar.
+O botão Forçar verificar da página (spec 021) chama FILA.forcar(id): a vaga entra numa fila, uma por vez (spec 056),
+na frente das automáticas. A nota só sai com a descrição no computador (spec 057): se faltar, ela é lida uma vez
+(vagas.descrever_uma); com uma busca rodando ou o portal em espera, a vaga fica aguardando e volta sozinha. A única
+nota sem a descrição é a provisória pelos dados do portal (JobGether: funções, experiência, contrato), marcada com
+nota_sem_descricao e nota_dados_portal e refeita quando a descrição chegar.
 """
 from __future__ import annotations
 
@@ -118,6 +120,25 @@ def _area(f, v: dict, efet: dict) -> str:
 SEM_DESCRICAO = ("(NOTA SEM A DESCRIÇÃO: o texto da vaga não está disponível. Avalie só pelo cargo, empresa, "
                  "local, salário e sinais acima; dê a nota mesmo assim e diga no resumo que ela é provisória, "
                  "sem a descrição da vaga.)")
+SEM_DESCRICAO_COM_DADOS = ("(NOTA PELOS DADOS DO PORTAL: o portal não entrega o texto da vaga. Avalie pelo cargo, "
+                           "empresa, local, salário e pelos dados do portal acima (funções, experiência, contrato); dê "
+                           "a nota mesmo assim e diga no resumo que ela é provisória, pelos dados do portal.)")
+
+
+def dados_portal(v: dict) -> bool:
+    """A vaga tem os dados estruturados do portal (JobGether: funções ou experiência; spec 057)."""
+    return bool(v.get("funcoes") or v.get("experiencia"))
+
+
+def _linhas_portal(v: dict) -> list[str]:
+    linhas = []
+    if v.get("funcoes"):
+        linhas.append(f"Funções (do portal): {', '.join(map(str, v['funcoes']))}")
+    if v.get("experiencia"):
+        linhas.append(f"Experiência pedida (do portal): {v['experiencia']}")
+    if v.get("contrato_portal"):
+        linhas.append(f"Contrato (do portal): {v['contrato_portal']}")
+    return linhas
 
 
 def montar_pedido(vagas: list[dict], sem_descricao=frozenset()) -> str:
@@ -146,8 +167,9 @@ def montar_pedido(vagas: list[dict], sem_descricao=frozenset()) -> str:
             f"Salário: {v.get('salario') or 'não informado'}",
             *([f"Restrição de local do portal: {v['restricao_local']}"] if v.get("restricao_local") else []),
             *([f"Sinais lidos no anúncio: {', '.join(v['sinais'])}"] if v.get("sinais") else []),
+            *_linhas_portal(v),
             "Descrição:",
-            *([SEM_DESCRICAO] if v["id"] in sem_descricao else []),
+            *([SEM_DESCRICAO_COM_DADOS if dados_portal(v) else SEM_DESCRICAO] if v["id"] in sem_descricao else []),
             (limpar(v.get("descricao")) or ("" if v["id"] in sem_descricao else "(sem descrição)"))[:LIMITE_DESCRICAO],
             "",
         ]
@@ -165,7 +187,8 @@ def montar_pedido(vagas: list[dict], sem_descricao=frozenset()) -> str:
         '"formacao" {"nivel", "areas", "frase"}, "idiomas" [{"idioma", "nivel", "frase"}]}}.',
         'Se a descrição não basta para avaliar: {"id": "...", "analise_status": "sem_dados", '
         '"resumo": "Sem descrição suficiente: cole o texto da vaga no dashboard."}.'
-        + (" Isso não vale para as vagas marcadas NOTA SEM A DESCRIÇÃO: nelas, dê sempre a nota."
+        + (" Isso não vale para as vagas marcadas NOTA SEM A DESCRIÇÃO ou NOTA PELOS DADOS DO PORTAL: nelas, dê "
+           "sempre a nota."
            if any(v["id"] in sem_descricao for v in vagas) else ""),
         "",
         "## Perfil do usuário (a única fonte sobre ele; não complete lacunas com suposições)",
@@ -242,9 +265,14 @@ def analisar(vagas: list[dict], sem_descricao=frozenset()) -> tuple[list[str], l
         lista = lista_json(texto)
         if lista is None:
             raise modulo.IAErro("a resposta da IA não trouxe o JSON das análises")
-        ids = {v["id"] for v in lote}
-        analises = [{**x, **marca, **({"nota_sem_descricao": True} if str(x.get("id")) in sem_descricao else {})}
-                    for x in lista if isinstance(x, dict) and str(x.get("id")) in ids]
+        por_id = {v["id"]: v for v in lote}
+
+        def provisoria(vid: str) -> dict:
+            if vid not in sem_descricao:
+                return {}
+            return {"nota_sem_descricao": True, **({"nota_dados_portal": True} if dados_portal(por_id[vid]) else {})}
+        analises = [{**x, **marca, **provisoria(str(x.get("id")))}
+                    for x in lista if isinstance(x, dict) and str(x.get("id")) in por_id]
         ok, erros = banco.aplicar_analises(analises)
         gravadas += ok
         problemas += erros
@@ -254,15 +282,20 @@ def analisar(vagas: list[dict], sem_descricao=frozenset()) -> tuple[list[str], l
 class Fila:
     """Uma análise por vez. As vagas que a pessoa forçou (forcar) formam uma fila, na ordem dos cliques, e são
     verificadas uma por vez antes das automáticas (spec 056): a descrição que falta, com a pausa do portal, e o
-    pedido à IA só com ela, com a pausa FORCAR_PAUSA entre dois pedidos. Pedidos que chegam durante uma análise
-    disparam outra rodada no fim. `dormir` e `relogio` são trocados nos testes."""
+    pedido à IA só com ela, com a pausa FORCAR_PAUSA entre dois pedidos. A nota só sai com a descrição (spec 057):
+    com uma busca rodando ou o portal em espera, a vaga fica aguardando e volta sozinha para a fila. Pedidos que
+    chegam durante uma análise disparam outra rodada no fim. `dormir` e `relogio` são trocados nos testes."""
+
+    INTERVALO_AGUARDANDO = 60.0  # segundos entre duas conferências das vagas aguardando (spec 057)
 
     def __init__(self, dormir=time.sleep, relogio=time.monotonic):
         self._trava = threading.Lock()
+        self._evento = threading.Event()  # acorda a thread que espera pelas vagas aguardando
         self._pedido = False
         self._thread: threading.Thread | None = None
         self._forcadas: list[str] = []  # a fila, na ordem dos cliques
         self._atual: str | None = None  # a forçada em verificação agora
+        self._aguardando: dict[str, dict] = {}  # id -> {motivo: busca|espera, plataforma, portal?, ate?}
         self._dormir, self._relogio = dormir, relogio
         self._ultima_ia: float | None = None  # o último pedido da fila à IA
         self._ultima_leitura: dict[str, float] = {}  # plataforma -> a última leitura de descrição da fila
@@ -284,8 +317,14 @@ class Fila:
         with self._trava:
             return self._atual
 
+    def aguardando(self) -> dict[str, dict]:
+        """As vagas forçadas que esperam a busca terminar ou o portal sair da espera: {id: {motivo, portal?, ate?}}."""
+        with self._trava:
+            return {vid: {k: v for k, v in info.items() if k != "plataforma"} for vid, info in self._aguardando.items()}
+
     def _acordar(self) -> None:  # com a trava
         self._pedido = True
+        self._evento.set()
         if self._thread is None:
             self._thread = threading.Thread(target=self._rodar, daemon=True, name="analise-automatica")
             self._thread.start()
@@ -300,11 +339,12 @@ class Fila:
 
     def forcar(self, vid: str) -> bool:
         """A pessoa pediu a nota desta vaga (botão Forçar verificar): ela entra no fim da fila, que passa na frente
-        das automáticas, mesmo já tentada. Não duplica. Devolve False se não há IA ligada (nada muda)."""
+        das automáticas, mesmo já tentada ou aguardando. Não duplica. Devolve False se não há IA ligada (nada muda)."""
         if not ligada():
             return False
         with self._trava:
             self.falhas.pop(vid, None)
+            self._aguardando.pop(vid, None)
             if vid != self._atual and vid not in self._forcadas:
                 self._forcadas.append(vid)
             self._acordar()
@@ -317,6 +357,45 @@ class Fila:
     def _falhar(self, vid: str, motivo: str) -> None:
         with self._trava:
             self.falhas[vid] = {"motivo": motivo, "em": datetime.now().isoformat(timespec="minutes")}
+
+    def _aguardar(self, vid: str, motivo: str, plataforma, espera: dict | None = None) -> None:
+        info = {"motivo": motivo, "plataforma": plataforma}
+        if espera:
+            info.update(portal=espera["portal"], ate=espera["ate"])
+        with self._trava:
+            self._aguardando[vid] = info
+        print(f"[forçar verificar] {vid}: aguardando " + (f"o {info['portal']} até {info['ate']}" if espera
+                                                         else "a busca terminar"))
+
+    def _retomar_aguardando(self) -> list[str]:
+        """Devolve ao fim da fila as vagas cuja espera acabou (a busca terminou; o portal saiu da espera). A vaga que
+        ganhou nota enquanto aguardava (análise automática) ou foi removida sai sem voltar."""
+        vagas = _vagas()
+        with self._trava:
+            itens = list(self._aguardando.items())
+        livre = vagas.leitura_livre() if any(i["motivo"] == "busca" for _, i in itens) else False
+        voltam = []
+        for vid, info in itens:
+            v = banco.obter(vid)
+            if v is None or (_tem_nota(v) and not v.get("nota_sem_descricao")):
+                with self._trava:
+                    self._aguardando.pop(vid, None)
+                continue
+            if v.get("descricao") and not v.get("descricao_pendente"):
+                pronta = True  # a descrição chegou (pela busca ou colada): já pode ir à IA
+            elif info["motivo"] == "busca":
+                pronta = livre
+            else:
+                pronta = not vagas.espera_da_plataforma(info["plataforma"])
+            if pronta:
+                voltam.append(vid)
+        with self._trava:
+            for vid in voltam:
+                if self._aguardando.pop(vid, None) is not None and vid not in self._forcadas and vid != self._atual:
+                    self._forcadas.append(vid)
+            if voltam:
+                self._pedido = True
+        return voltam
 
     def _esperar(self, desde: float | None, segundos: float) -> None:
         if desde is not None and segundos > 0:
@@ -335,30 +414,69 @@ class Fila:
         self._esperar(self._ultima_ia, pausa_ia())
         self._ultima_ia = self._relogio()
 
+    def _descricao(self, vid: str, v: dict) -> tuple[dict | None, bool]:
+        """Garante a descrição antes da IA (spec 057). Devolve (vaga, sem_descricao): (vaga, False) com o texto;
+        (vaga, True) só para a nota pelos dados do portal; (None, _) quando a vaga ficou aguardando ou falhou."""
+        vagas = _vagas()
+        plataforma = v.get("plataforma")
+        portal = plataforma or "portal"
+        if not vagas.le_descricao(plataforma):
+            if dados_portal(v):
+                return v, True
+            self._falhar(vid, f"O {portal} não entrega a descrição à ferramenta: abra o anúncio e cole o texto em "
+                              "Colar a descrição, no detalhe da vaga")
+            return None, False
+        if not vagas.leitura_livre():
+            self._aguardar(vid, "busca", plataforma)
+            return None, False
+        espera = vagas.espera_da_plataforma(plataforma)
+        if espera:
+            self._aguardar(vid, "espera", plataforma, espera)
+            return None, False
+        self._pausar_portal(plataforma)
+        motivo = vagas.descrever_uma(vid)["motivo"]
+        if motivo is None:
+            return banco.obter(vid) or v, False
+        if motivo == "busca":
+            self._aguardar(vid, "busca", plataforma)
+        elif motivo in ("espera", "bloqueio") and vagas.espera_da_plataforma(plataforma):
+            self._aguardar(vid, "espera", plataforma, vagas.espera_da_plataforma(plataforma))
+        elif motivo == "vazia":
+            self._falhar(vid, f"o anúncio não está mais no {portal} (a descrição veio vazia)")
+        elif motivo != "sem_vaga":
+            self._falhar(vid, f"não deu para ler a descrição no {portal}; tente de novo mais tarde ou cole o texto "
+                              "em Colar a descrição")
+        return None, False
+
     def _verificar_uma(self, vid: str) -> None:
-        """Uma vaga forçada: a descrição que falta (uma leitura, se der) e a nota; sem nota, ela fica em falhas com
-        o motivo. A falha desta vaga não afeta as outras da fila."""
-        sem_descricao: set[str] = set()
+        """Uma vaga forçada: a descrição que falta (_descricao) e a nota, com uma nova tentativa se a IA falhar; sem
+        nota, ela fica em falhas com o motivo. A falha desta vaga não afeta as outras da fila."""
         try:
             v = banco.obter(vid)
             if v is None or (_tem_nota(v) and not v.get("nota_sem_descricao")):
                 return  # removida ou já com nota (a análise automática chegou antes)
+            sem_descricao = False
             if v.get("descricao_pendente") or not v.get("descricao"):
-                self._pausar_portal(v.get("plataforma"))
-                _vagas().descrever_uma(vid)
-                v = banco.obter(vid) or v
-                if v.get("descricao_pendente") or not v.get("descricao"):
-                    sem_descricao.add(vid)
-            self._pausar_ia()
-            ok, problemas = analisar([v], sem_descricao)
+                v, sem_descricao = self._descricao(vid, v)
+                if v is None:
+                    return
+            modulo = _ia()
+            for tentativa in (1, 2):  # nova tentativa: resposta sem JSON, provedor fora (spec 057)
+                self._pausar_ia()
+                try:
+                    ok, problemas = analisar([v], {vid} if sem_descricao else frozenset())
+                    break
+                except modulo.IAErro as e:
+                    if tentativa == 2:
+                        raise
+                    print(f"[forçar verificar] {vid}: a IA falhou ({modulo.mascarar(str(e))}); nova tentativa")
             doc = banco.obter(vid)
             if vid in ok and doc and doc.get("analise_status") == "feita":
                 print(f"[forçar verificar] {vid}: com nota")
                 return
             motivo = next((p.split(": ", 1)[1] for p in problemas if p.startswith(vid + ":")), None)
-            padrao = ("a IA não conseguiu dar nota sem a descrição" if sem_descricao
-                      else "a IA não devolveu a nota desta vaga")
-            self._falhar(vid, motivo or padrao)
+            self._falhar(vid, motivo or ("a IA não conseguiu dar nota pelos dados do portal" if sem_descricao
+                                         else "a IA não devolveu a nota desta vaga"))
         except Exception as e:  # nunca derruba o servidor; o cartão volta a mostrar o botão com o motivo
             motivo = _ia().mascarar(str(e)) or "falha desconhecida"
             self._falhar(vid, motivo)
@@ -373,11 +491,17 @@ class Fila:
         tentadas: set[str] = set()  # uma tentativa por vaga a cada rodada do servidor
         while True:
             with self._trava:
-                if not self._pedido and not self._forcadas:
+                ocioso = not self._pedido and not self._forcadas
+                if ocioso and not self._aguardando:
                     self.rodando = False
                     self._thread = None
                     return
                 self._pedido = False
+                self._evento.clear()
+            if ocioso:  # só vagas aguardando: confere de tempos em tempos (ou quando chega um pedido)
+                self._evento.wait(self.INTERVALO_AGUARDANDO)
+                self._retomar_aguardando()
+                continue
             while (vid := self._proxima_forcada()) is not None:  # as forçadas, uma por vez, na ordem
                 self.rodando = True
                 try:
@@ -386,7 +510,7 @@ class Fila:
                     with self._trava:
                         self._atual = None
                     self.rodando = False
-            espera = set(self.verificando())
+            espera = set(self.verificando()) | set(self.aguardando())
             pendentes = [v for v in banco.listar_vagas()
                          if precisa(v) and v["id"] not in tentadas and v["id"] not in espera]
             if not pendentes:
