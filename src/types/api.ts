@@ -149,6 +149,8 @@ export interface Vaga {
   publicada_em?: string | null
   descricao?: string
   descricao_pendente?: boolean
+  /** Data ISO de quando a pessoa colou a descrição (spec 057). */
+  descricao_colada?: string
   salario?: string
   moeda?: string
   idioma?: string
@@ -185,6 +187,14 @@ export interface Vaga {
   analise_status?: AnaliseStatus
   aderencia?: number // 0-100
   nota_sem_descricao?: boolean
+  /** A nota provisória saiu pelos dados do portal, sem a descrição (spec 057). */
+  nota_dados_portal?: boolean
+  /** Funções do portal, por exemplo "Scrum Master" (spec 057). */
+  funcoes?: string[]
+  /** Experiência informada pelo portal, por exemplo "Senior (5-10 years)" (spec 057). */
+  experiencia?: string
+  /** Tipo de contrato informado pelo portal (spec 057). */
+  contrato_portal?: string
   resumo?: string
   encaixe?: string[]
   lacunas?: string[]
@@ -264,6 +274,8 @@ export interface Versao {
   verificando?: string[]
   /** a vaga forçada em verificação agora; as outras de verificando esperam a vez (spec 056) */
   verificando_agora?: string | null
+  /** Vagas aguardando busca ou espera de portal (spec 057). ate vem como "AAAA-MM-DDTHH:MM" local. */
+  aguardando?: Record<string, { motivo: "busca" | "espera"; portal?: string; ate?: string }>
   falhas?: Record<string, { motivo: string; em: string }>
 }
 

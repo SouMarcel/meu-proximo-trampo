@@ -365,6 +365,7 @@ export function temNota(vaga: Vaga): boolean {
 export type SituacaoNota =
   | { tipo: "verificando" }
   | { tipo: "na_fila"; posicao: number }
+  | { tipo: "aguardando"; motivo: "busca" | "espera"; portal?: string; ate?: string }
   | { tipo: "falha"; motivo: string }
   | { tipo: "nota"; provisoria: boolean }
   | { tipo: "pendente" } // aguardando a IA
@@ -372,7 +373,10 @@ export type SituacaoNota =
   | { tipo: "sem_nota" }
 
 /** Situação da nota para os selos: verificando → falha → o que a vaga diz (data-model "Estado derivado"). */
-export function situacaoNota(vaga: Vaga, versao?: Pick<Versao, "verificando" | "verificando_agora" | "falhas"> | null): SituacaoNota {
+export function situacaoNota(
+  vaga: Vaga,
+  versao?: Pick<Versao, "verificando" | "verificando_agora" | "falhas" | "aguardando"> | null,
+): SituacaoNota {
   if (versao?.verificando?.includes(vaga.id)) {
     const agora = versao.verificando_agora
     if (agora != null && agora !== vaga.id) {
@@ -381,12 +385,24 @@ export function situacaoNota(vaga: Vaga, versao?: Pick<Versao, "verificando" | "
     }
     return { tipo: "verificando" }
   }
+  const aguardando = versao?.aguardando?.[vaga.id]
+  if (aguardando) {
+    return { tipo: "aguardando", ...aguardando }
+  }
   const falha = versao?.falhas?.[vaga.id]
   if (falha && !temNota(vaga)) return { tipo: "falha", motivo: falha.motivo }
   if (temNota(vaga)) return { tipo: "nota", provisoria: Boolean(vaga.nota_sem_descricao) }
   if (vaga.descricao_pendente) return { tipo: "descricao_pendente" }
   if (vaga.analise_status === "pendente") return { tipo: "pendente" }
   return { tipo: "sem_nota" }
+}
+
+/** Texto descritivo para vaga aguardando busca ou espera de portal (spec 057). */
+export function textoAguardando(s: { motivo: "busca" | "espera"; portal?: string; ate?: string }): string {
+  if (s.motivo === "busca") return "Aguardando a busca terminar"
+  const portal = s.portal || "portal"
+  const ate = s.ate ? ` (até ${s.ate.slice(11, 16)})` : ""
+  return `Aguardando o ${portal}${ate}`
 }
 
 /** Forçar verificar: só para vaga sem nota (ou com nota provisória) em Para decidir ou Fora dos critérios. */

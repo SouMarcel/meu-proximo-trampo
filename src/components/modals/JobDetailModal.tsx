@@ -28,6 +28,7 @@ import {
   formatarModelo,
   formatarSenioridade,
   situacaoNota,
+  textoAguardando,
   podeForcar,
   linkSeguro,
   temNota,
@@ -36,6 +37,8 @@ import {
 } from "../../utils/formatters"
 import { AUTORIZACAO, CONTRATACAO, ESTADOS_KIT, ETAPAS, INGLES, PEDE, RESULTADOS, RISCOS, TIPOS_EMPREGO } from "../../utils/rotulos"
 import { useFerramenta, AvisoSoLeitura } from "../../contexto/Ferramenta"
+import { mensagemDeErro } from "../../services/api"
+import * as vagasApi from "../../services/api/vagas"
 import TextoDaVaga from "../TextoDaVaga"
 import { BlocoIntegridade, LembreteNota, OrigemDoLink, SeloIntegridade } from "../Integridade"
 import { KitDaVaga, Lembrete } from "../kit/Kit"
@@ -62,6 +65,66 @@ const ROTULO = "text-xs font-semibold text-slate-600 dark:text-slate-300 block m
 function Frase({ frase }: { frase?: string }) {
   if (!frase) return null
   return <span className="block text-[11px] italic text-slate-500 dark:text-slate-400 mt-0.5">“{frase}”</span>
+}
+
+function ColarDescricao({
+  vagaId,
+  onAviso,
+}: {
+  vagaId: string
+  onAviso: (mensagem: string, tipo?: "info" | "erro") => void
+}) {
+  const { podeGravar } = useFerramenta()
+  const [texto, setTexto] = useState("")
+  const [gravando, setGravando] = useState(false)
+
+  const gravar = async () => {
+    if (texto.length < 50 || texto.length > 30000 || !podeGravar || gravando) return
+    setGravando(true)
+    try {
+      await vagasApi.colarDescricao(vagaId, texto)
+      setTexto("")
+      onAviso("Descrição gravada: a vaga entrou na fila de verificação.")
+    } catch (e) {
+      onAviso(mensagemDeErro(e, "Não deu para gravar a descrição."), "erro")
+    } finally {
+      setGravando(false)
+    }
+  }
+
+  const desabilitado = texto.length < 50 || texto.length > 30000 || !podeGravar || gravando
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className="font-bold text-sm text-slate-900 dark:text-white">Colar a descrição</h4>
+        <span className="text-xs text-slate-400 dark:text-slate-500">
+          {texto.length.toLocaleString("pt-BR")} / 30.000
+        </span>
+      </div>
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Abra o anúncio no portal, copie o texto e cole aqui. Ele é tratado como o texto da vaga (dado, não instrução).
+      </p>
+      <textarea
+        rows={8}
+        maxLength={30000}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Cole aqui o texto do anúncio (o que a vaga pede, responsabilidades, requisitos)"
+        className={CAMPO}
+      />
+      <div className="flex justify-end">
+        <button
+          type="button"
+          disabled={desabilitado}
+          onClick={gravar}
+          className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-xs disabled:opacity-50"
+        >
+          {gravando ? "Gravando…" : "Gravar e verificar"}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default function JobDetailModal({
@@ -252,6 +315,10 @@ export default function JobDetailModal({
               <OrigemDoLink vaga={vaga} />
               <BlocoIntegridade vaga={vaga} />
 
+              {(!vaga.descricao || vaga.descricao_pendente || vaga.nota_dados_portal) && (
+                <ColarDescricao vagaId={vaga.id} onAviso={onAviso} />
+              )}
+
               <div className="space-y-2">
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white">Texto do anúncio</h4>
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
@@ -264,11 +331,22 @@ export default function JobDetailModal({
           {/* Análise */}
           {activeTab === "analise" && (
             <div className="space-y-4">
+              {Boolean(vaga.funcoes?.length || vaga.experiencia) && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Do portal: {[
+                    vaga.funcoes?.length ? `Funções: ${vaga.funcoes.join(", ")}` : null,
+                    vaga.experiencia ? `Experiência: ${vaga.experiencia}` : null,
+                    vaga.contrato_portal ? `Contrato: ${vaga.contrato_portal}` : null,
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              )}
               {!temNota(vaga) ? (
                 <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 text-center space-y-3">
                   <Sparkles className="w-8 h-8 text-indigo-500 mx-auto" />
                   <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                    {nota.tipo === "verificando"
+                    {nota.tipo === "aguardando"
+                      ? `${textoAguardando(nota)}: volta sozinha para a fila.`
+                      : nota.tipo === "verificando"
                       ? "Verificando: a nota chega em alguns minutos."
                       : nota.tipo === "na_fila"
                         ? `Na fila do Forçar verificar (posição ${nota.posicao}): uma vaga por vez.`
@@ -281,25 +359,45 @@ export default function JobDetailModal({
                   {nota.tipo === "falha" && (
                     <p className="text-xs text-rose-600 dark:text-rose-400">Não deu para verificar: {nota.motivo}</p>
                   )}
-                  {onForcarVerificar && podeForcar(vaga) && nota.tipo !== "verificando" && nota.tipo !== "na_fila" && (
-                    <button
-                      disabled={!podeGravar}
-                      onClick={() => onForcarVerificar(vaga.id)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-xs disabled:opacity-50"
-                      title="Pede a nota desta vaga à IA agora"
-                    >
-                      Forçar verificar
-                    </button>
+                  {nota.tipo === "falha" && nota.motivo.toLowerCase().includes("cole o texto") && (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("descricao")}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-xs"
+                      >
+                        Colar a descrição
+                      </button>
+                    </div>
                   )}
+                  {onForcarVerificar &&
+                    podeForcar(vaga) &&
+                    nota.tipo !== "verificando" &&
+                    nota.tipo !== "na_fila" &&
+                    nota.tipo !== "aguardando" && (
+                      <button
+                        disabled={!podeGravar}
+                        onClick={() => onForcarVerificar(vaga.id)}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition shadow-xs disabled:opacity-50"
+                        title="Pede a nota desta vaga à IA agora"
+                      >
+                        Forçar verificar
+                      </button>
+                    )}
                 </div>
               ) : (
                 <>
-                  {vaga.nota_sem_descricao && (
+                  {vaga.nota_dados_portal ? (
+                    <p className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs text-amber-900 dark:text-amber-200">
+                      <Info className="w-4 h-4 shrink-0" />
+                      Nota pelos dados do portal (sem a descrição): cole o texto do anúncio na aba Descrição para a nota completa.
+                    </p>
+                  ) : vaga.nota_sem_descricao ? (
                     <p className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs text-amber-900 dark:text-amber-200">
                       <Info className="w-4 h-4 shrink-0" />
                       Nota provisória, dada sem o texto da vaga; ela é refeita quando a descrição chegar.
                     </p>
-                  )}
+                  ) : null}
                   <LembreteNota vaga={vaga} />
                   {vaga.resumo && (
                     <div className="bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 rounded-2xl p-4 sm:p-5 space-y-2">

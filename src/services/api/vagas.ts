@@ -27,6 +27,13 @@ export const remover = (vagaId: string) => pedir<{ ok: boolean }>("DELETE", `/ap
 export const analisar = (vagaId: string) =>
   pedir<{ verificando: string[]; verificando_agora?: string | null }>("POST", `/api/vagas/${id(vagaId)}/analisar`, {})
 
+export const colarDescricao = (vagaId: string, descricao: string) =>
+  pedir<{ vaga: Vaga; verificando: string[]; verificando_agora: string | null }>(
+    "PUT",
+    `/api/vagas/${id(vagaId)}/descricao`,
+    { descricao },
+  )
+
 export const porLink = (url: string) => pedir<RespostaLink>("POST", "/api/vagas/link", { url })
 
 export const extrair = (texto: string, autor?: string, autor_tipo?: string) =>

@@ -37,6 +37,7 @@ import {
   formatarSenioridade,
   modoDe,
   situacaoNota,
+  textoAguardando,
   podeForcar,
   linkSeguro,
   temNota,
@@ -336,6 +337,7 @@ export default function TriageReport({
           const platStyle = getPlataformaStyle(vaga.plataforma)
           const aderBadge = getAderenciaBadge(vaga.aderencia)
           const nota = situacaoNota(vaga, versao)
+          const aguardando = nota.tipo === "aguardando" ? nota : null
           const naFila = nota.tipo === "na_fila" ? nota.posicao : null
           const isVerificando = Boolean(verificandoMap[vaga.id] || nota.tipo === "verificando" || naFila !== null)
           const linkVaga = linkSeguro(vaga.url)
@@ -354,9 +356,11 @@ export default function TriageReport({
                       <div
                         className={`w-[74px] h-[74px] sm:w-[82px] sm:h-[82px] rounded-2xl bg-slate-900 dark:bg-slate-950 border ${aderBadge.boxBorder} ${aderBadge.boxGlow} shadow-xs flex flex-col items-center justify-center p-2 text-center select-none transition-transform hover:scale-105`}
                         title={
-                          vaga.nota_sem_descricao
-                            ? "Nota provisória, sem a descrição da vaga"
-                            : `Aderência ao seu perfil: ${vaga.aderencia} de 100 (${aderBadge.label})`
+                          vaga.nota_dados_portal
+                            ? "Nota pelos dados do portal, sem a descrição: cole o texto do anúncio no detalhe para a nota completa"
+                            : vaga.nota_sem_descricao
+                              ? "Nota provisória, sem a descrição da vaga"
+                              : `Aderência ao seu perfil: ${vaga.aderencia} de 100 (${aderBadge.label})`
                         }
                       >
                         <span
@@ -371,19 +375,28 @@ export default function TriageReport({
                     ) : (
                       <div
                         className={`w-[74px] h-[74px] sm:w-[82px] sm:h-[82px] rounded-2xl bg-slate-900 dark:bg-slate-950 border ${
-                          isVerificando
+                          isVerificando || aguardando
                             ? "border-indigo-500/60 shadow-xs shadow-indigo-500/10"
                             : "border-slate-800"
                         } flex flex-col items-center justify-center p-2 text-center select-none shrink-0`}
                         title={
-                          naFila !== null
+                          aguardando
+                            ? textoAguardando(aguardando)
+                            : naFila !== null
                             ? `Na fila do Forçar verificar (posição ${naFila})`
                             : isVerificando
                             ? "IA calculando a aderência desta vaga..."
                             : "Vaga sem nota de aderência calculada"
                         }
                       >
-                        {isVerificando ? (
+                        {aguardando ? (
+                          <>
+                            <Clock className="w-5 h-5 text-indigo-400" />
+                            <span className="text-[9px] sm:text-[10px] font-bold tracking-wider text-indigo-300 uppercase mt-1 leading-none">
+                              Espera
+                            </span>
+                          </>
+                        ) : isVerificando ? (
                           <>
                             {naFila !== null ? (
                               <Clock className="w-5 h-5 text-indigo-400" />
@@ -622,15 +635,19 @@ export default function TriageReport({
                       <div className="flex flex-col items-stretch sm:items-end gap-1 w-full sm:w-auto">
                         <button
                           onClick={() => handleForcar(vaga.id)}
-                          disabled={isVerificando || !podeGravar}
+                          disabled={isVerificando || Boolean(aguardando) || !podeGravar}
                           className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 disabled:opacity-60 transition shadow-2xs w-full sm:w-auto"
                           title={
-                            temNota(vaga)
+                            aguardando
+                              ? textoAguardando(aguardando)
+                              : temNota(vaga)
                               ? "Pede de novo a nota desta vaga à IA, agora tentando ler a descrição"
                               : "Pede a nota desta vaga à IA agora"
                           }
                         >
-                          {naFila !== null ? (
+                          {aguardando ? (
+                            <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                          ) : naFila !== null ? (
                             <Clock className="w-3.5 h-3.5 text-indigo-500" />
                           ) : (
                             <Sparkles
@@ -642,7 +659,9 @@ export default function TriageReport({
                             />
                           )}
                           <span>
-                            {naFila !== null
+                            {aguardando
+                              ? textoAguardando(aguardando)
+                              : naFila !== null
                               ? `Na fila (posição ${naFila})`
                               : isVerificando
                                 ? "Verificando…"
@@ -651,14 +670,16 @@ export default function TriageReport({
                                   : "Forçar verificar"}
                           </span>
                         </button>
-                        {(isVerificando) && (
+                        {(isVerificando || aguardando) && (
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 text-center sm:text-right">
-                            {naFila !== null
+                            {aguardando
+                              ? "Volta sozinha para a fila."
+                              : naFila !== null
                               ? "Uma vaga por vez, para espaçar os pedidos aos portais e à IA."
                               : "A nota chega em alguns minutos."}
                           </span>
                         )}
-                        {vaga.descricao_pendente && !isVerificando && (
+                        {vaga.descricao_pendente && !isVerificando && !aguardando && (
                           <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium text-center sm:text-right">
                             Lê descrição antes da IA
                           </span>
