@@ -24,7 +24,7 @@ description: "Tarefas da spec 059: Nerdin no Atualizar candidaturas"
 
 ## Phase 4: Fechamento (eu)
 
-- [ ] T004 Fechamento:
+- [X] T004 Fechamento (página real conferida em 2026-11-24; ajuste do link `vaga/NNNNN.php`):
   - suíte verde;
   - busca de dados pessoais;
   - commit na branch da feature;

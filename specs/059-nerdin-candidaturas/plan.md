@@ -99,6 +99,13 @@ leitor público do Adicionar Vaga, spec 020).
 
 ## Validação real
 
-No dashboard da `marcel`, Conectar → login → Pronto → Atualizar agora. Esperado (tabela da conversa de 2026-11-24, só
-no teste da pessoa): duas sem mudança, duas para "Encerrada · não aprovado" e uma no histórico. Se a marcação dos
-passos ou dos links for diferente da suposta, ajustar D3 com o que a página mostrar.
+No dashboard da branch de teste: Conectar → login → Pronto → Atualizar agora. Se a marcação dos passos ou dos links for
+diferente da suposta, ajustar D3 com o que a página mostrar.
+
+Conferido em 2026-11-24 com o HTML real da página (lido da janela, sem clicar): cada cartão é `div.card` com
+`h5.card-title`, selo `span.badge`, empresa e local com ícones `fa-building` e `fa-map-marker-alt`, "Inscrito em:" com
+`fa-calendar` e a trilha `section.cand-tl` (passo feito: classe `cand-tl__step--concluido`). O "Ver Detalhes" é
+`<a href="vaga/NNNNN.php">` (o mesmo número do id `nerdin-NNNNN` da busca), e o "Cancelar candidatura" é um botão com
+JavaScript, não um link. A página já tem o link do menu para o endereço com o número do candidato. Ajuste feito: o
+leitor reconhece `vaga/NNNNN.php`. Todas as candidaturas lidas se casaram com o quadro (pelo número ou por cargo +
+empresa).
