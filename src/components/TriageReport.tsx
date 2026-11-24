@@ -624,7 +624,11 @@ export default function TriageReport({
                           onClick={() => handleForcar(vaga.id)}
                           disabled={isVerificando || !podeGravar}
                           className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 disabled:opacity-60 transition shadow-2xs w-full sm:w-auto"
-                          title="Pede a nota desta vaga à IA agora"
+                          title={
+                            temNota(vaga)
+                              ? "Pede de novo a nota desta vaga à IA, agora tentando ler a descrição"
+                              : "Pede a nota desta vaga à IA agora"
+                          }
                         >
                           {naFila !== null ? (
                             <Clock className="w-3.5 h-3.5 text-indigo-500" />
@@ -642,7 +646,9 @@ export default function TriageReport({
                               ? `Na fila (posição ${naFila})`
                               : isVerificando
                                 ? "Verificando…"
-                                : "Forçar verificar"}
+                                : temNota(vaga) // nota provisória, sem a descrição (spec 021): o botão pede de novo
+                                  ? "Reverificar"
+                                  : "Forçar verificar"}
                           </span>
                         </button>
                         {(isVerificando) && (
