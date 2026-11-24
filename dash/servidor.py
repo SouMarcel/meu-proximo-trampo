@@ -902,6 +902,29 @@ class Handler(BaseHTTPRequestHandler):
             return self._erro(404, "arquivo não encontrado")
         return self._enviar(200, alvo.read_bytes(), TIPOS_FRONT[alvo.suffix.lower()])
 
+    def _estado_limpeza(self) -> dict:
+        return {"criterios": filtros.efetivos(filtros.ler_config())["limpeza"],
+                "arquivadas": banco.contar_arquivadas(), "tamanho_kb": banco.tamanho_kb()}
+
+    def _limpeza(self, metodo: str, caminho: str):
+        """Limpeza de vagas antigas (spec 054): critérios, prévia e aplicar; nada é gravado sem o pedido."""
+        if metodo == "GET" and caminho == "/api/limpeza":
+            return self._json(200, self._estado_limpeza())
+        if metodo == "GET" and caminho == "/api/limpeza/previa":
+            return self._json(200, banco.prever_limpeza())
+        if metodo == "PUT" and caminho == "/api/limpeza":
+            corpo = self._corpo()
+            filtros.salvar_limpeza(corpo.get("criterios") if isinstance(corpo, dict) else None)
+            return self._json(200, self._estado_limpeza())
+        if metodo == "POST" and caminho == "/api/limpeza/aplicar":
+            corpo = self._corpo()
+            ids = corpo.get("ids") if isinstance(corpo, dict) else None
+            if (not isinstance(ids, list) or not ids or len(ids) > 2000
+                    or not all(isinstance(i, str) and banco.ID_VALIDO.match(i) for i in ids)):
+                raise ValueError("ids inválidos: uma lista de 1 a 2000 vagas")
+            return self._json(200, banco.limpar(ids))
+        return self._erro(404 if metodo in ("GET", "PUT", "POST") else 405, "rota não encontrada")
+
     def _id_da_rota(self, caminho: str) -> str | None:
         prefixo = "/api/vagas/"
         if not caminho.startswith(prefixo):
@@ -973,6 +996,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._entrevista(metodo, caminho)
             if metodo == "PUT" and caminho == "/api/config":
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
+            if caminho == "/api/limpeza" or caminho.startswith("/api/limpeza/"):
+                return self._limpeza(metodo, caminho)
             if metodo == "POST" and caminho.startswith("/api/vagas/") and caminho.endswith("/analisar"):
                 return self._forcar(unquote(caminho[len("/api/vagas/"):-len("/analisar")]))
             if caminho.startswith("/api/vagas/") and "/salario" in caminho:
@@ -997,6 +1022,8 @@ class Handler(BaseHTTPRequestHandler):
     def _get(self, caminho: str):
         if caminho in ("/", "/index.html") or caminho == "/novo" or caminho.startswith("/novo/"):
             return self._front(caminho)
+        if caminho == "/api/limpeza" or caminho.startswith("/api/limpeza/"):
+            return self._limpeza("GET", caminho)
         if caminho == "/api/versao":
             return self._json(200, {"versao": banco.versao(), "analisando": analise.FILA.rodando,
                                     "ia_erro": analise.FILA.erro(), "ia_alerta": ia.alerta(),

@@ -115,7 +115,8 @@ Fontes: banco.py:498-604, vagas.py:719-739, kit.py.
 | `motivo_fora` | string[] | por que furou os filtros |
 | `etapa` | `salva` \| `aplicada` \| `entrevista` \| `proposta` \| `encerrada` \| null | colunas de Aplicações: Salva, Aplicação Enviada, Entrevista, Proposta Recebida, Encerrada |
 | `etapa_em` | `AAAA-MM-DD` | desde quando está na etapa |
-| `resultado` | `nao_aprovado` \| `desisti` \| `cancelada` \| `contratado` \| null | só com etapa `encerrada` (Não aprovado, Desisti, Vaga cancelada, Contratado) |
+| `resultado` | `nao_aprovado` \| `desisti` \| `cancelada` \| `sem_resposta` \| `contratado` \| null | só com etapa `encerrada` (Não aprovado, Desisti, Vaga cancelada, Sem resposta, Contratado); `sem_resposta` também vem da limpeza (spec 054) |
+| `arquivada_em` | ISO ou ausente | vaga arquivada pela limpeza (spec 054): só a ficha curta (ids, links, cargo, empresa, portais, área, datas, triagem, etapa, resultado, aderência, salário, anotação, currículos, documentos, kit), sem descrição nem análise. Fica fora das listas e dos contadores; o funil das Métricas a conta. Desarquiva quando a etapa muda |
 | `entrevista_em` | `AAAA-MM-DD` ou null | |
 | `anotacao` | string (até 5.000) | anotações da pessoa |
 | `email_candidatura`, `assunto_candidatura` | string | vaga que pede o currículo por e-mail |
@@ -348,7 +349,9 @@ O painel Filtros da busca tem quatro abas (spec 043), num formulário só, grava
   `idiomas_aceitos`;
 - **Portais**: `fontes`, com `opcoes.fontes_nac`, `opcoes.fontes_login` e `opcoes.portais_a_mapear`;
 - **Portais internacionais**: `internacional.fontes`, com `opcoes.fontes_int`;
-- **Empresas acompanhadas/excluídas**: `empresas` e `empresas_excluir`.
+- **Empresas acompanhadas/excluídas**: `empresas` e `empresas_excluir`;
+- **Limpeza** (spec 054): `limpeza`, com rotas próprias (§3.4b). O `GET /api/config` a traz em `filtros`, mas o
+  `PUT /api/config` a ignora: só o `PUT /api/limpeza` grava os critérios.
 
 O resto de `internacional` fica no painel Filtros da busca internacional.
 
@@ -385,6 +388,36 @@ cargos; o front mostra o aviso de primeira vez).
 **`PUT /api/config`** — grava os filtros. Corpo = o objeto `filtros` inteiro. Resposta `{filtros, consultas,
 opcoes}`. Erro 400 com a regra que falhou (ex.: "informe pelo menos um cargo", "para híbrido ou presencial,
 informe a cidade"; nome fora dos países e regiões: "<campo>: país ou região desconhecido: X"; filtros.py, validar). Também usado por "Gravar filtros" nos primeiros passos.
+
+### 3.4b Limpeza de vagas antigas (Filtros da busca → Limpeza; spec 054)
+
+Critérios por grupo, no `config.json` (`limpeza`; padrão: os quatro ligados, 30 dias):
+`{fora: {ligado, dias}, pendente: {ligado, dias, nota_abaixo_de: 1-100|null}, dispensadas: {ligado, dias, resultados:
+["nao_aprovado"|"desisti"|"cancelada"|"sem_resposta"|"sem_resultado"]}, sem_resposta: {ligado, dias}}` (`dias` de 1 a 365).
+
+| Grupo | Vagas | Dias contados desde | Ação |
+|---|---|---|---|
+| `fora` | triagem `fora`, sem etapa | `triada_em` (senão `encontrada_em`) | arquivar |
+| `pendente` | triagem `pendente`, sem etapa; com `nota_abaixo_de`, só `aderencia` menor | `encontrada_em` | arquivar |
+| `dispensadas` | triagem `visitada` sem etapa, ou `encerrada` com o resultado na lista (`sem_resultado` = sem resultado) | `triada_em` / `etapa_em` | arquivar |
+| `sem_resposta` | etapa `aplicada` | `etapa_em` | passa para `encerrada`, resultado `sem_resposta` (não arquiva) |
+
+Nunca entram: vaga já arquivada, `origem: manual`, etapa `salva`/`entrevista`/`proposta`, resultado `contratado`.
+`atualizada_em` nunca conta. A vaga com `curriculos`, `documentos` ou `anotacao` vem com `destaques` (motivos).
+
+**`GET /api/limpeza`** — `{criterios, arquivadas: number, tamanho_kb: number}`.
+
+**`PUT /api/limpeza`** — corpo `{criterios}`; grava só a chave `limpeza` (não depende dos outros filtros). Resposta
+igual ao `GET`; 400 com a regra que falhou (ex.: "prazo de Fora dos critérios deve ficar entre 1 e 365").
+
+**`GET /api/limpeza/previa`** — com os critérios gravados, sem gravar nada: `{grupos: {fora|pendente|dispensadas|
+sem_resposta: {acao: "arquivar"|"encerrar", ligado, dias, vagas: [{id, titulo, empresa, plataforma, dias,
+destaques: string[]}]}}, total, destacadas, arquivadas, tamanho_kb}`; vagas da mais parada para a menos parada.
+A página mostra as destacadas desmarcadas.
+
+**`POST /api/limpeza/aplicar`** — corpo `{ids: string[]}` (1 a 2000). Refaz a conta e só aplica nos ids que ainda
+estão num grupo (a destacada pedida entra). Antes, uma cópia em `dash/dados/backup/candidaturas-AAAA-MM-DD-limpeza.db`;
+depois, o banco é compactado. Resposta `{arquivadas, encerradas, ignoradas: string[], antes_kb, depois_kb, backup}`.
 
 ### 3.5 IA (botão IA)
 

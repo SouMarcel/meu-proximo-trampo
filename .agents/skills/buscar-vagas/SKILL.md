@@ -344,6 +344,16 @@ tiver IA escolhida na página, onde o botão "Ler os requisitos" faz isso):
    nota, a análise, a triagem e a etapa não mudam.
 4. Repita enquanto `restam` for maior que zero, se a pessoa quiser todas.
 
+## Fluxo E: limpar vagas antigas
+
+"Limpa as vagas antigas", "tira as vagas paradas": rode `PY dash/banco.py limpar` e mostre a
+prévia por grupo (Fora dos critérios, Pendentes sem decisão, Visitadas e encerradas, Aplicadas sem
+retorno), com os critérios da aba Limpeza dos filtros. Arquivar tira a descrição e a análise da
+vaga (fica uma ficha curta, e a busca não a traz de volta); as aplicações sem retorno passam para
+Encerrada, Sem resposta. Só rode `--gravar` com o OK da pessoa; as vagas com currículo, carta ou
+anotação (marcadas com ⚑) só entram com `--incluir-destacadas` e um OK específico para elas. Para
+mudar os critérios, indique a aba Limpeza em Filtros da busca.
+
 ## Como dar a nota (0 a 100)
 
 A nota responde a uma pergunta: vale o tempo do usuário se candidatar a esta vaga,

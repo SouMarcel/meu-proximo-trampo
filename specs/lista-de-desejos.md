@@ -102,6 +102,11 @@ priorizado.
   por sobreposição) e prever um comando que mostre quais vagas gravadas mudariam de área. Esse comando só grava com o
   OK da pessoa.
 
+## Limpeza de vagas (spec 054)
+
+- **Ver e restaurar as vagas arquivadas**: uma lista das arquivadas (ficha curta) com a opção de voltar uma delas às
+  listas. A descrição não volta (só pelo backup); a vaga pode ser lida de novo no portal, se ainda estiver aberta.
+
 ## Divulgação
 
 - **Site do projeto no GitHub Pages** (`soumarcel.github.io/meu-proximo-trampo`, pasta `docs/` na master): página de

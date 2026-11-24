@@ -16,8 +16,11 @@ só entrega o arquivo.
 
 - **Aplicações:** kanban Salva → Aplicação Enviada → Entrevista → Proposta Recebida →
   Encerrada (arraste os cartões, use Avançar ou a etapa no detalhe), com anotações, resultado (não
-  aprovado, desisti, vaga cancelada, contratado), filtro por plataforma e visão em
+  aprovado, desisti, vaga cancelada, sem resposta, contratado), filtro por plataforma e visão em
   lista.
+- **Limpeza** (spec 054, Filtros da busca → Limpeza ou `PY dash/banco.py limpar`): critérios por grupo, prévia e
+  arquivamento das vagas antigas (ficha curta, sem descrição; a busca não as traz de volta). As aplicações sem
+  retorno passam para Encerrada, Sem resposta. Cópia do banco antes de gravar.
 - **Métricas & Funil:** os números e o funil e, depois deles, **O que as vagas pedem** (spec 045,
   `src/components/RequisitosVagas.tsx`). O resumo vem pronto de `GET /api/requisitos` (`dash/requisitos.py`),
   para a seleção escolhida: Em Aplicações ou Todas as vagas analisadas, e a área. Ele traz as habilidades,
@@ -144,7 +147,8 @@ outros sites e `m-…` nas preenchidas à mão.
 | `motivo_fora[]` | por que a vaga ficou fora dos critérios |
 | `etapa` | `salva`, `aplicada`, `entrevista`, `proposta`, `encerrada` ou `null` (fora de Aplicações) |
 | `etapa_em`, `triada_em` | `AAAA-MM-DD` da última mudança |
-| `resultado` | só em `encerrada`: `nao_aprovado`, `desisti`, `cancelada`, `contratado` |
+| `resultado` | só em `encerrada`: `nao_aprovado`, `desisti`, `cancelada`, `sem_resposta`, `contratado` |
+| `arquivada_em` | vaga arquivada pela limpeza (spec 054): só a ficha curta, fora das listas |
 | `analise_status` | `feita`, `sem_analise` (gravada sem IA), `pendente` (adicionada no dashboard, esperando a IA), `sem_dados` |
 | `aderencia` | 0–100 (só com IA); faixas: ≥80 forte, 65–79 boa, 50–64 parcial, <50 baixa |
 | `nota_sem_descricao` | `true` quando a nota foi dada sem o texto da vaga (Forçar verificar com a descrição indisponível); sai quando a descrição chega, e a vaga volta a `pendente` para a nota nova |

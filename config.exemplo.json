@@ -18,5 +18,10 @@
   "resultados_por_termo": 40,
   "titulo_excluir": ["estagio", "estagiario", "estagiaria", "jovem aprendiz", "trainee"],
   "titulo_incluir": [],
-  "analise_automatica": true
+  "analise_automatica": true,
+  "limpeza": {"fora": {"ligado": true, "dias": 30},
+              "pendente": {"ligado": true, "dias": 30, "nota_abaixo_de": null},
+              "dispensadas": {"ligado": true, "dias": 30,
+                              "resultados": ["nao_aprovado", "desisti", "cancelada", "sem_resposta", "sem_resultado"]},
+              "sem_resposta": {"ligado": true, "dias": 30}}
 }

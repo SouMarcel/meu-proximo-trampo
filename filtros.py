@@ -66,6 +66,13 @@ JANELAS = {24: "Últimas 24 horas", 72: "Últimos 3 dias", 168: "Última semana"
 RAIOS_KM = (10, 25, 50, 80)
 LEGADOS = ("local", "pais_indeed", "somente_remoto")  # formato antigo do config.json
 
+# Limpeza de vagas antigas (spec 054): grupo -> rótulo; os resultados que o grupo "dispensadas" pode levar
+# ("sem_resultado" = vaga encerrada sem resultado escolhido)
+GRUPOS_LIMPEZA = {"fora": "Fora dos critérios", "pendente": "Pendentes sem decisão",
+                  "dispensadas": "Visitadas e encerradas", "sem_resposta": "Aplicadas sem retorno"}
+RESULTADOS_LIMPEZA = ("nao_aprovado", "desisti", "cancelada", "sem_resposta", "sem_resultado")
+DIAS_LIMPEZA = 30
+
 # ---------------------------------------------------------------- área internacional e idioma
 
 IDIOMAS = {"pt": "português", "en": "inglês", "es": "espanhol", "fr": "francês", "de": "alemão", "it": "italiano"}
@@ -357,6 +364,7 @@ def efetivos(cfg: dict) -> dict:
         "empresas": _com_ey(cfg, [e for e in (cfg["empresas"] if isinstance(cfg.get("empresas"), list)
                                               else inter.get("empresas")) or []
                                   if isinstance(e, dict) and e.get("sistema") and e.get("id")]),
+        "limpeza": _limpeza_cfg(cfg.get("limpeza")),
     }
     if not loc and cfg.get("local"):
         f["local_legado"] = str(cfg["local"])  # formato antigo: onde fazer a busca do país
@@ -549,6 +557,8 @@ def validar(e: dict) -> dict:
         if not fontes:  # um portal com login sozinho não basta: ele não roda na busca pelo terminal
             raise ValueError("marque pelo menos um portal")
         portais["fontes"] = fontes + [k for k in FONTES_LOGIN if k in lista]
+    # "limpeza" (spec 054) é ignorada aqui: o painel devolve o objeto lido ao abrir, e só a aba Limpeza
+    # (PUT /api/limpeza, salvar_limpeza) grava os critérios; assim o Salvar filtros não desfaz o que a aba gravou
     return {**portais,
         "termos": termos,
         "localidade": {"pais": pais, "estado": estado, "cidade": cidade, "raio_km": raio},
@@ -577,6 +587,71 @@ def salvar(entrada: dict) -> dict:
     cfg.update(novos)
     _gravar(cfg)
     return efetivos(cfg)
+
+
+# ---------------------------------------------------------------- limpeza de vagas antigas (spec 054)
+
+def limpeza_padrao() -> dict:
+    """Os critérios de quem ainda não mexeu na aba Limpeza: os quatro grupos ligados, 30 dias."""
+    return {
+        "fora": {"ligado": True, "dias": DIAS_LIMPEZA},
+        "pendente": {"ligado": True, "dias": DIAS_LIMPEZA, "nota_abaixo_de": None},
+        "dispensadas": {"ligado": True, "dias": DIAS_LIMPEZA, "resultados": list(RESULTADOS_LIMPEZA)},
+        "sem_resposta": {"ligado": True, "dias": DIAS_LIMPEZA},
+    }
+
+
+def _inteiro_ou_nada(v, minimo: int, maximo: int) -> int | None:
+    return v if isinstance(v, int) and not isinstance(v, bool) and minimo <= v <= maximo else None
+
+
+def _limpeza_cfg(v) -> dict:
+    """Os critérios do config.json completados com os padrões; o que estiver fora do formato fica no padrão."""
+    saida = limpeza_padrao()
+    if not isinstance(v, dict):
+        return saida
+    for grupo, crit in saida.items():
+        c = v.get(grupo)
+        if not isinstance(c, dict):
+            continue
+        if isinstance(c.get("ligado"), bool):
+            crit["ligado"] = c["ligado"]
+        crit["dias"] = _inteiro_ou_nada(c.get("dias"), 1, 365) or crit["dias"]
+        if grupo == "pendente":
+            crit["nota_abaixo_de"] = _inteiro_ou_nada(c.get("nota_abaixo_de"), 1, 100)
+        if grupo == "dispensadas" and isinstance(c.get("resultados"), list):
+            crit["resultados"] = [r for r in RESULTADOS_LIMPEZA if r in c["resultados"]]
+    return saida
+
+
+def validar_limpeza(e) -> dict:
+    """Valida os critérios que vêm da aba Limpeza. Grupo ausente fica no padrão; valor inválido é erro."""
+    if not isinstance(e, dict):
+        raise ValueError("critérios da limpeza inválidos")
+    saida = limpeza_padrao()
+    for grupo, crit in saida.items():
+        c = e.get(grupo)
+        if c is None:
+            continue
+        if not isinstance(c, dict):
+            raise ValueError(f"critérios de {GRUPOS_LIMPEZA[grupo]} inválidos")
+        crit["ligado"] = bool(c.get("ligado", True))
+        crit["dias"] = _inteiro(c.get("dias", DIAS_LIMPEZA), f"prazo de {GRUPOS_LIMPEZA[grupo]}", 1, 365)
+        if grupo == "pendente":
+            nota = c.get("nota_abaixo_de")
+            crit["nota_abaixo_de"] = None if nota in (None, "") else _inteiro(nota, "nota máxima das pendentes", 1, 100)
+        if grupo == "dispensadas" and "resultados" in c:
+            crit["resultados"] = _codigos(c["resultados"], "resultado da limpeza", dict.fromkeys(RESULTADOS_LIMPEZA))
+    return saida
+
+
+def salvar_limpeza(entrada) -> dict:
+    """Grava só os critérios da limpeza no config.json (a aba Limpeza não depende dos outros filtros)."""
+    novos = validar_limpeza(entrada)
+    cfg = ler_config()
+    cfg["limpeza"] = novos
+    _gravar(cfg)
+    return novos
 
 
 def _gravar(cfg: dict) -> None:

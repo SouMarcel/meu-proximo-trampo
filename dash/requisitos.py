@@ -254,7 +254,8 @@ def normalizar(vagas_sel, area) -> tuple[str, str]:
 def selecionar(vagas: list[dict], vagas_sel="aplicacoes", area="todas") -> list[dict]:
     vagas_sel, area = normalizar(vagas_sel, area)
     return [v for v in vagas
-            if (na_aplicacao(v) if vagas_sel == "aplicacoes" else v.get("analise_status") == "feita")
+            if not v.get("arquivada_em")  # a vaga arquivada (spec 054) não tem mais a descrição nem os requisitos
+            and (na_aplicacao(v) if vagas_sel == "aplicacoes" else v.get("analise_status") == "feita")
             and (area == "todas" or area_de(v) == area)]
 
 

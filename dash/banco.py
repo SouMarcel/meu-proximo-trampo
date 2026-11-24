@@ -13,6 +13,7 @@ comandos para consultar e analisar vagas sem abrir o navegador:
   python dash/banco.py lembretes                      lembretes de follow-up pendentes em Aplicações
   python dash/banco.py integridade [--gravar]         passa o filtro de integridade (spec 034) nas vagas já gravadas
   python dash/banco.py regioes [--gravar]             revê as vagas em Fora por região ou lugar (spec 047)
+  python dash/banco.py limpar [--gravar]              limpeza de vagas antigas: prévia; arquiva com --gravar (spec 054)
 
 O arquivo do banco é dash/dados/candidaturas.db (ou o caminho em TRAMPO_BANCO).
 """
@@ -42,7 +43,7 @@ MANTER_BACKUPS = 10
 
 ETAPAS = ("salva", "aplicada", "entrevista", "proposta", "encerrada")
 TRIAGENS = ("pendente", "seguir", "visitada", "fora")  # fora = furou os filtros da busca
-RESULTADOS = ("nao_aprovado", "desisti", "cancelada", "contratado")
+RESULTADOS = ("nao_aprovado", "desisti", "cancelada", "sem_resposta", "contratado")  # sem_resposta: spec 054
 PLATAFORMAS = ("Indeed", "LinkedIn", "Gupy", "InHire", "Catho", "Startup Jobs", "Nerdin", "InfoJobs", "Vagas.com",
                "EY", "JobGether", "FullStack", "MyGreenhouse", "Teamtailor", "Site da empresa",
                "Remotive", "Himalayas", "RemoteOK", "Jobicy", "We Work Remotely", "Get on Board", "Greenhouse", "Lever",
@@ -656,6 +657,8 @@ def atualizar_usuario(vid: str, campos: dict) -> dict:
         doc = _ler(con, vid)
         if doc is None:
             raise KeyError(vid)
+        if doc.get("arquivada_em") and "etapa" in limpos and limpos["etapa"] != doc.get("etapa"):
+            doc.pop("arquivada_em")  # a etapa mudou (pela página ou pela leitura das contas): volta às listas (spec 054)
         doc.update({**kit.apos_marcar(doc, limpos, hoje()), **limpos})
         doc["atualizada_em"] = agora()
         _gravar(con, vid, doc)
@@ -826,13 +829,15 @@ def aplicar_requisitos(itens: list[dict]) -> tuple[list[str], list[str]]:
     return ok, problemas
 
 
-def backup_diario() -> Path | None:
-    """Uma cópia por dia em dash/dados/backup, mantendo as mais recentes."""
+def backup_diario(motivo: str = "") -> Path | None:
+    """Uma cópia por dia em dash/dados/backup, mantendo as mais recentes. Com `motivo` (ex.: "limpeza"), a cópia
+    é refeita agora, com o nome candidaturas-AAAA-MM-DD-<motivo>.db: o retrato de logo antes da mudança."""
     if not ARQUIVO.exists():
         return None
     BACKUPS.mkdir(parents=True, exist_ok=True)
-    destino = BACKUPS / f"candidaturas-{hoje()}.db"
-    if not destino.exists():
+    destino = BACKUPS / f"candidaturas-{hoje()}{'-' + motivo if motivo else ''}.db"
+    if motivo or not destino.exists():
+        destino.unlink(missing_ok=True)
         with closing(conectar()) as origem, closing(sqlite3.connect(destino)) as copia:
             origem.backup(copia)
     for velho in sorted(BACKUPS.glob("candidaturas-*.db"))[:-MANTER_BACKUPS]:
@@ -840,13 +845,169 @@ def backup_diario() -> Path | None:
     return destino
 
 
+# ---------------------------------------------------------------- limpeza de vagas antigas (spec 054)
+
+# O que fica na vaga arquivada: o que a busca (IndiceVistas) e a leitura das contas usam para reconhecê-la, as datas,
+# a decisão da pessoa e o que ela fez na vaga. Saem a descrição, a análise e os requisitos (o peso do banco) e
+# analise_status/descricao_pendente, o que já tira a vaga da fila de análise e das lacunas do perfil.
+FICHA_CURTA = frozenset((
+    "jk", "ids_relacionados", "url", "url_candidatura", "titulo", "empresa",
+    "plataforma", "outras_plataformas", "origem", "area", "pais_vaga", "local", "modelo_trabalho", "remoto",
+    "encontrada_em", "criada_em", "publicada_em", "triada_em", "etapa_em", "analisada_em", "atualizada_em", "busca_id",
+    "triagem", "etapa", "resultado", "aderencia", "salario", "anotacao", "curriculos", "documentos", "kit",
+))
+ACAO_LIMPEZA = {"fora": "arquivar", "pendente": "arquivar", "dispensadas": "arquivar", "sem_resposta": "encerrar"}
+
+
+def arquivada(v: dict) -> bool:
+    return bool(v.get("arquivada_em"))
+
+
+def _ficha_curta(doc: dict) -> dict:
+    ficha = {k: v for k, v in doc.items() if k in FICHA_CURTA or k == "id"}
+    ficha["arquivada_em"] = agora()
+    return ficha
+
+
+def destaques(v: dict) -> list[str]:
+    """O que a pessoa fez na vaga: a vaga com isso só é limpa se ela marcar (spec 054, US3)."""
+    motivos = []
+    if v.get("curriculos"):
+        motivos.append("tem currículo")
+    if v.get("documentos"):
+        motivos.append("tem carta ou respostas")
+    if str(v.get("anotacao") or "").strip():
+        motivos.append("tem anotação")
+    return motivos
+
+
+def _primeira_data(v: dict, *campos: str) -> str | None:
+    for c in campos:
+        d = str(v.get(c) or "")[:10]
+        if DATA_VALIDA.match(d):
+            return d
+    return None
+
+
+def grupo_limpeza(v: dict, crit: dict, dia: str | None = None) -> tuple[str, int] | None:
+    """(grupo, dias sem movimento) da vaga que a limpeza alcança com os critérios `crit` (filtros.efetivos()
+    ["limpeza"]), ou None. O movimento conta da data em que a situação mudou, nunca de atualizada_em."""
+    etapa, triagem = v.get("etapa"), v.get("triagem")
+    if arquivada(v) or v.get("origem") == "manual" or v.get("resultado") == "contratado":
+        return None
+    if etapa in (None, ""):
+        if triagem == "fora":
+            grupo, desde = "fora", _primeira_data(v, "triada_em", "encontrada_em", "criada_em")
+        elif triagem == "pendente":
+            nota, teto = v.get("aderencia"), (crit.get("pendente") or {}).get("nota_abaixo_de")
+            if teto and not (isinstance(nota, int) and not isinstance(nota, bool) and nota < teto):
+                return None
+            grupo, desde = "pendente", _primeira_data(v, "encontrada_em", "criada_em")
+        elif triagem == "visitada":
+            grupo, desde = "dispensadas", _primeira_data(v, "triada_em", "encontrada_em", "criada_em")
+        else:
+            return None
+    elif etapa == "encerrada":
+        if (v.get("resultado") or "sem_resultado") not in ((crit.get("dispensadas") or {}).get("resultados") or []):
+            return None
+        grupo, desde = "dispensadas", _primeira_data(v, "etapa_em", "triada_em", "encontrada_em", "criada_em")
+    elif etapa == "aplicada":
+        grupo, desde = "sem_resposta", _primeira_data(v, "etapa_em", "triada_em", "encontrada_em", "criada_em")
+    else:  # salva, entrevista, proposta
+        return None
+    c = crit.get(grupo) or {}
+    if not desde or not c.get("ligado"):
+        return None
+    dias = (date.fromisoformat(dia or hoje()) - date.fromisoformat(desde)).days
+    return (grupo, dias) if dias >= int(c.get("dias") or 0) else None
+
+
+def _criterios_limpeza(crit: dict | None) -> dict:
+    if crit is not None:
+        return crit
+    raiz = str(DASH.parent)
+    if raiz not in sys.path:
+        sys.path.insert(0, raiz)
+    import filtros  # filtros.py, na raiz do projeto
+    return filtros.efetivos(filtros.ler_config())["limpeza"]
+
+
+def tamanho_kb() -> int:
+    """Tamanho do banco em disco (o arquivo e o registro de escrita do SQLite)."""
+    return sum(p.stat().st_size for p in (ARQUIVO, ARQUIVO.with_name(ARQUIVO.name + "-wal")) if p.exists()) // 1024
+
+
+def prever_limpeza(crit: dict | None = None, dia: str | None = None) -> dict:
+    """O que a limpeza alcançaria agora, por grupo, sem gravar nada (spec 054)."""
+    crit = _criterios_limpeza(crit)
+    grupos = {g: {"acao": a, "ligado": bool((crit.get(g) or {}).get("ligado")),
+                  "dias": int((crit.get(g) or {}).get("dias") or 0), "vagas": []} for g, a in ACAO_LIMPEZA.items()}
+    arquivadas = 0
+    for v in listar_vagas():
+        if arquivada(v):
+            arquivadas += 1
+            continue
+        achou = grupo_limpeza(v, crit, dia)
+        if achou:
+            grupos[achou[0]]["vagas"].append({"id": v["id"], "titulo": v.get("titulo") or "", "empresa": v.get("empresa") or "",
+                                             "plataforma": v.get("plataforma") or "", "dias": achou[1],
+                                             "destaques": destaques(v)})
+    for g in grupos.values():
+        g["vagas"].sort(key=lambda x: (-x["dias"], x["titulo"]))
+    todas = [x for g in grupos.values() for x in g["vagas"]]
+    return {"grupos": grupos, "total": len(todas), "destacadas": sum(1 for x in todas if x["destaques"]),
+            "arquivadas": arquivadas, "tamanho_kb": tamanho_kb()}
+
+
+def contar_arquivadas() -> int:
+    return sum(1 for v in listar_vagas() if arquivada(v))
+
+
+def limpar(ids: list[str] | None = None, crit: dict | None = None, incluir_destacadas: bool = False,
+           dia: str | None = None) -> dict:
+    """Aplica a limpeza (spec 054). Sem `ids` (terminal): todas as vagas dos grupos, menos as destacadas (a não ser
+    com incluir_destacadas). Com `ids` (a página): só essas, se ainda estiverem num grupo (a pessoa as marcou, então
+    a destacada entra). Arquiva com a ficha curta; o grupo sem_resposta passa a vaga para Encerrada com o resultado
+    "sem_resposta". Antes, uma cópia do banco; depois, o arquivo é compactado."""
+    crit = _criterios_limpeza(crit)
+    pedidos = None if ids is None else {str(i) for i in ids}
+    antes = tamanho_kb()
+    copia = backup_diario("limpeza")
+    arquivadas, encerradas, entraram = 0, 0, set()
+    with escrita() as con:
+        for vid, dados in con.execute("SELECT id, dados FROM vagas ORDER BY id").fetchall():
+            if pedidos is not None and vid not in pedidos:
+                continue
+            doc = json.loads(dados)
+            doc["id"] = vid
+            achou = grupo_limpeza(doc, crit, dia)
+            if not achou or (pedidos is None and not incluir_destacadas and destaques(doc)):
+                continue
+            entraram.add(vid)
+            if ACAO_LIMPEZA[achou[0]] == "encerrar":
+                doc.update(etapa="encerrada", resultado="sem_resposta", etapa_em=dia or hoje(), atualizada_em=agora())
+                encerradas += 1
+            else:
+                doc = _ficha_curta(doc)
+                arquivadas += 1
+            _gravar(con, vid, doc)
+    if arquivadas or encerradas:
+        with closing(sqlite3.connect(ARQUIVO, timeout=15)) as con:
+            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            con.execute("VACUUM")  # no modo WAL, o VACUUM passa pelo registro de escrita: esvaziá-lo de novo
+            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    return {"arquivadas": arquivadas, "encerradas": encerradas,
+            "ignoradas": sorted(pedidos - entraram) if pedidos is not None else [],
+            "antes_kb": antes, "depois_kb": tamanho_kb(), "backup": copia.name if copia else None}
+
+
 # ---------------------------------------------------------------- linha de comando
 
 def _cmd_quadro(args) -> int:
-    vagas = [v for v in listar_vagas() if v.get("etapa") and (v.get("origem") == "manual" or v.get("triagem") == "seguir")]
+    todas = [v for v in listar_vagas() if not arquivada(v)]
+    vagas = [v for v in todas if v.get("etapa") and (v.get("origem") == "manual" or v.get("triagem") == "seguir")]
     if args.etapa:
         vagas = [v for v in vagas if v["etapa"] == args.etapa]
-    todas = listar_vagas()
     pend = sum(1 for v in todas if v.get("origem") != "manual" and v.get("triagem") == "pendente")
     fora = sum(1 for v in todas if v.get("triagem") == "fora")
     print(f"Vagas Nacionais e Vagas Internacionais: {pend} vaga(s) esperando decisão; {fora} fora dos critérios.")
@@ -948,7 +1109,8 @@ def _cmd_vaga(args) -> int:
         marca = "⚠ " if integ.get("veredito") == "atencao" else ""
         print(f"{marca}Texto da vaga: " + "; ".join(f"{c['trecho']}" for c in integ.get("citacoes") or [])
               + f" ({', '.join(f'{k}: {n}' for k, n in (integ.get('contagens') or {}).items())})")
-    print(f"Etapa: {v.get('etapa') or '-'} · triagem: {v.get('triagem') or '-'}")
+    print(f"Etapa: {v.get('etapa') or '-'} · triagem: {v.get('triagem') or '-'}"
+          + (f" · arquivada em {v['arquivada_em'][:10]} (só a ficha curta)" if arquivada(v) else ""))
     if v.get("termos"):
         print(f"Encontrada pelos termos: {', '.join(v['termos'])}")
     if v.get("motivo_fora"):
@@ -1098,6 +1260,39 @@ def _cmd_regioes(args) -> int:
     return 0
 
 
+def _cmd_limpar(args) -> int:
+    p = prever_limpeza()  # põe a raiz do projeto no sys.path (filtros.py)
+    import filtros
+    ROTULOS_LIMPEZA = filtros.GRUPOS_LIMPEZA
+    print(f"Banco: {p['tamanho_kb']} KB; {p['arquivadas']} vaga(s) já arquivada(s).")
+    if not p["total"]:
+        print("Nada para limpar com os critérios da aba Limpeza.")
+        return 0
+    for g, info in p["grupos"].items():
+        if not info["ligado"]:
+            print(f"\n## {ROTULOS_LIMPEZA[g]}: desligado")
+            continue
+        faz = "passam para Encerrada, sem resposta" if info["acao"] == "encerrar" else "arquivadas"
+        print(f"\n## {ROTULOS_LIMPEZA[g]} (a partir de {info['dias']} dias): {len(info['vagas'])} ({faz})")
+        destacadas = [x for x in info["vagas"] if x["destaques"]]
+        for x in destacadas:
+            print(f"- ⚑ {x['id']} | {x['titulo']} | {x['empresa']} | {x['dias']} dias | {', '.join(x['destaques'])}")
+        for x in [x for x in info["vagas"] if not x["destaques"]][:10]:
+            print(f"- {x['id']} | {x['titulo']} | {x['empresa']} | {x['plataforma']} | {x['dias']} dias")
+        resto = len(info["vagas"]) - len(destacadas) - 10
+        if resto > 0:
+            print(f"  … e mais {resto}")
+    if p["destacadas"]:
+        print(f"\n⚑ {p['destacadas']} vaga(s) com currículo, carta ou anotação: só entram com --incluir-destacadas.")
+    if not args.gravar:
+        print("\nNada foi gravado. Para gravar: python dash/banco.py limpar --gravar")
+        return 0
+    r = limpar(incluir_destacadas=args.incluir_destacadas)
+    print(f"\nArquivadas: {r['arquivadas']}; encerradas sem resposta: {r['encerradas']}. "
+          f"Banco: {r['antes_kb']} KB → {r['depois_kb']} KB. Cópia de antes: {r['backup']} (em {BACKUPS}).")
+    return 0
+
+
 def main() -> int:
     for fluxo in (sys.stdout, sys.stderr):
         try:
@@ -1123,10 +1318,14 @@ def main() -> int:
     g.add_argument("--gravar", action="store_true", help="grava o texto limpo e o aviso nas vagas que mudam")
     r = sub.add_parser("regioes", help="vagas em Fora por região ou lugar, pela regra das regiões (mostra; grava com --gravar)")
     r.add_argument("--gravar", action="store_true", help="grava os motivos novos e devolve ao relatório as que não têm motivo")
+    lp = sub.add_parser("limpar", help="limpeza de vagas antigas pelos critérios da aba Limpeza (mostra; grava com --gravar)")
+    lp.add_argument("--gravar", action="store_true", help="arquiva as vagas e encerra as aplicações sem retorno")
+    lp.add_argument("--incluir-destacadas", action="store_true",
+                    help="com --gravar, inclui as vagas com currículo, carta ou anotação")
     args = ap.parse_args()
     return {"quadro": _cmd_quadro, "pendentes": _cmd_pendentes, "analisar": _cmd_analisar,
             "vaga": _cmd_vaga, "anotar": _cmd_anotar, "kit": _cmd_kit, "lembretes": _cmd_lembretes,
-            "integridade": _cmd_integridade, "regioes": _cmd_regioes}[args.cmd](args)
+            "integridade": _cmd_integridade, "regioes": _cmd_regioes, "limpar": _cmd_limpar}[args.cmd](args)
 
 
 if __name__ == "__main__":
