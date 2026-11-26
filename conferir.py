@@ -784,10 +784,10 @@ def texto(r: dict) -> str:
     return "\n".join(linhas)
 
 
-def _com_relatos(perfil_txt: str) -> str:
-    """O perfil com os relatos da pessoa (spec 035), que também contam como fato confirmado."""
+def _com_relatos(perfil_txt: str, vaga: dict | None = None) -> str:
+    """O perfil com os relatos da pessoa nesta vaga (spec 035), que também contam como fato confirmado."""
     import relatos
-    return relatos.com_relatos(perfil_txt)
+    return relatos.com_relatos(perfil_txt, vaga)
 
 
 def perfil_padrao() -> Path:
@@ -841,7 +841,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         cv = json.loads(Path(args.arquivo).read_text(encoding="utf-8"))
         perfil = Path(args.perfil) if args.perfil else perfil_padrao()
-        perfil_txt = _com_relatos(perfil.read_text(encoding="utf-8") if perfil.exists() else "")
+        perfil_txt = _com_relatos(perfil.read_text(encoding="utf-8") if perfil.exists() else "",
+                                  vaga_do_banco(args.vaga_id) if args.vaga_id else None)
         vaga = Path(args.vaga).read_text(encoding="utf-8") if args.vaga else vaga_do_dashboard(args.vaga_id) if args.vaga_id else None
     except (OSError, ValueError) as e:
         print(f"erro: {e}", file=sys.stderr)
@@ -857,10 +858,10 @@ def _main_carta(args) -> int:
     try:
         carta = Path(args.carta).read_text(encoding="utf-8")
         perfil = Path(args.perfil) if args.perfil else perfil_padrao()
-        perfil_txt = _com_relatos(perfil.read_text(encoding="utf-8") if perfil.exists() else "")
+        v = vaga_do_banco(args.vaga_id) if args.vaga_id else None
+        perfil_txt = _com_relatos(perfil.read_text(encoding="utf-8") if perfil.exists() else "", v)
         respostas = json.loads(Path(args.respostas).read_text(encoding="utf-8")) if args.respostas else {}
-        if args.vaga_id:
-            v = vaga_do_banco(args.vaga_id)
+        if v:
             vaga, empresa = vaga_do_dashboard(args.vaga_id), v.get("empresa") or ""
         else:
             vaga = Path(args.vaga).read_text(encoding="utf-8") if args.vaga else ""

@@ -117,22 +117,49 @@ class TestBaseDeRelatos(BaseRelatos):
         with self.assertRaises(relatos.RelatoErro):
             relatos.apagar(r["id"])
 
-    def test_relato_entra_no_perfil_de_todos_os_pedidos(self):  # SC-002
-        r = relatos.adicionar(PERGUNTA_PROJETO, "Montei um painel de Power BI de metas por região em 2023.")
-        for nome, texto in (("currículo", curriculo_ia.perfil_texto()), ("entrevista", entrevista.perfil_texto()),
-                            ("nota", analise.montar_pedido([{"id": "x1", "titulo": "Analista", "empresa": "ACME",
-                                                             "descricao": "Vaga."}]))):
-            with self.subTest(pedido=nome):
-                self.assertIn("Relatos da pessoa", texto)
-                self.assertIn("painel de Power BI de metas por região em 2023", texto)
-        relatos.apagar(r["id"])
+    def test_relato_so_vale_na_vaga_dele(self):
+        a = relatos.adicionar(PERGUNTA_PROJETO, "Montei um painel de Power BI de metas em 2023.", vaga={"id": "vA"})
+        relatos.adicionar("Outra pergunta", "Fato da outra vaga, sem relação.", vaga={"id": "vB"})
+        relatos.adicionar("Pergunta solta", "Fato sem vaga nenhuma.")
+        base = self.perfil.read_text(encoding="utf-8")
+        self.assertEqual(relatos.com_relatos(base), base)  # sem vaga: só o perfil
         self.assertNotIn("Relatos da pessoa", curriculo_ia.perfil_texto())
+        da_a = relatos.com_relatos(base, {"id": "vA"})
+        self.assertIn("painel de Power BI de metas em 2023", da_a)
+        self.assertNotIn("outra vaga", da_a)
+        self.assertNotIn("sem vaga nenhuma", da_a)
+        self.assertIn("painel de Power BI", relatos.com_relatos(base, "vA"))  # também pelo id
+        juntada = relatos.com_relatos(base, {"id": "vC", "ids_relacionados": ["vA"]})
+        self.assertIn("painel de Power BI", juntada)
+        relatos.marcar_no_perfil([a["id"]])
+        self.assertNotIn("Relatos da pessoa", relatos.com_relatos(base, {"id": "vA"}))
+
+    def test_pendentes_e_desmarcar(self):
+        a = relatos.adicionar("P1", "Fato um.", vaga={"id": "vA"})
+        b = relatos.adicionar("P2", "Fato dois.", vaga={"id": "vA"})
+        relatos.marcar_no_perfil([a["id"]])
+        self.assertEqual([x["id"] for x in relatos.pendentes()], [b["id"]])
+        relatos.desmarcar_no_perfil([a["id"]])
+        self.assertEqual({x["id"] for x in relatos.pendentes()}, {a["id"], b["id"]})
+        relatos.desmarcar_no_perfil([])
+
+    def test_lista_por_vaga(self):
+        relatos.adicionar("P1", "Fato um.", vaga={"id": "vA"})
+        relatos.adicionar("P2", "Fato dois.", vaga={"id": "vB"})
+        with mock.patch("builtins.print") as p:
+            self.assertEqual(relatos.main(["lista", "--vaga", "vA"]), 0)
+        saida = " ".join(str(c.args[0]) for c in p.call_args_list)
+        self.assertIn("Fato um.", saida)
+        self.assertNotIn("Fato dois.", saida)
 
     def test_numero_do_relato_conta_como_fato_na_conferencia(self):
         cv = {"destaques": ["Reduzi em 40% o tempo do fechamento"]}
+        base = self.perfil.read_text(encoding="utf-8")
         self.assertTrue(conferir.conferir_fatos(cv, curriculo_ia.perfil_texto()))  # sem o relato, o 40% é bloqueado
-        relatos.adicionar(PERGUNTA_PROJETO, "O painel reduziu em 40% o tempo do fechamento.")
-        self.assertEqual(conferir.conferir_fatos(cv, curriculo_ia.perfil_texto()), [])
+        vaga = {"id": "vA"}
+        relatos.adicionar(PERGUNTA_PROJETO, "O painel reduziu em 40% o tempo do fechamento.", vaga=vaga)
+        self.assertTrue(conferir.conferir_fatos(cv, relatos.com_relatos(base)))  # sem vaga, o relato não vale
+        self.assertEqual(conferir.conferir_fatos(cv, relatos.com_relatos(base, vaga)), [])
 
     def test_levar_ao_perfil(self):
         r = relatos.adicionar(PERGUNTA_PROJETO, "Montei um painel de Power BI em 2023.")
