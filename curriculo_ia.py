@@ -11,6 +11,9 @@
                                           do currículo e da carta (nunca vão à IA)
   gerar(vaga, tecnicas)                   pedido → IA → .json, .docx, .pdf → conferência → .meta.json
   listar(vaga_id=None, base=False)        os currículos gerados pela página, mais recentes primeiro
+  geral_atual(idioma)                     o currículo geral do idioma (o mais recente que não é Completo; senão o Completo)
+  arquivo_geral(idioma)                   o PDF (ou .docx) dele, o que o item Currículo de cada vaga mostra
+  perfil_mais_novo()                      True se o perfil.md mudou depois do currículo do perfil mais recente
   apagar_lote(nomes)                      apaga documentos gerados em lote (tudo ou nada), desfazendo tudo se um
                                           arquivo estiver aberto em outro programa
   apagar(nome)                            apaga um documento gerado (currículo, carta ou respostas)
@@ -401,6 +404,50 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
         _apagar(criados)
         raise
     return meta
+
+
+def _idioma_do_meta(meta: dict) -> str:
+    formato = ((meta.get("tecnicas") or {}).get("formato")) or "br"
+    return (curriculo.FORMATOS.get(formato) or {}).get("idioma", "pt")
+
+
+def _arquivo_do_meta(meta: dict) -> Path | None:
+    arqs = meta.get("arquivos") or {}
+    for chave in ("pdf", "docx"):
+        if arqs.get(chave) and (CURRICULOS / arqs[chave]).exists():
+            return CURRICULOS / arqs[chave]
+    return None
+
+
+def geral_atual(idioma: str) -> dict | None:
+    """O currículo geral do idioma: o mais recente que não é Completo; sem ele, o Completo mais recente."""
+    candidatos = [m for m in listar(base=True) if _idioma_do_meta(m) == idioma and _arquivo_do_meta(m)]
+    for m in candidatos:
+        if (m.get("tecnicas") or {}).get("paginas") != 0:
+            return m
+    return candidatos[0] if candidatos else None
+
+
+def arquivo_geral(idioma: str) -> Path | None:
+    """O PDF (ou o .docx, sem PDF) do currículo geral do idioma."""
+    meta = geral_atual(idioma)
+    return _arquivo_do_meta(meta) if meta else None
+
+
+def perfil_mais_novo() -> bool:
+    """True quando o perfil.md foi alterado depois do currículo do perfil mais recente (qualquer idioma)."""
+    metas = listar(base=True)
+    if not metas:
+        return False
+    try:
+        import primeiros_passos
+        perfil = primeiros_passos.caminho_perfil()
+        if not perfil.exists():
+            return False
+        criado = datetime.fromisoformat(metas[0]["criado_em"])
+        return datetime.fromtimestamp(perfil.stat().st_mtime) > criado
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
 
 
 def _apagar(arquivos):

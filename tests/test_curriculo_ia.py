@@ -627,5 +627,65 @@ class TestEncurtarFuncoesPuras(unittest.TestCase):
         self.assertNotIn("ana@exemplo.com", pedido)  # o contato nunca vai à IA
 
 
+class TestGeralDoIdioma(Base):
+    def _meta(self, nome, formato, paginas, criado, pdf=True):
+        cia.CURRICULOS.mkdir(parents=True, exist_ok=True)
+        (cia.CURRICULOS / f"{nome}.docx").write_text("x", encoding="utf-8")
+        if pdf:
+            (cia.CURRICULOS / f"{nome}.pdf").write_text("x", encoding="utf-8")
+        (cia.CURRICULOS / f"{nome}.meta.json").write_text(json.dumps({
+            "nome": nome, "alvo": {"tipo": "base"}, "criado_em": criado,
+            "tecnicas": {"formato": formato, "paginas": paginas},
+            "arquivos": {"json": None, "docx": f"{nome}.docx", "pdf": f"{nome}.pdf" if pdf else None},
+        }), encoding="utf-8")
+
+    def test_mais_recente_nao_completo(self):
+        self._meta("a", "br", 2, "2026-01-01T10:00:00")
+        self._meta("b", "br", 0, "2026-01-03T10:00:00")
+        self._meta("c", "br", 1, "2026-01-02T10:00:00")
+        self.assertEqual(cia.geral_atual("pt")["nome"], "c")
+        self.assertEqual(cia.arquivo_geral("pt").name, "c.pdf")
+
+    def test_cai_no_completo_e_separa_idiomas(self):
+        self._meta("b", "br", 0, "2026-01-03T10:00:00", pdf=False)
+        self._meta("u", "us", 2, "2026-01-01T10:00:00")
+        self.assertEqual(cia.geral_atual("pt")["nome"], "b")
+        self.assertEqual(cia.arquivo_geral("pt").name, "b.docx")
+        self.assertEqual(cia.geral_atual("en")["nome"], "u")
+        self._meta("e", "eu", 3, "2026-01-05T10:00:00")
+        self.assertEqual(cia.geral_atual("en")["nome"], "e")
+
+    def test_sem_geral(self):
+        self.assertIsNone(cia.geral_atual("pt"))
+        self.assertIsNone(cia.arquivo_geral("en"))
+
+    def test_perfil_mais_novo(self):
+        import os
+        import primeiros_passos
+        perfil = self.tmp / "perfil.md"
+        perfil.write_text("p", encoding="utf-8")
+        with mock.patch.object(primeiros_passos, "caminho_perfil", return_value=perfil):
+            self.assertFalse(cia.perfil_mais_novo())  # sem currículo do perfil
+            self._meta("a", "br", 2, "2026-01-02T10:00:00")
+            antes = datetime(2026, 1, 1, 10).timestamp()
+            depois = datetime(2026, 1, 3, 10).timestamp()
+            os.utime(perfil, (antes, antes))
+            self.assertFalse(cia.perfil_mais_novo())
+            os.utime(perfil, (depois, depois))
+            self.assertTrue(cia.perfil_mais_novo())
+
+    def test_banco_usa_geral_e_cai_no_marcado(self):
+        import curriculo_base
+        marcados = {"pt": "anexos/meu.pdf", "en": None}
+        with mock.patch.object(curriculo_base, "marcados", return_value=marcados):
+            antes = banco.curriculos_base()
+            self.assertEqual(antes["pt"]["nome"], "meu.pdf")
+            self.assertIsNone(antes["en"])
+            self._meta("g", "br", 2, "2026-01-02T10:00:00")
+            depois = banco.curriculos_base()
+            self.assertEqual(depois["pt"], {"nome": "g.pdf", "url": "/arquivos/curriculo-base/pt"})
+            self.assertIsNone(depois["en"])
+
+
 if __name__ == "__main__":
     unittest.main()

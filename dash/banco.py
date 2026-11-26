@@ -837,10 +837,19 @@ def curriculos_base() -> dict:
         if raiz not in sys.path:
             sys.path.insert(0, raiz)
         import curriculo_base  # curriculo_base.py, na raiz do projeto
+        import curriculo_ia
         marcados = curriculo_base.marcados()
     except Exception:  # config ausente ou com erro não impede listar as vagas
         return {}
-    return {k: {"nome": Path(v).name, "url": f"/arquivos/curriculo-base/{k}"} if v else None for k, v in marcados.items()}
+    saida = {}
+    for k, v in marcados.items():
+        try:
+            geral = curriculo_ia.arquivo_geral(k)
+        except Exception:
+            geral = None
+        nome = geral.name if geral else (Path(v).name if v else None)
+        saida[k] = {"nome": nome, "url": f"/arquivos/curriculo-base/{k}"} if nome else None
+    return saida
 
 
 def _filtros():

@@ -829,10 +829,15 @@ class Handler(BaseHTTPRequestHandler):
             return self._erro(403, SO_LOCAL_PERFIL)
         sys.path.insert(0, str(banco.DASH.parent))
         import curriculo_base
-        rel = curriculo_base.marcados().get(idioma) if idioma in curriculo_base.IDIOMAS else None
-        if not rel:
+        import curriculo_ia
+        if idioma not in curriculo_base.IDIOMAS:
             return self._erro(404, "arquivo não encontrado")
-        caminho = curriculo_base.RAIZ / rel
+        caminho = curriculo_ia.arquivo_geral(idioma)
+        if not caminho:
+            rel = curriculo_base.marcados().get(idioma)
+            if not rel:
+                return self._erro(404, "arquivo não encontrado")
+            caminho = curriculo_base.RAIZ / rel
         dados = caminho.read_bytes()
         pdf = caminho.suffix.lower() == ".pdf"
         self.send_response(200)
@@ -1147,7 +1152,10 @@ class Handler(BaseHTTPRequestHandler):
                 sys.path.insert(0, str(banco.DASH.parent))
                 import curriculo_ia
                 base = (consulta.get("base") or [""])[0] == "1"
-                return self._json(200, {"curriculos": curriculo_ia.listar(vaga_id, base=base)})
+                resp = {"curriculos": curriculo_ia.listar(vaga_id, base=base)}
+                if base:
+                    resp["perfil_mais_novo"] = curriculo_ia.perfil_mais_novo()
+                return self._json(200, resp)
             if caminho == "/api/curriculo/reprovacao":  # a última análise de reprovação da vaga (spec 049)
                 sys.path.insert(0, str(banco.DASH.parent))
                 import reprovacao
