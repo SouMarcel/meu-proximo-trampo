@@ -66,7 +66,7 @@ ORCAMENTO = {
         "- Até 6 cursos;\n"
         "- Cerca de 2000 palavras no total."),
 }
-COMPLETO = ("Currículo completo: use todos os fatos do perfil e dos relatos — todas as experiências com todos os itens, "
+COMPLETO = ("Currículo completo: use todos os fatos do perfil — todas as experiências com todos os itens, "
             "formação, certificações, cursos, projetos e idiomas; não corte nada; não há limite de páginas. "
             "Destaques continua com até 3 itens. Layout continua o de ATS.")
 
@@ -106,11 +106,11 @@ def nome_arquivo(vaga: dict | None, data: datetime | None = None, pasta: Path | 
     return nome
 
 
-def perfil_texto() -> str:
-    """O perfil.md com os relatos da pessoa que ainda não foram para ele (spec 035): a base de fatos dos pedidos à IA."""
+def perfil_texto(vaga=None) -> str:
+    """O perfil.md; com a vaga, mais os relatos dela ainda fora do perfil (constituição IV, 5.6.0)."""
     import relatos
     p = conferir.perfil_padrao()
-    return relatos.com_relatos(p.read_text(encoding="utf-8") if p.exists() else "")
+    return relatos.com_relatos(p.read_text(encoding="utf-8") if p.exists() else "", vaga)
 
 
 def _mascarar(texto: str) -> str:
@@ -317,7 +317,7 @@ def gerar(vaga: dict | None, tecnicas: dict, progresso=None, perfil: str | None 
     pedido e marca ao meta (spec 049: o currículo que saiu da análise de reprovação)."""
     import ia
     avisar = progresso or (lambda etapa: None)
-    perfil = perfil_texto() if perfil is None else perfil
+    perfil = perfil_texto(vaga) if perfil is None else perfil
     if not perfil:
         raise GeracaoErro("monte o perfil antes (botão Meu perfil): o currículo sai só dos fatos dele")
     tecnicas = validar_tecnicas(tecnicas, vaga)

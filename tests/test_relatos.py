@@ -177,6 +177,54 @@ class TestBaseDeRelatos(BaseRelatos):
         self.assertLess(texto.index("Power BI em 2023"), texto.index("Outro fato."))
 
 
+class TestPedidosDaVaga(BaseRelatos):
+    def setUp(self):
+        super().setUp()
+        relatos.adicionar("Pergunta A", "Fato exclusivo da vaga A sobre painel.", vaga={"id": "vA"})
+        relatos.adicionar("Pergunta B", "Fato exclusivo da vaga B sobre estoque.", vaga={"id": "vB"})
+        self.pedidos = []
+
+        def captura(pedido, **_):
+            self.pedidos.append(pedido)
+            raise RuntimeError("parou aqui")
+        for p in (mock.patch.object(ia, "responder", side_effect=captura),
+                  mock.patch.object(ia, "disponivel", return_value=True),
+                  mock.patch.object(ia, "aviso_reserva", return_value=None),
+                  mock.patch.object(ia, "marca", return_value={"provedor": "falsa", "modelo": "m"})):
+            p.start()
+            self.addCleanup(p.stop)
+
+    def pedido_de(self, funcao, *args):
+        self.pedidos.clear()
+        try:
+            funcao(*args)
+        except Exception:
+            pass
+        self.assertTrue(self.pedidos)
+        return self.pedidos[0]
+
+    def test_curriculo_da_vaga_leva_so_o_relato_dela(self):
+        vaga = {"id": "vA", "titulo": "Analista", "empresa": "Empresa Beta", "descricao": "Painéis."}
+        tecnicas = curriculo_ia.TECNICAS_PADRAO if hasattr(curriculo_ia, "TECNICAS_PADRAO") else {}
+        pedido = self.pedido_de(curriculo_ia.gerar, vaga, tecnicas)
+        self.assertIn("vaga A", pedido)
+        self.assertNotIn("vaga B", pedido)
+
+    def test_curriculo_do_perfil_nao_leva_relatos(self):
+        pedido = self.pedido_de(curriculo_ia.gerar, None, {})
+        self.assertNotIn("vaga A", pedido)
+        self.assertNotIn("vaga B", pedido)
+
+    def test_carta_da_vaga_leva_so_o_relato_dela(self):
+        vaga = {"id": "vA", "titulo": "Analista", "empresa": "Empresa Beta", "descricao": "Painéis."}
+        pedido = self.pedido_de(candidatura_ia.gerar_carta, vaga, {})
+        self.assertIn("vaga A", pedido)
+        self.assertNotIn("vaga B", pedido)
+
+    def test_completo_nao_fala_em_relatos(self):
+        self.assertNotIn("relato", curriculo_ia.COMPLETO.lower())
+
+
 class TestResponder(BaseRelatos):
     def responder(self, respostas, **kw):
         aba = pagina()

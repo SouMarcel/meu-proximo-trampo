@@ -343,7 +343,7 @@ def _docx_carta(texto: str, destino: Path, negrito_primeira: bool = False) -> bo
 def gerar_carta(vaga: dict, respostas: dict, progresso=None, perfil: str | None = None) -> dict:
     """Pede a carta à IA, confere e grava; em falha, nada fica pela metade."""
     avisar = progresso or (lambda etapa: None)
-    perfil = curriculo_ia.perfil_texto() if perfil is None else perfil
+    perfil = curriculo_ia.perfil_texto(vaga) if perfil is None else perfil
     if not perfil:
         raise GeracaoErro("monte o perfil antes (botão Meu perfil): a carta sai só dos fatos dele")
     respostas = validar_respostas(respostas)
@@ -530,7 +530,7 @@ def verificar_carta(nome: str, editado: str, guardar_relatos: bool = True, progr
     import banco
     vaga = banco.obter((meta.get("alvo") or {}).get("id") or "") or {
         k: (meta.get("alvo") or {}).get(k) for k in ("id", "titulo", "empresa")}
-    perfil = curriculo_ia.perfil_texto() if perfil is None else perfil
+    perfil = curriculo_ia.perfil_texto(vaga) if perfil is None else perfil
     # o cabeçalho e a despedida (dados de contato) não vão à IA: saem do texto e voltam depois, como a pessoa deixou
     cabecalho, despedida = meta.get("cabecalho") or "", meta.get("despedida") or ""
     corpo_editado = editado
@@ -607,7 +607,7 @@ def _txt_respostas(itens: list[dict]) -> str:
 def gerar_respostas(vaga: dict, perguntas_texto: str, progresso=None, perfil: str | None = None) -> dict:
     """Separa as perguntas sensíveis (ficam para a pessoa), pede à IA só as outras, confere e grava."""
     avisar = progresso or (lambda etapa: None)
-    perfil = curriculo_ia.perfil_texto() if perfil is None else perfil
+    perfil = curriculo_ia.perfil_texto(vaga) if perfil is None else perfil
     if not perfil:
         raise GeracaoErro("monte o perfil antes (botão Meu perfil): as respostas saem só dos fatos dele")
     perguntas = separar(perguntas_texto)
@@ -728,7 +728,7 @@ def propor_respostas(vaga: dict, campos: list[dict], progresso=None, perfil: str
     dela, devolve os campos sem proposta e um aviso: a pessoa pode escrever as respostas e preencher igual."""
     import ia
     avisar = progresso or (lambda etapa: None)
-    perfil = curriculo_ia.perfil_texto() if perfil is None else perfil
+    perfil = curriculo_ia.perfil_texto(vaga) if perfil is None else perfil
     itens = [{**c, "proposta": "", "conferir": []} for c in campos]
     abertos = [(i, c) for i, c in enumerate(itens, 1) if c.get("marca") == "comum" and not sensivel(c.get("rotulo") or "")]
     if not abertos:
@@ -802,7 +802,7 @@ def adaptar_relatos(vaga: dict, itens: list[tuple[dict, str]], perfil: str | Non
     if not ia.disponivel():
         saida["aviso"] = "Sem IA configurada: o seu relato foi preenchido como você escreveu (cortado no limite do campo)."
         return saida
-    perfil = curriculo_ia.perfil_texto() if perfil is None else perfil
+    perfil = curriculo_ia.perfil_texto(vaga) if perfil is None else perfil
     numerados = [(i, c, curriculo_ia._mascarar(str(r))) for i, (c, r) in enumerate(validos, 1)]
     try:
         lista = _json(_ia_responder(montar_pedido_relatos(perfil, vaga, numerados)), "[", "]")
