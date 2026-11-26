@@ -650,10 +650,13 @@ class Handler(BaseHTTPRequestHandler):
                         return self._erro(404, "currículo não encontrado")
                     alvo = res.get("alvo") if isinstance(res.get("alvo"), dict) else {}
                     if alvo.get("tipo") == "vaga":
-                        banco.desligar_curriculo(alvo["id"], nome)
-                        sys.path.insert(0, str(banco.DASH.parent))
-                        import reprovacao
-                        reprovacao.esquecer_curriculo(alvo["id"], nome)
+                        if res.get("tipo") in ("carta", "respostas"):
+                            banco.desligar_documento(alvo["id"], nome)
+                        else:
+                            banco.desligar_curriculo(alvo["id"], nome)
+                            sys.path.insert(0, str(banco.DASH.parent))
+                            import reprovacao
+                            reprovacao.esquecer_curriculo(alvo["id"], nome)
                     return self._json(200, {"apagado": nome})
         except gerador.GeracaoOcupada as e:
             return self._json(409, {"erro": str(e), "estado": gerador.GERACAO.estado()})
@@ -1090,8 +1093,34 @@ class Handler(BaseHTTPRequestHandler):
             if metodo == "PATCH":
                 return self._json(200, {"vaga": banco.com_kit(banco.atualizar_usuario(vid, self._corpo()))})
             if metodo == "DELETE":
+                sys.path.insert(0, str(banco.DASH.parent))
+                import curriculo_ia
+                import reprovacao
+                vaga = banco.obter(vid)
+                if vaga is None:
+                    raise KeyError(vid)
+                docs = curriculo_ia.documentos_da_vaga(vaga)
+                apagados = []
+                if docs:
+                    try:
+                        apagados = curriculo_ia.apagar_lote([d["nome"] for d in docs])
+                    except curriculo_ia.GeracaoErro as e:
+                        if "aberto em outro programa" in str(e):
+                            return self._erro(409, str(e))
+                        return self._erro(400, str(e))
+                for d in apagados:
+                    if d.get("tipo") == "curriculo":
+                        reprovacao.esquecer_curriculo(vid, d["nome"])
                 banco.remover(vid)
-                return self._json(200, {"ok": True})
+                if banco.obter(vid) is not None:
+                    with banco.escrita() as con:
+                        doc = banco._ler(con, vid)
+                        if doc is not None:
+                            doc["curriculos"] = []
+                            doc["documentos"] = []
+                            doc["atualizada_em"] = banco.agora()
+                            banco._gravar(con, vid, doc)
+                return self._json(200, {"ok": True, "documentos_apagados": [d["nome"] for d in apagados]})
             return self._erro(405, "método não permitido")
         except KeyError:
             return self._erro(404, "vaga não encontrada")

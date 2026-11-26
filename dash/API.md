@@ -208,7 +208,10 @@ devolve o `kit` com `candidatura: pronto`, a menos que esteja `nao_se_aplica`. N
 padrão no `checklist`.
 
 **`DELETE /api/vagas/{id}`** — "Remover de Aplicações". Vaga `manual` é apagada; as outras só saem de Aplicações
-(viram `triagem: visitada`, `etapa: null`). Resposta `{ok: true}`. Erro 404.
+(viram `triagem: visitada`, `etapa: null`). Antes, apaga da pasta `curriculos/` os currículos, cartas e respostas
+gerados para a vaga (spec 061; tudo ou nada) e zera `curriculos`/`documentos` dela. Resposta `{ok: true,
+documentos_apagados: string[]}`. Erros: 404; 409 com a mensagem quando um arquivo está aberto em outro programa (a vaga
+não é removida).
 
 **`POST /api/vagas/{id}/analisar`** **[local]** — "Forçar verificar" (Vagas Nacionais e Vagas Internacionais, vaga sem nota ou com
 `nota_sem_descricao`, triagem pendente ou fora). Corpo `{}`. Resposta 202 `{verificando: string[], verificando_agora: string|null}`
@@ -449,7 +452,9 @@ A página mostra as destacadas desmarcadas.
 
 **`POST /api/limpeza/aplicar`** — corpo `{ids: string[]}` (1 a 2000). Refaz a conta e só aplica nos ids que ainda
 estão num grupo (a destacada pedida entra). Antes, uma cópia em `dash/dados/backup/candidaturas-AAAA-MM-DD-limpeza.db`;
-depois, o banco é compactado. Resposta `{arquivadas, encerradas, ignoradas: string[], antes_kb, depois_kb, backup}`.
+depois, o banco é compactado. Arquivar apaga os documentos gerados da vaga (spec 061) e a ficha guarda
+`documentos_apagados: {curriculo?, carta?, respostas?, em}`; a vaga cujo arquivo está aberto não é arquivada. Resposta
+`{arquivadas, encerradas, ignoradas: string[], nao_arquivadas: [{id, motivo}], antes_kb, depois_kb, backup}`.
 
 ### 3.5 IA (botão IA)
 
@@ -622,11 +627,11 @@ conta como "tem" (sai "sustentado", evidência "em preparação: …"), e requis
 sai "lacuna" (evidência "falta: …").
 Os links de download são `/arquivos/curriculos/{arquivos.pdf|docx}`.
 
-**`DELETE /api/curriculo/{nome}`** **[local]** — a lixeira de um currículo da lista (spec 052). Apaga o `.json`, o
-`.docx`, o `.pdf` e o `.meta.json` em duas fases (renomeia todos e só então apaga; se um estiver aberto em outro
-programa, desfaz e nada some), tira o nome da vaga (`curriculos`) e da análise de reprovação (`curriculo_gerado`).
-200 `{apagado: nome}`; 400 nome inválido ou não é currículo gerado (cartas e respostas não são apagadas aqui); 404
-não encontrado; 409 arquivo aberto em outro programa.
+**`DELETE /api/curriculo/{nome}`** **[local]** — a lixeira de um currículo, de uma carta ou de um conjunto de
+respostas (specs 052 e 061). Apaga todos os arquivos do documento (`.json`, `.txt`, `.docx`, `.pdf` e `.meta.json`)
+em duas fases (renomeia todos e só então apaga; se um estiver aberto em outro programa, desfaz e nada some) e tira o
+nome da vaga (`curriculos` ou `documentos`) e, no currículo, da análise de reprovação (`curriculo_gerado`).
+200 `{apagado: nome}`; 400 nome inválido; 404 não encontrado; 409 arquivo aberto em outro programa.
 
 #### Análise de reprovação (checkbox no diálogo "Gerar currículo" de uma vaga; spec 049)
 

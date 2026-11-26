@@ -1,9 +1,11 @@
 """Testes do curriculo_ia.py e do registro do currículo na vaga, com a IA substituída. Conteúdo fictício."""
+import http.client
 import json
 import re
 import shutil
 import sys
 import tempfile
+import threading
 import unittest
 from datetime import datetime
 from pathlib import Path
@@ -685,6 +687,134 @@ class TestGeralDoIdioma(Base):
             depois = banco.curriculos_base()
             self.assertEqual(depois["pt"], {"nome": "g.pdf", "url": "/arquivos/curriculo-base/pt"})
             self.assertIsNone(depois["en"])
+
+class TestRotasDocumentos(Base):
+    def setUp(self):
+        super().setUp()
+        p_backup = mock.patch.object(banco, "BACKUPS", self.tmp / "backup")
+        p_backup.start()
+        self.patches.append(p_backup)
+        (self.tmp / "curriculos").mkdir(parents=True, exist_ok=True)
+        (self.tmp / "backup").mkdir(parents=True, exist_ok=True)
+
+        import servidor
+        p_hosts = mock.patch.object(servidor.Handler, "hosts_permitidos", {"127.0.0.1", "localhost"})
+        p_hosts.start()
+        self.addCleanup(p_hosts.stop)
+        self.srv = servidor.ThreadingHTTPServer(("127.0.0.1", 0), servidor.Handler)
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.addCleanup(self.srv.server_close)
+        self.addCleanup(self.srv.shutdown)
+
+    def pedir(self, metodo, caminho, corpo=None):
+        con = http.client.HTTPConnection("127.0.0.1", self.srv.server_address[1], timeout=10)
+        self.addCleanup(con.close)
+        dados = json.dumps(corpo).encode("utf-8") if corpo is not None else None
+        headers = {"Content-Type": "application/json"}
+        con.request(metodo, caminho, dados, headers)
+        r = con.getresponse()
+        return r.status, json.loads(r.read())
+
+    def test_delete_curriculo_carta(self):
+        banco.inserir_vagas([{
+            "id": "v1", "titulo": "Dev Python", "empresa": "Tech SA", "origem": "indeed", "triagem": "seguir",
+            "documentos": [{"tipo": "carta", "nome": "carta-v1", "criado_em": "2026-11-20T10:00:00"}]
+        }])
+        meta = {
+            "nome": "carta-v1", "tipo": "carta", "alvo": {"tipo": "vaga", "id": "v1"},
+            "arquivos": {"txt": "carta-v1.txt", "pdf": "carta-v1.pdf"}
+        }
+        (cia.CURRICULOS / "carta-v1.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (cia.CURRICULOS / "carta-v1.txt").write_text("conteudo carta", encoding="utf-8")
+        (cia.CURRICULOS / "carta-v1.pdf").write_text("pdf fake", encoding="utf-8")
+
+        status, r = self.pedir("DELETE", "/api/curriculo/carta-v1")
+        self.assertEqual(status, 200)
+        self.assertEqual(r, {"apagado": "carta-v1"})
+        self.assertFalse((cia.CURRICULOS / "carta-v1.meta.json").exists())
+        self.assertFalse((cia.CURRICULOS / "carta-v1.txt").exists())
+        self.assertFalse((cia.CURRICULOS / "carta-v1.pdf").exists())
+        v1 = banco.obter("v1")
+        self.assertEqual(v1.get("documentos"), [])
+
+    def test_delete_vaga_com_documentos(self):
+        banco.inserir_vagas([{
+            "id": "v2", "titulo": "Cientista de Dados", "empresa": "Data Corp", "origem": "indeed",
+            "triagem": "seguir", "etapa": "aplicada",
+            "curriculos": ["cv-v2"],
+            "documentos": [{"tipo": "respostas", "nome": "resp-v2", "criado_em": "2026-11-20T10:00:00"}]
+        }])
+        meta_cv = {
+            "nome": "cv-v2", "tipo": "curriculo", "alvo": {"tipo": "vaga", "id": "v2"},
+            "arquivos": {"txt": "cv-v2.txt", "docx": "cv-v2.docx"}
+        }
+        meta_resp = {
+            "nome": "resp-v2", "tipo": "respostas", "alvo": {"tipo": "vaga", "id": "v2"},
+            "arquivos": {"json": "resp-v2.json", "txt": "resp-v2.txt"}
+        }
+        (cia.CURRICULOS / "cv-v2.meta.json").write_text(json.dumps(meta_cv), encoding="utf-8")
+        (cia.CURRICULOS / "cv-v2.txt").write_text("texto cv", encoding="utf-8")
+        (cia.CURRICULOS / "cv-v2.docx").write_text("docx cv", encoding="utf-8")
+
+        (cia.CURRICULOS / "resp-v2.meta.json").write_text(json.dumps(meta_resp), encoding="utf-8")
+        (cia.CURRICULOS / "resp-v2.json").write_text("{}", encoding="utf-8")
+        (cia.CURRICULOS / "resp-v2.txt").write_text("texto resp", encoding="utf-8")
+
+        status, r = self.pedir("DELETE", "/api/vagas/v2")
+        self.assertEqual(status, 200)
+        self.assertTrue(r["ok"])
+        self.assertEqual(set(r["documentos_apagados"]), {"cv-v2", "resp-v2"})
+
+        self.assertFalse((cia.CURRICULOS / "cv-v2.meta.json").exists())
+        self.assertFalse((cia.CURRICULOS / "cv-v2.txt").exists())
+        self.assertFalse((cia.CURRICULOS / "cv-v2.docx").exists())
+        self.assertFalse((cia.CURRICULOS / "resp-v2.meta.json").exists())
+        self.assertFalse((cia.CURRICULOS / "resp-v2.json").exists())
+        self.assertFalse((cia.CURRICULOS / "resp-v2.txt").exists())
+
+        v2 = banco.obter("v2")
+        self.assertEqual(v2["triagem"], "visitada")
+        self.assertIsNone(v2["etapa"])
+        self.assertEqual(v2["curriculos"], [])
+        self.assertEqual(v2["documentos"], [])
+
+    def test_delete_vaga_arquivo_aberto(self):
+        banco.inserir_vagas([{
+            "id": "v3", "titulo": "Engenheiro", "empresa": "Eng SA", "origem": "indeed",
+            "triagem": "seguir", "etapa": "entrevista",
+            "curriculos": ["cv-v3"],
+            "documentos": [{"tipo": "carta", "nome": "carta-v3", "criado_em": "2026-11-20T10:00:00"}]
+        }])
+        meta = {
+            "nome": "carta-v3", "tipo": "carta", "alvo": {"tipo": "vaga", "id": "v3"},
+            "arquivos": {"txt": "carta-v3.txt"}
+        }
+        (cia.CURRICULOS / "carta-v3.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (cia.CURRICULOS / "carta-v3.txt").write_text("texto carta", encoding="utf-8")
+
+        with mock.patch.object(cia, "apagar_lote", side_effect=cia.GeracaoErro("um arquivo do documento está aberto em outro programa; feche e tente de novo")):
+            status, r = self.pedir("DELETE", "/api/vagas/v3")
+
+        self.assertEqual(status, 409)
+        self.assertIn("aberto em outro programa", r.get("erro", ""))
+        v3 = banco.obter("v3")
+        self.assertEqual(v3["triagem"], "seguir")
+        self.assertEqual(v3["etapa"], "entrevista")
+        self.assertEqual(v3["curriculos"], ["cv-v3"])
+        self.assertEqual(len(v3["documentos"]), 1)
+        self.assertTrue((cia.CURRICULOS / "carta-v3.meta.json").exists())
+
+    def test_delete_vaga_sem_documentos(self):
+        banco.inserir_vagas([{
+            "id": "v4", "titulo": "Analista Júnior", "empresa": "Tech Alpha", "origem": "indeed",
+            "triagem": "seguir", "etapa": "salva"
+        }])
+        status, r = self.pedir("DELETE", "/api/vagas/v4")
+        self.assertEqual(status, 200)
+        self.assertEqual(r, {"ok": True, "documentos_apagados": []})
+        v4 = banco.obter("v4")
+        self.assertEqual(v4["triagem"], "visitada")
+        self.assertIsNone(v4["etapa"])
 
 
 if __name__ == "__main__":

@@ -73,7 +73,8 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   `PY dash/banco.py limpar` (limpeza de vagas antigas pelos critérios da aba Limpeza, spec 054: mostra a prévia; só arquiva
   com `--gravar` e o OK da pessoa, e as vagas com currículo, carta ou anotação só com `--incluir-destacadas`),
   `PY dash/banco.py repetidas` (a mesma vaga em vários portais, com a empresa escrita de outro jeito, spec 058: mostra os
-  grupos; só junta com `--gravar` e o OK da pessoa),
+  grupos; só junta com `--gravar` e o OK da pessoa), `PY dash/banco.py documentos-orfaos` (currículos, cartas e
+  respostas de vagas que saíram do quadro ou foram arquivadas, spec 061: mostra; só apaga com `--gravar` e o OK da pessoa),
   `PY consultar_gupy.py <ferramenta> chave=valor …` (perguntas pontuais à Gupy sem a integração
   MCP) e `python iniciar.py` (abre o dashboard em http://127.0.0.1:8765). Perfil: `PY primeiros_passos.py extrair <arquivo>` (texto de
   currículo ou LinkedIn sem documentos de identificação), `diagnostico [perfil.md]` e
