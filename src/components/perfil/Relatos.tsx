@@ -114,8 +114,8 @@ export default function Relatos({
     }
   }
 
-  const pendentes = (lista ?? []).filter((r) => !r.no_perfil)
-  const incorporados = (lista ?? []).filter((r) => r.no_perfil)
+  const pendentes = (lista ?? []).filter((r) => !r.no_perfil && !r.em_conflito)
+  const incorporados = (lista ?? []).filter((r) => r.no_perfil || r.em_conflito)
 
   const marcar = (id: string, sim: boolean) => setMarcados((m) => (sim ? [...new Set([...m, id])] : m.filter((x) => x !== id)))
 
@@ -282,7 +282,13 @@ export default function Relatos({
                 <p className={DICA}>
                   {diaMes(r.em)}
                   {r.vaga?.empresa ? ` · ${r.vaga.titulo} — ${r.vaga.empresa}` : ""}
+                  {r.em_conflito ? " · esperando a sua decisão em Conflitos" : ""}
                 </p>
+                {r.em_conflito && onAbrirConflitos && (
+                  <button type="button" className={BTN_MINI} onClick={onAbrirConflitos}>
+                    Abrir Conflitos
+                  </button>
+                )}
                 <button
                   type="button"
                   className={BTN_MINI}

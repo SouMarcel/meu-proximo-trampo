@@ -200,6 +200,8 @@ export interface Relato {
   vaga: { id: string; titulo: string; empresa: string } | null
   em: string
   no_perfil: boolean
+  /** Incorporado, com decisão pendente em Conflitos (spec 060): sai da caixa de entrada. */
+  em_conflito?: boolean
 }
 
 export const relatos = () => pedir<{ relatos: Relato[] }>("GET", "/api/perfil/relatos")

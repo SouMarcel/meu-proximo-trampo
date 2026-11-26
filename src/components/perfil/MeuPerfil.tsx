@@ -151,7 +151,7 @@ export default function MeuPerfil({
   const carregarAvisosRelatos = useCallback(() => {
     perfilApi
       .relatos()
-      .then((j) => setPendentesRelatos(j.relatos.filter((r) => !r.no_perfil).length))
+      .then((j) => setPendentesRelatos(j.relatos.filter((r) => !r.no_perfil && !r.em_conflito).length))
       .catch(() => setPendentesRelatos(0))
     perfilApi
       .obterRevisao("relatos")
