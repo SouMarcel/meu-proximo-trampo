@@ -23,11 +23,14 @@ export default function Relatos({
   onAviso,
   onErro,
   onPerfilMudou,
+  vazio = false,
 }: {
   so: boolean
   onAviso: (m: string) => void
   onErro: (e: unknown) => void
   onPerfilMudou?: () => void
+  /** Na aba Seus relatos: sem relatos, mostra o título e a dica em vez de sumir. */
+  vazio?: boolean
 }) {
   const { ativa, comecou } = useGeracao()
   const [lista, setLista] = useState<Relato[] | null>(null)
@@ -84,6 +87,24 @@ export default function Relatos({
 
   const marcar = (id: string, sim: boolean) => setMarcados((m) => (sim ? [...new Set([...m, id])] : m.filter((x) => x !== id)))
 
+  if (lista === null && vazio)
+    return (
+      <p className={`${DICA} flex items-center gap-2`}>
+        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando os relatos…
+      </p>
+    )
+  if (lista && lista.length === 0 && vazio)
+    return (
+      <section className="space-y-2">
+        <h4 className={`${H} flex items-center gap-2`}>
+          <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Seus relatos (0)
+        </h4>
+        <p className={DICA}>
+          Ainda não há relatos. Eles surgem quando você escreve um relato na candidatura assistida ou na análise de
+          reprovação; cada um vale como fato e entra na nota das vagas.
+        </p>
+      </section>
+    )
   if (!lista || lista.length === 0) return null
   const travado = so || Boolean(ocupado)
 

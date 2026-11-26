@@ -3,7 +3,7 @@
  * (currículos e LinkedIn) e de perguntas; nada é gravado no perfil.md sem ela conferir e confirmar.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { X, User, Loader2, AlertTriangle, Sparkles } from "lucide-react"
+import { X, User, Loader2, AlertTriangle, Sparkles, BookOpen } from "lucide-react"
 import * as perfilApi from "../../services/api/perfil"
 import type { AreaMaterial, EstadoPerfil, EtapaPerfil, FiltrosPropostos, Previa, PropostaDoCurriculo, CurriculosDaPasta, Pergunta, LinhaIdioma } from "../../services/api/perfil"
 import * as configApi from "../../services/api/config"
@@ -18,9 +18,9 @@ import InformacoesBasicas from "./InformacoesBasicas"
 import PerguntaIdiomas, { LINHA_VAZIA, respostaIdiomas } from "./PerguntaIdiomas"
 import { GerarCurriculo, SecaoCurriculos } from "../curriculo/Curriculos"
 
-type Tela = EtapaPerfil | "do-curriculo" | "analises" | "curriculos" | "basicas"
+type Tela = EtapaPerfil | "do-curriculo" | "analises" | "curriculos" | "basicas" | "relatos"
 /** Telas fora do passo a passo: não gravam a etapa do perfil e não mostram Recomeçar. */
-const FORA_DOS_PASSOS: Tela[] = ["do-curriculo", "analises", "curriculos", "basicas"]
+const FORA_DOS_PASSOS: Tela[] = ["do-curriculo", "analises", "curriculos", "basicas", "relatos"]
 const ehPasso = (t: Tela): t is EtapaPerfil => !FORA_DOS_PASSOS.includes(t)
 
 interface Props {
@@ -892,6 +892,9 @@ export default function MeuPerfil({
   } else if (tela === "basicas") {
     corpo = <InformacoesBasicas so={so} onAviso={onAviso} />
     pe = botaoIr(e.etapa && e.etapa !== "concluido" ? e.etapa : "concluido", "Voltar ao perfil")
+  } else if (tela === "relatos") {
+    corpo = <Relatos so={so} onAviso={onAviso} onErro={falhou} onPerfilMudou={onPerfilMudou} vazio />
+    pe = botaoIr(e.etapa && e.etapa !== "concluido" ? e.etapa : "concluido", "Voltar ao perfil")
   } else if (tela === "analises") {
     corpo = (
       <Analises
@@ -962,6 +965,21 @@ export default function MeuPerfil({
                 }`}
               >
                 Informações básicas
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setErro("")
+                  setTela("relatos")
+                }}
+                aria-current={tela === "relatos" ? "step" : undefined}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                  tela === "relatos"
+                    ? "bg-indigo-600 text-white"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                <BookOpen className="w-3 h-3" /> Seus relatos
               </button>
               {e.existe_perfil && (
                 <button
