@@ -9,6 +9,9 @@ item antes de gravar (a versão anterior do perfil fica guardada).
   decidir(origem, itens, discord.)     aceita ou recusa itens; escolhe nas discordâncias (perfil, relato ou correção)
   gravar(origem)                       aplica os aceitos no perfil.md, sem IA; recusa se o perfil mudou
   descartar(origem)                    joga a proposta fora (o perfil e os relatos não mudam)
+  incorporar(ids)                      revisa e aplica direto o que não diverge; guarda o que entrou (spec 060)
+  ultima_incorporacao()                o que a última incorporação trouxe, se ainda dá para desfazer
+  desfazer()                           volta o perfil ao texto anterior e desmarca os relatos; recusa se o perfil mudou
   levar_sem_ia(origem, ids)            sem IA: o caminho da spec 035 (a seção "Relatos" do perfil), com aviso
 
 A origem é "vaga:<id>" (as respostas "Levar ao meu perfil" da análise de reprovação, spec 049) ou "relatos" (Meu
@@ -745,6 +748,77 @@ def gravar(origem) -> dict:
                  perfil_sha=perfil_sha(_texto_perfil()))
         _gravar(d)
     return {"revisao": com_calculos(r), "anterior": r["anterior"], "aceitos": len(finais), "relatos": levados}
+
+
+def incorporar(ids, progresso=None) -> dict:
+    """Revisa os relatos e aplica direto o que não diverge do perfil; as discordâncias ficam abertas na revisão.
+    Guarda o que entrou (chave "incorporacao") para desfazer()."""
+    import primeiros_passos
+    import relatos
+    revisar(ORIGEM_RELATOS, ids, progresso)
+    with TRAVA:
+        d = _carregar()
+        r = d.get(ORIGEM_RELATOS)
+        if not isinstance(r, dict):
+            raise RevisaoErro("não há revisão para esta origem", 404)
+        diretos = [i for i in r.get("itens") or [] if i.get("aceito") and i.get("valido", True)]
+        abertas = [x for x in r.get("discordancias") or [] if not x.get("escolha")]
+        anterior = None
+        if diretos:
+            try:
+                _, anterior = primeiros_passos.gravar_perfil(aplicar(_texto_perfil(), diretos))
+            except primeiros_passos.PerfilErro as e:
+                raise RevisaoErro(str(e)) from None
+        r["itens"] = []
+        r["perfil_sha"] = perfil_sha(_texto_perfil())
+        if not abertas:
+            r["gravada_em"] = _agora()
+        em_aberto = {rid for x in abertas for rid in x.get("relatos") or []}
+        incorporados = [rid for rid in r.get("relatos") or [] if rid not in em_aberto]
+        relatos.marcar_no_perfil(incorporados)
+        nome = anterior.name if anterior else None
+        entrou = [{"tipo": i.get("tipo"), "secao": i.get("secao"), "cargo": i.get("cargo"), "novo": i.get("novo")}
+                  for i in diretos]
+        if diretos or incorporados:
+            d["incorporacao"] = {"anterior": nome, "sha_depois": perfil_sha(_texto_perfil()), "relatos": incorporados,
+                                 "entrou": entrou, "em": _agora()}
+        _gravar(d)
+    return {"entrou": entrou, "conflitos": len(abertas), "incorporados": incorporados, "anterior": nome}
+
+
+def ultima_incorporacao() -> dict | None:
+    """A última incorporação que ainda dá para desfazer (sem o sha do perfil)."""
+    x = _carregar().get("incorporacao")
+    if not isinstance(x, dict):
+        return None
+    return {k: v for k, v in x.items() if k != "sha_depois"}
+
+
+def desfazer() -> dict:
+    """Volta o perfil ao texto de antes da última incorporação e desmarca os relatos; recusa (409) se o perfil mudou."""
+    import primeiros_passos
+    import relatos
+    with TRAVA:
+        d = _carregar()
+        x = d.get("incorporacao")
+        if not isinstance(x, dict):
+            raise RevisaoErro("não há incorporação para desfazer", 404)
+        if perfil_sha(_texto_perfil()) != x.get("sha_depois"):
+            raise RevisaoErro("o perfil mudou depois da incorporação; desfazer agora apagaria essa mudança", 409)
+        if x.get("anterior"):
+            try:
+                texto = (primeiros_passos.ANTERIORES / x["anterior"]).read_text(encoding="utf-8")
+            except OSError:
+                raise RevisaoErro("a versão anterior do perfil não está mais guardada", 409) from None
+            try:
+                primeiros_passos.gravar_perfil(texto)
+            except primeiros_passos.PerfilErro as e:
+                raise RevisaoErro(str(e)) from None
+        relatos.desmarcar_no_perfil(x.get("relatos") or [])
+        d.pop(ORIGEM_RELATOS, None)
+        d.pop("incorporacao", None)
+        _gravar(d)
+    return {"ok": True}
 
 
 def levar_sem_ia(origem, ids=None) -> dict:
