@@ -830,6 +830,21 @@ def registrar_documento(vid: str, tipo: str, nome: str) -> dict:
     return doc
 
 
+def desligar_documento(vid: str, nome: str) -> None:
+    """Desliga da vaga uma carta ou um conjunto de respostas apagado (tira item de doc['documentos'])."""
+    with escrita() as con:
+        doc = _ler(con, vid)
+        if doc is None:
+            return
+        documentos = doc.get("documentos") or []
+        novo = [d for d in documentos if d.get("nome") != nome]
+        if len(novo) == len(documentos):
+            return
+        doc["documentos"] = novo
+        doc["atualizada_em"] = agora()
+        _gravar(con, vid, doc)
+
+
 def curriculos_base() -> dict:
     """O currículo da própria pessoa de cada idioma ({pt, en}: {nome, url} ou None), para o checklist das vagas."""
     try:
@@ -850,6 +865,15 @@ def _filtros():
         sys.path.insert(0, raiz)
     import filtros
     return filtros
+
+
+def _curriculo_ia():
+    """curriculo_ia.py, na raiz do projeto, carregado sob demanda."""
+    raiz = str(DASH.parent)
+    if raiz not in sys.path:
+        sys.path.insert(0, raiz)
+    import curriculo_ia
+    return curriculo_ia
 
 
 def empresas_excluir() -> list[str]:
@@ -984,7 +1008,7 @@ FICHA_CURTA = frozenset((
     "jk", "ids_relacionados", "url", "url_candidatura", "titulo", "empresa",
     "plataforma", "outras_plataformas", "origem", "area", "pais_vaga", "local", "modelo_trabalho", "remoto",
     "encontrada_em", "criada_em", "publicada_em", "triada_em", "etapa_em", "analisada_em", "atualizada_em", "busca_id",
-    "triagem", "etapa", "resultado", "aderencia", "salario", "anotacao", "curriculos", "documentos", "kit",
+    "triagem", "etapa", "resultado", "aderencia", "salario", "anotacao", "curriculos", "documentos", "documentos_apagados", "kit",
 ))
 ACAO_LIMPEZA = {"fora": "arquivar", "pendente": "arquivar", "dispensadas": "arquivar", "sem_resposta": "encerrar"}
 
@@ -1095,15 +1119,19 @@ def contar_arquivadas() -> int:
 
 def limpar(ids: list[str] | None = None, crit: dict | None = None, incluir_destacadas: bool = False,
            dia: str | None = None) -> dict:
-    """Aplica a limpeza (spec 054). Sem `ids` (terminal): todas as vagas dos grupos, menos as destacadas (a não ser
+    """Aplica a limpeza (spec 054, spec 061). Sem `ids` (terminal): todas as vagas dos grupos, menos as destacadas (a não ser
     com incluir_destacadas). Com `ids` (a página): só essas, se ainda estiverem num grupo (a pessoa as marcou, então
     a destacada entra). Arquiva com a ficha curta; o grupo sem_resposta passa a vaga para Encerrada com o resultado
-    "sem_resposta". Antes, uma cópia do banco; depois, o arquivo é compactado."""
+    "sem_resposta". Arquivar apaga os documentos gerados da vaga (curriculo_ia.apagar_lote); falhas entram em
+    nao_arquivadas e a vaga continua como estava. Antes, uma cópia do banco; depois, o arquivo é compactado."""
     crit = _criterios_limpeza(crit)
     pedidos = None if ids is None else {str(i) for i in ids}
     antes = tamanho_kb()
     copia = backup_diario("limpeza")
     arquivadas, encerradas, entraram = 0, 0, set()
+    nao_arquivadas = []
+    cia = _curriculo_ia()
+    dia_limpeza = dia or hoje()
     with escrita() as con:
         for vid, dados in con.execute("SELECT id, dados FROM vagas ORDER BY id").fetchall():
             if pedidos is not None and vid not in pedidos:
@@ -1115,9 +1143,30 @@ def limpar(ids: list[str] | None = None, crit: dict | None = None, incluir_desta
                 continue
             entraram.add(vid)
             if ACAO_LIMPEZA[achou[0]] == "encerrar":
-                doc.update(etapa="encerrada", resultado="sem_resposta", etapa_em=dia or hoje(), atualizada_em=agora())
+                doc.update(etapa="encerrada", resultado="sem_resposta", etapa_em=dia_limpeza, atualizada_em=agora())
                 encerradas += 1
             else:
+                docs = cia.documentos_da_vaga(doc)
+                if docs:
+                    try:
+                        apagados = cia.apagar_lote([d["nome"] for d in docs])
+                    except (cia.GeracaoErro, OSError) as e:
+                        nao_arquivadas.append({"id": vid, "motivo": str(e)})
+                        continue
+                    if apagados:
+                        contagem = {}
+                        for tipo in ("curriculo", "carta", "respostas"):
+                            n = sum(1 for a in apagados if (a.get("tipo") or "curriculo") == tipo)
+                            if n > 0:
+                                contagem[tipo] = n
+                        for a in apagados:
+                            t = a.get("tipo") or "curriculo"
+                            if t not in contagem:
+                                contagem[t] = sum(1 for x in apagados if (x.get("tipo") or "curriculo") == t)
+                        contagem["em"] = dia_limpeza
+                        doc["documentos_apagados"] = contagem
+                        doc.pop("curriculos", None)
+                        doc.pop("documentos", None)
                 doc = _ficha_curta(doc)
                 arquivadas += 1
             _gravar(con, vid, doc)
@@ -1127,6 +1176,7 @@ def limpar(ids: list[str] | None = None, crit: dict | None = None, incluir_desta
             con.execute("VACUUM")  # no modo WAL, o VACUUM passa pelo registro de escrita: esvaziá-lo de novo
             con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     return {"arquivadas": arquivadas, "encerradas": encerradas,
+            "nao_arquivadas": nao_arquivadas,
             "ignoradas": sorted(pedidos - entraram) if pedidos is not None else [],
             "antes_kb": antes, "depois_kb": tamanho_kb(), "backup": copia.name if copia else None}
 
@@ -1601,13 +1651,44 @@ def _cmd_limpar(args) -> int:
         if resto > 0:
             print(f"  … e mais {resto}")
     if p["destacadas"]:
-        print(f"\n⚑ {p['destacadas']} vaga(s) com currículo, carta ou anotação: só entram com --incluir-destacadas.")
+        print(f"\n⚑ {p['destacadas']} vaga(s) com currículo, carta ou anotação: só entram com --incluir-destacadas "
+              "(arquivar apaga os currículos, cartas e respostas delas).")
     if not args.gravar:
         print("\nNada foi gravado. Para gravar: python dash/banco.py limpar --gravar")
         return 0
     r = limpar(incluir_destacadas=args.incluir_destacadas)
     print(f"\nArquivadas: {r['arquivadas']}; encerradas sem resposta: {r['encerradas']}. "
           f"Banco: {r['antes_kb']} KB → {r['depois_kb']} KB. Cópia de antes: {r['backup']} (em {BACKUPS}).")
+    for na in r.get("nao_arquivadas") or []:
+        print(f"- {na['id']}: {na['motivo']}")
+    return 0
+
+
+def _cmd_documentos_orfaos(args) -> int:
+    cia = _curriculo_ia()
+    orf = cia.documentos_orfaos(listar_vagas())
+    if not orf:
+        print("Nenhum documento órfão.")
+        return 0
+    for d in orf:
+        criado = str(d.get("criado_em") or "")[:10]
+        print(f"- {d.get('tipo') or 'documento'} | {criado} | {d.get('titulo') or ''} | {d.get('empresa') or ''} | {d.get('motivo') or ''} | {d['nome']}")
+    contagem = {}
+    for d in orf:
+        t = d.get("tipo") or "documento"
+        contagem[t] = contagem.get(t, 0) + 1
+    resumo_tipos = ", ".join(f"{n} {t}" for t, n in contagem.items())
+    print(f"\nTotal: {len(orf)} documento(s) ({resumo_tipos}).")
+    if not args.gravar:
+        print("\nNada foi apagado. Para apagar: python dash/banco.py documentos-orfaos --gravar")
+        return 0
+    nomes = [d["nome"] for d in orf]
+    try:
+        apagados = cia.apagar_lote(nomes)
+    except (cia.GeracaoErro, OSError) as e:
+        print(str(e))
+        return 1
+    print(f"\nApagados: {len(apagados)} documento(s).")
     return 0
 
 
@@ -1665,11 +1746,13 @@ def main() -> int:
                     help="com --gravar, inclui as vagas com currículo, carta ou anotação")
     rp = sub.add_parser("repetidas", help="a mesma vaga em vários portais (mostra; junta com --gravar)")
     rp.add_argument("--gravar", action="store_true", help="junta cada grupo na vaga principal")
+    do = sub.add_parser("documentos-orfaos", help="documentos de vagas arquivadas ou removidas (mostra; apaga com --gravar)")
+    do.add_argument("--gravar", action="store_true", help="apaga os documentos órfãos encontrados")
     args = ap.parse_args()
     return {"quadro": _cmd_quadro, "pendentes": _cmd_pendentes, "analisar": _cmd_analisar,
             "vaga": _cmd_vaga, "anotar": _cmd_anotar, "kit": _cmd_kit, "lembretes": _cmd_lembretes,
             "integridade": _cmd_integridade, "regioes": _cmd_regioes, "limpar": _cmd_limpar,
-            "repetidas": _cmd_repetidas}[args.cmd](args)
+            "repetidas": _cmd_repetidas, "documentos-orfaos": _cmd_documentos_orfaos}[args.cmd](args)
 
 
 if __name__ == "__main__":

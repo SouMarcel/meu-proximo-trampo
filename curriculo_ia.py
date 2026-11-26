@@ -24,6 +24,7 @@ as páginas e a conferência; com veredito "bloquear", o currículo fica marcado
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -31,7 +32,7 @@ from datetime import datetime
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
-CURRICULOS = RAIZ / "curriculos"
+CURRICULOS = Path(os.environ.get("TRAMPO_CURRICULOS") or RAIZ / "curriculos")  # a pasta dos testes, quando definida
 SKILL = RAIZ / ".agents" / "skills" / "gerar-curriculo"
 GUIA = SKILL / "tecnicas.md"
 MODELO = SKILL / "modelo.json"
