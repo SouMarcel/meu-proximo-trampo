@@ -24,9 +24,10 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   bloqueio. Depois de um bloqueio, o LinkedIn fica 6 horas de fora (o InfoJobs e o Vagas.com, 24 horas),
   e a busca pergunta antes de seguir sem ele (`vagas.py buscar` sai com código 5; repita com
   `--confirmar-espera` só com o OK da pessoa). A pausa de cada portal que lê páginas é ajustável no
-  `.env` (`<PORTAL>_PAUSA`, de 3 a 60 s; exemplos em `.env.exemplo`); o Forçar verificar vai uma vaga por vez, com essa
-  pausa entre leituras (no LinkedIn, `LINKEDIN_FORCAR_PAUSA`, 30 a 600 s, padrão 60) e `FORCAR_PAUSA` (0 a 60 s, padrão 5)
-  entre pedidos à IA (spec 056); a nota só sai com a descrição no computador, e com busca rodando ou portal em espera a
+  `.env` (`<PORTAL>_PAUSA`, de 3 a 60 s; exemplos em `.env.exemplo`); o Forçar verificar lê uma vaga por vez, com essa
+  pausa entre leituras (no LinkedIn, `LINKEDIN_FORCAR_PAUSA`, 30 a 600 s, padrão 60), e manda até 3 vagas por pedido à IA,
+  com `FORCAR_PAUSA` (0 a 60 s, padrão 5) entre pedidos (specs 056 e 062); a análise automática depois da busca vai lote
+  a lote, com `ANALISE_PAUSA` (5 a 120 s, padrão 20), e no limite de uso (429) espera e diminui o lote (spec 062); a nota só sai com a descrição no computador, e com busca rodando ou portal em espera a
   vaga aguarda e volta sozinha (spec 057). O JobGether entra só pela API que o
   portal oferece a assistentes de IA; os termos dele proíbem acesso automatizado, e ele vem ligado por padrão por
   decisão registrada (constituição VI, "Termos contrários", spec 030); a página da vaga não é lida, e no bloqueio
@@ -106,6 +107,9 @@ o arquivo inteiro antes de começar a tarefa e siga-o.
 `.claude/skills/` tem uma **cópia gerada** dessas skills só para o Claude Code (ele não lê
 `.agents/`). Para mudar uma skill, edite em `.agents/skills/` e rode
 `python sincronizar_skills.py`; `python sincronizar_skills.py --conferir` acusa cópia diferente.
+As regras da nota (campos e critérios) ficam só em `.agents/skills/buscar-vagas/regras-da-nota.md`, que a análise
+automática manda à IA e a skill `buscar-vagas` aponta (spec 062); mudou esse arquivo, rode `PY calibrar_nota.py`
+(desenvolvimento: refaz a nota de uma amostra e compara, sem gravar; `--medir` mostra o tamanho do pedido).
 As skills `speckit-*` em `.claude/skills/` são ferramentas de desenvolvimento (Spec Kit), não da
 pessoa que procura emprego.
 

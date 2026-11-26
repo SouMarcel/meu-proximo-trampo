@@ -157,7 +157,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
 
 ## Phase 5: Fechamento
 
-- [ ] T013 [P] D9:
+- [X] T013 [P] D9:
   - `.env.exemplo`: `# ANALISE_PAUSA=20   # análise automática: segundos entre dois lotes à IA (5 a 120; padrão 20)`;
   - `AGENTS.md`: `ANALISE_PAUSA` junto das pausas e `PY calibrar_nota.py` (desenvolvimento) na seção de
     desenvolvimento;
