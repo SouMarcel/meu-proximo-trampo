@@ -1,11 +1,13 @@
 """IA com reserva (spec 032), sem rede: a principal cai e a próxima da sequência responde; quem respondeu, o aviso e a
 marca por thread; o motivo de cada IA quando todas falham; a situação gravada e o alerta; a sequência no painel."""
+import io
 import json
 import shutil
 import sys
 import tempfile
 import threading
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest import mock
 
@@ -13,6 +15,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(RAIZ), str(RAIZ / "dash")]
 import ia  # noqa: E402
 
+_POSTAR = ia._postar  # o original, que a Base troca por um falso
 GEMINI = {"provedor": "gemini", "modelo": "gemini-3.8-flash", "url_base": ""}
 OPENROUTER = {"provedor": "openrouter", "modelo": "openrouter/free", "url_base": ""}
 GROQ = {"provedor": "groq", "modelo": "", "url_base": ""}
@@ -305,6 +308,43 @@ class TestEmenda(Base):  # emenda de 2026-11-02: a reserva na análise do relat�
         self.respostas = {"googleapis": 503, "openrouter": 429, "groq": "da segunda"}
         ia.responder("pedido")
         self.assertEqual(ia.alerta()["em_uso"]["nome"], "Groq")
+
+
+class TestLimite(Base):  # recusa por limite de uso (429) e espera pedida
+    def test_espera_pedida(self):
+        self.assertEqual(ia._espera_pedida({"Retry-After": "30"}, ""), 30.0)
+        self.assertIsNone(ia._espera_pedida({"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}, ""))
+        self.assertEqual(ia._espera_pedida({}, '{"error": {"details": [{"retryDelay": "36s"}]}}'), 36.0)
+        self.assertIsNone(ia._espera_pedida(None, ""))
+
+    def _postar_com(self, codigo):
+        erro = urllib.error.HTTPError("https://x", codigo, "erro", {"Retry-After": "12"}, io.BytesIO(b"{}"))
+        with mock.patch("urllib.request.urlopen", side_effect=erro):
+            with self.assertRaises(ia.IAErro) as ctx:
+                _POSTAR("https://x", {}, {}, 5)
+        return ctx.exception
+
+    def test_postar_429_e_outros_codigos(self):
+        e = self._postar_com(429)
+        self.assertTrue(e.limite)
+        self.assertEqual(e.espera, 12.0)
+        self.assertFalse(self._postar_com(401).limite)
+
+    def test_responder_limite_na_principal_e_chave_na_reserva(self):
+        erros = [ia.IAErro("limite...", limite=True, espera=20), ia.IAErro("chave recusada...")]
+        with mock.patch.object(ia, "_responder_uma", side_effect=erros):
+            with self.assertRaises(ia.IAErro) as ctx:
+                ia.responder("pedido")
+        self.assertTrue(ctx.exception.limite)
+        self.assertEqual(ctx.exception.espera, 20)
+
+    def test_responder_sem_limite(self):
+        erros = [ia.IAErro("a"), ia.IAErro("b")]
+        with mock.patch.object(ia, "_responder_uma", side_effect=erros):
+            with self.assertRaises(ia.IAErro) as ctx:
+                ia.responder("pedido")
+        self.assertFalse(ctx.exception.limite)
+        self.assertIsNone(ctx.exception.espera)
 
 
 if __name__ == "__main__":

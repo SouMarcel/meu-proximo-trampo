@@ -17,7 +17,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
 
 ## Phase 1: Fundação (bloqueia US1, US2 e US3)
 
-- [ ] T001 [P] [D minor] D4 em `ia.py`:
+- [X] T001 [P] [D minor] D4 em `ia.py`: → copilot, GO na tentativa 1 (agy falhou ao iniciar)
   - `IAErro.__init__(self, mensagem, limite=False, espera=None)`, com `limite: bool = False` e
     `espera: float | None = None` como atributos (quem faz `IAErro("texto")` não muda);
   - função pura `_espera_pedida(cabecalhos, corpo) -> float | None`: `Retry-After` em segundos (número; data HTTP →
