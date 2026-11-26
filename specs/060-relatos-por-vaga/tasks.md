@@ -49,4 +49,4 @@ validadas com `npm run typecheck` e `npm run build` na worktree do front.
 
 - [X] T011 Documentação: `dash/API.md`, `README.md`, `AGENTS.md`, skills `analisar-perfil`, `gerar-curriculo`,
   `preparar-entrevista` + `python sincronizar_skills.py`.
-- [ ] T012 Merge na `marcel`, build do front, reiniciar o dashboard; medir o pedido da nota antes/depois.
+- [X] T012 Merge na `marcel`, build do front, reiniciar o dashboard; medir o pedido da nota antes/depois.
