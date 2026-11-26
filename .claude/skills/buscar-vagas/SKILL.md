@@ -286,7 +286,7 @@ Os pesos (função 40, requisitos 30, modelo 15, condições 15), as faixas (80 
 65 a 79 boa; 50 a 64 parcial; abaixo de 50 baixa, recolhida em Baixa aderência) e as regras
 de honestidade da análise estão em `regras-da-nota.md`, nesta pasta, a fonte única das regras
 da nota. Mudou as regras? Edite esse arquivo, rode `python sincronizar_skills.py` e
-`PY calibrar_nota.py` antes de levar a mudança adiante.
+`PY calibrar_nota.py --antes origin/master` antes de levar a mudança adiante.
 
 ## Se o portal bloquear
 

@@ -269,3 +269,53 @@ class TestMain(unittest.TestCase):
     @mock.patch("banco.listar_vagas", return_value=[])
     def test_main_sem_vagas_retorna_2(self, _mock_listar, _mock_disp):
         self.assertEqual(calibrar_nota.main([]), 2)
+
+    def test_base_antes(self):
+        v = criar_vaga("id1", aderencia=80, analise_modelo="outra-ia", fora_dos_criterios="x")
+        b = calibrar_nota.base_antes(v, {"id": "id1", "aderencia": 60}, "origin/master")
+        self.assertEqual((b["aderencia"], b["fora_dos_criterios"], b["analise_modelo"]),
+                         (60, None, "regras de origin/master"))
+        self.assertEqual(v["aderencia"], 80)  # a vaga original não muda
+
+    def test_montador_antigo_carrega_a_versao_do_git(self):
+        codigo = "SKILL = None\nREGRAS = None\ndef montar_pedido(lote):\n    return 'antigo:' + str(len(lote))\n"
+        with mock.patch.object(calibrar_nota, "_git_show", side_effect=lambda rc: codigo if rc.endswith(".py")
+                               else "texto"):
+            montar = calibrar_nota.montador_antigo("origin/master")
+        self.assertEqual(montar([1, 2]), "antigo:2")
+        with mock.patch.object(calibrar_nota, "_git_show", return_value=None):
+            self.assertIsNone(calibrar_nota.montador_antigo("nao-existe"))
+
+    @mock.patch.object(calibrar_nota, "CACHE")
+    @mock.patch("time.sleep")
+    @mock.patch("banco.obter")
+    @mock.patch("ia.sequencia")
+    @mock.patch("ia.responder")
+    @mock.patch("ia.disponivel")
+    def test_main_antes_compara_regras_na_mesma_ia(self, mock_disp, mock_resp, mock_seq, mock_obter, mock_sleep,
+                                                  mock_cache):
+        mock_cache.__truediv__.side_effect = lambda f: self.tmp / f
+        mock_cache.mkdir.return_value = None
+        mock_disp.return_value = True
+        mock_seq.return_value = [{"provedor": "claude_code", "modelo": ""}]
+        v1 = criar_vaga("id1", aderencia=90, analise_modelo="outra-ia")  # nota gravada bem diferente
+        mock_obter.side_effect = lambda vid: v1 if vid == "id1" else None
+        pedidos = []
+
+        def responder(pedido, **_):
+            pedidos.append(pedido)
+            nota = 60 if pedido.startswith("antigo") else 64
+            return json.dumps([{"id": "id1", "aderencia": nota}])
+        mock_resp.side_effect = responder
+        with mock.patch.object(calibrar_nota, "montador_antigo", return_value=lambda lote: "antigo"), \
+                mock.patch("analise.montar_pedido", return_value="novo\n## Perfil do usuário\n## Filtros da busca"
+                           " do usuário\n## Vagas\n"), \
+                mock.patch("banco.aplicar_analises") as mock_gravar:
+            codigo = calibrar_nota.main(["--ids", "id1", "--antes", "origin/master"])
+        self.assertEqual(codigo, 0)  # 60 -> 64: passa, embora a nota gravada (90) esteja longe
+        mock_gravar.assert_not_called()
+        self.assertEqual([p[:6] for p in pedidos], ["antigo", "novo\n#"])
+        relatorio = json.loads(next(self.tmp.glob("calibracao-*.json")).read_text(encoding="utf-8"))
+        linha = relatorio["vagas"][0]
+        self.assertEqual((linha["nota_antes"], linha["nota_depois"], linha["modelo_antes"]),
+                         (60, 64, "regras de origin/master"))

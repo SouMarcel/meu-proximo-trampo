@@ -108,8 +108,9 @@ o arquivo inteiro antes de começar a tarefa e siga-o.
 `.agents/`). Para mudar uma skill, edite em `.agents/skills/` e rode
 `python sincronizar_skills.py`; `python sincronizar_skills.py --conferir` acusa cópia diferente.
 As regras da nota (campos e critérios) ficam só em `.agents/skills/buscar-vagas/regras-da-nota.md`, que a análise
-automática manda à IA e a skill `buscar-vagas` aponta (spec 062); mudou esse arquivo, rode `PY calibrar_nota.py`
-(desenvolvimento: refaz a nota de uma amostra e compara, sem gravar; `--medir` mostra o tamanho do pedido).
+automática manda à IA e a skill `buscar-vagas` aponta (spec 062); mudou esse arquivo, rode
+`PY calibrar_nota.py --antes origin/master` (desenvolvimento: manda uma amostra à mesma IA com as regras antigas e com
+as novas e compara, sem gravar; `--medir` mostra o tamanho do pedido).
 As skills `speckit-*` em `.claude/skills/` são ferramentas de desenvolvimento (Spec Kit), não da
 pessoa que procura emprego.
 

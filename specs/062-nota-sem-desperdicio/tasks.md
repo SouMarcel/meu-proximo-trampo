@@ -93,7 +93,8 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
     0/1/2;
   - funções puras com testes em `tests/test_calibrar_nota.py`: `escolher_amostra` (faixas, áreas, preferência pelo
     modelo, sem provisórias nem sem descrição) e `resumir` (% dentro de 10, trocas de fora/dentro, passa).
-- [ ] T008 [US1] Calibrar com os dados da pessoa:
+- [X] T008 [US1] Calibrar com os dados da pessoa (26/11: PASSA pela comparação na mesma IA, research R7 revisto;
+  `--medir` 19.724 caracteres; o comando ganhou `--antes REF`):
   - commit na branch, merge na branch pessoal (pasta principal);
   - `PY calibrar_nota.py --medir` (sem IA);
   - **com o OK da pessoa** (gasta a cota da IA), `PY calibrar_nota.py`;

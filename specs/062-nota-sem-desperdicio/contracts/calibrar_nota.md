@@ -2,6 +2,7 @@
 
 ```text
 PY calibrar_nota.py --medir [ID]            tamanho do pedido de 1 vaga, por parte; sem IA
+PY calibrar_nota.py --antes origin/master   regras antigas x atuais, na mesma IA (o modo recomendado)
 PY calibrar_nota.py [--amostra 30] [--semente N]
 PY calibrar_nota.py --ids ID1,ID2,...       as mesmas vagas de uma calibração anterior
 ```
@@ -26,4 +27,8 @@ PY calibrar_nota.py --ids ID1,ID2,...       as mesmas vagas de uma calibração 
   (≥ 90% e nenhuma troca sem motivo; as trocas são listadas para a pessoa julgar o motivo).
 - Arquivo: `.cache/calibracao-AAAAMMDD-HHMM.json` (formato em [../data-model.md](../data-model.md)).
 - Código de saída: 0 PASSA, 1 NÃO PASSA, 2 sem IA ou sem vagas suficientes.
+- `--antes REF` (acrescentado na calibração de 26/11): cada lote vai à mesma IA duas vezes, com o `montar_pedido` e as
+  regras da versão REF do Git (`git show REF:dash/analise.py` e os arquivos da skill) e com os atuais; a base da
+  comparação é a resposta às regras antigas, não a nota gravada. Custa o dobro de pedidos e mede só as regras. Sem
+  `--antes`, o comando avisa quantas notas gravadas vieram de outra IA.
 - Sem IA ligada: sai com código 2 e a mensagem.

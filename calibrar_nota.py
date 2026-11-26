@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Comando de desenvolvimento para calibração da nota de aderência (spec 062).
 
-Refaz a nota de uma amostra de vagas já analisadas e compara com a nota gravada,
-sem gravar nada no banco.
+Refaz a nota de uma amostra de vagas já analisadas e compara, sem gravar nada no banco. Com `--antes REF`, cada lote
+vai à mesma IA com as regras da versão REF do Git (ex.: origin/master) e com as atuais, e a comparação é entre as duas
+respostas: só as regras mudam. Sem `--antes`, a comparação é com a nota gravada, que só vale quando a IA de hoje é a
+mesma que deu as notas (o comando avisa quando não é).
 
 Uso:
   python calibrar_nota.py --medir [ID]            tamanho do pedido de 1 vaga, por parte; sem IA
+  python calibrar_nota.py --antes origin/master   regras antigas x atuais, na mesma IA (o dobro de pedidos)
   python calibrar_nota.py [--amostra 30] [--semente N]
   python calibrar_nota.py --ids ID1,ID2,...       as mesmas vagas de uma calibração anterior
 """
@@ -14,8 +17,11 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import subprocess
 import sys
+import tempfile
 import time
+import types
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -196,8 +202,45 @@ def resumir(linhas: list[dict]) -> dict:
     }
 
 
+def _git_show(ref_caminho: str) -> str | None:
+    r = subprocess.run(["git", "show", ref_caminho], cwd=RAIZ, capture_output=True, text=True, encoding="utf-8")
+    return r.stdout if r.returncode == 0 else None
+
+
+def montador_antigo(ref: str):
+    """O montar_pedido da versão `ref` do Git, com as regras daquela versão (a skill e, se já existia, o
+    regras-da-nota.md). None se a versão não tem o dash/analise.py."""
+    codigo = _git_show(f"{ref}:dash/analise.py")
+    if codigo is None:
+        return None
+    pasta = Path(tempfile.mkdtemp(prefix="calibrar-"))
+    for nome in ("SKILL.md", "regras-da-nota.md"):
+        texto = _git_show(f"{ref}:.agents/skills/buscar-vagas/{nome}")
+        if texto is not None:
+            (pasta / nome).write_text(texto, encoding="utf-8")
+    modulo = types.ModuleType("analise_antes")
+    modulo.__file__ = str(RAIZ / "dash" / "analise.py")
+    exec(compile(codigo, f"{ref}:dash/analise.py", "exec"), modulo.__dict__)
+    modulo.SKILL = pasta / "SKILL.md"
+    if hasattr(modulo, "REGRAS"):
+        modulo.REGRAS = pasta / "regras-da-nota.md"
+    return modulo.montar_pedido
+
+
+def base_antes(vaga: dict, resposta: dict, ref: str) -> dict:
+    """A vaga com a nota e o fora dos critérios da resposta às regras antigas, para comparar com as atuais."""
+    return {**vaga, "aderencia": resposta.get("aderencia"), "fora_dos_criterios": resposta.get("fora_dos_criterios"),
+            "analise_modelo": f"regras de {ref}"}
+
+
 def main(argv: list[str] | None = None) -> int:
+    for fluxo in (sys.stdout, sys.stderr):  # o console do Windows não é UTF-8 por padrão (setas, acentos)
+        try:
+            fluxo.reconfigure(encoding="utf-8")
+        except AttributeError:
+            pass
     parser = argparse.ArgumentParser(description="Calibração da nota de aderência")
+    parser.add_argument("--antes", default=None, help="versão do Git com as regras antigas (ex.: origin/master)")
     parser.add_argument("--medir", nargs="?", const="", default=None, help="tamanho do pedido de 1 vaga, por parte; sem IA")
     parser.add_argument("--amostra", type=int, default=30, help="tamanho da amostra (padrão 30)")
     parser.add_argument("--semente", type=int, default=0, help="semente aleatória (padrão 0)")
@@ -276,6 +319,19 @@ def main(argv: list[str] | None = None) -> int:
         print("Nenhuma vaga para a amostra.", file=sys.stderr)
         return 2
 
+    montar_antigo = None
+    if args.antes:
+        montar_antigo = montador_antigo(args.antes)
+        if montar_antigo is None:
+            print(f"Não achei dash/analise.py na versão {args.antes} do Git.", file=sys.stderr)
+            return 2
+        print(f"Comparando as regras de {args.antes} com as atuais, na mesma IA ({len(amostra)} vagas).")
+    else:
+        outras = sum(1 for v in amostra if v.get("analise_modelo") != modelo_principal)
+        if outras:
+            print(f"Aviso: {outras} de {len(amostra)} notas gravadas vieram de outra IA; a diferença mistura a troca "
+                  "de IA com a das regras. Para medir só as regras: --antes origin/master.")
+
     lotes_vagas = analise.lotes(amostra, 3)
     recusas = 0
     parar_tudo = False
@@ -293,10 +349,21 @@ def main(argv: list[str] | None = None) -> int:
             primeiro_pedido = False
             tentativa_mesmo_lote = False
             try:
+                antes = {}
+                if montar_antigo is not None:
+                    texto_antes = ia.responder(montar_antigo(lote), tempo=analise.TEMPO_MAXIMO)
+                    antes = {str(x.get("id")): x for x in analise.lista_json(texto_antes) or []
+                             if isinstance(x, dict)}
                 pedido = analise.montar_pedido(lote)
                 texto = ia.responder(pedido, tempo=analise.TEMPO_MAXIMO)
                 recusas = 0
                 lista = analise.lista_json(texto)
+                if montar_antigo is not None:  # a base da comparação é a resposta às regras antigas
+                    sem_antes = [v for v in lote if str(v["id"]) not in antes]
+                    for v in sem_antes:
+                        resultados_por_id[v["id"]] = comparar(v, None, erro="a IA não devolveu esta vaga (regras "
+                                                                            "antigas)")
+                    lote = [base_antes(v, antes[str(v["id"])], args.antes) for v in lote if v not in sem_antes]
                 if lista is None:
                     for v in lote:
                         resultados_por_id[v["id"]] = comparar(
