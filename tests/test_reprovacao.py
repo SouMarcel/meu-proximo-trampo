@@ -108,19 +108,15 @@ class TestCurriculoAtual(Base):  # T006
         self.assertIn("ainda não há currículo", c["rotulo"])
         self.respostas_ia.append(cv_fiel())
         cia.gerar(None, TEC)  # currículo base gerado pela página
-        self.assertEqual(rep.curriculo_atual(self.vaga(), "br")["tipo"], "base_gerado")
-        anexo = self.tmp / "cv.txt"
-        anexo.write_text("Currículo da pessoa. " * 10, encoding="utf-8")
+        c = rep.curriculo_atual(self.vaga(), "br")
+        self.assertEqual((c["tipo"], c["rotulo"][:25]), ("base_gerado", "o currículo do perfil de "))
         with mock.patch.object(curriculo_base, "marcados", return_value={"pt": "anexos/cv.pdf", "en": None}), \
                 mock.patch.object(curriculo_base, "ler", return_value={"nome": "cv.pdf", "texto": "Currículo da pessoa. " * 10}):
-            c = rep.curriculo_atual(self.vaga(), "br")
-            self.assertEqual((c["tipo"], c["nome"]), ("base_arquivo", "cv.pdf"))
-            self.assertEqual(rep.curriculo_atual(self.vaga(), "us")["tipo"], "base_gerado")  # inglês: não marcado
-        with mock.patch.object(curriculo_base, "marcados", return_value={"pt": "anexos/cv.pdf"}), \
-                mock.patch.object(curriculo_base, "ler", return_value={"nome": "cv.pdf", "texto": "curto"}):
-            c = rep.curriculo_atual(self.vaga(), "br")
-            self.assertEqual(c["tipo"], "base_gerado")
-            self.assertTrue(any("arquivo do seu currículo" in a for a in c["avisos"]))
+            self.assertEqual(rep.curriculo_atual(self.vaga(), "br")["tipo"], "base_gerado")  # o geral do idioma vence o marcado
+            self.assertEqual(rep.curriculo_atual(self.vaga(), "us")["tipo"], "base_gerado")  # sem geral em inglês: o de outro idioma
+            with mock.patch.object(cia, "geral_atual", return_value=None):
+                c = rep.curriculo_atual(self.vaga(), "br")  # sem geral: o arquivo marcado é a reserva
+                self.assertEqual((c["tipo"], c["nome"]), ("base_arquivo", "cv.pdf"))
         self.gerar_cv_da_vaga()
         c = rep.curriculo_atual(self.vaga(), "br")
         self.assertEqual(c["tipo"], "vaga")

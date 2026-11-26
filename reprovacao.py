@@ -140,8 +140,9 @@ def _cv_gerado(meta: dict) -> str:
 
 
 def curriculo_atual(vaga: dict, formato: str = "br") -> dict:
-    """{tipo, nome, rotulo, texto, avisos}: o último currículo da vaga; sem ele, o arquivo marcado em Meu perfil no
-    idioma do formato; sem ele, o último currículo base gerado pela página; sem nenhum, o perfil."""
+    """{tipo, nome, rotulo, texto, avisos}: o último currículo da vaga; sem ele, o currículo geral (do perfil) do idioma
+    do formato; sem ele, o arquivo marcado em Meu perfil nesse idioma; sem ele, o último currículo do perfil de
+    qualquer idioma; sem nenhum, o perfil."""
     import curriculo
     cia, avisos = _cia(), []
     metas = cia.listar(vaga.get("id")) if vaga.get("id") else []
@@ -152,6 +153,12 @@ def curriculo_atual(vaga: dict, formato: str = "br") -> dict:
                     "rotulo": f"o currículo desta vaga de {_data_curta(metas[0].get('criado_em'))}".strip()}
         avisos.append("Não deu para ler o último currículo desta vaga; a análise usou o próximo.")
     idioma = (curriculo.FORMATOS.get(formato) or curriculo.FORMATOS["br"])["idioma"]
+    geral = cia.geral_atual(idioma)
+    if geral:
+        texto = _cv_gerado(geral)
+        if len(texto.strip()) >= MIN_TEXTO_CV:
+            return {"tipo": "base_gerado", "nome": geral["nome"], "texto": texto[:T_TEXTO_CV], "avisos": avisos,
+                    "rotulo": f"o currículo do perfil de {_data_curta(geral.get('criado_em'))}".strip()}
     try:
         import curriculo_base
         rel = curriculo_base.marcados().get(idioma)

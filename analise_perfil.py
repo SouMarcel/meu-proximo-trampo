@@ -346,14 +346,15 @@ def prontidao(perfil: str, cfg: dict | None = None) -> list[dict]:
                   ("; precisa de patrocínio de visto" if inter["precisa_sponsor"] else ""), "acao": "filtros_int"})
     cv_en = None
     try:
-        import curriculo_base
-        cv_en = curriculo_base.marcados(cfg).get("en")
+        import curriculo_ia
+        geral = curriculo_ia.geral_atual("en")
+        cv_en = geral["nome"] if geral else None
     except Exception:
         cv_en = None
     if not cv_en:
         try:
-            import curriculo_ia
-            cv_en = next((m["nome"] for m in curriculo_ia.listar(base=True) if (m.get("tecnicas") or {}).get("formato") in ("us", "eu")), None)
+            import curriculo_base
+            cv_en = curriculo_base.marcados(cfg).get("en")
         except Exception:
             cv_en = None
     itens.append({"item": "curriculo_en", "rotulo": "Currículo em inglês", "situacao": "pronto" if cv_en else "falta",
