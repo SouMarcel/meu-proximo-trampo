@@ -178,6 +178,16 @@ class TestAviso(Base):  # US2
         ia.responder("pedido")
         self.assertIsNone(ia.alerta())  # um sucesso da principal apaga o alerta
 
+    def test_sucesso_do_claude_code_apaga_a_falha_antiga(self):
+        cc = {"provedor": "claude_code", "modelo": "", "url_base": ""}
+        with mock.patch.object(ia, "_claude_code", side_effect=ia.IAErro("o Claude Code falhou")):
+            with self.assertRaises(ia.IAErro):
+                ia._responder_uma(cc, "pedido", None, 10, None)
+        self.assertFalse(ia.situacao()["claude_code|"]["ok"])
+        with mock.patch.object(ia, "_claude_code", return_value="ok"):
+            self.assertEqual(ia._responder_uma(cc, "pedido", None, 10, None), "ok")
+        self.assertTrue(ia.situacao()["claude_code|"]["ok"])
+
     def test_testar_grava_a_situacao(self):
         self.respostas = {"openrouter": "ok"}
         ok, _ = ia.testar(OPENROUTER)
