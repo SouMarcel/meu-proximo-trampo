@@ -107,7 +107,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
 
 **Independent Test**: IA falsa com 429 no 1º lote → todas as vagas com nota na mesma rodada, sem reiniciar.
 
-- [ ] T009 [US3] D5 em `dash/analise.py` (`Fila`), depende de T001 e T002:
+- [X] T009 [US3] D5 em `dash/analise.py` (`Fila`), depende de T001 e T002:
   - `_rodar` deixa de marcar todas as pendentes antes e chama `self._analisar_pendentes(pendentes, tentadas)`;
   - `_analisar_pendentes`: tamanhos `(10, 5, 3, 1)`, começando em 10; `lotes(faltam, tamanho)`;
     `_pausar_lote()` (`pausa_lote()` desde o último pedido da fila, não antes do primeiro) e `analisar_lote`;
@@ -118,7 +118,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
   - outro `IAErro` ou exceção: como hoje (`ultimo_erro`, as pendentes da rodada em `tentadas`);
   - entre dois lotes, com forçadas na fila → sai, e o laço de fora trata as forçadas primeiro;
   - `ultimo_erro = None` só depois de uma rodada sem erro.
-- [ ] T010 [US3] Testes em `tests/test_forcar.py`, classe nova `TestAnaliseLimite` (IA falsa que conta os pedidos e
+- [X] T010 [US3] Testes em `tests/test_forcar.py`, classe nova `TestAnaliseLimite` (IA falsa que conta os pedidos e
   os ids; `dormir` falso que registra):
   - 25 vagas → 3 pedidos (10, 10, 5), `dormir` com 20 entre eles e nunca antes do primeiro;
   - 429 no 1º pedido (sem `espera`) → `dormir(60)`, depois lotes de 5, e as 25 com nota na mesma rodada;

@@ -32,6 +32,9 @@ TEMPO_MAXIMO = 600
 LIMITE_PERFIL = 40000
 LIMITE_DESCRICAO = 12000
 LOTE = 10  # vagas por chamada (as APIs têm limite de tamanho)
+TAMANHOS = (10, 5, 3, 1)  # o lote da análise automática diminui a cada recusa por limite de uso (spec 062)
+MAX_RECUSAS = 3  # recusas seguidas por limite antes de a análise automática parar
+ESPERA_LIMITE, ESPERA_LIMITE_MAX = 60.0, 300.0  # segundos de espera depois de um 429 (sem / com teto)
 PAUSA_IA_PADRAO, PAUSA_IA_MAX = 5.0, 60.0  # FORCAR_PAUSA: segundos entre dois pedidos do Forçar verificar (spec 056)
 PAUSA_LOTE_PADRAO, PAUSA_LOTE_MIN, PAUSA_LOTE_MAX = 20.0, 5.0, 120.0  # ANALISE_PAUSA: entre dois lotes (spec 062)
 
@@ -358,6 +361,7 @@ class Fila:
         self.falhas: dict[str, dict] = {}  # id -> {motivo, em}: a última verificação forçada que não deu nota
         self.rodando = False
         self.ultimo_erro: dict | None = None
+        self._limite_ate = float("-inf")  # depois de MAX_RECUSAS, a análise automática espera até aqui (spec 062)
 
     def erro(self) -> dict | None:
         """Motivo e hora da última rodada que falhou (None depois de uma rodada boa)."""
@@ -569,21 +573,61 @@ class Fila:
             espera = set(self.verificando()) | set(self.aguardando())
             pendentes = [v for v in banco.listar_vagas()
                          if precisa(v) and v["id"] not in tentadas and v["id"] not in espera]
-            if not pendentes:
+            if not pendentes or self._relogio() < self._limite_ate:
                 continue
-            tentadas.update(v["id"] for v in pendentes)
-            self.rodando = True
-            try:
-                ok, problemas = analisar(pendentes)
-                self.ultimo_erro = None
-                print(f"[análise automática] {len(ok)} vaga(s) analisada(s)"
-                      + (f"; problemas: {'; '.join(problemas)}" if problemas else ""))
-            except Exception as e:  # nunca derruba o servidor; a vaga fica esperando a próxima tentativa
-                motivo = _ia().mascarar(str(e)) or "falha desconhecida"
-                self.ultimo_erro = {"motivo": motivo, "em": datetime.now().isoformat(timespec="minutes")}
-                print(f"[análise automática] não rodou: {motivo}", file=sys.stderr)
-            finally:
-                self.rodando = False
+            self._analisar_pendentes(pendentes, tentadas)
+
+    def _pausar_lote(self) -> None:
+        """ANALISE_PAUSA desde o último pedido da fila à IA (spec 062; não antes do primeiro)."""
+        self._esperar(self._ultima_ia, pausa_lote())
+        self._ultima_ia = self._relogio()
+
+    def _analisar_pendentes(self, pendentes: list[dict], tentadas: set[str]) -> None:
+        """A análise automática, lote a lote (spec 062): pausa entre lotes; no limite de uso (429), espera o tempo
+        pedido (ou ESPERA_LIMITE), diminui o lote (TAMANHOS) e tenta de novo; com MAX_RECUSAS seguidas, para e deixa
+        as vagas que faltam para a próxima análise. Só entram em `tentadas` as vagas de lotes que a IA respondeu (ou,
+        num erro que não é de limite, as da rodada, como antes). Uma vaga forçada no meio interrompe a rodada."""
+        modulo = _ia()
+        faltam, nivel, recusas, gravadas, problemas = list(pendentes), 0, 0, [], []
+        self.rodando = True
+        try:
+            while faltam:
+                with self._trava:
+                    if self._forcadas:  # a pessoa forçou uma vaga: ela passa na frente; as que faltam voltam depois
+                        return
+                lote = lotes(faltam, TAMANHOS[nivel])[0]
+                self._pausar_lote()
+                try:
+                    ok, erros = analisar_lote(lote)
+                except modulo.IAErro as e:
+                    if not getattr(e, "limite", False):
+                        raise
+                    recusas += 1
+                    if recusas >= MAX_RECUSAS:
+                        self._limite_ate = self._relogio() + ESPERA_LIMITE_MAX
+                        raise
+                    espera = min(e.espera or ESPERA_LIMITE, ESPERA_LIMITE_MAX)
+                    nivel = min(nivel + 1, len(TAMANHOS) - 1)
+                    print(f"[análise automática] limite de uso: lote de {TAMANHOS[nivel]} em {espera:g} s")
+                    self._dormir(espera)
+                    continue
+                recusas = 0
+                ids = {v["id"] for v in lote}
+                tentadas.update(ids)
+                faltam = [v for v in faltam if v["id"] not in ids]
+                gravadas += ok
+                problemas += erros
+            self.ultimo_erro = None
+            print(f"[análise automática] {len(gravadas)} vaga(s) analisada(s)"
+                  + (f"; problemas: {'; '.join(problemas)}" if problemas else ""))
+        except Exception as e:  # nunca derruba o servidor
+            if not getattr(e, "limite", False):
+                tentadas.update(v["id"] for v in faltam)  # erro que não é de limite: sem repetir nesta rodada
+            motivo = modulo.mascarar(str(e)) or "falha desconhecida"
+            self.ultimo_erro = {"motivo": motivo, "em": datetime.now().isoformat(timespec="minutes")}
+            print(f"[análise automática] não rodou: {motivo}", file=sys.stderr)
+        finally:
+            self.rodando = False
 
 
 FILA = Fila()
