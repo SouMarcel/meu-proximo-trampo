@@ -23,7 +23,7 @@ validadas com `npm run typecheck` e `npm run build` na worktree do front.
 
 - [X] T001 [D minor] [US1] `relatos.com_relatos(perfil, vaga)`, `pendentes`, `desmarcar_no_perfil`, `lista --vaga`
   (D1) em `relatos.py`. Testes em `tests/test_relatos.py`.
-- [X] T002 [D minor] [US1] Pedidos gerais só com o perfil (D2): `dash/analise.py`, `analise_perfil.py`, `conferir.py`,
+- [X] T002 [D minor] [US1] Pedidos gerais só com o perfil (D2) (coberta pela T001: `com_relatos` sem vaga devolve só o perfil; o COMPLETO, pela T003): `dash/analise.py`, `analise_perfil.py`, `conferir.py`,
   `curriculo_ia.py` (COMPLETO e `perfil_texto(vaga=None)`). Testes nos arquivos de teste de cada um.
 - [X] T003 [D minor] [US1] Pedidos da vaga (D3), parte 1: `curriculo_ia.gerar` e `candidatura_ia.py`. Testes em
   `tests/test_curriculo_ia.py` e `tests/test_candidatura_ia.py` (ou o teste que já cobre o kit).
