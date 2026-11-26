@@ -4,9 +4,10 @@
  * nome da pessoa: "Candidatar no…" só abre a página, "Enviar por e-mail" só abre o programa de e-mail.
  */
 import React, { useEffect, useState } from "react"
-import { X, Loader2, AlertTriangle, Copy, Bell } from "lucide-react"
+import { X, Loader2, AlertTriangle, Copy, Bell, Trash2 } from "lucide-react"
 import type { CamposEditaveis, ItemChecklist, Kit, Vaga } from "../../types/api"
 import * as kitApi from "../../services/api/kit"
+import * as curriculoApi from "../../services/api/curriculo"
 import type { Documento, DocumentoCarta, DocumentoRespostas, RespostasCarta } from "../../services/api/kit"
 import { mensagemDeErro, getApiBaseUrl } from "../../services/api"
 import { useFerramenta, textoCustoIA } from "../../contexto/Ferramenta"
@@ -392,7 +393,12 @@ export function KitDaVaga({
             <ul className="space-y-2">
               {docs.map((m) =>
                 m.tipo === "respostas" ? (
-                  <ItemRespostas key={m.nome} m={m} onAbrir={() => setDialogo({ modo: "ver", doc: m })} />
+                  <ItemRespostas
+                    key={m.nome}
+                    m={m}
+                    onAbrir={() => setDialogo({ modo: "ver", doc: m })}
+                    onMudou={() => kitApi.lista(vaga.id).then((j) => setDocs(j.documentos || [])).catch(() => undefined)}
+                  />
                 ) : (
                   <ItemCarta
                     key={m.nome}
@@ -444,6 +450,20 @@ function ItemCarta({
   const [enviando, setEnviando] = useState(false)
   const [gerandoPdf, setGerandoPdf] = useState(false)
   const [erro, setErro] = useState("")
+  const [apagando, setApagando] = useState(false)
+  const [erroApagar, setErroApagar] = useState("")
+  const apagar = async () => {
+    if (!window.confirm("Apagar esta carta de vez? O texto, o Word e o PDF somem da pasta.")) return
+    setApagando(true)
+    setErroApagar("")
+    try {
+      await curriculoApi.apagar(m.nome)
+      onMudou()
+    } catch (e) {
+      setErroApagar(mensagemDeErro(e, "Não deu para apagar a carta."))
+      setApagando(false)
+    }
+  }
   const c = m.conferencia || {}
   const pontos = c.pontos || []
   const pc = c.palavras_chave
@@ -513,8 +533,19 @@ function ItemCarta({
           <button type="button" onClick={onCopiar} className={BTN_MINI}>
             <Copy className="w-3 h-3" /> Copiar
           </button>
+          <button
+            type="button"
+            className={BTN_MINI}
+            title="Apagar esta carta"
+            aria-label="Apagar esta carta"
+            disabled={!podeGravar || apagando}
+            onClick={apagar}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </span>
       </div>
+      {erroApagar && <p role="alert" className="text-rose-700 dark:text-rose-300">{erroApagar}</p>}
       {c.veredito === "bloquear" && (
         <p className="text-rose-700 dark:text-rose-300">
           Não use {msg ? "esta mensagem" : "esta carta"} ainda:{" "}
@@ -596,19 +627,47 @@ function ItemCarta({
   )
 }
 
-function ItemRespostas({ m, onAbrir }: { m: DocumentoRespostas; onAbrir: () => void }) {
+function ItemRespostas({ m, onAbrir, onMudou }: { m: DocumentoRespostas; onAbrir: () => void; onMudou: () => void }) {
+  const { podeGravar } = useFerramenta()
+  const [apagando, setApagando] = useState(false)
+  const [erroApagar, setErroApagar] = useState("")
+  const apagar = async () => {
+    if (!window.confirm("Apagar estas respostas de vez? O arquivo e as respostas que você editou somem da pasta.")) return
+    setApagando(true)
+    setErroApagar("")
+    try {
+      await curriculoApi.apagar(m.nome)
+      onMudou()
+    } catch (e) {
+      setErroApagar(mensagemDeErro(e, "Não deu para apagar as respostas."))
+      setApagando(false)
+    }
+  }
   const minhas = (m.itens || []).filter((i) => i.sensivel && !i.da_pessoa).length
   return (
-    <li className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-xs flex items-center gap-2 flex-wrap">
-      <b>{diaMes(m.criado_em)} {horaDe(m.criado_em)}</b>
-      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800">Respostas</span>
-      <span className={DICA}>
-        {(m.itens || []).length} perguntas{minhas ? ` · ${minhas} para você responder` : ""}
-      </span>
-      <span className="flex gap-1.5 ml-auto">
-        {m.disponivel?.txt && <LinkArquivo arquivo={m.arquivos.txt} rotulo=".txt" />}
-        <button type="button" onClick={onAbrir} className={BTN_MINI}>Abrir</button>
-      </span>
+    <li className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <b>{diaMes(m.criado_em)} {horaDe(m.criado_em)}</b>
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800">Respostas</span>
+        <span className={DICA}>
+          {(m.itens || []).length} perguntas{minhas ? ` · ${minhas} para você responder` : ""}
+        </span>
+        <span className="flex gap-1.5 ml-auto">
+          {m.disponivel?.txt && <LinkArquivo arquivo={m.arquivos.txt} rotulo=".txt" />}
+          <button type="button" onClick={onAbrir} className={BTN_MINI}>Abrir</button>
+          <button
+            type="button"
+            className={BTN_MINI}
+            title="Apagar estas respostas"
+            aria-label="Apagar estas respostas"
+            disabled={!podeGravar || apagando}
+            onClick={apagar}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </span>
+      </div>
+      {erroApagar && <p role="alert" className="text-rose-700 dark:text-rose-300">{erroApagar}</p>}
     </li>
   )
 }
