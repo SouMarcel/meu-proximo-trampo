@@ -7,8 +7,8 @@ filtros e o texto das vagas, em lotes; a resposta é só o JSON das análises, q
 com o provedor e o modelo que deram a nota. Sem IA, as vagas ficam esperando até o usuário pedir a
 análise no chat. A última falha (já sem chave) fica em FILA.erro() para a página mostrar.
 
-O botão Forçar verificar da página (spec 021) chama FILA.forcar(id): a vaga entra numa fila, uma por vez (spec 056),
-na frente das automáticas. A nota só sai com a descrição no computador (spec 057): se faltar, ela é lida uma vez
+O botão Forçar verificar da página (spec 021) chama FILA.forcar(id): a vaga entra numa fila (spec 056), na frente das
+automáticas, e vai à IA em grupos de até 3 (spec 062). A nota só sai com a descrição no computador (spec 057): se faltar, ela é lida uma vez
 (vagas.descrever_uma); com uma busca rodando ou o portal em espera, a vaga fica aguardando e volta sozinha. A única
 nota sem a descrição é a provisória pelos dados do portal (JobGether: funções, experiência, contrato), marcada com
 nota_sem_descricao e nota_dados_portal e refeita quando a descrição chegar.
@@ -35,6 +35,7 @@ LOTE = 10  # vagas por chamada (as APIs têm limite de tamanho)
 TAMANHOS = (10, 5, 3, 1)  # o lote da análise automática diminui a cada recusa por limite de uso (spec 062)
 MAX_RECUSAS = 3  # recusas seguidas por limite antes de a análise automática parar
 ESPERA_LIMITE, ESPERA_LIMITE_MAX = 60.0, 300.0  # segundos de espera depois de um 429 (sem / com teto)
+TAMANHO_GRUPO = 3  # vagas forçadas por pedido à IA (spec 062)
 PAUSA_IA_PADRAO, PAUSA_IA_MAX = 5.0, 60.0  # FORCAR_PAUSA: segundos entre dois pedidos do Forçar verificar (spec 056)
 PAUSA_LOTE_PADRAO, PAUSA_LOTE_MIN, PAUSA_LOTE_MAX = 20.0, 5.0, 120.0  # ANALISE_PAUSA: entre dois lotes (spec 062)
 
@@ -340,8 +341,9 @@ def analisar_lote(lote: list[dict], sem_descricao=frozenset()) -> tuple[list[str
 
 class Fila:
     """Uma análise por vez. As vagas que a pessoa forçou (forcar) formam uma fila, na ordem dos cliques, e são
-    verificadas uma por vez antes das automáticas (spec 056): a descrição que falta, com a pausa do portal, e o
-    pedido à IA só com ela, com a pausa FORCAR_PAUSA entre dois pedidos. A nota só sai com a descrição (spec 057):
+    verificadas antes das automáticas (spec 056): a descrição que falta, uma por vez e com a pausa do portal, e o
+    pedido à IA com até TAMANHO_GRUPO vagas prontas (spec 062), com a pausa FORCAR_PAUSA entre dois pedidos. A
+    análise automática vai lote a lote, com ANALISE_PAUSA, e espera no limite de uso (spec 062). A nota só sai com a descrição (spec 057):
     com uma busca rodando ou o portal em espera, a vaga fica aguardando e volta sozinha para a fila. Pedidos que
     chegam durante uma análise disparam outra rodada no fim. `dormir` e `relogio` são trocados nos testes."""
 
@@ -353,7 +355,8 @@ class Fila:
         self._pedido = False
         self._thread: threading.Thread | None = None
         self._forcadas: list[str] = []  # a fila, na ordem dos cliques
-        self._atual: str | None = None  # a forçada em verificação agora
+        self._lendo: str | None = None  # a forçada que está sendo preparada agora (a descrição lida, se faltar)
+        self._grupo: list[str] = []  # as forçadas prontas, que vão juntas no próximo pedido à IA (spec 062)
         self._aguardando: dict[str, dict] = {}  # id -> {motivo: busca|espera, plataforma, portal?, ate?}
         self._dormir, self._relogio = dormir, relogio
         self._ultima_ia: float | None = None  # o último pedido da fila à IA
@@ -367,15 +370,18 @@ class Fila:
         """Motivo e hora da última rodada que falhou (None depois de uma rodada boa)."""
         return self.ultimo_erro
 
+    def _na_vez(self) -> list[str]:  # com a trava
+        return self._grupo + ([self._lendo] if self._lendo and self._lendo not in self._grupo else [])
+
     def verificando(self) -> list[str]:
-        """As vagas forçadas que ainda não voltaram da IA: a atual primeiro, depois a fila, na ordem."""
+        """As vagas forçadas que ainda não voltaram da IA: o grupo e a que está sendo lida, depois a fila, na ordem."""
         with self._trava:
-            return ([self._atual] if self._atual else []) + list(self._forcadas)
+            return self._na_vez() + list(self._forcadas)
 
     def agora(self) -> str | None:
-        """A vaga forçada em verificação agora (as outras de verificando() esperam a vez)."""
+        """A vaga forçada em verificação agora: a que está sendo lida ou, no pedido à IA, a primeira do grupo."""
         with self._trava:
-            return self._atual
+            return self._lendo or (self._grupo[0] if self._grupo else None)
 
     def aguardando(self) -> dict[str, dict]:
         """As vagas forçadas que esperam a busca terminar ou o portal sair da espera: {id: {motivo, portal?, ate?}}."""
@@ -405,7 +411,7 @@ class Fila:
         with self._trava:
             self.falhas.pop(vid, None)
             self._aguardando.pop(vid, None)
-            if vid != self._atual and vid not in self._forcadas:
+            if vid not in self._na_vez() and vid not in self._forcadas:
                 self._forcadas.append(vid)
             self._acordar()
         return True
@@ -451,7 +457,7 @@ class Fila:
                 voltam.append(vid)
         with self._trava:
             for vid in voltam:
-                if self._aguardando.pop(vid, None) is not None and vid not in self._forcadas and vid != self._atual:
+                if self._aguardando.pop(vid, None) is not None and vid not in self._forcadas and vid not in self._na_vez():
                     self._forcadas.append(vid)
             if voltam:
                 self._pedido = True
@@ -508,44 +514,95 @@ class Fila:
                               "em Colar a descrição")
         return None, False
 
-    def _verificar_uma(self, vid: str) -> None:
-        """Uma vaga forçada: a descrição que falta (_descricao) e a nota, com uma nova tentativa se a IA falhar; sem
-        nota, ela fica em falhas com o motivo. A falha desta vaga não afeta as outras da fila."""
+    def _preparar(self, vid: str) -> tuple[str, dict, bool] | None:
+        """Uma vaga forçada antes da IA: a descrição que falta (_descricao). Devolve (id, vaga, sem_descricao), ou None
+        quando ela já tem nota, foi removida, ficou aguardando ou falhou (com o motivo em falhas)."""
         try:
             v = banco.obter(vid)
             if v is None or (_tem_nota(v) and not v.get("nota_sem_descricao")):
-                return  # removida ou já com nota (a análise automática chegou antes)
+                return None  # removida ou já com nota (a análise automática chegou antes)
             sem_descricao = False
             if v.get("descricao_pendente") or not v.get("descricao"):
                 v, sem_descricao = self._descricao(vid, v)
                 if v is None:
-                    return
-            modulo = _ia()
-            for tentativa in (1, 2):  # nova tentativa: resposta sem JSON, provedor fora (spec 057)
-                self._pausar_ia()
-                try:
-                    ok, problemas = analisar([v], {vid} if sem_descricao else frozenset())
-                    break
-                except modulo.IAErro as e:
-                    if tentativa == 2:
-                        raise
-                    print(f"[forçar verificar] {vid}: a IA falhou ({modulo.mascarar(str(e))}); nova tentativa")
-            doc = banco.obter(vid)
-            if vid in ok and doc and doc.get("analise_status") == "feita":
-                print(f"[forçar verificar] {vid}: com nota")
-                return
-            motivo = next((p.split(": ", 1)[1] for p in problemas if p.startswith(vid + ":")), None)
-            self._falhar(vid, motivo or ("a IA não conseguiu dar nota pelos dados do portal" if sem_descricao
-                                         else "a IA não devolveu a nota desta vaga"))
+                    return None
+            return vid, v, sem_descricao
         except Exception as e:  # nunca derruba o servidor; o cartão volta a mostrar o botão com o motivo
             motivo = _ia().mascarar(str(e)) or "falha desconhecida"
             self._falhar(vid, motivo)
             print(f"[forçar verificar] {vid}: não rodou: {motivo}", file=sys.stderr)
+            return None
+
+    def _notar_grupo(self, prontos: list[tuple[str, dict, bool]]) -> None:
+        """Até TAMANHO_GRUPO vagas prontas num pedido à IA (spec 062), com FORCAR_PAUSA antes e uma nova tentativa se
+        a IA falhar; a vaga que parece mirar a IA vai num pedido só dela (lotes, spec 034). Sem nota, cada vaga fica
+        em falhas com o motivo; a falha de um pedido não afeta os outros."""
+        modulo = _ia()
+        sem = frozenset(vid for vid, _, s in prontos if s)
+        try:
+            for lote in lotes([v for _, v, _ in prontos], TAMANHO_GRUPO):
+                ids = [v["id"] for v in lote]
+                try:
+                    for tentativa in (1, 2):  # nova tentativa: resposta sem JSON, provedor fora (spec 057)
+                        self._pausar_ia()
+                        try:
+                            ok, problemas = analisar_lote(lote, sem & set(ids))
+                            break
+                        except modulo.IAErro as e:
+                            if tentativa == 2:
+                                raise
+                            print(f"[forçar verificar] {', '.join(ids)}: a IA falhou ({modulo.mascarar(str(e))}); "
+                                  "nova tentativa")
+                except Exception as e:  # nunca derruba o servidor; os cartões voltam a mostrar o botão
+                    motivo = modulo.mascarar(str(e)) or "falha desconhecida"
+                    for vid in ids:
+                        self._falhar(vid, motivo)
+                    print(f"[forçar verificar] {', '.join(ids)}: não rodou: {motivo}", file=sys.stderr)
+                    continue
+                for vid in ids:
+                    doc = banco.obter(vid)
+                    if vid in ok and doc and doc.get("analise_status") == "feita":
+                        print(f"[forçar verificar] {vid}: com nota")
+                        continue
+                    motivo = next((p.split(": ", 1)[1] for p in problemas if p.startswith(vid + ":")), None)
+                    self._falhar(vid, motivo or ("a IA não conseguiu dar nota pelos dados do portal" if vid in sem
+                                                 else "a IA não devolveu a nota desta vaga"))
+        finally:
+            with self._trava:
+                self._grupo = []
+
+    def _verificar_uma(self, vid: str) -> None:
+        """Uma vaga forçada sozinha: preparar e, pronta, a nota."""
+        pronta = self._preparar(vid)
+        with self._trava:
+            self._lendo = None
+            if pronta:
+                self._grupo = [vid]
+        if pronta:
+            self._notar_grupo([pronta])
+
+    def _verificar_forcadas(self) -> None:
+        """As forçadas, na ordem (spec 062): lê o que falta uma por vez e junta até TAMANHO_GRUPO prontas num pedido;
+        se a fila acaba antes, manda as que tem."""
+        while True:
+            prontos = []
+            while len(prontos) < TAMANHO_GRUPO and (vid := self._proxima_forcada()) is not None:
+                self.rodando = True
+                pronta = self._preparar(vid)
+                with self._trava:
+                    self._lendo = None
+                    if pronta:
+                        self._grupo.append(vid)
+                if pronta:
+                    prontos.append(pronta)
+            if not prontos:
+                return
+            self._notar_grupo(prontos)
 
     def _proxima_forcada(self) -> str | None:
         with self._trava:
-            self._atual = self._forcadas.pop(0) if self._forcadas else None
-            return self._atual
+            self._lendo = self._forcadas.pop(0) if self._forcadas else None
+            return self._lendo
 
     def _rodar(self):
         tentadas: set[str] = set()  # uma tentativa por vaga a cada rodada do servidor
@@ -562,14 +619,10 @@ class Fila:
                 self._evento.wait(self.INTERVALO_AGUARDANDO)
                 self._retomar_aguardando()
                 continue
-            while (vid := self._proxima_forcada()) is not None:  # as forçadas, uma por vez, na ordem
-                self.rodando = True
-                try:
-                    self._verificar_uma(vid)
-                finally:
-                    with self._trava:
-                        self._atual = None
-                    self.rodando = False
+            try:
+                self._verificar_forcadas()  # as forçadas, na ordem, em grupos de até TAMANHO_GRUPO (spec 062)
+            finally:
+                self.rodando = False
             espera = set(self.verificando()) | set(self.aguardando())
             pendentes = [v for v in banco.listar_vagas()
                          if precisa(v) and v["id"] not in tentadas and v["id"] not in espera]

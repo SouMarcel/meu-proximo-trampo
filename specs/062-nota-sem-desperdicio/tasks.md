@@ -135,7 +135,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
 
 **Independent Test**: forçar 6 vagas com descrição → 2 pedidos; 5 → 3 + 2.
 
-- [ ] T011 [US2] D6 em `dash/analise.py` (`Fila`), depende de T002:
+- [X] T011 [US2] D6 em `dash/analise.py` (`Fila`), depende de T002:
   - `_preparar(vid) -> (vaga, sem_descricao) | None`: a primeira metade de `_verificar_uma` (removida ou com nota → None;
     descrição que falta → `_descricao`);
   - `self._grupo: list[str]` e `self._lendo: str | None` no lugar de `self._atual`; `verificando()` = grupo + lendo +
@@ -145,7 +145,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
     com uma nova tentativa no `IAErro`; falha → `_falhar` em cada vaga do lote com o motivo; vaga não devolvida pela IA
     ou com problema → falha só dela (mesmos textos de hoje);
   - `_verificar_uma` some ou passa a ser `_notar_grupo([preparada])`.
-- [ ] T012 [US2] Testes em `tests/test_forcar.py`, classe nova `TestForcarGrupos`, e ajuste dos testes de
+- [X] T012 [US2] Testes em `tests/test_forcar.py`, classe nova `TestForcarGrupos`, e ajuste dos testes de
   `tests/test_forcar.py` e `tests/test_forcar_descricao.py` que contam um pedido por vaga ou leem `_atual`:
   - 6 vagas com descrição → 2 pedidos de 3; 5 → 3 + 2; 1 → 1 pedido, sem `dormir` extra;
   - vagas sem descrição: as leituras seguem uma por vez, com a pausa do portal, e o pedido sai depois da 3ª leitura;
