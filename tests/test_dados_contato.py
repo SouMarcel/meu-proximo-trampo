@@ -34,35 +34,33 @@ class Base(tca.Base):
 
 
 class TestProposta(Base):  # US1
-    def propor(self, texto=CURRICULO, marcados=None):
-        marcados = {"pt": str(self.tmp / "cv.pdf"), "en": None} if marcados is None else marcados
-        with mock.patch("curriculo_base.marcados", return_value=marcados), \
-                mock.patch("primeiros_passos.extrair", return_value={"texto": texto, "contato": None}):
+    def propor(self, texto=CURRICULO):
+        if texto is None:
+            caminho = self.tmp / "sem_perfil.md"
+        else:
+            caminho = self.tmp / "perfil.md"
+            caminho.write_text(texto, encoding="utf-8")
+        with mock.patch("primeiros_passos.caminho_perfil", return_value=caminho):
             return contato.propor()
 
-    def test_do_curriculo_sem_gravar(self):  # SC-003, SC-004
+    def test_do_perfil_sem_gravar(self):  # SC-003, SC-004
         p = self.propor()
         d = p["dados"]
-        self.assertEqual((d["nome"], d["sobrenome"]), ("Ana", "Exemplo Silva"))
+        self.assertNotIn("nome", d)  # o nome não sai da primeira linha do perfil
         self.assertEqual(d["email"], "ana.exemplo@email.com")
         self.assertEqual(d["telefone"], "(11) 90000-0000")
         self.assertIn("linkedin.com/in/ana-exemplo", d["linkedin"])
         self.assertEqual((d["cidade"], d["estado"], d["pais"]), ("São Paulo", "SP", "Brasil"))
-        self.assertEqual((p["fontes"]["email"], p["fontes"]["cidade"]), ("currículo", "filtros da busca"))
+        self.assertEqual((p["fontes"]["email"], p["fontes"]["cidade"]), ("perfil", "filtros da busca"))
         self.assertFalse(contato.arquivo().exists())  # propor não grava
-
-    def test_primeira_linha_que_nao_e_nome(self):
-        d = self.propor(texto="Currículo 2026\nAna Exemplo\nana@email.com")["dados"]
-        self.assertNotIn("nome", d)
-        self.assertEqual(d["email"], "ana@email.com")
 
     def test_memoria_completa_o_que_falta(self):
         memoria.lembrar({"rotulo": "First Name*", "tipo": "texto"}, "Bia")
         memoria.lembrar({"rotulo": "Phone*", "tipo": "texto"}, "+55 21 98888-7777")
-        p = self.propor(marcados={})  # sem currículo base
+        p = self.propor(texto=None)  # sem perfil
         self.assertEqual((p["dados"]["nome"], p["dados"]["telefone"]), ("Bia", "+55 21 98888-7777"))
         self.assertEqual(p["fontes"]["nome"], "respostas anteriores")
-        self.assertTrue(any("sem currículo base" in a for a in p["avisos"]))
+        self.assertTrue(any("sem perfil" in a for a in p["avisos"]))
 
     def test_dois_emails_avisa(self):
         p = self.propor(texto="Ana Exemplo\nana@a.com\nana@b.com")
@@ -208,7 +206,7 @@ class TestRotas(Base):  # US1
         status, j = self.pedir("PUT", "/api/candidatura/contato", {"dados": DADOS})
         self.assertEqual((status, j["contato"]["email"]), (200, "ana.exemplo@email.com"))
         self.assertEqual(self.pedir("GET", "/api/candidatura")[1]["contato"]["nome"], "Ana")
-        with mock.patch("curriculo_base.marcados", return_value={}):
+        with mock.patch("primeiros_passos.caminho_perfil", return_value=self.tmp / "sem_perfil.md"):
             status, j = self.pedir("POST", "/api/candidatura/contato/proposta", {})
         self.assertEqual(status, 200)
         self.assertEqual(j["dados"]["cidade"], "São Paulo")

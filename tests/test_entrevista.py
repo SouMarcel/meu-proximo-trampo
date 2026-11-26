@@ -168,6 +168,36 @@ class TestHistorias(ComDados):
 
 
 class TestSimulacao(ComDados):
+    def test_pedidos_levam_so_os_relatos_da_propria_vaga(self):  # spec 060
+        import relatos
+        vistas = []
+
+        def perfil_com_relatos(vaga=None):
+            vistas.append(vaga)
+            return relatos.com_relatos(PERFIL, vaga)
+        with mock.patch.object(relatos, "arquivo", return_value=self.tmp / "relatos.json"), \
+                mock.patch.object(en, "perfil_texto", side_effect=perfil_com_relatos):
+            relatos.adicionar("Pergunta A", "Relato exclusivo da vaga alfa", vaga={"id": "v1", "titulo": "A", "empresa": "X"})
+            relatos.adicionar("Pergunta B", "Relato exclusivo da vaga beta", vaga={"id": "v2", "titulo": "B", "empresa": "Y"})
+            pedidos = []
+
+            def resposta(pedido):
+                pedidos.append(pedido)
+                return json.dumps([{"texto": "Pergunta?", "tipo": "tecnica", "porque": "x", "titulo": "Hist", "situacao": "s"}])
+            self.com_ia(resposta)
+            en.perguntas_ia("v1")
+            en.historias_ia("v1")
+            self.com_ia(lambda pedido: pedidos.append(pedido) or json.dumps({"funcionou": "ok"}))
+            en.registrar_resposta("v1", "Pergunta", "Resposta", "pt")
+            self.assertEqual(len(pedidos), 3)
+            for p in pedidos:
+                self.assertIn("vaga alfa", p)
+                self.assertNotIn("vaga beta", p)
+            self.sem_ia()
+            vistas.clear()
+            en.preparacao("v1")
+            self.assertEqual([v["id"] for v in vistas], ["v1"])
+
     def test_retorno_conferido(self):  # SC-005
         pedidos = []
 
