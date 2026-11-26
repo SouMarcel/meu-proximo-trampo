@@ -84,7 +84,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
   - `## Como dar a nota`: um parágrafo que aponta para o arquivo;
   - conferir as outras menções a "Como dar a nota" nas skills (`grep -rn "Como dar a nota" .agents`);
   - `python sincronizar_skills.py` e `python sincronizar_skills.py --conferir`.
-- [ ] T007 [P] [D minor] [US1] D8: `calibrar_nota.py` na raiz, pelo [contrato](contracts/calibrar_nota.md):
+- [X] T007 [P] [D minor] [US1] → agy, GO na tentativa 1. D8: `calibrar_nota.py` na raiz, pelo [contrato](contracts/calibrar_nota.md):
   - `--medir [ID]`: partes e total, `.cache/pedido-<ID>.txt`, "SC-001: PASSA/NÃO PASSA" (≤ 20.000);
   - calibração: amostra (`--amostra 30`, `--semente`, `--ids`), pedidos de 3 com `analise.montar_pedido` e
     `ia.responder`, `ANALISE_PAUSA` (`analise.pausa_lote()`) entre pedidos, 429 com a espera de `IAErro.espera`
