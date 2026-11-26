@@ -141,20 +141,6 @@ def apagar() -> dict:
 
 # ---------------------------------------------------------------- proposta
 
-def _nome_da_linha(texto: str) -> tuple[str, str] | None:
-    """(nome, sobrenome) da primeira linha que parece um nome: de 2 a 6 palavras, só letras, até 60 caracteres."""
-    for linha in str(texto or "").splitlines()[:8]:
-        linha = " ".join(linha.split())
-        if not linha:
-            continue
-        palavras = linha.split()
-        if (len(linha) <= 60 and 2 <= len(palavras) <= 6 and "@" not in linha
-                and all(re.fullmatch(r"[^\W\d_]+(['’-][^\W\d_]+)*\.?", p) for p in palavras)):
-            return palavras[0], " ".join(palavras[1:])
-        return None  # a primeira linha com texto não é um nome: melhor deixar para a pessoa
-    return None
-
-
 def _do_perfil(dados: dict, fontes: dict, avisos: list) -> None:
     texto = ""
     try:
