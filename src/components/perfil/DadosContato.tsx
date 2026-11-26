@@ -1,7 +1,7 @@
 /**
  * Seus dados de contato (dash/API.md §3.11b; spec 033), em Meu perfil → Informações básicas (spec 036): nome, e-mail,
  * telefone, cidade e links que a candidatura assistida usa em qualquer formulário, sem IA, e que a carta usa no
- * cabeçalho. "Propor a partir do currículo" só preenche o formulário daqui; nada é gravado até a pessoa clicar em
+ * cabeçalho. "Propor a partir do perfil" só preenche o formulário daqui; nada é gravado até a pessoa clicar em
  * Salvar. Os dados ficam só neste computador e nunca vão para a IA.
  */
 import React, { useEffect, useState } from "react"
@@ -133,7 +133,7 @@ export default function DadosContato({
       )}
       <div className="flex gap-2 flex-wrap">
         <button type="button" className={BTN_MINI} disabled={!podeGravar || ocupado} onClick={propor}>
-          Propor a partir do currículo
+          Propor a partir do perfil
         </button>
         <button type="submit" className={BTN_MINI} disabled={!podeGravar || ocupado}>
           Salvar
