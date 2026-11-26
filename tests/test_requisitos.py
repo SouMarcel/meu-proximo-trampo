@@ -443,7 +443,7 @@ class TestLeitura(Base):
         self.assertNotIn("Empresa Fictícia", pedido)  # o resto do perfil não vai
         self.assertNotIn("consultas básicas", pedido)  # nem o nível
         self.assertIn("- `requisitos`:", pedido)  # as regras vêm de regras-da-nota.md (spec 062)
-        self.assertIn("Experiência não é habilidade", pedido)
+        self.assertIn("Tempo e idioma não são habilidade", pedido)
 
     def test_parar_e_continuar(self):  # SC-004
         leitura = R.Leitura()
@@ -545,7 +545,7 @@ class TestLeitura(Base):
 
     def test_analise_leva_o_item_da_skill(self):
         self.assertIn("- `requisitos`:", analise.montar_pedido([vaga("a")]))
-        self.assertIn('"requisitos"', analise.montar_pedido([vaga("a")]))
+        self.assertIn("`requisitos`", analise.montar_pedido([vaga("a")]))
 
 
 # ---------------------------------------------------------------- rotas e terminal (US4)

@@ -537,7 +537,7 @@ def resumo(vagas: list[dict], perfil: str, vagas_sel="aplicacoes", area="todas")
 def regras() -> str:
     """O item dos requisitos nas regras da nota (regras-da-nota.md, a mesma fonte da nota; spec 062)."""
     texto = analise.REGRAS.read_text(encoding="utf-8") if analise.REGRAS.exists() else ""
-    return analise._secao(texto, INICIO_REGRAS, FIM_REGRAS)
+    return analise._compactar(analise._secao(texto, INICIO_REGRAS, FIM_REGRAS))
 
 
 def montar_pedido(vagas: list[dict], nomes: list[str]) -> str:

@@ -165,25 +165,31 @@ REGRAS_MINIMAS = (  # só se o arquivo de regras faltar (instalação quebrada);
 _avisou_regras = False
 
 
-def regras() -> tuple[str, dict[str, str]]:
-    """O arquivo regras-da-nota.md (spec 062): (a parte fixa, das seções `## ` antes de `## Portais`; {plataforma:
-    texto} de cada `### ` em `## Portais`). Sem o arquivo, REGRAS_MINIMAS e nenhum portal, com um aviso no log."""
+CONDICIONAIS = ("Vaga do exterior", "Portais")  # seções de regras-da-nota.md que só vão quando o grupo precisa
+
+
+def _compactar(texto: str) -> str:
+    """Junta as linhas quebradas do arquivo (a IA não precisa da quebra em 120 colunas); listas e títulos ficam."""
+    return re.sub(r"(?<!\n)\n(?![\n#]| *- ) *", " ", texto.strip())
+
+
+def regras() -> tuple[str, dict[str, str], str]:
+    """O arquivo regras-da-nota.md (spec 062): (a parte fixa, com as seções `## ` que vão em todo pedido; {plataforma:
+    texto} de cada `### ` em `## Portais`; o texto de `## Vaga do exterior`). Sem o arquivo, REGRAS_MINIMAS, com um
+    aviso no log."""
     global _avisou_regras
     if not REGRAS.exists():
         if not _avisou_regras:
             print(f"[análise] falta {REGRAS}: a nota sai com as regras mínimas", file=sys.stderr)
             _avisou_regras = True
-        return REGRAS_MINIMAS, {}
-    texto = REGRAS.read_text(encoding="utf-8")
-    inicio = re.search(r"(?m)^## ", texto)
-    fim = re.search(r"(?m)^## Portais[ \t]*$", texto)
-    fixa = texto[inicio.start() if inicio else 0:fim.start() if fim else None].strip()
-    portais = {}
-    if fim:
-        partes = re.split(r"(?m)^### (.+?)[ \t]*$", texto[fim.end():])
-        for nome, corpo in zip(partes[1::2], partes[2::2]):
-            portais[nome.strip()] = " ".join(corpo.split())
-    return fixa, portais
+        return REGRAS_MINIMAS, {}, ""
+    partes = re.split(r"(?m)^## (.+?)[ \t]*$", REGRAS.read_text(encoding="utf-8"))
+    secoes = dict(zip((n.strip() for n in partes[1::2]), partes[2::2]))
+    fixa = NL.join(f"## {nome}{NL}{NL}{_compactar(corpo)}{NL}" for nome, corpo in secoes.items()
+                   if nome not in CONDICIONAIS).strip()
+    sub = re.split(r"(?m)^### (.+?)[ \t]*$", secoes.get("Portais", ""))
+    portais = {nome.strip(): " ".join(corpo.split()) for nome, corpo in zip(sub[1::2], sub[2::2])}
+    return fixa, portais, " ".join(secoes.get("Vaga do exterior", "").split())
 
 
 def _sem_contato(perfil: str) -> str:
@@ -204,11 +210,14 @@ def montar_pedido(vagas: list[dict], sem_descricao=frozenset()) -> str:
     texto_perfil = (_sem_contato(relatos.com_relatos(perfil.read_text(encoding="utf-8", errors="replace"))).strip()
                     [:LIMITE_PERFIL] if perfil.exists() else
                     "(o usuário ainda não tem perfil: avalie só pelo que a vaga pede e diga no resumo que falta o perfil)")
-    fixa, portais = regras()
+    fixa, portais, exterior = regras()
     crit = [f.resumo(efet), *f.criterios_extra(efet)]
     limpar = _integridade().limpar  # também nas vagas gravadas antes da spec 034
     presentes = {str(v.get("plataforma") or "") for v in vagas}
     sobre_portais = [f"Sobre o portal {nome}: {texto}" for nome, texto in portais.items() if nome in presentes]
+    areas = {v["id"]: _area(f, v, efet) for v in vagas}
+    if exterior and any(a.startswith("internacional") for a in areas.values()):
+        sobre_portais.insert(0, f"Vaga do exterior: {exterior}")
     blocos = []
     for v in vagas:
         blocos += [
@@ -216,7 +225,7 @@ def montar_pedido(vagas: list[dict], sem_descricao=frozenset()) -> str:
             f"Cargo: {v.get('titulo')}",
             f"Empresa: {v.get('empresa')}",
             f"Local: {v.get('local') or 'não informado'}",
-            f"Área: {_area(f, v, efet)}",
+            f"Área: {areas[v['id']]}",
             f"Plataforma: {v.get('plataforma')} · link: {v.get('url') or '-'}",
             f"Salário: {v.get('salario') or 'não informado'}",
             *([f"Tipo (do portal): {v['tipo']}"] if v.get("tipo") else []),

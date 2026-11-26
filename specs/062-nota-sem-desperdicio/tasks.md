@@ -46,7 +46,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
 
 **Independent Test**: `PY calibrar_nota.py --medir` ≤ 20.000 caracteres; calibração com "SC-002: PASSA".
 
-- [ ] T003 [US1] Escrever `.agents/skills/buscar-vagas/regras-da-nota.md` pelo
+- [X] T003 [US1] Escrever `.agents/skills/buscar-vagas/regras-da-nota.md` pelo
   [contrato](contracts/regras-da-nota.md):
   - fonte: a linha "Formato de cada objeto" e o caso `sem_dados` de `montar_pedido` (vão para `## Resposta`), o trecho
     de "Campos" do passo 3 do Fluxo A (`` `modelo_trabalho`: `` até `4. **Gravar.**`) e `## Como dar a nota` do
@@ -58,7 +58,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
     `Indeed` se houver regra só dele);
   - "Parte fixa (tudo menos `## Portais`): no máximo 5,5 mil caracteres";
   - sem nomes, números ou regras de uma pessoa (constituição II).
-- [ ] T004 [US1] [US4] D2 em `dash/analise.py`:
+- [X] T004 [US1] [US4] D2 em `dash/analise.py`:
   - `REGRAS = SKILL.parent / "regras-da-nota.md"`; `_regras() -> (fixa, portais: dict[str, str])`, lendo as seções
     por título `## ` e `### `;
   - `_sem_contato(texto)`: tira do título `## Contato` até o próximo `## ` (ou o fim); sem o título, devolve igual;
@@ -68,7 +68,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
   - nada de data, contagem ou id antes de `## Vagas`;
   - sem o arquivo: resumo mínimo embutido (formato do JSON e os pesos 40/30/15/15) e um aviso no log, uma vez;
   - remover `_secao` se não tiver mais uso, e o recorte da skill.
-- [ ] T005 [US1] [US4] Testes em `tests/test_nota_regras.py` (novo; perfil e vagas fictícios):
+- [X] T005 [US1] [US4] Testes em `tests/test_nota_regras.py` (novo; perfil e vagas fictícios):
   - o pedido traz o texto do arquivo de regras e não traz `## Contato`, o e-mail nem o telefone do perfil;
   - perfil sem `## Contato` vai inteiro;
   - dois pedidos (vagas de portais diferentes, uma delas com `sem_descricao`) têm o texto até `## Vagas` idêntico;
@@ -78,7 +78,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
   - arquivo ausente (caminho trocado no teste) → pedido com o resumo mínimo;
   - ajustar `tests/test_requisitos.py:547` (procurava `**Os requisitos**`) e conferir `tests/test_integridade.py:337`
     e `tests/test_relatos.py:123`.
-- [ ] T006 [P] [US1] D3 em `.agents/skills/buscar-vagas/SKILL.md`:
+- [X] T006 [P] [US1] D3 em `.agents/skills/buscar-vagas/SKILL.md`:
   - passo 3 do Fluxo A: fica só o que é do chat (exceções, vaga que mira a IA, outra área) e "os campos e a nota seguem
     `regras-da-nota.md`, nesta pasta: leia o arquivo inteiro antes de avaliar";
   - `## Como dar a nota`: um parágrafo que aponta para o arquivo;

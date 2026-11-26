@@ -24,8 +24,6 @@ abaixo são opcionais: omita o que o anúncio não diz. Sem descrição que perm
 - `fora_dos_criterios`: frase curta quando a vaga fura os filtros do usuário de um jeito que os campos acima não
   pegam (exige residência ou autorização de trabalho em outro país, ou morar em outra cidade). Nota baixa não é
   motivo: isso é a aderência.
-- Vaga do exterior (área internacional): compare com o trabalho no exterior do perfil e ponha em `alertas` o que
-  pode impedir ou pesar (autorização, patrocínio de visto, fuso, contratação, morar fora).
 - Candidatura; cada `frase` é o trecho do anúncio em que o campo se apoia (até 200 caracteres):
   - `autorizacao` {valor, frase}: `patrocina`, `nao_precisa` (o usuário já pode trabalhar onde a vaga aceita),
     `omisso` (fala de autorização sem dizer se patrocina) ou `nao_patrocina`;
@@ -75,6 +73,11 @@ Seja honesto:
 - Alertas: o que pode desqualificar ou pesar (modelo ou contrato fora do aceito, idioma acima do nível, fuso, vaga
   afirmativa, empresa não informada, anúncio genérico de agência).
 - Vaga claramente de outra área: nota baixa e resumo curto.
+
+## Vaga do exterior
+
+Na vaga da área internacional, compare com o trabalho no exterior do perfil e ponha em `alertas` o que pode impedir
+ou pesar: autorização de trabalho, patrocínio de visto, fuso, contratação, exigência de morar no país.
 
 ## Portais
 

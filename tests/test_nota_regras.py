@@ -59,11 +59,13 @@ class Base(unittest.TestCase):
 class TestArquivo(unittest.TestCase):
     def test_secoes_e_tamanho(self):  # FR-001, SC-001
         texto = analise.REGRAS.read_text(encoding="utf-8")
-        for titulo in ("## Resposta", "## Campos", "## Como dar a nota", "## Portais"):
+        for titulo in ("## Resposta", "## Campos", "## Como dar a nota", "## Vaga do exterior", "## Portais"):
             self.assertRegex(texto, rf"(?m)^{titulo}$")
-        fixa, portais = analise.regras()
+        fixa, portais, exterior = analise.regras()
         self.assertLessEqual(len(fixa), 5500)
         self.assertNotIn("## Portais", fixa)
+        self.assertNotIn("## Vaga do exterior", fixa)
+        self.assertIn("patrocínio de visto", exterior)
         self.assertIn("Gupy", portais)
         for proibido in ("no chat", "PY ", "vagas.py"):  # texto só para a IA
             self.assertNotIn(proibido, fixa)
@@ -109,6 +111,15 @@ class TestPedido(Base):
         self.assertNotIn("Sobre o portal Gupy:", sem_gupy)
         self.assertIn("Sobre o portal Gupy:", com_gupy)
         self.assertGreater(com_gupy.index("### id: a"), com_gupy.index("Sobre o portal Gupy:"))
+
+    def test_exterior_so_com_vaga_internacional(self):
+        nacional = analise.montar_pedido([vaga("a")])
+        self.assertNotIn("Vaga do exterior:", nacional)
+        with mock.patch.object(analise, "_area", side_effect=lambda f, v, e: "internacional (Portugal)"
+                               if v["id"] == "b" else "nacional"):
+            misto = analise.montar_pedido([vaga("a"), vaga("b")])
+        self.assertIn("Vaga do exterior:", misto)
+        self.assertEqual(self.fixo(nacional), self.fixo(misto))
 
     def test_nota_sem_descricao_depois_das_vagas(self):
         pedido = analise.montar_pedido([vaga("c", "JobGether", descricao="")], frozenset({"c"}))
