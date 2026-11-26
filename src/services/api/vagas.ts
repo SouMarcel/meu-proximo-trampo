@@ -22,7 +22,7 @@ export const ultimaBusca = () => pedir<{ busca: UltimaBusca | null }>("GET", "/a
 export const atualizar = (vagaId: string, campos: CamposEditaveis) =>
   pedir<{ vaga: Vaga }>("PATCH", `/api/vagas/${id(vagaId)}`, campos)
 
-export const remover = (vagaId: string) => pedir<{ ok: boolean }>("DELETE", `/api/vagas/${id(vagaId)}`)
+export const remover = (vagaId: string) => pedir<{ ok: boolean; documentos_apagados?: string[] }>("DELETE", `/api/vagas/${id(vagaId)}`)
 
 export const analisar = (vagaId: string) =>
   pedir<{ verificando: string[]; verificando_agora?: string | null }>("POST", `/api/vagas/${id(vagaId)}/analisar`, {})

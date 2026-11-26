@@ -20,6 +20,7 @@ import {
   Info,
 } from "lucide-react"
 import type { CamposEditaveis, Etapa, Resultado, Vaga, Versao } from "../../types/api"
+import { textoDocumentosDaVaga } from "../JobCard"
 import {
   getAderenciaBadge,
   getEtapaInfo,
@@ -635,6 +636,10 @@ export default function JobDetailModal({
                 >
                   <Mail className="w-3.5 h-3.5" /> Enviar por e-mail
                 </a>
+              )}
+
+              {estaNoQuadro && confirmarRemocao && textoDocumentosDaVaga(vaga) && (
+                <p className="text-xs text-rose-600 dark:text-rose-400 pt-2">{textoDocumentosDaVaga(vaga)}</p>
               )}
 
               <div className="flex items-center justify-between gap-3 pt-2 flex-wrap">

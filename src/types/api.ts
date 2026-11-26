@@ -544,6 +544,7 @@ export interface RespostaAplicarLimpeza {
   antes_kb: number
   depois_kb: number
   backup: string | null
+  nao_arquivadas?: { id: string; motivo: string }[]
 }
 
 /** Vagas repetidas (spec 058). */

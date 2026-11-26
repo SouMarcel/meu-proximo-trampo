@@ -354,18 +354,23 @@ function Pagina({
       return
     }
     try {
-      await naFila(id, () => vagasApi.remover(id))
+      const resp = await naFila(id, () => vagasApi.remover(id))
+      const apagados = resp?.documentos_apagados?.length ?? 0
       setVagas((prev) =>
         prev.flatMap((v) =>
           v.id !== id
             ? [v]
             : v.origem === "manual"
               ? []
-              : [{ ...v, triagem: "visitada" as const, etapa: null, resultado: null }],
+              : [{ ...v, triagem: "visitada" as const, etapa: null, resultado: null, curriculos: [], documentos: [] }],
         ),
       )
       if (detalheId === id) setDetalheId(null)
-      showToast("Vaga removida de Aplicações.")
+      showToast(
+        apagados > 0
+          ? `Vaga removida de Aplicações; ${apagados} documento(s) apagado(s).`
+          : "Vaga removida de Aplicações.",
+      )
     } catch (e) {
       avisarErro(e, "Não deu para remover a vaga.")
     }

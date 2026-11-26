@@ -321,8 +321,8 @@ export default function LimpezaAba({ podeSalvar }: { podeSalvar: boolean }) {
           <div className="space-y-3">
             {previa.destacadas > 0 && (
               <p className={AVISO_AMBAR}>
-                {previa.destacadas} vaga(s) com currículo, carta ou anotação vêm desmarcadas: marque só se quiser limpá-las
-                também.
+                {previa.destacadas} vaga(s) com currículo, carta ou anotação vêm desmarcadas:                 marque só se quiser limpá-las.
+                                Arquivar apaga os currículos, cartas e respostas delas.
               </p>
             )}
             {GRUPOS.filter((g) => previa.grupos[g].ligado && previa.grupos[g].vagas.length > 0).map((g) => {
@@ -377,7 +377,12 @@ export default function LimpezaAba({ podeSalvar }: { podeSalvar: boolean }) {
           <p className={`${DICA} !text-emerald-700 dark:!text-emerald-400`}>
             {resultado.arquivadas} arquivada(s), {resultado.encerradas} encerrada(s) sem resposta. Banco:{" "}
             {resultado.antes_kb} KB → {resultado.depois_kb} KB. Cópia de antes: {resultado.backup}.
-          </p>
+                        {resultado.nao_arquivadas && resultado.nao_arquivadas.length > 0 && (
+                          <>
+                            <br />
+                            {resultado.nao_arquivadas.length} vaga(s) não arquivada(s): {resultado.nao_arquivadas[0].motivo}
+                          </>
+                        )}          </p>
         )}
       </div>
 

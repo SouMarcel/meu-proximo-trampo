@@ -41,6 +41,20 @@ interface JobCardProps {
   onAviso?: (m: string, t?: "info" | "erro") => void
 }
 
+export function textoDocumentosDaVaga(v: Vaga): string {
+  const docs = v.documentos ?? []
+  const partes: string[] = []
+  const add = (n: number, singular: string, plural: string) => {
+    if (n > 0) partes.push(`${n} ${n === 1 ? singular : plural}`)
+  }
+  add(v.curriculos?.length ?? 0, "currículo", "currículos")
+  add(docs.filter((d) => d.tipo === "carta").length, "carta", "cartas")
+  add(docs.filter((d) => d.tipo === "respostas").length, "resposta", "respostas")
+  if (partes.length === 0) return ""
+  const lista = partes.length > 1 ? `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}` : partes[0]
+  return `Também serão apagados: ${lista} gerados para esta vaga.`
+}
+
 export default function JobCard({
   vaga,
   onSelect,
@@ -248,6 +262,9 @@ export default function JobCard({
           className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl bg-slate-900/75 dark:bg-slate-950/80 backdrop-blur-[2px] p-4 cursor-default"
         >
           <span className="text-xs font-medium text-white">Remover de Aplicações?</span>
+          {textoDocumentosDaVaga(vaga) && (
+            <span className="text-[11px] text-center text-slate-200">{textoDocumentosDaVaga(vaga)}</span>
+          )}
           <button
             autoFocus
             disabled={!podeGravar}
