@@ -378,9 +378,12 @@ class TestIncorporar(BaseRevisao):  # spec 060 (T005)
         self.assertFalse(self.marcado(self.tab["id"]))
         r = rv.obter("relatos")
         self.assertEqual((r["itens"], len(r["discordancias"]), r["situacao"]), ([], 1, "pronta"))
+        pagina = {x["id"]: x["em_conflito"] for x in rv.relatos_para_pagina(relatos.listar())}
+        self.assertEqual((pagina[self.tab["id"]], pagina[self.cte["id"]]), (True, False))  # sai da caixa de entrada
         rv.decidir("relatos", discordancias={"d1": {"escolha": "relato"}})
         rv.gravar("relatos")
         self.assertTrue(self.marcado(self.tab["id"]))
+        self.assertEqual(rv.relatos_em_conflito(), set())
 
     def test_desfazer(self):
         relatos.desmarcar_no_perfil([self.tab["id"]])

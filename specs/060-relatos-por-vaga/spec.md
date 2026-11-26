@@ -29,6 +29,10 @@ A emenda 5.6.0 da constituição (princípio IV) registra a regra nova dos relat
 
 ### Session 2026-11-26
 
+- Q: (teste do usuário) O relato com divergência continua na caixa de entrada? → A: Não. Clicar em Incorporar já é
+  a decisão; ele vai para os incorporados, marcado "esperando a sua decisão em Conflitos", e a pendência fica só em
+  Conflitos.
+
 - Q: O que vai para a IA? → A: Nos pedidos gerais (nota das vagas, análises do perfil, currículos sem vaga,
   conferência sem vaga), só o perfil.md. Nos pedidos de uma vaga (currículo da vaga, carta, respostas, candidatura
   assistida, entrevista, análise de reprovação), o perfil.md mais os relatos daquela vaga que ainda não entraram no
@@ -82,7 +86,7 @@ Em Meu perfil → Seus relatos, a pessoa marca um ou mais relatos e clica em Inc
 entra no perfil (como hoje na revisão da spec 050). O que não contradiz o perfil entra direto: a página mostra
 "Entrou no perfil: …" com Desfazer. O que contradiz o perfil ou não tem lugar claro vai para a aba Conflitos, onde a
 pessoa escolhe (manter o perfil, usar o relato ou escrever a correção) e grava. Cada relato sai da caixa de entrada
-quando todos os fatos dele foram resolvidos.
+quando ela clica em Incorporar; o que diverge fica só em Conflitos até ela escolher.
 
 **Why this priority**: é como os relatos chegam à base única; sem isso, eles ficariam presos à vaga para sempre.
 
@@ -95,7 +99,8 @@ incorporar os dois: o primeiro entra no perfil e sai da caixa; o segundo aparece
    perfil.md, a versão anterior fica guardada, a página mostra o que entrou e o relato vai para a subseção dos
    incorporados.
 2. **Given** um relato que contradiz o perfil, **When** a pessoa incorpora, **Then** a divergência aparece em
-   Conflitos (ícone de aviso na aba) e o relato continua na caixa de entrada até ela decidir.
+   Conflitos (ícone de aviso na aba) e o relato sai da caixa de entrada: clicar em Incorporar já é a decisão dela;
+   ele aparece entre os incorporados com "esperando a sua decisão em Conflitos" até ela escolher lá.
 3. **Given** a pessoa decide o conflito em Conflitos e grava, **When** a gravação termina, **Then** o perfil muda
    como ela escolheu, o aviso some e o relato vai para os incorporados.
 4. **Given** a pessoa clica em Desfazer logo depois de incorporar, **When** a ação termina, **Then** o perfil volta à
@@ -187,7 +192,8 @@ Currículo; incorporar um relato e ver o aviso na aba.
   entrada, se o perfil não tiver mudado desde então.
 - **FR-007**: Sem IA, Incorporar MUST não mudar o perfil e dizer que é preciso uma IA; o caminho que colava o relato
   cru na seção "Relatos" do perfil deixa de existir na página.
-- **FR-008**: A aba Seus relatos MUST mostrar os pendentes no topo e os incorporados numa subseção fechada por padrão;
+- **FR-008**: A aba Seus relatos MUST mostrar os pendentes no topo e os incorporados numa subseção fechada por padrão
+  (inclusive os com divergência esperando decisão em Conflitos, com essa marca; ela é calculada pela proposta aberta);
   a aba MUST ter um ícone de aviso quando há pendentes, e a aba Conflitos quando há divergência de relato aberta.
 - **FR-009**: A aba "Currículo base" MUST se chamar "Extração perfil - currículo" e não ter os campos de currículo em
   português e em inglês.

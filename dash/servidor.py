@@ -507,10 +507,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._corpo()
                 with TRAVA_PERFIL:  # grava o perfil.md (a versão anterior fica guardada)
                     r = relatos.levar_ao_perfil(rid)
-                return self._json(200, {"relatos": relatos.listar(), "anterior": r["anterior"]})
+                return self._json(200, {"relatos": self._relatos_para_pagina(), "anterior": r["anterior"]})
             else:
                 return self._erro(405, "método não permitido")
-            return self._json(200, {"relatos": relatos.listar()})
+            return self._json(200, {"relatos": self._relatos_para_pagina()})
         with TRAVA_PERFIL:
             estado = pp.carregar()
             if metodo == "POST" and caminho == "/api/perfil/material":
@@ -683,6 +683,13 @@ class Handler(BaseHTTPRequestHandler):
             self._corpo()
             return self._json(202, {**gerador.GERACAO.iniciar_reescrita(vaga_id), "pode_alterar": True})
         return self._erro(404, "rota não encontrada")
+
+    def _relatos_para_pagina(self) -> list[dict]:
+        """Os relatos para a página, com em_conflito (spec 060: incorporado com decisão pendente em Conflitos)."""
+        sys.path.insert(0, str(banco.DASH.parent))
+        import relatos
+        import revisao_perfil as rv
+        return rv.relatos_para_pagina(relatos.listar())
 
     def _revisao(self, metodo: str, caminho: str):
         """Revisão do perfil ao levar relatos (spec 050): a IA propõe, a pessoa decide item a item, e só então o
@@ -1208,7 +1215,7 @@ class Handler(BaseHTTPRequestHandler):
             if not self._local():
                 return self._erro(403, SO_LOCAL_PERFIL)
             import relatos
-            return self._json(200, {"relatos": relatos.listar()})
+            return self._json(200, {"relatos": self._relatos_para_pagina()})
         if caminho == "/api/perfil/revisao":  # a proposta da revisão do perfil (spec 050): só deste computador
             if not self._local():
                 return self._erro(403, SO_LOCAL_PERFIL)

@@ -786,6 +786,22 @@ def incorporar(ids, progresso=None) -> dict:
     return {"entrou": entrou, "conflitos": len(abertas), "incorporados": incorporados, "anterior": nome}
 
 
+def relatos_em_conflito() -> set[str]:
+    """Os relatos que a pessoa mandou incorporar e que esperam uma decisão em Conflitos: os das discordâncias sem
+    escolha da proposta "relatos" ainda não gravada (spec 060). Calculado, não guardado: Desfazer e descartar acertam
+    sozinhos."""
+    r = _carregar().get(ORIGEM_RELATOS)
+    if not isinstance(r, dict) or r.get("gravada_em"):
+        return set()
+    return {rid for d in r.get("discordancias") or [] if not d.get("escolha") for rid in d.get("relatos") or []}
+
+
+def relatos_para_pagina(itens: list[dict]) -> list[dict]:
+    """Os relatos com a marca em_conflito (para a aba Seus relatos tirá-los da caixa de entrada)."""
+    conflito = relatos_em_conflito()
+    return [{**x, "em_conflito": (x.get("id") in conflito) and not x.get("no_perfil")} for x in itens]
+
+
 def ultima_incorporacao() -> dict | None:
     """A última incorporação que ainda dá para desfazer (sem o sha do perfil)."""
     x = _carregar().get("incorporacao")
