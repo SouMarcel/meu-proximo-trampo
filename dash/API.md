@@ -160,7 +160,8 @@ Rótulos desses códigos: kit.py:14-24 e `src/utils/rotulos.ts`.
 
 - `checklist`: `[{item, rotulo, origem: vaga|analise|anuncio|pessoa, estado: a_fazer|pronto|nao_se_aplica,
   frase, acao: curriculo|carta|respostas|candidatar|null, extra?, base?: {nome, url, idioma}, falta_base?: "pt"|"en"}]`.
-  `base.url` é `/arquivos/curriculo-base/<pt|en>` (o currículo da própria pessoa). kit.py:156-198.
+  `base.url` é `/arquivos/curriculo-base/<pt|en>`: o currículo geral (do perfil) mais recente do idioma, sem contar o
+  Completo quando há outro (spec 060); sem nenhum, o arquivo marcado antes em Meu perfil. kit.py:156-198.
 - `lembretes_pendentes`: no máximo um, `[{tipo: follow1|follow2|agradecimento, rotulo, desde: AAAA-MM-DD, base}]`.
   Follow-up aos 7 e 14 dias em Aplicação Enviada; agradecimento no dia seguinte à entrevista. kit.py:210-234.
 
@@ -548,9 +549,9 @@ Erros: 400 com a mensagem (ex.: conflito sem escolha no texto, arquivo .doc, IA 
 | `GET /api/perfil/relatos` [local] | — | `{relatos: [{id, pergunta, relato, resposta, vaga: {id, titulo, empresa}\|null, em, no_perfil}]}`: os relatos da pessoa (spec 035), mais recentes primeiro; valem como fato junto do perfil |
 | `PUT /api/perfil/relatos/{id}` [local] | `{relato}` | `{relatos}`; 400 relato vazio ou inexistente |
 | `DELETE /api/perfil/relatos/{id}` [local] | — | `{relatos}`; 400 inexistente |
-| `POST /api/perfil/relatos/{id}/perfil` [local] | — | `{relatos, anterior}`: acrescenta o relato cru à seção "Relatos" do perfil.md (a versão anterior fica em `anexos/perfis-anteriores/`) e o marca `no_perfil`; 400 sem perfil. É o caminho sem IA; com IA, a página usa a revisão do perfil (`/api/perfil/revisao`, §3.8, spec 050) |
+| `POST /api/perfil/relatos/{id}/perfil` [local] | — | `{relatos, anterior}`: acrescenta o relato cru à seção "Relatos" do perfil.md (a versão anterior fica em `anexos/perfis-anteriores/`) e o marca `no_perfil`; 400 sem perfil. Rota antiga: a página não usa mais (spec 060: os relatos entram pelo Incorporar, `/api/perfil/revisao`) |
 | `POST /api/perfil/do-curriculo/confirmar` [local] | `{arquivo*, idioma, manter_perfil: bool, marcar_base: bool, perfil (markdown, se não mantém), edicao?: {cargos, cargos_en, cidade, estado, modelos: string[]}}` | `{perfil, anterior, filtros, curriculo_base}` |
-| `PUT /api/curriculo-base` [local] | `{idioma*: "pt"\|"en", arquivo: caminho\|null}` | `{curriculo_base: {pt, en}}` — marca/desmarca "Seu currículo" |
+| `PUT /api/curriculo-base` [local] | `{idioma*: "pt"\|"en", arquivo: caminho\|null}` | `{curriculo_base: {pt, en}}` — marca/desmarca "Seu currículo". Rota antiga: a página não usa mais (spec 060); o marcado só vale como reserva sem currículo geral |
 
 ### 3.7 Análises do perfil (Meu perfil → Análises; todas só no clique)
 
@@ -611,7 +612,8 @@ geração rodando).
 alvo: {vaga_id, titulo, empresa} | {base: true}, tecnicas?, inicio, fim, nome, mensagem, veredito: ok|conferir|bloquear,
 pronto: bool, pode_tentar: bool, etapa_texto, pode_alterar}` (gerador.py:64-69, 104-106).
 
-**`GET /api/curriculo/lista?vaga={id}`** ou **`?base=1`** — `{curriculos: [meta]}`, mais recentes primeiro. Meta:
+**`GET /api/curriculo/lista?vaga={id}`** ou **`?base=1`** — `{curriculos: [meta]}`, mais recentes primeiro; com
+`base=1`, também `perfil_mais_novo: bool` (o perfil.md mudou depois do currículo do perfil mais recente; spec 060). Meta:
 `{nome, alvo, tecnicas, arquivos: {json, docx, pdf|null}, disponivel: {pdf, docx, json: bool}, paginas|null, acima_do_limite,
 sugestoes_corte, conferencia: {veredito, fatos: [{nivel, mensagem, valor?, trecho?}], ats: [...], requisitos: [{situacao,
 texto}], cobertura: {achadas, total, faltando}|null}, pronto, ia, criado_em, reprovacao?: true, encurtado?: {de, para,
@@ -689,12 +691,17 @@ perfil" da análise de reprovação que esperam revisão, `para_revisar`) ou `re
 relatos). Uma revisão por origem (a nova substitui), em `dash/dados/revisao_perfil.json`. O estado de geração ganha
 `tipo: "revisao_perfil"`, a situação `revisando` e, na origem `relatos`, o alvo `{perfil: true}`.
 
-**`POST /api/perfil/revisao`** **[local]**: "Revisar e levar ao perfil".
+**`POST /api/perfil/revisao`** **[local]**: "Incorporar ao perfil" (origem `relatos`, spec 060) ou "Revisar e levar ao
+perfil" (origem da vaga, spec 049).
 - Corpo: `{origem, relatos?: [id]}` (`relatos` só na origem `relatos`, 1 a 20 ids).
-- 202: estado. 200 sem IA: `{sem_ia: true, levados, anterior, aviso}` (o caminho da spec 035: a seção "Relatos").
+- 202: estado. Na origem `relatos`, a geração **incorpora**: aplica direto no perfil.md os itens sem divergência
+  (versão anterior guardada), marca `no_perfil` nos relatos sem divergência aberta e deixa na proposta só as
+  discordâncias, para a aba Conflitos. Sem IA: 400 "Ligue uma IA para incorporar os relatos…" (o relato espera).
 - 400: origem inválida, nenhum relato, sem perfil. 404: vaga sem análise, relato inexistente. 409: ocupado.
 
-**`GET /api/perfil/revisao?origem=`** **[local]**: `{revisao: Revisao|null, pode_alterar}`. `Revisao` tem `origem`,
+**`GET /api/perfil/revisao?origem=`** **[local]**: `{revisao: Revisao|null, pode_alterar, incorporacao}`. Na origem
+`relatos`, `incorporacao` é a última incorporação que ainda dá para desfazer: `{anterior, relatos: [id], entrou:
+[{tipo, secao, cargo, novo}], em}` ou `null` (nas outras origens, sempre `null`). `Revisao` tem `origem`,
 `vaga|null`, `relatos: [id]`, `criada_em`, `itens: [{id, tipo: entra|muda|sai, secao, cargo|null, atual|null,
 novo|null, relatos, avisos, valido, aceito, origem: ia|ferramenta|discordancia}]`, `discordancias: [{id, assunto,
 trecho_relato, trecho_perfil|null, relatos, avisos, valido, opcao_relato: item|null, escolha:
@@ -716,6 +723,10 @@ discordância sem escolha, nenhum item aceito; 404 sem revisão; 409 o perfil mu
 
 **`DELETE /api/perfil/revisao?origem=`** **[local]**: descarta a proposta (o perfil e os relatos não mudam). 200
 `{revisao: null}`.
+
+**`POST /api/perfil/revisao/desfazer`** **[local]** (spec 060): `{}`. Volta o perfil.md ao texto de antes da última
+incorporação, devolve os relatos à caixa de entrada e descarta a proposta `relatos`. 200 `{ok: true}`; 404 sem
+incorporação; 409 o perfil mudou depois dela (nada muda).
 
 ### 3.9 Kit da candidatura (detalhe da vaga → "O que esta candidatura pede")
 

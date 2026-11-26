@@ -50,8 +50,10 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   (`candidatura/`), só em domínio liberado (Indeed e LinkedIn bloqueados pelos termos), com
   o que ela sabe (respostas que a pessoa já deu, em `dash/dados/respostas_formulario.json`, e o perfil) e
   pergunta o resto; na pergunta aberta, a pessoa escreve um relato, que a IA transforma na resposta e que fica em
-  `dash/dados/relatos.json` (spec 035): os relatos valem como fatos confirmados, junto do perfil (`PY relatos.py lista`);
-  só entram no `perfil.md` com o OK da pessoa, pela revisão do perfil (spec 050: a IA propõe onde cada fato entra, a pessoa aceita item a item e grava; `PY revisao_perfil.py mostra <origem>`); o login guardado por ela no `.env` só é digitado na página de login
+  `dash/dados/relatos.json` (spec 035): o relato vale como fato confirmado só nos pedidos sobre a vaga em que foi escrito
+  (`PY relatos.py lista --vaga ID`); nos outros, a base é só o `perfil.md` (constituição IV, 5.6.0). Entra no
+  `perfil.md` quando a pessoa clica em Incorporar (spec 060: o que não diverge entra direto, com Desfazer; o que
+  diverge vai para Conflitos; `PY revisao_perfil.py mostra relatos`); o login guardado por ela no `.env` só é digitado na página de login
   do portal. Você (assistente) não usa esse recurso pela pessoa nem lê a credencial do `.env`.
 
 ## Como rodar os scripts

@@ -100,9 +100,12 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
   - **Relatos:** nas perguntas abertas que o perfil não responde, conte com as suas palavras o que
     aconteceu (sem se preocupar com o limite do formulário). O relato vale como verdade: a IA o
     transforma na melhor resposta para aquela pergunta, sem acrescentar fatos, e ele fica guardado no
-    que a ferramenta sabe de você. A partir daí entra nas respostas, no currículo, na carta, nas
-    histórias STAR e na nota das vagas. Em **Meu perfil → Seus relatos** você corrige, apaga ou leva
-    relatos ao `perfil.md` com **Revisar e levar ao perfil**: a IA propõe onde cada fato entra (o cargo certo, Habilidades, Formação…), aponta o que discorda do perfil, e você aceita item a item antes de gravar (a versão anterior fica guardada). Sem IA, o relato vai como você escreveu, para a seção Relatos.
+    que a ferramenta sabe de você. Enquanto não entra no perfil, ele vale só na vaga em que foi escrito
+    (respostas, currículo, carta e entrevista daquela vaga). Em **Meu perfil → Seus relatos** (com um aviso
+    quando há relato novo) você corrige, exclui ou clica em **Incorporar**: a IA põe no `perfil.md` o que
+    encaixa (o cargo certo, Habilidades, Formação…), mostra o que entrou com **Desfazer**, e o que discorda do
+    perfil vai para a aba **Conflitos**, onde você escolhe. Os incorporados ficam numa lista fechada no fim da
+    aba. Sem IA, o relato espera.
   - As suas respostas ficam guardadas no seu computador (`dash/dados/`, fora do Git) e são
     reaproveitadas nas próximas vagas, inclusive a remuneração atual e o nome da mãe, também quando a
     pergunta vem com outra redação; a pretensão salarial e a relocação ela pergunta a cada vaga. Você vê e
@@ -118,7 +121,7 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
     ferramenta preenche os campos e não toca nele, e você resolve o captcha e clica em Enviar. Pedido
     de código ou tela de verificação antes do formulário fazem a ferramenta parar até você resolver.
   - **Seus dados de contato** (Meu perfil → Informações básicas): nome, e-mail, telefone,
-    cidade, LinkedIn e portfólio. "Propor a partir do currículo" lê o seu currículo base e propõe os
+    cidade, LinkedIn e portfólio. "Propor a partir do perfil" lê o seu `perfil.md` e propõe os
     valores, e nada é gravado até você salvar. Depois, a ferramenta preenche esses campos em qualquer
     formulário, mesmo escritos de outro jeito ("Full name", "Celular", "LinkedIn profile"), sem IA e
     com a IA fora do ar. Eles ficam só no seu computador e nunca vão para a IA.
@@ -454,8 +457,9 @@ IA escreve só com os fatos do perfil, a ferramenta gera o `.docx` e o PDF em `c
 data, empresa e cargo, sem apagar versões anteriores) e roda a conferência. A vaga lista os
 currículos gerados, com links para abrir o PDF e baixar o `.docx` e a lixeira (cartas e respostas também têm a
 sua; apagar tira todos os arquivos da pasta, e remover a vaga do quadro apaga junto os documentos dela); com "bloquear", o currículo
-aparece como **não pronto**, com o que resolver. O **currículo base** sai do mesmo jeito, no botão
-**Meu perfil**. Nada vai para a IA antes do clique; com IA por chave, cada currículo é uma chamada
+aparece como **não pronto**, com o que resolver. Os **currículos do perfil** (sem uma vaga) saem do mesmo jeito, em
+**Meu perfil → Extração perfil - currículo**: cada vaga mostra o mais recente do idioma dela (sem contar o Completo), e
+a aba avisa quando o perfil mudou depois dele. Nada vai para a IA antes do clique; com IA por chave, cada currículo é uma chamada
 cobrada pelo provedor.
 
 **Análise de reprovação** é um checkbox no diálogo do currículo de uma vaga, e funciona assim:
@@ -469,7 +473,7 @@ cobrada pelo provedor.
 - **Revisar e levar ao perfil** (depois do currículo): a IA propõe onde cada resposta ⚠️ entra no seu perfil,
   escrita como item de currículo e só com o que você contou. Se algo discorda do perfil (um total de anos, um
   método), ela mostra os dois trechos e você escolhe. Nada muda no perfil até você clicar em **Gravar no
-  perfil**, item a item, com a versão anterior guardada. O mesmo botão existe em Meu perfil → Seus relatos.
+  perfil**, item a item, com a versão anterior guardada. Em Meu perfil → Seus relatos, o botão é **Incorporar**.
 
 As perguntas e as respostas ficam no fim da janela da vaga, e só a última análise aparece.
 
