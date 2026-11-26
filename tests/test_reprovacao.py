@@ -175,6 +175,13 @@ class TestPedidoEConferencia(Base):  # T007
 
 
 class TestAnalise(Base):  # T008 e US4
+    def test_pedido_leva_so_os_relatos_da_vaga(self):  # spec 060
+        relatos.adicionar("Pergunta A", "Relato exclusivo da vaga alfa", vaga={"id": "v1", "titulo": "A", "empresa": "X"})
+        relatos.adicionar("Pergunta B", "Relato exclusivo da vaga beta", vaga={"id": "v2", "titulo": "B", "empresa": "Y"})
+        self.analisar("v1")
+        self.assertIn("vaga alfa", self.pedidos[-1])
+        self.assertNotIn("vaga beta", self.pedidos[-1])
+
     def test_analisa_grava_e_substitui(self):
         a = self.analisar()
         self.assertEqual(a["curriculo_analisado"]["tipo"], "perfil")

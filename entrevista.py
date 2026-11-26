@@ -134,11 +134,11 @@ def remover_historia(hid: str) -> None:
     _gravar(PASTA / "historias.json", {"historias": restantes})
 
 
-def perfil_texto() -> str:
-    """O perfil.md com os relatos da pessoa que ainda não foram para ele (spec 035)."""
+def perfil_texto(vaga: dict | None = None) -> str:
+    """O perfil.md com os relatos pendentes da vaga, que ainda não foram para ele (spec 035, 060)."""
     import relatos
     p = conferir.perfil_padrao()
-    return relatos.com_relatos(p.read_text(encoding="utf-8", errors="replace") if p.exists() else "")
+    return relatos.com_relatos(p.read_text(encoding="utf-8", errors="replace") if p.exists() else "", vaga)
 
 
 def _vaga(vid: str) -> dict:
@@ -222,7 +222,7 @@ def salario(v: dict, perfil: str) -> dict:
 
 def preparacao(vid: str) -> dict:
     v, prep = _vaga(vid), carregar_preparacao(vid)
-    perfil = perfil_texto()
+    perfil = perfil_texto(v)
     historias = listar_historias()
     return {"vaga": {k: v.get(k) for k in ("id", "titulo", "empresa", "etapa", "entrevista_em")}, "dossie": dossie(v, prep),
             "perguntas": perguntas(v, perfil, prep), "historias": historias, "salario": salario(v, perfil),
@@ -296,7 +296,7 @@ def perguntas_ia(vid: str) -> dict:
         'Responda SOMENTE com um array JSON de até 10 itens [{"texto", "tipo": "comportamental"|"tecnica", "porque"}], o '
         "porquê ligado a um requisito do anúncio ou a uma lacuna, sem texto antes ou depois.",
         "", "## Vaga", _seguro(_texto_vaga(v), 12000), "", "## Lacunas que a análise apontou", analise, "",
-        "## Perfil da pessoa", _seguro(perfil_texto())])
+        "## Perfil da pessoa", _seguro(perfil_texto(v))])
     dados = _ia_json(pedido, "[", "]")
     itens = [{"texto": " ".join(str(x.get("texto")).split())[:300], "tipo": x.get("tipo") if x.get("tipo") in ("comportamental", "tecnica") else "tecnica",
               "porque": " ".join(str(x.get("porque") or "").split())[:200]}
@@ -319,7 +319,7 @@ def _pontos_conferir(texto: str, base: str) -> list[str]:
 def historias_ia(vid: str) -> list[dict]:
     """Rascunhos de histórias STAR (não grava): só das conquistas do perfil, com os pontos para conferir."""
     v, prep = _vaga(vid), carregar_preparacao(vid)
-    perfil = perfil_texto()
+    perfil = perfil_texto(v)
     if not perfil.strip():
         raise EntrevistaErro("monte o perfil antes (botão Meu perfil): as histórias saem das conquistas dele")
     lista = [p["texto"] for p in perguntas(v, perfil, prep)][:10]
@@ -347,9 +347,9 @@ def historias_ia(vid: str) -> list[dict]:
     return rascunhos[:5]
 
 
-def retorno_ia(pergunta: str, resposta: str, idioma: str = "pt") -> dict:
+def retorno_ia(pergunta: str, resposta: str, idioma: str = "pt", vid: str | None = None) -> dict:
     """Retorno honesto de uma resposta: {funcionou, faltou, mais_forte, conferir}."""
-    perfil = perfil_texto()
+    perfil = perfil_texto(_vaga(vid) if vid else None)
     historias = listar_historias()
     textos_hist = "\n".join(f"- {h['titulo']}: " + " ".join(h.get(k) or "" for k in CAMPOS_STAR) for h in historias)
     pedido = "\n".join([
@@ -382,7 +382,7 @@ def registrar_resposta(vid: str, pergunta: str, resposta: str, idioma: str = "pt
     if com_retorno:
         import ia
         if ia.disponivel():
-            retorno = retorno_ia(pergunta, resposta, idioma)
+            retorno = retorno_ia(pergunta, resposta, idioma, vid)
     prep = carregar_preparacao(vid)
     sim = prep.get("simulacao") or {"respostas": []}
     sim["idioma"] = idioma

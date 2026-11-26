@@ -172,7 +172,7 @@ def curriculo_atual(vaga: dict, formato: str = "br") -> dict:
         if len(texto.strip()) >= MIN_TEXTO_CV:
             return {"tipo": "base_gerado", "nome": bases[0]["nome"], "texto": texto[:T_TEXTO_CV], "avisos": avisos,
                     "rotulo": f"o currículo base de {_data_curta(bases[0].get('criado_em'))}".strip()}
-    perfil = cia.perfil_texto()
+    perfil = cia.perfil_texto(vaga)
     if not perfil.strip():
         raise ReprovacaoErro("monte o perfil antes (botão Meu perfil): sem currículo nem perfil não há o que analisar")
     return {"tipo": "perfil", "nome": None, "texto": perfil[:T_TEXTO_CV], "avisos": avisos,
@@ -456,7 +456,7 @@ def analisar(vaga: dict, tecnicas: dict, progresso=None) -> dict:
         tecnicas = cia.validar_tecnicas(tecnicas)
     except cia.GeracaoErro as e:
         raise ReprovacaoErro(str(e)) from None
-    perfil = cia.perfil_texto()
+    perfil = cia.perfil_texto(vaga)
     if not perfil.strip():
         raise ReprovacaoErro("monte o perfil antes (botão Meu perfil): a análise compara a vaga com os seus fatos")
     cv = curriculo_atual(vaga, tecnicas["formato"])
@@ -651,7 +651,7 @@ def reescrever_e_gerar(vaga_id: str, progresso=None) -> dict:
     avisar("reescrevendo")
     guardar_relatos(vaga_id)
     a = _bruta(vaga_id)
-    perfil = cia.perfil_texto()
+    perfil = cia.perfil_texto({**vaga, "id": vaga_id})
     alvos = {m["i"] for m in a.get("motivos") or [] if m["grupo"] in GRUPOS_REESCRITA and m.get("trecho_cv")}
     reescritos = []
     if alvos:
