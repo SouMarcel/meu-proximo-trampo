@@ -13,6 +13,8 @@ import { useFerramenta } from "../../contexto/Ferramenta"
 import { diaMes } from "../../utils/formatters"
 import Analises from "./Analises"
 import Relatos from "./Relatos"
+import { SecaoRevisaoPerfil } from "./RevisaoPerfil"
+import { useGeracao } from "../../contexto/Geracao"
 import Materiais from "./Materiais"
 import InformacoesBasicas from "./InformacoesBasicas"
 import PerguntaIdiomas, { LINHA_VAZIA, respostaIdiomas } from "./PerguntaIdiomas"
@@ -142,7 +144,27 @@ export default function MeuPerfil({
   const [erro, setErro] = useState("")
   const [gerarBase, setGerarBase] = useState(false)
   const corpoRef = useRef<HTMLDivElement>(null)
+  const { versao } = useGeracao()
+  const [pendentesRelatos, setPendentesRelatos] = useState(0)
+  const [conflitosRelatos, setConflitosRelatos] = useState(0)
 
+  const carregarAvisosRelatos = useCallback(() => {
+    perfilApi
+      .relatos()
+      .then((j) => setPendentesRelatos(j.relatos.filter((r) => !r.no_perfil).length))
+      .catch(() => setPendentesRelatos(0))
+    perfilApi
+      .obterRevisao("relatos")
+      .then((j) => {
+        const rev = j.revisao
+        setConflitosRelatos(rev && !rev.gravada_em ? rev.discordancias.filter((d) => !d.escolha).length : 0)
+      })
+      .catch(() => setConflitosRelatos(0))
+  }, [])
+
+  useEffect(() => {
+    carregarAvisosRelatos()
+  }, [carregarAvisosRelatos, versao, tela === "relatos" || tela === "conflitos" ? tela : ""])
   const so = Boolean(e && !e.pode_alterar) || !podeGravar // só leitura
   const falhou = useCallback(
     (err: unknown) => {
@@ -457,37 +479,52 @@ export default function MeuPerfil({
     )
   } else if (tela === "conflitos") {
     const cf = e.rascunho?.conflitos || []
-    corpo = !cf.length ? (
-      <p className={DICA}>As fontes não discordam em nada.</p>
-    ) : (
+    corpo = (
       <>
-        <p className={DICA}>
-          As fontes discordam nestes pontos. Escolha o valor certo de cada um; se nenhum estiver certo, escolha um e corrija
-          na revisão.
-        </p>
-        {cf.map((c, i) => (
-          <fieldset key={i} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
-            <legend className="px-1 font-semibold text-slate-800 dark:text-slate-200">
-              {i + 1}. {c.campo || "Conflito"}
-            </legend>
-            {c.opcoes.map((o, j) => (
-              <label key={j} className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name={`cf-${i}`}
-                  checked={c.escolha === j}
-                  disabled={so}
-                  onChange={() => salvarProgresso({ escolhas: { [String(i)]: j } }).catch(falhou)}
-                />
-                <span>
-                  {o.valor}
-                  <Fonte f={o.fonte} />
-                </span>
-              </label>
+        {!cf.length && conflitosRelatos === 0 && <p className={DICA}>As fontes não discordam em nada.</p>}
+        {!!cf.length && (
+          <>
+            <p className={DICA}>
+              As fontes discordam nestes pontos. Escolha o valor certo de cada um; se nenhum estiver certo, escolha um e corrija
+              na revisão.
+            </p>
+            {cf.map((c, i) => (
+              <fieldset key={i} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <legend className="px-1 font-semibold text-slate-800 dark:text-slate-200">
+                  {i + 1}. {c.campo || "Conflito"}
+                </legend>
+                {c.opcoes.map((o, j) => (
+                  <label key={j} className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={`cf-${i}`}
+                      checked={c.escolha === j}
+                      disabled={so}
+                      onChange={() => salvarProgresso({ escolhas: { [String(i)]: j } }).catch(falhou)}
+                    />
+                    <span>
+                      {o.valor}
+                      <Fonte f={o.fonte} />
+                    </span>
+                  </label>
+                ))}
+                {!c.opcoes.length && <p className={DICA}>Sem opções: corrija no texto, na revisão.</p>}
+              </fieldset>
             ))}
-            {!c.opcoes.length && <p className={DICA}>Sem opções: corrija no texto, na revisão.</p>}
-          </fieldset>
-        ))}
+          </>
+        )}
+        {conflitosRelatos > 0 && (
+          <section className={SEC}>
+            <h4 className={H}>Relatos que divergem do perfil</h4>
+            <SecaoRevisaoPerfil
+              origem="relatos"
+              onGravado={() => {
+                carregarAvisosRelatos()
+                onPerfilMudou()
+              }}
+            />
+          </section>
+        )}
       </>
     )
     pe = (
@@ -842,7 +879,6 @@ export default function MeuPerfil({
           <li>Para buscar vagas, use o botão Buscar vagas, no topo (ou peça no chat do seu assistente).</li>
           <li>Para mudar o perfil depois, abra Meu perfil e escolha Atualizar o perfil: a versão atual fica guardada.</li>
         </ul>
-        <SeuCurriculo cvs={cvs} so={so} onMudou={(base) => cvs && setCvs({ ...cvs, curriculo_base: base })} onAviso={onAviso} onErro={falhou} />
         <SecaoCurriculos vagaId={null} onGerar={() => setGerarBase(true)} />
         <Relatos so={so} onAviso={onAviso} onErro={falhou} onPerfilMudou={onPerfilMudou} />
       </>
@@ -883,8 +919,10 @@ export default function MeuPerfil({
   } else if (tela === "curriculos") {
     corpo = (
       <>
-        <SeuCurriculo cvs={cvs} so={so} onMudou={(base) => cvs && setCvs({ ...cvs, curriculo_base: base })} onAviso={onAviso} onErro={falhou} />
-        <p className={DICA}>O currículo base gerado pela IA é uma versão nova, voltada para os cargos que procura.</p>
+        <p className={DICA}>
+          Currículos que não miram uma vaga, extraídos do seu perfil. Cada vaga mostra o mais recente do idioma dela; os
+          currículos das vagas saem direto do perfil.
+        </p>
         <SecaoCurriculos vagaId={null} onGerar={() => setGerarBase(true)} />
       </>
     )
@@ -893,7 +931,7 @@ export default function MeuPerfil({
     corpo = <InformacoesBasicas so={so} onAviso={onAviso} />
     pe = botaoIr(e.etapa && e.etapa !== "concluido" ? e.etapa : "concluido", "Voltar ao perfil")
   } else if (tela === "relatos") {
-    corpo = <Relatos so={so} onAviso={onAviso} onErro={falhou} onPerfilMudou={onPerfilMudou} vazio />
+    corpo = <Relatos so={so} onAviso={onAviso} onErro={falhou} onPerfilMudou={onPerfilMudou} vazio onAbrirConflitos={() => ir("conflitos")} />
     pe = botaoIr(e.etapa && e.etapa !== "concluido" ? e.etapa : "concluido", "Voltar ao perfil")
   } else if (tela === "analises") {
     corpo = (
@@ -942,13 +980,18 @@ export default function MeuPerfil({
                   type="button"
                   onClick={() => ir(p.k)}
                   aria-current={tela === p.k ? "step" : undefined}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
                     tela === p.k
                       ? "bg-indigo-600 text-white"
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
                   {p.label}
+                  {p.k === "conflitos" && conflitosRelatos > 0 && (
+                    <AlertTriangle className="w-3 h-3 text-amber-500" aria-label="Há relato divergindo do perfil">
+                      <title>Há relato divergindo do perfil</title>
+                    </AlertTriangle>
+                  )}
                 </button>
               ))}
               <button
@@ -980,6 +1023,11 @@ export default function MeuPerfil({
                 }`}
               >
                 <BookOpen className="w-3 h-3" /> Seus relatos
+                {pendentesRelatos > 0 && (
+                  <AlertTriangle className="w-3 h-3 text-amber-500" aria-label="Há relatos fora do perfil">
+                    <title>Há relatos fora do perfil</title>
+                  </AlertTriangle>
+                )}
               </button>
               {e.existe_perfil && (
                 <button
@@ -995,7 +1043,7 @@ export default function MeuPerfil({
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
-                  Currículo base
+                  Extração perfil - currículo
                 </button>
               )}
               {e.existe_perfil && (
@@ -1325,68 +1373,3 @@ function DoCurriculo({
   )
 }
 
-function SeuCurriculo({
-  cvs,
-  so,
-  onMudou,
-  onAviso,
-  onErro,
-}: {
-  cvs: CurriculosDaPasta | null
-  so: boolean
-  onMudou: (base: CurriculosDaPasta["curriculo_base"]) => void
-  onAviso: (m: string) => void
-  onErro: (err: unknown) => void
-}) {
-  if (!cvs) {
-    return (
-      <section className={SEC}>
-        <h4 className={H}>Seu currículo</h4>
-        <p className={DICA}>{so ? "Só no computador onde a ferramenta roda." : "Carregando…"}</p>
-      </section>
-    )
-  }
-  const lista = cvs.curriculos || []
-  const sel = (idioma: "pt" | "en", rotulo: string) => (
-    <div>
-      <label htmlFor={`seu-${idioma}`} className={ROTULO}>{rotulo}</label>
-      <select
-        id={`seu-${idioma}`}
-        value={cvs.curriculo_base[idioma] || ""}
-        disabled={so}
-        onChange={async (ev) => {
-          try {
-            const j = await perfilApi.marcarCurriculoBase(idioma, ev.target.value || null)
-            onMudou(j.curriculo_base)
-            onAviso(ev.target.value ? "Seu currículo marcado." : "Desmarcado.")
-          } catch (err) {
-            onErro(err)
-          }
-        }}
-        className={CAMPO}
-      >
-        <option value="">Nenhum</option>
-        {lista.map((c) => (
-          <option key={c.arquivo} value={c.arquivo}>{c.arquivo}</option>
-        ))}
-      </select>
-    </div>
-  )
-  return (
-    <section className={SEC}>
-      <h4 className={H}>Seu currículo</h4>
-      <p className={DICA}>
-        O currículo que você já tem, para mostrar em cada vaga (item Currículo do checklist). Fica na pasta anexos, neste
-        computador; a ferramenta só gera outro se você pedir.
-      </p>
-      {lista.length ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {sel("pt", "Em português")}
-          {sel("en", "Em inglês")}
-        </div>
-      ) : (
-        <p className={DICA}>Nenhum PDF ou Word na pasta anexos. Envie o arquivo em Materiais.</p>
-      )}
-    </section>
-  )
-}

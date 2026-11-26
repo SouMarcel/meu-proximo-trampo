@@ -268,7 +268,7 @@ export function GerarCurriculo({
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
           <h3 id="titulo-cv" className="flex items-center gap-2 font-bold text-base text-slate-900 dark:text-white">
             <FileText className="w-5 h-5 text-indigo-500" />
-            {vagaId ? "Gerar currículo para esta vaga" : "Gerar o currículo base"}
+            {vagaId ? "Gerar currículo para esta vaga" : "Gerar currículo do perfil"}
           </h3>
           <button type="button" onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" aria-label="Fechar">
             <X className="w-5 h-5" />
@@ -400,11 +400,15 @@ export function SecaoCurriculos({ vagaId, onGerar }: { vagaId: string | null; on
   const { servidor } = useFerramenta()
   const { estado, ativa, versao, tentar } = useGeracao()
   const [lista, setLista] = useState<MetaCurriculo[] | null>(null)
+  const [perfilMaisNovo, setPerfilMaisNovo] = useState(false)
 
   useEffect(() => {
     curriculoApi
       .lista(vagaId)
-      .then((j) => setLista(j.curriculos || []))
+      .then((j) => {
+        setLista(j.curriculos || [])
+        setPerfilMaisNovo(!vagaId && j.perfil_mais_novo === true)
+      })
       .catch(() => setLista((l) => l || []))
   }, [vagaId, versao])
 
@@ -413,11 +417,19 @@ export function SecaoCurriculos({ vagaId, onGerar }: { vagaId: string | null; on
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h4 className="font-bold text-sm text-slate-900 dark:text-white">{vagaId ? "Currículos para esta vaga" : "Currículo base"}</h4>
+        <h4 className="font-bold text-sm text-slate-900 dark:text-white">{vagaId ? "Currículos para esta vaga" : "Currículos do perfil"}</h4>
         <button type="button" disabled={ativa || servidor !== "no_ar"} onClick={onGerar} className={BTN_MINI}>
-          {vagaId ? "Gerar currículo" : "Gerar currículo base"}
+                  Gerar currículo
         </button>
       </div>
+              {!vagaId && perfilMaisNovo && (
+                <p className="flex items-center justify-between gap-2 flex-wrap p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 text-xs">
+                  <span>Seu perfil mudou depois do último currículo: gere de novo o Completo e o de até 2 páginas.</span>
+                  <button type="button" disabled={ativa || servidor !== "no_ar"} onClick={onGerar} className={BTN_MINI}>
+                    Gerar currículo
+                  </button>
+                </p>
+              )}
       {meu && ativa && (
         <p className="flex items-center gap-2 text-xs text-indigo-700 dark:text-indigo-300">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
