@@ -216,8 +216,7 @@ Currículo; incorporar um relato e ver o aviso na aba.
 
 ### Measurable Outcomes
 
-- **SC-001**: O pedido da nota de uma vaga fica do tamanho do perfil mais as regras, sem os relatos (no perfil do
-  usuário, hoje cerca de 21 mil caracteres de parte fixa; depois, sem os cerca de 4 mil dos relatos pendentes).
+- **SC-001**: O pedido da nota de uma vaga fica do tamanho do perfil mais as regras, sem os relatos pendentes.
 - **SC-002**: Nenhum relato de uma vaga aparece no pedido de outra vaga (verificado nos pedidos montados em teste).
 - **SC-003**: Um relato sem conflito chega ao perfil em 1 clique (Incorporar), com o que entrou à vista.
 - **SC-004**: 100% das divergências entre relato e perfil aparecem em Conflitos antes de mudar o perfil.

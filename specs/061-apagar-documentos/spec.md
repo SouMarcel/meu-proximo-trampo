@@ -24,7 +24,7 @@ da página, mas o arquivo fica na pasta:
 - **Arquivar pela Limpeza** (spec 054) mantém os arquivos de propósito e guarda os nomes deles na ficha da vaga
   arquivada.
 
-Na pasta do usuário, em 26/11/2026, havia 1 currículo, 1 carta e 3 respostas de vagas que já tinham saído do quadro.
+Na pasta de quem já usava a ferramenta havia currículos, cartas e respostas de vagas que já tinham saído do quadro.
 
 Princípios da constituição: a pessoa decide (V) e os dados pessoais ficam só no computador dela (`curriculos/` fora
 do Git). Apagar é uma ação que a pessoa pede, com confirmação antes.
@@ -126,7 +126,7 @@ e o OK da pessoa, apaga e diz quantos.
 
 **Why this priority**: resolve o que já existe na pasta de quem usava a ferramenta antes; roda uma vez.
 
-**Independent Test**: com a pasta do usuário, o comando mostra 1 currículo, 1 carta e 3 respostas, e não apaga nada
+**Independent Test**: com uma pasta de teste com documentos de vagas removidas, o comando mostra cada um e não apaga nada
 sem a opção de gravar.
 
 **Acceptance Scenarios**:
@@ -197,8 +197,8 @@ sem a opção de gravar.
   sem a vaga ter sido marcada.
 - **SC-003**: Com um arquivo aberto em outro programa, 100% das tentativas de apagar terminam sem documento pela
   metade (ou todos os arquivos dele saem, ou nenhum).
-- **SC-004**: Na pasta do usuário, o comando de órfãos lista os 5 documentos de hoje (1 currículo, 1 carta e 3
-  respostas) e, depois de gravar com o OK dele, a pasta não tem nenhum documento de vaga fora do quadro.
+- **SC-004**: Numa pasta com documentos de vagas que saíram do quadro, o comando de órfãos lista todos e, depois de
+  gravar com o OK da pessoa, a pasta não tem nenhum documento de vaga fora do quadro.
 
 ## Assumptions
 

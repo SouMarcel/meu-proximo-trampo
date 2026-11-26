@@ -38,5 +38,5 @@ Sequenciais dentro de cada lado (backend e front).
 
 - [X] T006 Documentação: `dash/API.md` (DELETE de curriculo e de vagas, limpeza), `README.md`, `AGENTS.md` (comando
   `documentos-orfaos`), nota na `specs/054-limpeza-vagas/spec.md`.
-- [X] T007 Merge na `marcel`, build do front, reiniciar o dashboard; prévia de `documentos-orfaos` na pasta real (sem
+- [X] T007 Merge na branch pessoal de teste, build do front, reiniciar o dashboard; prévia de `documentos-orfaos` na pasta real (sem
   gravar) para o usuário conferir.
