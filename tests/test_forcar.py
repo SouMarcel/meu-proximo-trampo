@@ -351,6 +351,13 @@ class TestPausas(unittest.TestCase):
             with self.subTest(bruto=bruto), mock.patch.object(segredos, "ler", return_value=bruto):
                 self.assertEqual(analise.pausa_ia(), esperado)
 
+    def test_pausa_lote(self):  # spec 062, FR-005
+        import segredos
+        for bruto, esperado in (("0", 5.0), ("200", 120.0), ("7,5", 7.5), ("30", 30.0), ("abc", 20.0),
+                                ("inf", 20.0), ("", 20.0), (None, 20.0)):
+            with self.subTest(bruto=bruto), mock.patch.object(segredos, "ler", return_value=bruto):
+                self.assertEqual(analise.pausa_lote(), esperado)
+
     def test_pausa_leitura(self):  # FR-003
         f = fonte_falsa()
         with mock.patch.dict(vagas.FONTES, {"falsa": f}):

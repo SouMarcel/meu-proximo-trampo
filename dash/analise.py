@@ -32,6 +32,7 @@ LIMITE_PERFIL = 40000
 LIMITE_DESCRICAO = 12000
 LOTE = 10  # vagas por chamada (as APIs têm limite de tamanho)
 PAUSA_IA_PADRAO, PAUSA_IA_MAX = 5.0, 60.0  # FORCAR_PAUSA: segundos entre dois pedidos do Forçar verificar (spec 056)
+PAUSA_LOTE_PADRAO, PAUSA_LOTE_MIN, PAUSA_LOTE_MAX = 20.0, 5.0, 120.0  # ANALISE_PAUSA: entre dois lotes (spec 062)
 
 
 def _raiz():
@@ -57,19 +58,30 @@ def _vagas():
     return vagas
 
 
-def pausa_ia() -> float:
-    """FORCAR_PAUSA do .env (spec 056): de 0 a PAUSA_IA_MAX (fora da faixa, o limite mais próximo); inválida ou
-    ausente, PAUSA_IA_PADRAO."""
+def _pausa_env(nome: str, padrao: float, minimo: float, maximo: float) -> float:
+    """Uma pausa do .env em segundos (vírgula aceita): fora da faixa, o limite mais próximo; inválida ou ausente, o
+    padrão."""
     _raiz()
     import segredos
-    bruto = (segredos.ler("FORCAR_PAUSA") or "").strip().replace(",", ".")
+    bruto = (segredos.ler(nome) or "").strip().replace(",", ".")
     try:
         n = float(bruto)
     except ValueError:
-        return PAUSA_IA_PADRAO
+        return padrao
     if n != n or n in (float("inf"), float("-inf")):  # NaN e infinito
-        return PAUSA_IA_PADRAO
-    return min(max(n, 0.0), PAUSA_IA_MAX)
+        return padrao
+    return min(max(n, minimo), maximo)
+
+
+def pausa_ia() -> float:
+    """FORCAR_PAUSA do .env (spec 056): de 0 a PAUSA_IA_MAX; inválida ou ausente, PAUSA_IA_PADRAO."""
+    return _pausa_env("FORCAR_PAUSA", PAUSA_IA_PADRAO, 0.0, PAUSA_IA_MAX)
+
+
+def pausa_lote() -> float:
+    """ANALISE_PAUSA do .env (spec 062): segundos entre dois lotes da análise automática, de PAUSA_LOTE_MIN a
+    PAUSA_LOTE_MAX; inválida ou ausente, PAUSA_LOTE_PADRAO."""
+    return _pausa_env("ANALISE_PAUSA", PAUSA_LOTE_PADRAO, PAUSA_LOTE_MIN, PAUSA_LOTE_MAX)
 
 
 def _integridade():
@@ -254,29 +266,35 @@ def analisar(vagas: list[dict], sem_descricao=frozenset()) -> tuple[list[str], l
     Com a principal fora, a próxima reserva dá a nota, e a vaga guarda a IA que respondeu de fato (spec 032).
     As vagas em sem_descricao vão com o aviso de nota sem a descrição e voltam com a marca nota_sem_descricao.
     Falha da IA levanta ia.IAErro (mensagem legível e sem chave)."""
-    modulo = _ia()
-    if not vagas or not modulo.disponivel():
+    if not vagas or not _ia().disponivel():
         return [], []
     gravadas, problemas = [], []
     for lote in lotes(vagas):
-        texto = modulo.responder(montar_pedido(lote, sem_descricao), tempo=TEMPO_MAXIMO)
-        quem = modulo.marca()
-        marca = {"analise_provedor": quem["provedor"], "analise_modelo": quem["modelo"]}
-        lista = lista_json(texto)
-        if lista is None:
-            raise modulo.IAErro("a resposta da IA não trouxe o JSON das análises")
-        por_id = {v["id"]: v for v in lote}
-
-        def provisoria(vid: str) -> dict:
-            if vid not in sem_descricao:
-                return {}
-            return {"nota_sem_descricao": True, **({"nota_dados_portal": True} if dados_portal(por_id[vid]) else {})}
-        analises = [{**x, **marca, **provisoria(str(x.get("id")))}
-                    for x in lista if isinstance(x, dict) and str(x.get("id")) in por_id]
-        ok, erros = banco.aplicar_analises(analises)
+        ok, erros = analisar_lote(lote, sem_descricao)
         gravadas += ok
         problemas += erros
     return gravadas, problemas
+
+
+def analisar_lote(lote: list[dict], sem_descricao=frozenset()) -> tuple[list[str], list[str]]:
+    """Um pedido à IA com estas vagas (já separadas por lotes()), e grava. Devolve (ids gravados, problemas); falha da
+    IA levanta ia.IAErro, com `limite` quando o provedor recusou por limite de uso (spec 062)."""
+    modulo = _ia()
+    texto = modulo.responder(montar_pedido(lote, sem_descricao), tempo=TEMPO_MAXIMO)
+    quem = modulo.marca()
+    marca = {"analise_provedor": quem["provedor"], "analise_modelo": quem["modelo"]}
+    lista = lista_json(texto)
+    if lista is None:
+        raise modulo.IAErro("a resposta da IA não trouxe o JSON das análises")
+    por_id = {v["id"]: v for v in lote}
+
+    def provisoria(vid: str) -> dict:
+        if vid not in sem_descricao:
+            return {}
+        return {"nota_sem_descricao": True, **({"nota_dados_portal": True} if dados_portal(por_id[vid]) else {})}
+    analises = [{**x, **marca, **provisoria(str(x.get("id")))}
+                for x in lista if isinstance(x, dict) and str(x.get("id")) in por_id]
+    return banco.aplicar_analises(analises)
 
 
 class Fila:

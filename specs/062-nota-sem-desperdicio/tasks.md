@@ -28,7 +28,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
     `limite=True` se alguma falha foi por limite, e `espera` a maior entre as pedidas (None se nenhuma);
   - testes em `tests/test_ia_reserva.py`: `Retry-After: 30` → 30; corpo com `"retryDelay": "36s"` → 36; nenhum →
     None; principal 429 + reserva com chave recusada → `limite=True`; duas falhas sem 429 → `limite=False`.
-- [ ] T002 [P] D7 e a primeira parte da D5 em `dash/analise.py`:
+- [X] T002 [P] D7 e a primeira parte da D5 em `dash/analise.py`:
   - `_pausa_env(nome, padrao, minimo, maximo)` com a regra de `pausa_ia()` de hoje (vírgula aceita; fora da faixa, o
     limite mais próximo; inválido, NaN ou ausente, o padrão); `pausa_ia()` passa a usá-la ("FORCAR_PAUSA", 5, 0, 60);
   - `pausa_lote()` = `_pausa_env("ANALISE_PAUSA", 20, 5, 120)`;
