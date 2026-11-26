@@ -71,10 +71,10 @@ Comparar com a nota gravada não serviu: a IA principal era o Claude Code, e as 
 (22 de 30 do `openrouter/free`, que sorteia o modelo). Resultado: 46,7% dentro de 10 pontos, média −7,5, com o Claude
 mais rigoroso (−10 contra o `openrouter/free`, +5,75 contra o Gemini). A comparação justa, regras antigas x novas no
 mesmo Claude e nas mesmas 30 vagas, deu 100% dentro de 10 pontos (média +0,8); o Claude contra ele mesmo, em duas
-rodadas, também 100% (média −0,5). As 5 trocas de fora/dentro têm motivo na vaga: 4 vagas presenciais no exterior
-(Lisboa, Hyderabad, França, Suécia), que as regras novas marcam fora com o perfil "Aceita morar fora: não" (as
-antigas marcavam uma vaga de Lisboa fora e outra não), e 1 vaga em Pune sem modelo na descrição, que as novas deixam
-dentro com o alerta "confirmar se aceita remoto do Brasil". Pela SC-002: passa. Daí o modo `--antes REF` do comando.
+rodadas, também 100% (média −0,5). As poucas trocas de fora/dentro têm motivo na vaga: vagas presenciais no exterior,
+que as regras novas marcam fora com mais coerência quando o perfil não aceita morar fora (as antigas marcavam uma vaga
+assim fora e outra igual dentro), e uma vaga sem modelo na descrição, que as novas deixam dentro com o alerta para
+confirmar o remoto. Pela SC-002: passa. Daí o modo `--antes REF` do comando.
 
 ## R8. Tirar a seção Contato
 
