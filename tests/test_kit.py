@@ -94,8 +94,8 @@ class TestAnaliseComIA(unittest.TestCase):
         with mock.patch.object(analise, "_ia", return_value=falsa):
             ok, problemas = analise.analisar([banco.obter("kit-en-1")])
         self.assertEqual((ok, problemas), (["kit-en-1"], []))
-        self.assertIn('"autorizacao" {"valor", "frase"}', pedidos[0])
-        self.assertIn("`nao_precisa` (o anúncio aceita quem está num país", pedidos[0])  # a regra vem da skill
+        self.assertIn("`autorizacao` {valor, frase}", pedidos[0])
+        self.assertIn("`nao_precisa` (o usuário já pode trabalhar onde a vaga aceita)", pedidos[0])  # regras-da-nota.md
         v = banco.com_kit(banco.obter("kit-en-1"))
         self.assertEqual(v["autorizacao"]["frase"], "We sponsor visas for candidates who later relocate.")
         self.assertEqual([i["item"] for i in v["checklist"]], ["curriculo", "carta", "portfolio", "teste", "candidatura"])

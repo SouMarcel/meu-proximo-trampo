@@ -442,7 +442,7 @@ class TestLeitura(Base):
         self.assertIn("Jira; SQL; Python; Pandas", pedido)
         self.assertNotIn("Empresa Fictícia", pedido)  # o resto do perfil não vai
         self.assertNotIn("consultas básicas", pedido)  # nem o nível
-        self.assertIn("**Os requisitos**", pedido)  # as regras vêm da skill
+        self.assertIn("- `requisitos`:", pedido)  # as regras vêm de regras-da-nota.md (spec 062)
         self.assertIn("Experiência não é habilidade", pedido)
 
     def test_parar_e_continuar(self):  # SC-004
@@ -544,7 +544,7 @@ class TestLeitura(Base):
         self.assertEqual(len(self.pedidos_ia), R.ILEGIVEIS_SEGUIDAS)  # não insiste numa IA que não está dando conta
 
     def test_analise_leva_o_item_da_skill(self):
-        self.assertIn("**Os requisitos**", analise.montar_pedido([vaga("a")]))
+        self.assertIn("- `requisitos`:", analise.montar_pedido([vaga("a")]))
         self.assertIn('"requisitos"', analise.montar_pedido([vaga("a")]))
 
 

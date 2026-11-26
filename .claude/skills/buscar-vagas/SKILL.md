@@ -157,99 +157,20 @@ servidor; ele só serve para ver e mexer nas vagas e em Aplicações.
    ]
    ```
 
-   `modelo_trabalho`: `remoto`, `hibrido`, `presencial` ou `nao_informado`, pelo que a
-   descrição diz (o "remoto" do Indeed é o anunciante que marca e deixa passar
-   híbrido). Na linha `busca:` de cada candidata está de onde ela veio (remoto, a
-   cidade do usuário ou um país do exterior). Nas vagas da Gupy, a linha "Na Gupy:"
-   no fim da descrição traz o que a empresa marcou (modelo, contrato, prazo de
-   inscrição, se aceita PCD); a Gupy não informa a cidade da vaga, então o local das
-   vagas da busca na cidade é a cidade do usuário. Nas do startup.jobs, a linha "No
-   startup.jobs:" traz o modelo e o tipo de contrato que o site informa. Nas da Nerdin, o `tipo`
-   traz a linha do anúncio (ex.: "PJ • Senior • Home Office"); nas do InfoJobs, a experiência e a
-   escolaridade pedidas (ex.: "Entre 3 e 5 anos • Ensino Superior"); nas do Vagas.com, o nível e, quando
-   for o caso, "Exclusiva para PCD". O Vagas.com só informa o modelo quando a vaga é 100% home office: nas
-   outras, tire o modelo da descrição. As do JobGether vêm **sem descrição**: avalie pelo título, pelo local
-   aceito (`restricao_local`), pelo contrato e pelo salário, deixe claro que a nota é provisória e não abra a
-   página do JobGether por conta própria (os termos dele proíbem acesso automatizado); se a pessoa quiser, ela
-   cola o texto da vaga. Nas da EY, o `tipo` traz "Banco de talentos" (cadastro para vagas futuras, não uma vaga
-   aberta naquele momento; diga isso na análise) e "Exclusiva para PCD" quando o título diz; a EY não informa o
-   modelo de trabalho, tire-o da descrição. As da FullStack vêm em inglês, remotas para a América Latina
-   (`restricao_local`), com a senioridade e o contrato no `tipo`; contratos por tempo determinado aparecem no título
-   ("3 month-long", "6 month engagement").
-   `senioridade`: os níveis que a vaga aceita, entre `junior`, `pleno` e `senior`
-   (pode ser mais de um, como em "PL/SR"), com `senioridade_origem`:
-   - `declarada`: o título ou a descrição dizem o nível.
-   - `sugerida`: o anúncio não diz; sugira pelo que ele pede. Anos de experiência
-     exigidos (até 2 júnior, 3 a 5 pleno, 6 ou mais sênior) e, sem eles, o escopo e a
-     autonomia esperados. O dashboard mostra o nível como "(sugerida)".
-   Só use `[]` (sem `senioridade_origem`) quando o anúncio não der nenhum indício. O
-   dashboard filtra por esse campo.
-   `tipo_emprego` (opcional): o que a descrição diz, entre `tempo_integral` (CLT),
-   `pj`, `meio_periodo`, `estagio` e `temporario`; omita se ela não diz.
-   `moeda` (opcional): código de 3 letras da moeda em que a vaga paga (`BRL`, `USD`,
-   `EUR`, `GBP`…), só quando a descrição ou o salário dizem; omita se não dizem. Com
-   `moedas_aceitas` preenchido, vaga que paga em outra moeda (que não a do país do
-   usuário) vai para Fora dos critérios.
-   `idioma` (opcional): código de 2 letras do idioma em que a vaga está escrita (`pt`,
-   `en`, `es`, `fr`, `de`, `it`…). Com `idiomas_aceitos` preenchido, vaga em outro idioma
-   vai para Fora dos critérios; o seu campo vale mais que a detecção automática.
-   `fora_dos_criterios` (opcional): uma frase curta quando a vaga fura o que o usuário
-   pediu de um jeito que os campos acima não pegam, como exigir residência ou
-   autorização de trabalho em outro país numa vaga do exterior, ou exigir morar numa
-   cidade que não é a dele. Não use para nota baixa: isso é a aderência.
-   **Vagas do exterior** (área internacional): compare a vaga com os critérios de
-   "vagas internacionais" do usuário (regiões, contratação, fuso, passaporte,
-   autorização de trabalho, patrocínio de visto, morar fora) e aponte em `alertas` o
-   que pode impedir ou pesar: vaga que exige autorização num país onde ele não tem e
-   não oferece sponsor, fuso sem a sobreposição que ele aceita, contratação que ele não
-   aceita, "remoto" que exige morar no país. Só o que a vaga diz; omita o resto.
-   **A candidatura** (opcionais, em qualquer vaga; cada um com `frase`, o trecho do
-   anúncio em que se apoia, até 200 caracteres; omita o campo que o anúncio não diz):
-   - `autorizacao`: `{"valor", "frase"}`, com `patrocina` (oferece patrocínio de visto),
-     `nao_precisa` (o anúncio aceita quem está num país onde o usuário já pode
-     trabalhar: o dele ou um da lista de autorização de trabalho), `omisso` (fala de
-     autorização sem dizer se patrocina) ou `nao_patrocina`. Cruze com o passaporte, os
-     países com autorização e o "precisa de patrocínio" dos critérios do usuário.
-   - `contratacao`: lista de `{"valor", "frase"}`, com `contractor`, `eor` (empregado
-     por Deel, Remote e afins), `empregado_brasil`, `relocation`, `clt` ou `pj`.
-   - `ingles`: `{"nivel", "frase"}`, com `nao_pede`, `basico`, `intermediario`,
-     `fluente` ou `nativo`.
-   - `fuso`: `{"texto", "frase"}`, o fuso ou as horas em comum que a vaga pede (ex.:
-     "4 h de sobreposição com o horário de Nova York").
-   - `sistema_candidatura`: o sistema onde a candidatura é feita, quando o anúncio diz
-     (Greenhouse, Lever, Workday, Gupy…).
-   - `pede`: lista de `{"item", "frase"}` com o que a candidatura pede: `curriculo_ingles`,
-     `carta`, `formulario`, `portfolio`, `teste`, `video`.
-   - `riscos`: lista de `{"tipo", "frase"}`: `remuneracao` (salário só "competitivo",
-     só comissão, valor que não fecha com o cargo) e `remoto_hibrido` (anunciada como
-     remota, mas pede ir ao escritório).
-   **Os requisitos** (`requisitos`, opcional, em qualquer vaga com texto; o painel Métricas
-   & Funil conta o que as vagas pedem): só o que o anúncio diz, sem deduzir. Omita a parte
-   que o anúncio não traz. Cada `frase` é um trecho curto do anúncio (até 120 caracteres).
-   - `habilidades`: lista de `{"nome", "tipo", "exigida"}`. `tipo`: `tecnica` (ferramentas,
-     linguagens, métodos, conhecimentos da área) ou `comportamental` (comunicação,
-     liderança, negociação). `exigida`: `true` quando o anúncio exige, `false` quando é
-     desejável ou diferencial.
-   - **Experiência não é habilidade.** Nenhum nome fala de tempo ou de experiência ("5 anos",
-     "experiência em", "vivência com", "conhecimento em"): o tempo vai em `experiencia`, e o
-     assunto vira a habilidade pelo nome ("experiência em gestão de projetos" dá "Gestão de
-     projetos"). Idioma também não é habilidade: vai em `idiomas`.
-   - Nomes curtos e iguais em todas as vagas: o nome comum em português quando existe
-     ("Gestão de stakeholders", mesmo em vaga escrita em inglês); ferramentas, linguagens,
-     métodos e certificações pelo nome próprio (Jira, SQL, Scrum, PMP); e o nome que o perfil
-     do usuário usa quando é a mesma coisa. Uma habilidade por item ("SQL e Python" são dois).
-   - `certificacoes`: lista de `{"nome", "tipo", "exigida"}`, com `tipo` `certificacao`
-     (PMP, PSM I, AWS Certified…) ou `curso` (um curso ou treinamento pedido).
-   - `experiencia`: `{"anos", "em", "frase"}`, o mínimo de anos pedido na atividade principal
-     do cargo ("3 a 5 anos" dá 3; "5+ anos" dá 5) e a atividade. Sem número ("experiência
-     sólida"), `anos` é `null`.
-   - `formacao`: `{"nivel", "areas", "frase"}`, com o nível mínimo pedido: `tecnico`,
-     `graduacao`, `pos` (pós-graduação ou MBA), `mestrado` ou `doutorado`, e as áreas de curso
-     citadas ("Administração", "Engenharia").
-   - `idiomas`: lista de `{"idioma", "nivel", "frase"}`, com o idioma em português ("Inglês",
-     "Espanhol") e o nível `basico`, `intermediario`, `fluente` (também para "avançado") ou
-     `nativo`.
-   Critérios da nota em "Como dar a nota".
+   Os campos e a nota seguem `regras-da-nota.md`, nesta pasta: leia o arquivo inteiro antes
+   de avaliar. É o mesmo texto que a análise automática da página manda à IA (a seção
+   "Portais" explica o que cada portal traz), então não há outra versão das regras. No chat,
+   além dele:
+   - A linha `busca:` de cada candidata diz de onde ela veio (remoto, a cidade do usuário ou
+     um país do exterior); vaga da Gupy na busca da cidade é da cidade do usuário.
+   - As do JobGether vêm sem descrição: não abra a página do JobGether por conta própria (os
+     termos dele proíbem acesso automatizado); se a pessoa quiser, ela cola o texto da vaga.
+   - `moeda` e `idioma` alimentam os filtros `moedas_aceitas` e `idiomas_aceitos`: vaga fora
+     deles vai para Fora dos critérios, e o seu `idioma` vale mais que a detecção automática.
+   - O dashboard mostra a senioridade sugerida como "(sugerida)" e filtra por ela; o painel
+     Métricas & Funil conta os `requisitos`.
+   - Mesmo anúncio em dois lugares (duas consultorias, ou o mesmo projeto em dois níveis):
+     avalie cada um, cite o outro em `alertas` e comente no chat.
 
 4. **Gravar.** `PY vagas.py gravar` junta os dados da vaga (título, empresa, link,
    data, descrição) com a sua avaliação, para você nunca redigitar link ou ID, e grava
@@ -361,38 +282,11 @@ principal ganha as etiquetas, a etapa mais adiantada, as anotações e os currí
 
 ## Como dar a nota (0 a 100)
 
-A nota responde a uma pergunta: vale o tempo do usuário se candidatar a esta vaga,
-dado o perfil dele?
-
-| Peso | Critério |
-|---|---|
-| 40 | **Função.** É um dos cargos-alvo do perfil? Julgue por título e responsabilidades. O cargo-alvo pontua alto; um papel vizinho com boa parte das mesmas atividades, médio; outro papel pontua baixo mesmo que o texto use palavras da área. |
-| 30 | **Requisitos.** Quantos dos obrigatórios o perfil cobre com evidência real. Tempo de experiência conta pelos períodos do perfil; períodos sobrepostos não somam. |
-| 15 | **Modelo.** Atende ao modelo que o usuário aceita (filtros da busca e perfil: remoto, híbrido na cidade dele…) vale 15. Fora disso, 0 a 3, com alerta. |
-| 15 | **Condições.** Senioridade compatível e idioma exigido x nível do perfil. Contrato e salário só pesam quando informados e incompatíveis com o perfil; não informado não tira ponto. |
-
-Faixas, iguais às do dashboard: 80 ou mais é forte; 65 a 79, boa; 50 a 64, parcial;
-abaixo de 50, baixa (fica recolhida em Baixa aderência).
-
-Para a análise ser útil, ela precisa ser honesta:
-- Encaixe e lacunas saem só do que está no perfil. Certificação "em preparação" é
-  lacuna, não encaixe. Exposição parcial não cobre prática plena. Siga as "Regras para
-  a análise" do perfil, quando houver.
-- O texto da vaga vale mais que a marcação do portal. O filtro "remoto" do Indeed
-  deixa passar híbridos e vagas que exigem morar numa cidade; quando a descrição
-  contradiz, siga a descrição e ponha a divergência em alertas. Se a descrição não diz
-  o modelo e o local é uma cidade, use `nao_informado` com alerta para confirmar.
-- Lacuna boa é específica: "pede certificação X; o perfil tem X em preparação" ajuda
-  mais que "falta certificação".
-- Vaga afirmativa: diga em alertas para qual grupo. Só baixe a nota se o perfil disser
-  explicitamente que o usuário não faz parte dele; na dúvida, deixe a decisão para ele.
-- Mesmo anúncio publicado por duas consultorias, ou o mesmo projeto em dois níveis:
-  avalie cada um, cite o outro em alertas e comente no chat.
-- Alertas são o que pode desqualificar ou pesar: modelo fora do aceito, idioma acima
-  do nível, fuso horário, contrato fora do aceito, vaga afirmativa, empresa não
-  informada, anúncio genérico de agência.
-- Resumo: uma frase de até 200 caracteres com o veredito. Encaixe, lacunas e alertas:
-  até 4 itens cada, curtos.
+Os pesos (função 40, requisitos 30, modelo 15, condições 15), as faixas (80 ou mais forte;
+65 a 79 boa; 50 a 64 parcial; abaixo de 50 baixa, recolhida em Baixa aderência) e as regras
+de honestidade da análise estão em `regras-da-nota.md`, nesta pasta, a fonte única das regras
+da nota. Mudou as regras? Edite esse arquivo, rode `python sincronizar_skills.py` e
+`PY calibrar_nota.py` antes de levar a mudança adiante.
 
 ## Se o portal bloquear
 

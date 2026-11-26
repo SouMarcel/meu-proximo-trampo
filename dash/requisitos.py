@@ -31,7 +31,7 @@ RAIZ = DASH.parent
 for _p in (str(DASH), str(RAIZ)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
-import analise  # noqa: E402  (dash/analise.py: lotes, IA escolhida, regras da skill)
+import analise  # noqa: E402  (dash/analise.py: lotes, IA escolhida, regras da nota)
 import banco  # noqa: E402
 import conferir  # noqa: E402  (conferir.py, na raiz: norm e _contem)
 import kit  # noqa: E402  (rótulos da contratação)
@@ -88,7 +88,7 @@ CODIGOS_TIPO = {"tecnica": "tecnica", "tecnico": "tecnica", "hard skill": "tecni
                 "soft skill": "comportamental", "certificacao": "certificacao", "curso": "curso"}
 SECAO_HABILIDADES = re.compile(r"^(habilidades|competencias|skills)\b")
 SECAO_CERTIFICACOES = re.compile(r"^(certificacoes|certificacao|certificados|cursos|certifications)\b")
-INICIO_REGRAS, FIM_REGRAS = "   **Os requisitos**", "   Critérios da nota"
+INICIO_REGRAS, FIM_REGRAS = "- `requisitos`:", "## Como dar a nota"  # em regras-da-nota.md (spec 062)
 
 
 # ---------------------------------------------------------------- nomes
@@ -535,9 +535,9 @@ def resumo(vagas: list[dict], perfil: str, vagas_sel="aplicacoes", area="todas")
 # ---------------------------------------------------------------- leitura pela IA
 
 def regras() -> str:
-    """O item dos requisitos na skill buscar-vagas (a fonte das regras; research D3)."""
-    skill = analise.SKILL.read_text(encoding="utf-8") if analise.SKILL.exists() else ""
-    return analise._secao(skill, INICIO_REGRAS, FIM_REGRAS)
+    """O item dos requisitos nas regras da nota (regras-da-nota.md, a mesma fonte da nota; spec 062)."""
+    texto = analise.REGRAS.read_text(encoding="utf-8") if analise.REGRAS.exists() else ""
+    return analise._secao(texto, INICIO_REGRAS, FIM_REGRAS)
 
 
 def montar_pedido(vagas: list[dict], nomes: list[str]) -> str:
@@ -550,7 +550,7 @@ def montar_pedido(vagas: list[dict], nomes: list[str]) -> str:
                    (limpar(v.get("descricao")) or "(sem descrição)")[:analise.LIMITE_DESCRICAO], ""]
     return NL.join([
         "Você lê os requisitos de anúncios de vagas para o usuário da ferramenta meu-proximo-trampo, com as regras "
-        "abaixo (da skill buscar-vagas). Você não tem ferramentas: tudo o que precisa está aqui. Não dê nota nem "
+        "abaixo. Você não tem ferramentas: tudo o que precisa está aqui. Não dê nota nem "
         "avalie a vaga: só registre o que o anúncio pede.",
         'Responda SOMENTE com um array JSON, um objeto por vaga, sem texto antes ou depois e sem bloco de código: '
         '[{"id", "requisitos": {"habilidades" [{"nome", "tipo", "exigida"}], "certificacoes" [{"nome", "tipo", '
