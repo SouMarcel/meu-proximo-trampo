@@ -690,10 +690,13 @@ class Handler(BaseHTTPRequestHandler):
             if metodo == "POST" and caminho == "/api/perfil/revisao":
                 corpo = self._corpo()
                 origem, ids = str(corpo.get("origem") or ""), corpo.get("relatos")
-                if not ia.disponivel():  # sem IA, o caminho da spec 035, com aviso
-                    with TRAVA_PERFIL:
-                        return self._json(200, rv.levar_sem_ia(origem, ids))
+                if not ia.disponivel():
+                    return self._erro(400, "Ligue uma IA para incorporar os relatos: sem IA, eles esperam em Seus relatos.")
                 return self._json(202, {**gerador.GERACAO.iniciar_revisao(origem, ids), "pode_alterar": True})
+            if metodo == "POST" and caminho == "/api/perfil/revisao/desfazer":
+                self._corpo()
+                with TRAVA_PERFIL:
+                    return self._json(200, rv.desfazer())
             if metodo == "PUT" and caminho == "/api/perfil/revisao/decisoes":
                 corpo = self._corpo()
                 return self._json(200, {"revisao": rv.decidir(str(corpo.get("origem") or ""), corpo.get("itens"),
@@ -1176,7 +1179,8 @@ class Handler(BaseHTTPRequestHandler):
             import revisao_perfil as rv
             origem = (parse_qs(urlsplit(self.path).query).get("origem") or [""])[0]
             try:
-                return self._json(200, {"revisao": rv.obter(origem), "pode_alterar": True})
+                return self._json(200, {"revisao": rv.obter(origem), "pode_alterar": True,
+                                        "incorporacao": rv.ultima_incorporacao() if origem == "relatos" else None})
             except rv.RevisaoErro as e:
                 return self._erro(e.codigo, str(e))
         if caminho == "/api/perfil/filtros-propostos":
