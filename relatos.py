@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """Relatos da pessoa (spec 035): o que ela contou com as próprias palavras, na candidatura assistida, quando o perfil não
-respondia a uma pergunta. O relato vale como fato confirmado (constituição IV): entra no texto do perfil usado pela IA
-(respostas, currículo, carta, entrevista, nota e análises) e vai para o perfil.md só quando a pessoa pede.
+respondia a uma pergunta. O relato vale como fato confirmado (constituição IV): vale nos pedidos à IA sobre a vaga em que foi escrito; nos
+outros, a base é só o perfil.md (constituição IV, 5.6.0). Vai para o perfil.md só quando a pessoa pede.
 
   adicionar(pergunta, relato, resposta, vaga)   guarda (o mesmo relato para a mesma pergunta só é atualizado)
   listar() / editar(id, relato) / apagar(id)    para a pessoa ver e corrigir (Meu perfil → Seus relatos)
-  bloco()                                       a seção "Relatos da pessoa" com os que ainda não estão no perfil.md
-  com_relatos(perfil)                           o texto do perfil com essa seção, para os pedidos à IA
+  pendentes()                                   os relatos que ainda não estão no perfil.md
+  bloco(itens, vaga)                            a seção "Relatos da pessoa" com os pendentes da vaga (sem vaga, vazia)
+  com_relatos(perfil, vaga)                     o perfil com essa seção, para os pedidos à IA sobre a vaga; sem vaga,
+                                                o perfil como está
   levar_ao_perfil(id)                           acrescenta o relato cru ao perfil.md (o caminho sem IA; com IA, a
                                                 revisão do perfil, revisao_perfil.py, spec 050)
   marcar_no_perfil(ids)                         a revisão gravou os fatos destes relatos no perfil.md
+  desmarcar_no_perfil(ids)                      o contrário: tira a marca de "já no perfil.md"
 
 Fica em dash/dados/relatos.json (fora do Git). Documentos (CPF, RG) são mascarados antes de guardar.
 
-  python relatos.py lista       os relatos guardados (para o assistente no chat)
+  python relatos.py lista [--vaga ID]   os relatos guardados (para o assistente no chat), só os da vaga com --vaga
 """
 from __future__ import annotations
 
@@ -130,9 +133,29 @@ def apagar(rid: str) -> None:
         _gravar(itens)
 
 
-def bloco(itens: list[dict] | None = None) -> str:
-    """A seção dos relatos que ainda não foram levados ao perfil.md (os levados já estão no texto do perfil)."""
-    itens = [x for x in (listar() if itens is None else itens) if not x.get("no_perfil")]
+def _da_vaga(x: dict, vaga) -> bool:
+    """O relato foi escrito nesta vaga (ou numa das juntadas a ela). `vaga` é o dict da vaga ou só o id."""
+    if not vaga:
+        return False
+    if isinstance(vaga, dict):
+        ids = {str(vaga.get("id") or "")} | {str(i) for i in vaga.get("ids_relacionados") or []}
+    else:
+        ids = {str(vaga)}
+    ids.discard("")
+    return str((x.get("vaga") or {}).get("id") or "") in ids
+
+
+def pendentes() -> list[dict]:
+    """Os relatos que ainda não estão no perfil.md."""
+    return [x for x in listar() if not x.get("no_perfil")]
+
+
+def bloco(itens: list[dict] | None = None, vaga=None) -> str:
+    """A seção dos relatos pendentes da vaga (os levados já estão no texto do perfil). Sem vaga e sem itens, vazia."""
+    if itens is None:
+        itens = [x for x in pendentes() if _da_vaga(x, vaga)]
+    else:
+        itens = [x for x in itens if not x.get("no_perfil")]
     if not itens:
         return ""
     linhas = [TITULO_BLOCO]
@@ -142,9 +165,9 @@ def bloco(itens: list[dict] | None = None) -> str:
     return "\n".join(linhas)
 
 
-def com_relatos(perfil: str) -> str:
-    """O perfil com a seção dos relatos, para os pedidos à IA e a conferência sem IA."""
-    extra = bloco()
+def com_relatos(perfil: str, vaga=None) -> str:
+    """O perfil com os relatos pendentes da vaga, para os pedidos à IA e a conferência sem IA; sem vaga, só o perfil."""
+    extra = bloco(vaga=vaga)
     perfil = str(perfil or "")
     if not extra:
         return perfil
@@ -192,6 +215,19 @@ def marcar_no_perfil(ids) -> None:
         _gravar(itens)
 
 
+def desmarcar_no_perfil(ids) -> None:
+    """O contrário de marcar_no_perfil: o relato volta a ser pendente."""
+    alvo = {str(i) for i in ids or []}
+    if not alvo:
+        return
+    with TRAVA:
+        itens = _carregar()
+        for x in itens:
+            if x.get("id") in alvo:
+                x["no_perfil"] = False
+        _gravar(itens)
+
+
 def main(argv: list[str] | None = None) -> int:
     for fluxo in (sys.stdout, sys.stderr):
         try:
@@ -199,10 +235,12 @@ def main(argv: list[str] | None = None) -> int:
         except AttributeError:
             pass
     args = sys.argv[1:] if argv is None else argv
-    if args[:1] != ["lista"]:
+    if args[:1] != ["lista"] or (len(args) > 1 and not (len(args) == 3 and args[1] == "--vaga")):
         print(__doc__)
         return 1
     itens = listar()
+    if len(args) == 3:
+        itens = [x for x in itens if _da_vaga(x, args[2])]
     if not itens:
         print("Nenhum relato guardado.")
     for x in itens:

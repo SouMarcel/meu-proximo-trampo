@@ -1,7 +1,9 @@
 """Limpeza de vagas antigas (spec 054): critérios no config, grupos e datas, destaques, ficha curta, prévia sem
 gravar, gravação com backup e compactação, dedupe depois de arquivar, "sem resposta", desarquivar, o comando e as
 rotas. Vagas fictícias, banco e config numa pasta temporária."""
+import argparse
 import http.client
+import io
 import json
 import os
 import shutil
@@ -18,6 +20,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(RAIZ), str(RAIZ / "dash")]
 import analise_perfil  # noqa: E402
 import banco  # noqa: E402
+import curriculo_ia  # noqa: E402
 import filtros  # noqa: E402
 import requisitos  # noqa: E402
 
@@ -52,9 +55,12 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.pasta_curriculos = self.tmp / "curriculos"
+        self.pasta_curriculos.mkdir(parents=True, exist_ok=True)
         for p in (mock.patch.object(banco, "ARQUIVO", self.tmp / "banco.db"),
                   mock.patch.object(banco, "BACKUPS", self.tmp / "backup"),
-                  mock.patch.object(filtros, "CONFIG", self.tmp / "config.json")):
+                  mock.patch.object(filtros, "CONFIG", self.tmp / "config.json"),
+                  mock.patch.object(curriculo_ia, "CURRICULOS", self.pasta_curriculos)):
             p.start()
             self.addCleanup(p.stop)
 
@@ -268,14 +274,84 @@ class TestLimpar(Base):
         self.assertEqual((p["grupos"]["fora"]["vagas"], p["grupos"]["sem_resposta"]["vagas"]), ([], []))
         self.assertFalse(p["grupos"]["fora"]["ligado"])
 
+    def test_arquivar_vaga_com_carta_apaga_documentos(self):
+        v = vaga("com_carta", triagem="fora", triada_em=antes(40), documentos=[{"tipo": "carta", "nome": "carta-v1"}])
+        gravar(v)
+        meta = {"nome": "carta-v1", "tipo": "carta", "alvo": {"tipo": "vaga", "id": "com_carta"},
+                "arquivos": {"txt": "carta-v1.txt"}}
+        (self.pasta_curriculos / "carta-v1.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (self.pasta_curriculos / "carta-v1.txt").write_text("Texto da carta", encoding="utf-8")
+        r = banco.limpar(["com_carta"], crit=crit(), dia=DIA)
+        self.assertEqual(r["arquivadas"], 1)
+        self.assertFalse((self.pasta_curriculos / "carta-v1.meta.json").exists())
+        self.assertFalse((self.pasta_curriculos / "carta-v1.txt").exists())
+        doc = banco.obter("com_carta")
+        self.assertTrue(banco.arquivada(doc))
+        self.assertEqual(doc.get("documentos_apagados"), {"carta": 1, "em": DIA})
+        self.assertNotIn("documentos", doc)
+        self.assertNotIn("curriculos", doc)
+
+    def test_falha_apagar_lote_nao_arquiva(self):
+        v1 = vaga("v_erro", triagem="fora", triada_em=antes(40), documentos=[{"tipo": "carta", "nome": "carta-erro"}])
+        v2 = vaga("v_ok", triagem="fora", triada_em=antes(40))
+        gravar(v1, v2)
+        meta = {"nome": "carta-erro", "tipo": "carta", "alvo": {"tipo": "vaga", "id": "v_erro"}}
+        (self.pasta_curriculos / "carta-erro.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        with mock.patch.object(curriculo_ia, "apagar_lote", side_effect=curriculo_ia.GeracaoErro("arquivo aberto")):
+            r = banco.limpar(["v_erro", "v_ok"], crit=crit(), dia=DIA)
+        self.assertEqual(r["arquivadas"], 1)
+        self.assertEqual(r["nao_arquivadas"], [{"id": "v_erro", "motivo": "arquivo aberto"}])
+        self.assertFalse(banco.arquivada(banco.obter("v_erro")))
+        self.assertTrue(banco.arquivada(banco.obter("v_ok")))
+
+    def test_sem_resposta_encerrada_nao_perde_documentos(self):
+        v = vaga("sem_resp", triagem="seguir", etapa="aplicada", etapa_em=antes(40),
+                 documentos=[{"tipo": "respostas", "nome": "resp-1"}])
+        gravar(v)
+        meta = {"nome": "resp-1", "tipo": "respostas", "alvo": {"tipo": "vaga", "id": "sem_resp"}}
+        (self.pasta_curriculos / "resp-1.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (self.pasta_curriculos / "resp-1.txt").write_text("respostas", encoding="utf-8")
+        r = banco.limpar(["sem_resp"], crit=crit(), dia=DIA)
+        self.assertEqual(r["encerradas"], 1)
+        self.assertEqual(r["arquivadas"], 0)
+        self.assertTrue((self.pasta_curriculos / "resp-1.meta.json").exists())
+        self.assertTrue((self.pasta_curriculos / "resp-1.txt").exists())
+        doc = banco.obter("sem_resp")
+        self.assertEqual(doc["etapa"], "encerrada")
+        self.assertEqual(doc["resultado"], "sem_resposta")
+        self.assertEqual(len(doc.get("documentos") or []), 1)
+        self.assertNotIn("documentos_apagados", doc)
+
+    def test_desligar_documento(self):
+        v = vaga("v_doc", documentos=[{"tipo": "carta", "nome": "c1"}, {"tipo": "respostas", "nome": "r1"}])
+        gravar(v)
+        banco.desligar_documento("v_doc", "c1")
+        doc = banco.obter("v_doc")
+        self.assertEqual(doc["documentos"], [{"tipo": "respostas", "nome": "r1"}])
+        # desligar documento que não existe na vaga não mexe em nada
+        banco.desligar_documento("v_doc", "c_inexistente")
+        self.assertEqual(banco.obter("v_doc")["documentos"], [{"tipo": "respostas", "nome": "r1"}])
+        # vaga inexistente não levanta erro
+        banco.desligar_documento("vaga_fantasma", "c1")
+
 
 class TestComando(Base):
     def rodar(self, *args):
-        env = {**os.environ, "TRAMPO_BANCO": str(self.tmp / "banco.db"), "PYTHONIOENCODING": "utf-8"}
+        env = {**os.environ, "TRAMPO_BANCO": str(self.tmp / "banco.db"),
+               "TRAMPO_CURRICULOS": str(self.pasta_curriculos),
+               "PYTHONIOENCODING": "utf-8"}
         r = subprocess.run([sys.executable, str(RAIZ / "dash" / "banco.py"), "limpar", *args], env=env,
                            capture_output=True, text=True, encoding="utf-8", timeout=60, cwd=self.tmp)
         self.assertEqual(r.returncode, 0, r.stderr)
         return r.stdout
+
+    def rodar_orfaos(self, *args):
+        env = {**os.environ, "TRAMPO_BANCO": str(self.tmp / "banco.db"),
+               "TRAMPO_CURRICULOS": str(self.pasta_curriculos),
+               "PYTHONIOENCODING": "utf-8"}
+        r = subprocess.run([sys.executable, str(RAIZ / "dash" / "banco.py"), "documentos-orfaos", *args], env=env,
+                           capture_output=True, text=True, encoding="utf-8", timeout=60, cwd=self.tmp)
+        return r.returncode, r.stdout, r.stderr
 
     def test_previa_e_gravar(self):
         hoje = date.today().isoformat()
@@ -289,6 +365,39 @@ class TestComando(Base):
         self.assertIn("Arquivadas: 1", saida)
         self.assertTrue(banco.arquivada(banco.obter("velha")))
         self.assertFalse(banco.arquivada(banco.obter("anot")))
+
+    def test_documentos_orfaos_comando(self):
+        code, out, _ = self.rodar_orfaos()
+        self.assertEqual(code, 0)
+        self.assertIn("Nenhum documento órfão.", out)
+
+        meta = {"nome": "carta-antiga", "tipo": "carta", "criado_em": "2026-06-01T10:00:00",
+                "alvo": {"tipo": "vaga", "id": "v_sumiu", "titulo": "Dev", "empresa": "Tech"}}
+        (self.pasta_curriculos / "carta-antiga.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (self.pasta_curriculos / "carta-antiga.txt").write_text("conteudo", encoding="utf-8")
+
+        code, out, _ = self.rodar_orfaos()
+        self.assertEqual(code, 0)
+        self.assertIn("- carta | 2026-06-01 | Dev | Tech | vaga não encontrada | carta-antiga", out)
+        self.assertIn("Nada foi apagado. Para apagar: python dash/banco.py documentos-orfaos --gravar", out)
+        self.assertTrue((self.pasta_curriculos / "carta-antiga.meta.json").exists())
+
+        code, out, _ = self.rodar_orfaos("--gravar")
+        self.assertEqual(code, 0)
+        self.assertIn("Apagados: 1 documento(s).", out)
+        self.assertFalse((self.pasta_curriculos / "carta-antiga.meta.json").exists())
+        self.assertFalse((self.pasta_curriculos / "carta-antiga.txt").exists())
+
+    def test_documentos_orfaos_erro_arquivo_aberto(self):
+        meta = {"nome": "carta-aberta", "tipo": "carta", "criado_em": "2026-06-01T10:00:00",
+                "alvo": {"tipo": "vaga", "id": "v_sumiu"}}
+        (self.pasta_curriculos / "carta-aberta.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        with mock.patch.object(curriculo_ia, "apagar_lote", side_effect=curriculo_ia.GeracaoErro("arquivo aberto")):
+            saida = io.StringIO()
+            with mock.patch("sys.stdout", saida):
+                code = banco._cmd_documentos_orfaos(argparse.Namespace(gravar=True))
+            self.assertEqual(code, 1)
+            self.assertIn("arquivo aberto", saida.getvalue())
 
 
 class TestRotas(Base):

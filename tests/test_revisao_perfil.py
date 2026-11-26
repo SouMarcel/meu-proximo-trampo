@@ -346,6 +346,78 @@ class TestDecidirEGravar(BaseRevisao):  # T015, T016, T023, T026
         self.assertTrue(res["anterior"])
 
 
+class TestIncorporar(BaseRevisao):  # spec 060 (T005)
+    def so_cte(self):
+        return {"itens": [{"tipo": "entra", "secao": "Experiência", "cargo": CARGO_ALFA,
+                           "novo": "Consultas em SQL com CTEs para as metas comerciais.", "relatos": [self.cte["id"]]}],
+                "discordancias": [], "sem_fato": []}
+
+    def marcado(self, rid):
+        return next(x for x in relatos.listar() if x["id"] == rid)["no_perfil"]
+
+    def test_sem_conflito_aplica_e_guarda(self):
+        self.respostas_ia.append(self.so_cte())
+        res = rv.incorporar([self.cte["id"]])
+        self.assertEqual((res["conflitos"], res["incorporados"]), (0, [self.cte["id"]]))
+        self.assertEqual([e["novo"] for e in res["entrou"]], ["Consultas em SQL com CTEs para as metas comerciais."])
+        self.assertIn("- Consultas em SQL com CTEs para as metas comerciais.", self.texto())
+        self.assertTrue(self.marcado(self.cte["id"]))
+        ult = rv.ultima_incorporacao()
+        self.assertEqual((ult["relatos"], ult["anterior"], "sha_depois" in ult), ([self.cte["id"]], res["anterior"], False))
+        self.assertEqual(ult["entrou"][0]["secao"], "Experiência")
+        self.assertEqual(rv.obter("relatos")["situacao"], "gravada")
+
+    def test_discordancia_fica_aberta(self):
+        relatos.desmarcar_no_perfil([self.tab["id"]])
+        p = self.so_cte()
+        p["discordancias"] = proposta(self.cte["id"], self.tab["id"])["discordancias"]
+        self.respostas_ia.append(p)
+        res = rv.incorporar([self.cte["id"], self.tab["id"]])
+        self.assertEqual((res["conflitos"], res["incorporados"]), (1, [self.cte["id"]]))
+        self.assertTrue(self.marcado(self.cte["id"]))
+        self.assertFalse(self.marcado(self.tab["id"]))
+        r = rv.obter("relatos")
+        self.assertEqual((r["itens"], len(r["discordancias"]), r["situacao"]), ([], 1, "pronta"))
+        pagina = {x["id"]: x["em_conflito"] for x in rv.relatos_para_pagina(relatos.listar())}
+        self.assertEqual((pagina[self.tab["id"]], pagina[self.cte["id"]]), (True, False))  # sai da caixa de entrada
+        rv.decidir("relatos", discordancias={"d1": {"escolha": "relato"}})
+        rv.gravar("relatos")
+        self.assertTrue(self.marcado(self.tab["id"]))
+        self.assertEqual(rv.relatos_em_conflito(), set())
+
+    def test_desfazer(self):
+        relatos.desmarcar_no_perfil([self.tab["id"]])
+        self.respostas_ia.append(self.so_cte())
+        rv.incorporar([self.cte["id"]])
+        self.assertEqual(rv.desfazer(), {"ok": True})
+        self.assertEqual(self.texto(), PERFIL_REV)
+        self.assertFalse(self.marcado(self.cte["id"]))
+        self.assertIsNone(rv.ultima_incorporacao())
+        self.assertIsNone(rv.obter("relatos"))
+        with self.assertRaises(rv.RevisaoErro) as cm:
+            rv.desfazer()
+        self.assertEqual(cm.exception.codigo, 404)
+
+    def test_desfazer_com_perfil_mudado(self):
+        self.respostas_ia.append(self.so_cte())
+        rv.incorporar([self.cte["id"]])
+        self.perfil.write_text(self.texto().replace("foco em vendas", "foco em varejo"), encoding="utf-8")
+        with self.assertRaises(rv.RevisaoErro) as cm:
+            rv.desfazer()
+        self.assertEqual(cm.exception.codigo, 409)
+        self.assertIn("foco em varejo", self.texto())
+        self.assertIsNotNone(rv.ultima_incorporacao())
+
+    def test_sem_fato_marca_sem_mudar_o_perfil(self):
+        self.respostas_ia.append({"itens": [], "discordancias": [], "sem_fato": [self.cte["id"]]})
+        res = rv.incorporar([self.cte["id"]])
+        self.assertEqual((res["entrou"], res["incorporados"], res["anterior"]), ([], [self.cte["id"]], None))
+        self.assertEqual(self.texto(), PERFIL_REV)
+        self.assertTrue(self.marcado(self.cte["id"]))
+        self.assertEqual(rv.desfazer(), {"ok": True})
+        self.assertFalse(self.marcado(self.cte["id"]))
+
+
 class TestOrigemVaga(Base):  # T007, T014 (origem da vaga)
     def setUp(self):
         super().setUp()
@@ -431,7 +503,7 @@ class TestGeradorERotas(BaseRevisao):  # T009, T017, T029
         self.assertEqual(self.pedir("POST", "/api/perfil/revisao", {"origem": "x"})[0], 400)
         self.assertEqual(self.pedir("POST", "/api/perfil/revisao", {"origem": "vaga:v9"})[0], 404)
         self.assertEqual(self.pedir("POST", "/api/perfil/revisao", {"origem": "relatos", "relatos": []})[0], 400)
-        self.assertEqual(self.pedir("GET", "/api/perfil/revisao?origem=relatos")[1], {"revisao": None, "pode_alterar": True})
+        self.assertEqual(self.pedir("GET", "/api/perfil/revisao?origem=relatos")[1], {"revisao": None, "pode_alterar": True, "incorporacao": None})
         self.assertEqual(self.pedir("GET", "/api/perfil/revisao?origem=x")[0], 400)
 
         self.respostas_ia.append(ia.IAErro("fora do ar"))
@@ -442,29 +514,50 @@ class TestGeradorERotas(BaseRevisao):  # T009, T017, T029
         self.respostas_ia.append(proposta(*ids))
         self.assertEqual(self.pedir("POST", "/api/curriculo/tentar", {})[0], 202)
         self.assertEqual(self.esperar()["situacao"], "pronto")
-        self.assertEqual(self.texto(), PERFIL_REV)  # a proposta não muda o perfil
+        self.assertIn("CTEs para as metas comerciais", self.texto())  # o Incorporar aplicou o que não diverge
+        self.assertIn("Painéis em Tableau por dois anos", self.texto())
 
         status, j = self.pedir("GET", "/api/perfil/revisao?origem=relatos")
         self.assertEqual((status, j["revisao"]["pode_gravar"], len(j["revisao"]["discordancias"])), (200, False, 1))
+        self.assertEqual(j["incorporacao"]["relatos"], [self.cte["id"]])
+        self.assertTrue(j["incorporacao"]["entrou"])
+        self.assertIsNone(self.pedir("GET", "/api/perfil/revisao?origem=vaga:v1")[1].get("incorporacao"))
         self.assertEqual(self.pedir("POST", "/api/perfil/revisao/gravar", {"origem": "relatos"})[0], 400)
         self.assertEqual(self.pedir("PUT", "/api/perfil/revisao/decisoes",
                                     {"origem": "relatos", "discordancias": {"d1": {"escolha": "x"}}})[0], 400)
         self.assertEqual(self.pedir("PUT", "/api/perfil/revisao/decisoes", {"origem": "vaga:v1", "itens": {}})[0], 404)
         status, j = self.pedir("PUT", "/api/perfil/revisao/decisoes",
-                               {"origem": "relatos", "discordancias": {"d1": {"escolha": "perfil"}}})
+                               {"origem": "relatos", "discordancias": {"d1": {"escolha": "relato"}}})
         self.assertEqual((status, j["revisao"]["pode_gravar"]), (200, True))
         status, j = self.pedir("POST", "/api/perfil/revisao/gravar", {"origem": "relatos"})
         self.assertEqual((status, j["aceitos"] > 0, j["revisao"]["situacao"]), (200, True, "gravada"))
-        self.assertIn("CTEs para as metas comerciais", self.texto())
+        self.assertIn("Painéis mensais em Tableau para a diretoria, por dois anos", self.texto())
         self.assertEqual(self.pedir("POST", "/api/perfil/revisao/gravar", {"origem": "relatos"})[0], 400)
         self.assertEqual(self.pedir("DELETE", "/api/perfil/revisao?origem=relatos", {})[1], {"revisao": None})
         self.assertIsNone(self.pedir("GET", "/api/perfil/revisao?origem=relatos")[1]["revisao"])
 
+    def test_incorporar_e_desfazer_pelas_rotas(self):
+        relatos.desmarcar_no_perfil([self.tab["id"]])
+        self.respostas_ia.append({"itens": [{"tipo": "entra", "secao": "Experiência", "cargo": CARGO_ALFA,
+                                             "novo": "Consultas em SQL com CTEs para as metas comerciais.",
+                                             "relatos": [self.cte["id"]]}], "discordancias": [], "sem_fato": []})
+        status, _ = self.pedir("POST", "/api/perfil/revisao", {"origem": "relatos", "relatos": [self.cte["id"]]})
+        self.assertEqual(status, 202)
+        self.assertEqual(self.esperar()["situacao"], "pronto")
+        self.assertIn("CTEs para as metas comerciais", self.texto())
+        self.assertTrue(self.pedir("GET", "/api/perfil/revisao?origem=relatos")[1]["incorporacao"])
+        self.assertEqual(self.pedir("POST", "/api/perfil/revisao/desfazer", {}), (200, {"ok": True}))
+        self.assertEqual(self.texto(), PERFIL_REV)
+        self.assertIsNone(self.pedir("GET", "/api/perfil/revisao?origem=relatos")[1]["incorporacao"])
+        self.assertEqual(self.pedir("POST", "/api/perfil/revisao/desfazer", {})[0], 404)
+
     def test_sem_ia_ocupado_e_fora_deste_computador(self):
         with mock.patch.object(ia, "disponivel", return_value=False):
-            status, j = self.pedir("POST", "/api/perfil/revisao", {"origem": "relatos", "relatos": [self.cte["id"]]})
-            self.assertEqual((status, j["sem_ia"], j["levados"]), (200, True, [self.cte["id"]]))
-            self.assertIn(RELATO_CTE, self.texto())
+            for origem in ("relatos", "vaga:v1"):
+                status, j = self.pedir("POST", "/api/perfil/revisao", {"origem": origem, "relatos": [self.cte["id"]]})
+                self.assertEqual(status, 400)
+                self.assertIn("Ligue uma IA para incorporar os relatos", j["erro"])
+            self.assertEqual(self.texto(), PERFIL_REV)
         trava = threading.Event()
         self.respostas_ia.append(proposta(self.cte["id"], self.tab["id"]))
         original = ia.responder.side_effect

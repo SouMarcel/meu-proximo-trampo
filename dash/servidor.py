@@ -507,10 +507,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._corpo()
                 with TRAVA_PERFIL:  # grava o perfil.md (a versão anterior fica guardada)
                     r = relatos.levar_ao_perfil(rid)
-                return self._json(200, {"relatos": relatos.listar(), "anterior": r["anterior"]})
+                return self._json(200, {"relatos": self._relatos_para_pagina(), "anterior": r["anterior"]})
             else:
                 return self._erro(405, "método não permitido")
-            return self._json(200, {"relatos": relatos.listar()})
+            return self._json(200, {"relatos": self._relatos_para_pagina()})
         with TRAVA_PERFIL:
             estado = pp.carregar()
             if metodo == "POST" and caminho == "/api/perfil/material":
@@ -650,10 +650,13 @@ class Handler(BaseHTTPRequestHandler):
                         return self._erro(404, "currículo não encontrado")
                     alvo = res.get("alvo") if isinstance(res.get("alvo"), dict) else {}
                     if alvo.get("tipo") == "vaga":
-                        banco.desligar_curriculo(alvo["id"], nome)
-                        sys.path.insert(0, str(banco.DASH.parent))
-                        import reprovacao
-                        reprovacao.esquecer_curriculo(alvo["id"], nome)
+                        if res.get("tipo") in ("carta", "respostas"):
+                            banco.desligar_documento(alvo["id"], nome)
+                        else:
+                            banco.desligar_curriculo(alvo["id"], nome)
+                            sys.path.insert(0, str(banco.DASH.parent))
+                            import reprovacao
+                            reprovacao.esquecer_curriculo(alvo["id"], nome)
                     return self._json(200, {"apagado": nome})
         except gerador.GeracaoOcupada as e:
             return self._json(409, {"erro": str(e), "estado": gerador.GERACAO.estado()})
@@ -681,6 +684,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(202, {**gerador.GERACAO.iniciar_reescrita(vaga_id), "pode_alterar": True})
         return self._erro(404, "rota não encontrada")
 
+    def _relatos_para_pagina(self) -> list[dict]:
+        """Os relatos para a página, com em_conflito (spec 060: incorporado com decisão pendente em Conflitos)."""
+        sys.path.insert(0, str(banco.DASH.parent))
+        import relatos
+        import revisao_perfil as rv
+        return rv.relatos_para_pagina(relatos.listar())
+
     def _revisao(self, metodo: str, caminho: str):
         """Revisão do perfil ao levar relatos (spec 050): a IA propõe, a pessoa decide item a item, e só então o
         perfil.md muda. Só deste computador (conferido pelo _perfil)."""
@@ -690,10 +700,13 @@ class Handler(BaseHTTPRequestHandler):
             if metodo == "POST" and caminho == "/api/perfil/revisao":
                 corpo = self._corpo()
                 origem, ids = str(corpo.get("origem") or ""), corpo.get("relatos")
-                if not ia.disponivel():  # sem IA, o caminho da spec 035, com aviso
-                    with TRAVA_PERFIL:
-                        return self._json(200, rv.levar_sem_ia(origem, ids))
+                if not ia.disponivel():
+                    return self._erro(400, "Ligue uma IA para incorporar os relatos: sem IA, eles esperam em Seus relatos.")
                 return self._json(202, {**gerador.GERACAO.iniciar_revisao(origem, ids), "pode_alterar": True})
+            if metodo == "POST" and caminho == "/api/perfil/revisao/desfazer":
+                self._corpo()
+                with TRAVA_PERFIL:
+                    return self._json(200, rv.desfazer())
             if metodo == "PUT" and caminho == "/api/perfil/revisao/decisoes":
                 corpo = self._corpo()
                 return self._json(200, {"revisao": rv.decidir(str(corpo.get("origem") or ""), corpo.get("itens"),
@@ -826,10 +839,15 @@ class Handler(BaseHTTPRequestHandler):
             return self._erro(403, SO_LOCAL_PERFIL)
         sys.path.insert(0, str(banco.DASH.parent))
         import curriculo_base
-        rel = curriculo_base.marcados().get(idioma) if idioma in curriculo_base.IDIOMAS else None
-        if not rel:
+        import curriculo_ia
+        if idioma not in curriculo_base.IDIOMAS:
             return self._erro(404, "arquivo não encontrado")
-        caminho = curriculo_base.RAIZ / rel
+        caminho = curriculo_ia.arquivo_geral(idioma)
+        if not caminho:
+            rel = curriculo_base.marcados().get(idioma)
+            if not rel:
+                return self._erro(404, "arquivo não encontrado")
+            caminho = curriculo_base.RAIZ / rel
         dados = caminho.read_bytes()
         pdf = caminho.suffix.lower() == ".pdf"
         self.send_response(200)
@@ -1082,8 +1100,34 @@ class Handler(BaseHTTPRequestHandler):
             if metodo == "PATCH":
                 return self._json(200, {"vaga": banco.com_kit(banco.atualizar_usuario(vid, self._corpo()))})
             if metodo == "DELETE":
+                sys.path.insert(0, str(banco.DASH.parent))
+                import curriculo_ia
+                import reprovacao
+                vaga = banco.obter(vid)
+                if vaga is None:
+                    raise KeyError(vid)
+                docs = curriculo_ia.documentos_da_vaga(vaga)
+                apagados = []
+                if docs:
+                    try:
+                        apagados = curriculo_ia.apagar_lote([d["nome"] for d in docs])
+                    except curriculo_ia.GeracaoErro as e:
+                        if "aberto em outro programa" in str(e):
+                            return self._erro(409, str(e))
+                        return self._erro(400, str(e))
+                for d in apagados:
+                    if d.get("tipo") == "curriculo":
+                        reprovacao.esquecer_curriculo(vid, d["nome"])
                 banco.remover(vid)
-                return self._json(200, {"ok": True})
+                if banco.obter(vid) is not None:
+                    with banco.escrita() as con:
+                        doc = banco._ler(con, vid)
+                        if doc is not None:
+                            doc["curriculos"] = []
+                            doc["documentos"] = []
+                            doc["atualizada_em"] = banco.agora()
+                            banco._gravar(con, vid, doc)
+                return self._json(200, {"ok": True, "documentos_apagados": [d["nome"] for d in apagados]})
             return self._erro(405, "método não permitido")
         except KeyError:
             return self._erro(404, "vaga não encontrada")
@@ -1144,7 +1188,10 @@ class Handler(BaseHTTPRequestHandler):
                 sys.path.insert(0, str(banco.DASH.parent))
                 import curriculo_ia
                 base = (consulta.get("base") or [""])[0] == "1"
-                return self._json(200, {"curriculos": curriculo_ia.listar(vaga_id, base=base)})
+                resp = {"curriculos": curriculo_ia.listar(vaga_id, base=base)}
+                if base:
+                    resp["perfil_mais_novo"] = curriculo_ia.perfil_mais_novo()
+                return self._json(200, resp)
             if caminho == "/api/curriculo/reprovacao":  # a última análise de reprovação da vaga (spec 049)
                 sys.path.insert(0, str(banco.DASH.parent))
                 import reprovacao
@@ -1168,7 +1215,7 @@ class Handler(BaseHTTPRequestHandler):
             if not self._local():
                 return self._erro(403, SO_LOCAL_PERFIL)
             import relatos
-            return self._json(200, {"relatos": relatos.listar()})
+            return self._json(200, {"relatos": self._relatos_para_pagina()})
         if caminho == "/api/perfil/revisao":  # a proposta da revisão do perfil (spec 050): só deste computador
             if not self._local():
                 return self._erro(403, SO_LOCAL_PERFIL)
@@ -1176,7 +1223,8 @@ class Handler(BaseHTTPRequestHandler):
             import revisao_perfil as rv
             origem = (parse_qs(urlsplit(self.path).query).get("origem") or [""])[0]
             try:
-                return self._json(200, {"revisao": rv.obter(origem), "pode_alterar": True})
+                return self._json(200, {"revisao": rv.obter(origem), "pode_alterar": True,
+                                        "incorporacao": rv.ultima_incorporacao() if origem == "relatos" else None})
             except rv.RevisaoErro as e:
                 return self._erro(e.codigo, str(e))
         if caminho == "/api/perfil/filtros-propostos":

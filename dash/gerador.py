@@ -225,7 +225,9 @@ class Geracao:
 
     def iniciar_revisao(self, origem: str, ids=None) -> dict:
         """Revisar e levar ao perfil (spec 050): a IA propõe onde cada relato entra; a pessoa decide e grava depois.
-        origem: "vaga:<id>" (as respostas da análise de reprovação) ou "relatos" (ids marcados em Seus relatos)."""
+        origem: "vaga:<id>" (as respostas da análise de reprovação) ou "relatos" (ids marcados em Seus relatos:
+        o Incorporar, spec 060, aplica o que não tem conflito, guarda o que entrou para o Desfazer e deixa só as
+        discordâncias para a pessoa decidir)."""
         rv = _revisao()
         self._pode_comecar("A revisão do perfil", "a revisão põe os fatos nele")
         origem = rv._chave(origem)  # RevisaoErro (400) com origem inválida
@@ -250,7 +252,11 @@ class Geracao:
     def _rodar_revisao(self, origem: str, ids):
         rv = _revisao()
         try:
-            rv.revisar(origem, ids, progresso=lambda etapa: self._set(situacao=etapa))
+            progresso = lambda etapa: self._set(situacao=etapa)  # noqa: E731
+            if origem == rv.ORIGEM_RELATOS:
+                rv.incorporar(ids, progresso=progresso)
+            else:
+                rv.revisar(origem, ids, progresso=progresso)
             self._set(situacao="pronto", pronto=True, fim=datetime.now().isoformat(timespec="seconds"))
         except rv.RevisaoErro as e:
             self._set(situacao="falha", mensagem=str(e), fim=datetime.now().isoformat(timespec="seconds"))

@@ -1,9 +1,11 @@
 """Testes do curriculo_ia.py e do registro do currículo na vaga, com a IA substituída. Conteúdo fictício."""
+import http.client
 import json
 import re
 import shutil
 import sys
 import tempfile
+import threading
 import unittest
 from datetime import datetime
 from pathlib import Path
@@ -300,14 +302,57 @@ class TestApagar(Base):
         with self.assertRaises(FileNotFoundError):
             cia.apagar("nao-existe")
 
-    def test_carta_nao_e_apagada(self):
+    def test_carta_e_apagada(self):
         cia.CURRICULOS.mkdir(parents=True, exist_ok=True)
-        for sufixo in (".json", ".meta.json"):
-            (cia.CURRICULOS / f"carta-x{sufixo}").write_text(json.dumps({"tipo": "carta"}), encoding="utf-8")
-        with self.assertRaises(cia.GeracaoErro):
-            cia.apagar("carta-x")
-        self.assertTrue((cia.CURRICULOS / "carta-x.json").exists())
-        self.assertTrue((cia.CURRICULOS / "carta-x.meta.json").exists())
+        meta = {
+            "nome": "carta-x",
+            "tipo": "carta",
+            "alvo": {"tipo": "vaga", "id": "v1"},
+            "arquivos": {"txt": "carta-x.txt", "docx": "carta-x.docx", "pdf": "carta-x.pdf"},
+        }
+        (cia.CURRICULOS / "carta-x.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        for ext in (".txt", ".docx", ".pdf"):
+            (cia.CURRICULOS / f"carta-x{ext}").write_text("conteudo", encoding="utf-8")
+        ret = cia.apagar("carta-x")
+        self.assertEqual(ret["nome"], "carta-x")
+        self.assertEqual(ret["tipo"], "carta")
+        for ext in (".txt", ".docx", ".pdf", ".meta.json"):
+            self.assertFalse((cia.CURRICULOS / f"carta-x{ext}").exists())
+
+    def test_apagar_lote_dois_documentos(self):
+        a = self._gerar()
+        b = self._gerar()
+        ret = cia.apagar_lote([a["nome"], b["nome"]])
+        self.assertEqual(len(ret), 2)
+        self.assertEqual(ret[0]["nome"], a["nome"])
+        self.assertEqual(ret[1]["nome"], b["nome"])
+        self.assertFalse(any(p.exists() for p in self._arquivos(a["nome"])))
+        self.assertFalse(any(p.exists() for p in self._arquivos(b["nome"])))
+        self.assertEqual(len(cia.listar(base=True)), 0)
+
+    def test_apagar_lote_nome_inexistente_nada_apagado(self):
+        a = self._gerar()
+        with self.assertRaises(FileNotFoundError):
+            cia.apagar_lote([a["nome"], "doc-inexistente"])
+        self.assertTrue(all(p.exists() for p in self._arquivos(a["nome"]) if not p.name.endswith(".pdf")))
+
+    def test_apagar_lote_falha_segundo_documento_desfaz(self):
+        a = self._gerar()
+        b = self._gerar()
+        original = Path.rename
+
+        def rename(self_, destino):
+            if destino.name.startswith(b["nome"]):
+                raise PermissionError("arquivo aberto")
+            return original(self_, destino)
+
+        with mock.patch.object(Path, "rename", rename):
+            with self.assertRaises(cia.GeracaoErro):
+                cia.apagar_lote([a["nome"], b["nome"]])
+
+        self.assertEqual(list(cia.CURRICULOS.glob("*.apagando")), [])
+        self.assertTrue(all(p.exists() for p in self._arquivos(a["nome"]) if not p.name.endswith(".pdf")))
+        self.assertTrue(all(p.exists() for p in self._arquivos(b["nome"]) if not p.name.endswith(".pdf")))
 
     def test_falha_no_meio_desfaz(self):
         nome = self._gerar()["nome"]
@@ -325,6 +370,131 @@ class TestApagar(Base):
             with self.assertRaises(cia.GeracaoErro):
                 cia.apagar(nome)
         self.assertEqual(sorted(p.name for p in cia.CURRICULOS.iterdir()), antes)
+
+
+class TestDocumentosDaVaga(Base):
+    def test_documentos_da_vaga(self):
+        cia.CURRICULOS.mkdir(parents=True, exist_ok=True)
+        # 1. pelo alvo.id
+        (cia.CURRICULOS / "cv-v1.meta.json").write_text(json.dumps({
+            "nome": "cv-v1", "tipo": "curriculo", "alvo": {"tipo": "vaga", "id": "v1"},
+            "criado_em": "2026-11-20T10:00:00"
+        }), encoding="utf-8")
+        # 2. por ids_relacionados
+        (cia.CURRICULOS / "carta-antiga.meta.json").write_text(json.dumps({
+            "nome": "carta-antiga", "tipo": "carta", "alvo": {"tipo": "vaga", "id": "v_antiga"},
+            "criado_em": "2026-11-21T10:00:00"
+        }), encoding="utf-8")
+        # 3. por nome em documentos
+        (cia.CURRICULOS / "respostas-outra.meta.json").write_text(json.dumps({
+            "nome": "respostas-outra", "tipo": "respostas", "alvo": {"tipo": "vaga", "id": "v_outra"},
+            "criado_em": "2026-11-22T10:00:00"
+        }), encoding="utf-8")
+        # 4. por nome em curriculos
+        (cia.CURRICULOS / "cv-antigo.meta.json").write_text(json.dumps({
+            "nome": "cv-antigo", "alvo": {"tipo": "vaga", "id": "v_outra2"},
+            "criado_em": "2026-11-19T10:00:00"
+        }), encoding="utf-8")
+        # 5. base (deve ser ignorado mesmo se em curriculos)
+        (cia.CURRICULOS / "cv-base.meta.json").write_text(json.dumps({
+            "nome": "cv-base", "tipo": "curriculo", "alvo": {"tipo": "base"},
+            "criado_em": "2026-11-25T10:00:00"
+        }), encoding="utf-8")
+        # 6. documento de outra vaga
+        (cia.CURRICULOS / "carta-estranha.meta.json").write_text(json.dumps({
+            "nome": "carta-estranha", "tipo": "carta", "alvo": {"tipo": "vaga", "id": "v999"},
+            "criado_em": "2026-11-24T10:00:00"
+        }), encoding="utf-8")
+
+        vaga = {
+            "id": "v1",
+            "ids_relacionados": ["v_antiga"],
+            "curriculos": ["cv-antigo", "cv-base"],
+            "documentos": [{"tipo": "respostas", "nome": "respostas-outra"}],
+        }
+
+        docs = cia.documentos_da_vaga(vaga)
+        nomes = [d["nome"] for d in docs]
+        self.assertEqual(nomes, ["respostas-outra", "carta-antiga", "cv-v1", "cv-antigo"])
+        self.assertNotIn("cv-base", nomes)
+        self.assertNotIn("carta-estranha", nomes)
+        self.assertEqual(docs[3]["tipo"], "curriculo")  # padrão preenchido
+
+
+class TestDocumentosOrfaos(Base):
+    def test_documentos_orfaos(self):
+        cia.CURRICULOS.mkdir(parents=True, exist_ok=True)
+        # Arquivada
+        (cia.CURRICULOS / "doc-arq.meta.json").write_text(json.dumps({
+            "nome": "doc-arq", "tipo": "curriculo",
+            "alvo": {"tipo": "vaga", "id": "v_arq", "titulo": "Dev Python", "empresa": "Empresa A"},
+            "criado_em": "2026-11-20T10:00:00"
+        }), encoding="utf-8")
+        # Removida (visitada sem etapa)
+        (cia.CURRICULOS / "doc-rem.meta.json").write_text(json.dumps({
+            "nome": "doc-rem", "tipo": "carta",
+            "alvo": {"tipo": "vaga", "id": "v_rem", "titulo": "Analista", "empresa": "Empresa B"},
+            "criado_em": "2026-11-21T10:00:00"
+        }), encoding="utf-8")
+        # Id inexistente (vaga não encontrada)
+        (cia.CURRICULOS / "doc-sumiu.meta.json").write_text(json.dumps({
+            "nome": "doc-sumiu", "tipo": "respostas",
+            "alvo": {"tipo": "vaga", "id": "v_sumiu", "titulo": "Engenheiro", "empresa": "Empresa C"},
+            "criado_em": "2026-11-22T10:00:00"
+        }), encoding="utf-8")
+        # Vaga viva (não deve aparecer)
+        (cia.CURRICULOS / "doc-viva.meta.json").write_text(json.dumps({
+            "nome": "doc-viva", "tipo": "curriculo",
+            "alvo": {"tipo": "vaga", "id": "v_viva", "titulo": "Arquiteto", "empresa": "Empresa D"},
+            "criado_em": "2026-11-23T10:00:00"
+        }), encoding="utf-8")
+        # Documento de vaga que saiu, mas cujo nome está em documentos de outra vaga viva (junção de repetidas)
+        (cia.CURRICULOS / "doc-repetida.meta.json").write_text(json.dumps({
+            "nome": "doc-repetida", "tipo": "curriculo",
+            "alvo": {"tipo": "vaga", "id": "v_saiu", "titulo": "Cientista", "empresa": "Empresa E"},
+            "criado_em": "2026-11-24T10:00:00"
+        }), encoding="utf-8")
+        # Documento base (não é alvo.tipo == vaga, não deve aparecer)
+        (cia.CURRICULOS / "doc-base.meta.json").write_text(json.dumps({
+            "nome": "doc-base", "tipo": "curriculo",
+            "alvo": {"tipo": "base"},
+            "criado_em": "2026-11-25T10:00:00"
+        }), encoding="utf-8")
+
+        vagas = [
+            {"id": "v_arq", "titulo": "Dev Python", "empresa": "Empresa A", "arquivada_em": "2026-11-01"},
+            {"id": "v_rem", "titulo": "Analista", "empresa": "Empresa B", "triagem": "visitada", "etapa": None},
+            {"id": "v_saiu", "titulo": "Cientista", "empresa": "Empresa E", "triagem": "visitada", "etapa": None},
+            {"id": "v_viva", "titulo": "Arquiteto", "empresa": "Empresa D", "triagem": "seguir", "etapa": "salva"},
+            {"id": "v_outra_viva", "titulo": "Cientista Sênior", "empresa": "Empresa E", "triagem": "seguir", "etapa": "salva",
+             "documentos": [{"nome": "doc-repetida", "tipo": "curriculo"}]},
+        ]
+
+        orfaos = cia.documentos_orfaos(vagas)
+        nomes = [d["nome"] for d in orfaos]
+
+        self.assertNotIn("doc-viva", nomes)
+        self.assertNotIn("doc-repetida", nomes)
+        self.assertNotIn("doc-base", nomes)
+
+        self.assertEqual(len(orfaos), 3)
+        self.assertEqual(orfaos[0]["nome"], "doc-sumiu")
+        self.assertEqual(orfaos[0]["motivo"], "vaga não encontrada")
+        self.assertEqual(orfaos[0]["titulo"], "Engenheiro")
+        self.assertEqual(orfaos[0]["empresa"], "Empresa C")
+        self.assertEqual(orfaos[0]["vaga_id"], "v_sumiu")
+
+        self.assertEqual(orfaos[1]["nome"], "doc-rem")
+        self.assertEqual(orfaos[1]["motivo"], "removida")
+        self.assertEqual(orfaos[1]["titulo"], "Analista")
+        self.assertEqual(orfaos[1]["empresa"], "Empresa B")
+        self.assertEqual(orfaos[1]["vaga_id"], "v_rem")
+
+        self.assertEqual(orfaos[2]["nome"], "doc-arq")
+        self.assertEqual(orfaos[2]["motivo"], "arquivada")
+        self.assertEqual(orfaos[2]["titulo"], "Dev Python")
+        self.assertEqual(orfaos[2]["empresa"], "Empresa A")
+        self.assertEqual(orfaos[2]["vaga_id"], "v_arq")
 
 
 def cv_menor():
@@ -457,6 +627,194 @@ class TestEncurtarFuncoesPuras(unittest.TestCase):
         self.assertIn("Responda SOMENTE com o JSON no mesmo formato, sem texto antes ou depois e sem a chave tecnicas", pedido)
         self.assertNotIn('"tecnicas":', pedido)
         self.assertNotIn("ana@exemplo.com", pedido)  # o contato nunca vai à IA
+
+
+class TestGeralDoIdioma(Base):
+    def _meta(self, nome, formato, paginas, criado, pdf=True):
+        cia.CURRICULOS.mkdir(parents=True, exist_ok=True)
+        (cia.CURRICULOS / f"{nome}.docx").write_text("x", encoding="utf-8")
+        if pdf:
+            (cia.CURRICULOS / f"{nome}.pdf").write_text("x", encoding="utf-8")
+        (cia.CURRICULOS / f"{nome}.meta.json").write_text(json.dumps({
+            "nome": nome, "alvo": {"tipo": "base"}, "criado_em": criado,
+            "tecnicas": {"formato": formato, "paginas": paginas},
+            "arquivos": {"json": None, "docx": f"{nome}.docx", "pdf": f"{nome}.pdf" if pdf else None},
+        }), encoding="utf-8")
+
+    def test_mais_recente_nao_completo(self):
+        self._meta("a", "br", 2, "2026-01-01T10:00:00")
+        self._meta("b", "br", 0, "2026-01-03T10:00:00")
+        self._meta("c", "br", 1, "2026-01-02T10:00:00")
+        self.assertEqual(cia.geral_atual("pt")["nome"], "c")
+        self.assertEqual(cia.arquivo_geral("pt").name, "c.pdf")
+
+    def test_cai_no_completo_e_separa_idiomas(self):
+        self._meta("b", "br", 0, "2026-01-03T10:00:00", pdf=False)
+        self._meta("u", "us", 2, "2026-01-01T10:00:00")
+        self.assertEqual(cia.geral_atual("pt")["nome"], "b")
+        self.assertEqual(cia.arquivo_geral("pt").name, "b.docx")
+        self.assertEqual(cia.geral_atual("en")["nome"], "u")
+        self._meta("e", "eu", 3, "2026-01-05T10:00:00")
+        self.assertEqual(cia.geral_atual("en")["nome"], "e")
+
+    def test_sem_geral(self):
+        self.assertIsNone(cia.geral_atual("pt"))
+        self.assertIsNone(cia.arquivo_geral("en"))
+
+    def test_perfil_mais_novo(self):
+        import os
+        import primeiros_passos
+        perfil = self.tmp / "perfil.md"
+        perfil.write_text("p", encoding="utf-8")
+        with mock.patch.object(primeiros_passos, "caminho_perfil", return_value=perfil):
+            self.assertFalse(cia.perfil_mais_novo())  # sem currículo do perfil
+            self._meta("a", "br", 2, "2026-01-02T10:00:00")
+            antes = datetime(2026, 1, 1, 10).timestamp()
+            depois = datetime(2026, 1, 3, 10).timestamp()
+            os.utime(perfil, (antes, antes))
+            self.assertFalse(cia.perfil_mais_novo())
+            os.utime(perfil, (depois, depois))
+            self.assertTrue(cia.perfil_mais_novo())
+
+    def test_banco_usa_geral_e_cai_no_marcado(self):
+        import curriculo_base
+        marcados = {"pt": "anexos/meu.pdf", "en": None}
+        with mock.patch.object(curriculo_base, "marcados", return_value=marcados):
+            antes = banco.curriculos_base()
+            self.assertEqual(antes["pt"]["nome"], "meu.pdf")
+            self.assertIsNone(antes["en"])
+            self._meta("g", "br", 2, "2026-01-02T10:00:00")
+            depois = banco.curriculos_base()
+            self.assertEqual(depois["pt"], {"nome": "g.pdf", "url": "/arquivos/curriculo-base/pt"})
+            self.assertIsNone(depois["en"])
+
+class TestRotasDocumentos(Base):
+    def setUp(self):
+        super().setUp()
+        p_backup = mock.patch.object(banco, "BACKUPS", self.tmp / "backup")
+        p_backup.start()
+        self.patches.append(p_backup)
+        (self.tmp / "curriculos").mkdir(parents=True, exist_ok=True)
+        (self.tmp / "backup").mkdir(parents=True, exist_ok=True)
+
+        import servidor
+        p_hosts = mock.patch.object(servidor.Handler, "hosts_permitidos", {"127.0.0.1", "localhost"})
+        p_hosts.start()
+        self.addCleanup(p_hosts.stop)
+        self.srv = servidor.ThreadingHTTPServer(("127.0.0.1", 0), servidor.Handler)
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.addCleanup(self.srv.server_close)
+        self.addCleanup(self.srv.shutdown)
+
+    def pedir(self, metodo, caminho, corpo=None):
+        con = http.client.HTTPConnection("127.0.0.1", self.srv.server_address[1], timeout=10)
+        self.addCleanup(con.close)
+        dados = json.dumps(corpo).encode("utf-8") if corpo is not None else None
+        headers = {"Content-Type": "application/json"}
+        con.request(metodo, caminho, dados, headers)
+        r = con.getresponse()
+        return r.status, json.loads(r.read())
+
+    def test_delete_curriculo_carta(self):
+        banco.inserir_vagas([{
+            "id": "v1", "titulo": "Dev Python", "empresa": "Tech SA", "origem": "indeed", "triagem": "seguir",
+            "documentos": [{"tipo": "carta", "nome": "carta-v1", "criado_em": "2026-11-20T10:00:00"}]
+        }])
+        meta = {
+            "nome": "carta-v1", "tipo": "carta", "alvo": {"tipo": "vaga", "id": "v1"},
+            "arquivos": {"txt": "carta-v1.txt", "pdf": "carta-v1.pdf"}
+        }
+        (cia.CURRICULOS / "carta-v1.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (cia.CURRICULOS / "carta-v1.txt").write_text("conteudo carta", encoding="utf-8")
+        (cia.CURRICULOS / "carta-v1.pdf").write_text("pdf fake", encoding="utf-8")
+
+        status, r = self.pedir("DELETE", "/api/curriculo/carta-v1")
+        self.assertEqual(status, 200)
+        self.assertEqual(r, {"apagado": "carta-v1"})
+        self.assertFalse((cia.CURRICULOS / "carta-v1.meta.json").exists())
+        self.assertFalse((cia.CURRICULOS / "carta-v1.txt").exists())
+        self.assertFalse((cia.CURRICULOS / "carta-v1.pdf").exists())
+        v1 = banco.obter("v1")
+        self.assertEqual(v1.get("documentos"), [])
+
+    def test_delete_vaga_com_documentos(self):
+        banco.inserir_vagas([{
+            "id": "v2", "titulo": "Cientista de Dados", "empresa": "Data Corp", "origem": "indeed",
+            "triagem": "seguir", "etapa": "aplicada",
+            "curriculos": ["cv-v2"],
+            "documentos": [{"tipo": "respostas", "nome": "resp-v2", "criado_em": "2026-11-20T10:00:00"}]
+        }])
+        meta_cv = {
+            "nome": "cv-v2", "tipo": "curriculo", "alvo": {"tipo": "vaga", "id": "v2"},
+            "arquivos": {"txt": "cv-v2.txt", "docx": "cv-v2.docx"}
+        }
+        meta_resp = {
+            "nome": "resp-v2", "tipo": "respostas", "alvo": {"tipo": "vaga", "id": "v2"},
+            "arquivos": {"json": "resp-v2.json", "txt": "resp-v2.txt"}
+        }
+        (cia.CURRICULOS / "cv-v2.meta.json").write_text(json.dumps(meta_cv), encoding="utf-8")
+        (cia.CURRICULOS / "cv-v2.txt").write_text("texto cv", encoding="utf-8")
+        (cia.CURRICULOS / "cv-v2.docx").write_text("docx cv", encoding="utf-8")
+
+        (cia.CURRICULOS / "resp-v2.meta.json").write_text(json.dumps(meta_resp), encoding="utf-8")
+        (cia.CURRICULOS / "resp-v2.json").write_text("{}", encoding="utf-8")
+        (cia.CURRICULOS / "resp-v2.txt").write_text("texto resp", encoding="utf-8")
+
+        status, r = self.pedir("DELETE", "/api/vagas/v2")
+        self.assertEqual(status, 200)
+        self.assertTrue(r["ok"])
+        self.assertEqual(set(r["documentos_apagados"]), {"cv-v2", "resp-v2"})
+
+        self.assertFalse((cia.CURRICULOS / "cv-v2.meta.json").exists())
+        self.assertFalse((cia.CURRICULOS / "cv-v2.txt").exists())
+        self.assertFalse((cia.CURRICULOS / "cv-v2.docx").exists())
+        self.assertFalse((cia.CURRICULOS / "resp-v2.meta.json").exists())
+        self.assertFalse((cia.CURRICULOS / "resp-v2.json").exists())
+        self.assertFalse((cia.CURRICULOS / "resp-v2.txt").exists())
+
+        v2 = banco.obter("v2")
+        self.assertEqual(v2["triagem"], "visitada")
+        self.assertIsNone(v2["etapa"])
+        self.assertEqual(v2["curriculos"], [])
+        self.assertEqual(v2["documentos"], [])
+
+    def test_delete_vaga_arquivo_aberto(self):
+        banco.inserir_vagas([{
+            "id": "v3", "titulo": "Engenheiro", "empresa": "Eng SA", "origem": "indeed",
+            "triagem": "seguir", "etapa": "entrevista",
+            "curriculos": ["cv-v3"],
+            "documentos": [{"tipo": "carta", "nome": "carta-v3", "criado_em": "2026-11-20T10:00:00"}]
+        }])
+        meta = {
+            "nome": "carta-v3", "tipo": "carta", "alvo": {"tipo": "vaga", "id": "v3"},
+            "arquivos": {"txt": "carta-v3.txt"}
+        }
+        (cia.CURRICULOS / "carta-v3.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (cia.CURRICULOS / "carta-v3.txt").write_text("texto carta", encoding="utf-8")
+
+        with mock.patch.object(cia, "apagar_lote", side_effect=cia.GeracaoErro("um arquivo do documento está aberto em outro programa; feche e tente de novo")):
+            status, r = self.pedir("DELETE", "/api/vagas/v3")
+
+        self.assertEqual(status, 409)
+        self.assertIn("aberto em outro programa", r.get("erro", ""))
+        v3 = banco.obter("v3")
+        self.assertEqual(v3["triagem"], "seguir")
+        self.assertEqual(v3["etapa"], "entrevista")
+        self.assertEqual(v3["curriculos"], ["cv-v3"])
+        self.assertEqual(len(v3["documentos"]), 1)
+        self.assertTrue((cia.CURRICULOS / "carta-v3.meta.json").exists())
+
+    def test_delete_vaga_sem_documentos(self):
+        banco.inserir_vagas([{
+            "id": "v4", "titulo": "Analista Júnior", "empresa": "Tech Alpha", "origem": "indeed",
+            "triagem": "seguir", "etapa": "salva"
+        }])
+        status, r = self.pedir("DELETE", "/api/vagas/v4")
+        self.assertEqual(status, 200)
+        self.assertEqual(r, {"ok": True, "documentos_apagados": []})
+        v4 = banco.obter("v4")
+        self.assertEqual(v4["triagem"], "visitada")
+        self.assertIsNone(v4["etapa"])
 
 
 if __name__ == "__main__":

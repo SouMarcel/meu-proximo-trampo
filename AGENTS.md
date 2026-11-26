@@ -50,8 +50,10 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   (`candidatura/`), só em domínio liberado (Indeed e LinkedIn bloqueados pelos termos), com
   o que ela sabe (respostas que a pessoa já deu, em `dash/dados/respostas_formulario.json`, e o perfil) e
   pergunta o resto; na pergunta aberta, a pessoa escreve um relato, que a IA transforma na resposta e que fica em
-  `dash/dados/relatos.json` (spec 035): os relatos valem como fatos confirmados, junto do perfil (`PY relatos.py lista`);
-  só entram no `perfil.md` com o OK da pessoa, pela revisão do perfil (spec 050: a IA propõe onde cada fato entra, a pessoa aceita item a item e grava; `PY revisao_perfil.py mostra <origem>`); o login guardado por ela no `.env` só é digitado na página de login
+  `dash/dados/relatos.json` (spec 035): o relato vale como fato confirmado só nos pedidos sobre a vaga em que foi escrito
+  (`PY relatos.py lista --vaga ID`); nos outros, a base é só o `perfil.md` (constituição IV, 5.6.0). Entra no
+  `perfil.md` quando a pessoa clica em Incorporar (spec 060: o que não diverge entra direto, com Desfazer; o que
+  diverge vai para Conflitos; `PY revisao_perfil.py mostra relatos`); o login guardado por ela no `.env` só é digitado na página de login
   do portal. Você (assistente) não usa esse recurso pela pessoa nem lê a credencial do `.env`.
 
 ## Como rodar os scripts
@@ -73,7 +75,8 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   `PY dash/banco.py limpar` (limpeza de vagas antigas pelos critérios da aba Limpeza, spec 054: mostra a prévia; só arquiva
   com `--gravar` e o OK da pessoa, e as vagas com currículo, carta ou anotação só com `--incluir-destacadas`),
   `PY dash/banco.py repetidas` (a mesma vaga em vários portais, com a empresa escrita de outro jeito, spec 058: mostra os
-  grupos; só junta com `--gravar` e o OK da pessoa),
+  grupos; só junta com `--gravar` e o OK da pessoa), `PY dash/banco.py documentos-orfaos` (currículos, cartas e
+  respostas de vagas que saíram do quadro ou foram arquivadas, spec 061: mostra; só apaga com `--gravar` e o OK da pessoa),
   `PY consultar_gupy.py <ferramenta> chave=valor …` (perguntas pontuais à Gupy sem a integração
   MCP) e `python iniciar.py` (abre o dashboard em http://127.0.0.1:8765). Perfil: `PY primeiros_passos.py extrair <arquivo>` (texto de
   currículo ou LinkedIn sem documentos de identificação), `diagnostico [perfil.md]` e

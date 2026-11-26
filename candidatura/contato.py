@@ -141,49 +141,26 @@ def apagar() -> dict:
 
 # ---------------------------------------------------------------- proposta
 
-def _nome_da_linha(texto: str) -> tuple[str, str] | None:
-    """(nome, sobrenome) da primeira linha que parece um nome: de 2 a 6 palavras, só letras, até 60 caracteres."""
-    for linha in str(texto or "").splitlines()[:8]:
-        linha = " ".join(linha.split())
-        if not linha:
-            continue
-        palavras = linha.split()
-        if (len(linha) <= 60 and 2 <= len(palavras) <= 6 and "@" not in linha
-                and all(re.fullmatch(r"[^\W\d_]+(['’-][^\W\d_]+)*\.?", p) for p in palavras)):
-            return palavras[0], " ".join(palavras[1:])
-        return None  # a primeira linha com texto não é um nome: melhor deixar para a pessoa
-    return None
-
-
-def _do_curriculo(dados: dict, fontes: dict, avisos: list) -> None:
+def _do_perfil(dados: dict, fontes: dict, avisos: list) -> None:
+    texto = ""
     try:
-        import curriculo_base
         import primeiros_passos as pp
-        marcados = curriculo_base.marcados()
-    except Exception:  # config ausente ou com erro: segue com a memória e os filtros
-        marcados = {}
-    caminho = marcados.get("pt") or marcados.get("en")
-    if not caminho:
-        avisos.append("sem currículo base marcado: a proposta usa as respostas já dadas e os filtros da busca")
+        texto = pp.caminho_perfil().read_text(encoding="utf-8")
+    except Exception:  # config ausente, sem perfil ou ilegível: segue com a memória e os filtros
+        pass
+    if not texto.strip():
+        avisos.append("sem perfil: a proposta usa as respostas já dadas e os filtros da busca")
         return
-    try:
-        lido = pp.extrair(caminho)
-    except Exception as e:  # PDF ilegível, falta o pypdf…: vira aviso
-        avisos.append(f"não deu para ler o currículo base ({e})")
-        return
-    contato = lido.get("contato") or pp.reconhecer_contato(lido.get("texto") or "")
-    nome = _nome_da_linha(lido.get("texto") or "")
-    if nome:
-        dados["nome"], dados["sobrenome"] = nome
+    contato = pp.reconhecer_contato(texto)
     for campo, lista in (("email", contato.get("emails") or []), ("telefone", contato.get("telefones") or [])):
         if lista:
             dados[campo] = lista[0]
             if len(lista) > 1:
-                avisos.append(f"o currículo traz {len(lista)} {'e-mails' if campo == 'email' else 'telefones'}; ficou o primeiro")
+                avisos.append(f"o perfil traz {len(lista)} {'e-mails' if campo == 'email' else 'telefones'}; ficou o primeiro")
     if contato.get("linkedin"):
         dados["linkedin"] = contato["linkedin"]
     for campo in dados:
-        fontes[campo] = "currículo"
+        fontes[campo] = "perfil"
 
 
 def _da_memoria(dados: dict, fontes: dict) -> None:
@@ -213,7 +190,7 @@ def _dos_filtros(dados: dict, fontes: dict) -> None:
 def propor() -> dict:
     """{dados, fontes, avisos}: a proposta para a pessoa conferir. Não grava nada."""
     dados, fontes, avisos = {}, {}, []
-    _do_curriculo(dados, fontes, avisos)
+    _do_perfil(dados, fontes, avisos)
     _da_memoria(dados, fontes)
     _dos_filtros(dados, fontes)
     dados = {k: v for k, v in dados.items() if k in CAMPOS and v}

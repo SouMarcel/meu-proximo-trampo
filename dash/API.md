@@ -160,7 +160,8 @@ Rótulos desses códigos: kit.py:14-24 e `src/utils/rotulos.ts`.
 
 - `checklist`: `[{item, rotulo, origem: vaga|analise|anuncio|pessoa, estado: a_fazer|pronto|nao_se_aplica,
   frase, acao: curriculo|carta|respostas|candidatar|null, extra?, base?: {nome, url, idioma}, falta_base?: "pt"|"en"}]`.
-  `base.url` é `/arquivos/curriculo-base/<pt|en>` (o currículo da própria pessoa). kit.py:156-198.
+  `base.url` é `/arquivos/curriculo-base/<pt|en>`: o currículo geral (do perfil) mais recente do idioma, sem contar o
+  Completo quando há outro (spec 060); sem nenhum, o arquivo marcado antes em Meu perfil. kit.py:156-198.
 - `lembretes_pendentes`: no máximo um, `[{tipo: follow1|follow2|agradecimento, rotulo, desde: AAAA-MM-DD, base}]`.
   Follow-up aos 7 e 14 dias em Aplicação Enviada; agradecimento no dia seguinte à entrevista. kit.py:210-234.
 
@@ -208,7 +209,10 @@ devolve o `kit` com `candidatura: pronto`, a menos que esteja `nao_se_aplica`. N
 padrão no `checklist`.
 
 **`DELETE /api/vagas/{id}`** — "Remover de Aplicações". Vaga `manual` é apagada; as outras só saem de Aplicações
-(viram `triagem: visitada`, `etapa: null`). Resposta `{ok: true}`. Erro 404.
+(viram `triagem: visitada`, `etapa: null`). Antes, apaga da pasta `curriculos/` os currículos, cartas e respostas
+gerados para a vaga (spec 061; tudo ou nada) e zera `curriculos`/`documentos` dela. Resposta `{ok: true,
+documentos_apagados: string[]}`. Erros: 404; 409 com a mensagem quando um arquivo está aberto em outro programa (a vaga
+não é removida).
 
 **`POST /api/vagas/{id}/analisar`** **[local]** — "Forçar verificar" (Vagas Nacionais e Vagas Internacionais, vaga sem nota ou com
 `nota_sem_descricao`, triagem pendente ou fora). Corpo `{}`. Resposta 202 `{verificando: string[], verificando_agora: string|null}`
@@ -449,7 +453,9 @@ A página mostra as destacadas desmarcadas.
 
 **`POST /api/limpeza/aplicar`** — corpo `{ids: string[]}` (1 a 2000). Refaz a conta e só aplica nos ids que ainda
 estão num grupo (a destacada pedida entra). Antes, uma cópia em `dash/dados/backup/candidaturas-AAAA-MM-DD-limpeza.db`;
-depois, o banco é compactado. Resposta `{arquivadas, encerradas, ignoradas: string[], antes_kb, depois_kb, backup}`.
+depois, o banco é compactado. Arquivar apaga os documentos gerados da vaga (spec 061) e a ficha guarda
+`documentos_apagados: {curriculo?, carta?, respostas?, em}`; a vaga cujo arquivo está aberto não é arquivada. Resposta
+`{arquivadas, encerradas, ignoradas: string[], nao_arquivadas: [{id, motivo}], antes_kb, depois_kb, backup}`.
 
 ### 3.5 IA (botão IA)
 
@@ -543,9 +549,9 @@ Erros: 400 com a mensagem (ex.: conflito sem escolha no texto, arquivo .doc, IA 
 | `GET /api/perfil/relatos` [local] | — | `{relatos: [{id, pergunta, relato, resposta, vaga: {id, titulo, empresa}\|null, em, no_perfil}]}`: os relatos da pessoa (spec 035), mais recentes primeiro; valem como fato junto do perfil |
 | `PUT /api/perfil/relatos/{id}` [local] | `{relato}` | `{relatos}`; 400 relato vazio ou inexistente |
 | `DELETE /api/perfil/relatos/{id}` [local] | — | `{relatos}`; 400 inexistente |
-| `POST /api/perfil/relatos/{id}/perfil` [local] | — | `{relatos, anterior}`: acrescenta o relato cru à seção "Relatos" do perfil.md (a versão anterior fica em `anexos/perfis-anteriores/`) e o marca `no_perfil`; 400 sem perfil. É o caminho sem IA; com IA, a página usa a revisão do perfil (`/api/perfil/revisao`, §3.8, spec 050) |
+| `POST /api/perfil/relatos/{id}/perfil` [local] | — | `{relatos, anterior}`: acrescenta o relato cru à seção "Relatos" do perfil.md (a versão anterior fica em `anexos/perfis-anteriores/`) e o marca `no_perfil`; 400 sem perfil. Rota antiga: a página não usa mais (spec 060: os relatos entram pelo Incorporar, `/api/perfil/revisao`) |
 | `POST /api/perfil/do-curriculo/confirmar` [local] | `{arquivo*, idioma, manter_perfil: bool, marcar_base: bool, perfil (markdown, se não mantém), edicao?: {cargos, cargos_en, cidade, estado, modelos: string[]}}` | `{perfil, anterior, filtros, curriculo_base}` |
-| `PUT /api/curriculo-base` [local] | `{idioma*: "pt"\|"en", arquivo: caminho\|null}` | `{curriculo_base: {pt, en}}` — marca/desmarca "Seu currículo" |
+| `PUT /api/curriculo-base` [local] | `{idioma*: "pt"\|"en", arquivo: caminho\|null}` | `{curriculo_base: {pt, en}}` — marca/desmarca "Seu currículo". Rota antiga: a página não usa mais (spec 060); o marcado só vale como reserva sem currículo geral |
 
 ### 3.7 Análises do perfil (Meu perfil → Análises; todas só no clique)
 
@@ -606,7 +612,8 @@ geração rodando).
 alvo: {vaga_id, titulo, empresa} | {base: true}, tecnicas?, inicio, fim, nome, mensagem, veredito: ok|conferir|bloquear,
 pronto: bool, pode_tentar: bool, etapa_texto, pode_alterar}` (gerador.py:64-69, 104-106).
 
-**`GET /api/curriculo/lista?vaga={id}`** ou **`?base=1`** — `{curriculos: [meta]}`, mais recentes primeiro. Meta:
+**`GET /api/curriculo/lista?vaga={id}`** ou **`?base=1`** — `{curriculos: [meta]}`, mais recentes primeiro; com
+`base=1`, também `perfil_mais_novo: bool` (o perfil.md mudou depois do currículo do perfil mais recente; spec 060). Meta:
 `{nome, alvo, tecnicas, arquivos: {json, docx, pdf|null}, disponivel: {pdf, docx, json: bool}, paginas|null, acima_do_limite,
 sugestoes_corte, conferencia: {veredito, fatos: [{nivel, mensagem, valor?, trecho?}], ats: [...], requisitos: [{situacao,
 texto}], cobertura: {achadas, total, faltando}|null}, pronto, ia, criado_em, reprovacao?: true, encurtado?: {de, para,
@@ -622,11 +629,11 @@ conta como "tem" (sai "sustentado", evidência "em preparação: …"), e requis
 sai "lacuna" (evidência "falta: …").
 Os links de download são `/arquivos/curriculos/{arquivos.pdf|docx}`.
 
-**`DELETE /api/curriculo/{nome}`** **[local]** — a lixeira de um currículo da lista (spec 052). Apaga o `.json`, o
-`.docx`, o `.pdf` e o `.meta.json` em duas fases (renomeia todos e só então apaga; se um estiver aberto em outro
-programa, desfaz e nada some), tira o nome da vaga (`curriculos`) e da análise de reprovação (`curriculo_gerado`).
-200 `{apagado: nome}`; 400 nome inválido ou não é currículo gerado (cartas e respostas não são apagadas aqui); 404
-não encontrado; 409 arquivo aberto em outro programa.
+**`DELETE /api/curriculo/{nome}`** **[local]** — a lixeira de um currículo, de uma carta ou de um conjunto de
+respostas (specs 052 e 061). Apaga todos os arquivos do documento (`.json`, `.txt`, `.docx`, `.pdf` e `.meta.json`)
+em duas fases (renomeia todos e só então apaga; se um estiver aberto em outro programa, desfaz e nada some) e tira o
+nome da vaga (`curriculos` ou `documentos`) e, no currículo, da análise de reprovação (`curriculo_gerado`).
+200 `{apagado: nome}`; 400 nome inválido; 404 não encontrado; 409 arquivo aberto em outro programa.
 
 #### Análise de reprovação (checkbox no diálogo "Gerar currículo" de uma vaga; spec 049)
 
@@ -684,12 +691,17 @@ perfil" da análise de reprovação que esperam revisão, `para_revisar`) ou `re
 relatos). Uma revisão por origem (a nova substitui), em `dash/dados/revisao_perfil.json`. O estado de geração ganha
 `tipo: "revisao_perfil"`, a situação `revisando` e, na origem `relatos`, o alvo `{perfil: true}`.
 
-**`POST /api/perfil/revisao`** **[local]**: "Revisar e levar ao perfil".
+**`POST /api/perfil/revisao`** **[local]**: "Incorporar ao perfil" (origem `relatos`, spec 060) ou "Revisar e levar ao
+perfil" (origem da vaga, spec 049).
 - Corpo: `{origem, relatos?: [id]}` (`relatos` só na origem `relatos`, 1 a 20 ids).
-- 202: estado. 200 sem IA: `{sem_ia: true, levados, anterior, aviso}` (o caminho da spec 035: a seção "Relatos").
+- 202: estado. Na origem `relatos`, a geração **incorpora**: aplica direto no perfil.md os itens sem divergência
+  (versão anterior guardada), marca `no_perfil` nos relatos sem divergência aberta e deixa na proposta só as
+  discordâncias, para a aba Conflitos. Sem IA: 400 "Ligue uma IA para incorporar os relatos…" (o relato espera).
 - 400: origem inválida, nenhum relato, sem perfil. 404: vaga sem análise, relato inexistente. 409: ocupado.
 
-**`GET /api/perfil/revisao?origem=`** **[local]**: `{revisao: Revisao|null, pode_alterar}`. `Revisao` tem `origem`,
+**`GET /api/perfil/revisao?origem=`** **[local]**: `{revisao: Revisao|null, pode_alterar, incorporacao}`. Na origem
+`relatos`, `incorporacao` é a última incorporação que ainda dá para desfazer: `{anterior, relatos: [id], entrou:
+[{tipo, secao, cargo, novo}], em}` ou `null` (nas outras origens, sempre `null`). `Revisao` tem `origem`,
 `vaga|null`, `relatos: [id]`, `criada_em`, `itens: [{id, tipo: entra|muda|sai, secao, cargo|null, atual|null,
 novo|null, relatos, avisos, valido, aceito, origem: ia|ferramenta|discordancia}]`, `discordancias: [{id, assunto,
 trecho_relato, trecho_perfil|null, relatos, avisos, valido, opcao_relato: item|null, escolha:
@@ -711,6 +723,10 @@ discordância sem escolha, nenhum item aceito; 404 sem revisão; 409 o perfil mu
 
 **`DELETE /api/perfil/revisao?origem=`** **[local]**: descarta a proposta (o perfil e os relatos não mudam). 200
 `{revisao: null}`.
+
+**`POST /api/perfil/revisao/desfazer`** **[local]** (spec 060): `{}`. Volta o perfil.md ao texto de antes da última
+incorporação, devolve os relatos à caixa de entrada e descarta a proposta `relatos`. 200 `{ok: true}`; 404 sem
+incorporação; 409 o perfil mudou depois dela (nada muda).
 
 ### 3.9 Kit da candidatura (detalhe da vaga → "O que esta candidatura pede")
 

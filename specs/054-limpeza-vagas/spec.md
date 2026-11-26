@@ -125,6 +125,8 @@ prévia; arquivar sem marcá-la e ver que ela continua inteira.
    como estavam.
 3. **Given** a pessoa marca uma destacada e arquiva, **When** a gravação termina, **Then** a anotação e os nomes dos
    currículos e das cartas ficam na ficha da vaga arquivada, e os arquivos em `curriculos/` não são apagados.
+   *(Mudou na spec 061: arquivar apaga os documentos da vaga, e a ficha guarda só quantos existiam e quando foram
+   apagados.)*
 4. **Given** uma vaga em Entrevista, Proposta ou contratado parada há meses, **When** a pessoa pede a prévia, **Then**
    ela não aparece.
 

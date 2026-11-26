@@ -419,7 +419,9 @@ def _responder_uma(escolha: dict, pedido: str, sistema: str | None, tempo: float
     modelo = modelo_efetivo(escolha)
     try:
         if prov["adaptador"] == "claude_code":
-            return _claude_code(pedido, sistema, modelo, tempo)
+            texto = _claude_code(pedido, sistema, modelo, tempo)
+            _registrar(escolha, True, "")  # o sucesso também apaga a falha antiga (o alerta do botão IA)
+            return texto
         chave = chave or segredos.ler(prov["variavel"])
         if not chave and escolha["provedor"] != "compativel":
             raise IAErro(f"falta a chave do provedor {prov['nome']} (cadastre no painel IA)")
