@@ -11,8 +11,11 @@
                                           do currículo e da carta (nunca vão à IA)
   gerar(vaga, tecnicas)                   pedido → IA → .json, .docx, .pdf → conferência → .meta.json
   listar(vaga_id=None, base=False)        os currículos gerados pela página, mais recentes primeiro
-  apagar(nome)                            apaga um currículo gerado (os quatro arquivos), desfazendo tudo se um
+  apagar_lote(nomes)                      apaga documentos gerados em lote (tudo ou nada), desfazendo tudo se um
                                           arquivo estiver aberto em outro programa
+  apagar(nome)                            apaga um documento gerado (currículo, carta ou respostas)
+  documentos_da_vaga(vaga)                documentos ligados à vaga (currículos, cartas e respostas), mais recentes primeiro
+  documentos_orfaos(vagas)                documentos de vagas arquivadas, removidas ou não encontradas
 
 Os arquivos ficam em curriculos/ (fora do Git), com nome AAAA-MM-DD-empresa-cargo (ou -base) e um
 sufixo -2, -3… quando o nome já existe: nada é sobrescrito. O .meta.json ao lado guarda as técnicas,
@@ -427,36 +430,179 @@ def listar(vaga_id: str | None = None, base: bool = False) -> list[dict]:
     return sorted(saida, key=lambda m: m.get("criado_em") or "", reverse=True)
 
 
-def apagar(nome: str) -> dict:
-    """Apaga um currículo gerado (.json, .docx, .pdf e .meta.json) em duas fases, sem deixar pela metade."""
-    if not NOME_VALIDO.match(str(nome or "")):
-        raise GeracaoErro("nome de currículo inválido")
-    arq_meta = CURRICULOS / f"{nome}.meta.json"
-    if not arq_meta.is_file():
-        raise FileNotFoundError(nome)
+def apagar_lote(nomes: list[str]) -> list[dict]:
+    """Apaga documentos gerados em lote (tudo ou nada), desfazendo se um arquivo estiver aberto."""
+    if not nomes:
+        return []
+    docs: list[tuple[str, dict]] = []
+    for nome in nomes:
+        if not NOME_VALIDO.match(str(nome or "")):
+            raise GeracaoErro("nome de documento inválido")
+        arq_meta = CURRICULOS / f"{nome}.meta.json"
+        if not arq_meta.is_file():
+            raise FileNotFoundError(nome)
+        try:
+            meta = json.loads(arq_meta.read_text(encoding="utf-8"))
+            if not isinstance(meta, dict):
+                raise ValueError
+        except (OSError, ValueError):
+            raise GeracaoErro(f"documento ilegível: {nome}")
+        docs.append((nome, meta))
+
+    todos_arquivos: list[Path] = []
+    vistos: set[Path] = set()
+    for nome, meta in docs:
+        candidatos: list[str] = []
+        arquivos_dict = meta.get("arquivos")
+        if isinstance(arquivos_dict, dict):
+            for v in arquivos_dict.values():
+                if v and isinstance(v, str) and "/" not in v and "\\" not in v:
+                    candidatos.append(v)
+        for ext in (".json", ".txt", ".docx", ".pdf", ".meta.json"):
+            candidatos.append(f"{nome}{ext}")
+        for c in candidatos:
+            p = CURRICULOS / c
+            if p not in vistos and p.exists():
+                vistos.add(p)
+                todos_arquivos.append(p)
+
+    renomeados: list[tuple[Path, Path]] = []
     try:
-        meta = json.loads(arq_meta.read_text(encoding="utf-8"))
-        if not isinstance(meta, dict) or meta.get("tipo") in ("carta", "respostas"):
-            raise ValueError
-    except (OSError, ValueError):
-        raise GeracaoErro("só currículos gerados podem ser apagados aqui") from None
-    renomeados = []
-    try:
-        for sufixo in (".json", ".docx", ".pdf", ".meta.json"):
-            origem = CURRICULOS / f"{nome}{sufixo}"
-            if origem.exists():
-                destino = origem.with_name(origem.name + ".apagando")
-                origem.rename(destino)
-                renomeados.append((origem, destino))
+        for origem in todos_arquivos:
+            destino = origem.with_name(origem.name + ".apagando")
+            origem.rename(destino)
+            renomeados.append((origem, destino))
     except OSError:
         for origem, destino in reversed(renomeados):
             try:
                 destino.rename(origem)
             except OSError:
                 pass
-        raise GeracaoErro("um arquivo do currículo está aberto em outro programa; feche e tente de novo") from None
+        raise GeracaoErro("um arquivo do documento está aberto em outro programa; feche e tente de novo") from None
+
     _apagar([destino for _, destino in renomeados])
-    return {"nome": nome, "alvo": meta.get("alvo") or {}}
+    return [{"nome": nome, "tipo": meta.get("tipo") or "curriculo", "alvo": meta.get("alvo") or {}} for nome, meta in docs]
+
+
+def apagar(nome: str) -> dict:
+    """Apaga um documento gerado (currículo, carta ou respostas) em duas fases, sem deixar pela metade."""
+    return apagar_lote([nome])[0]
+
+
+def documentos_da_vaga(vaga: dict) -> list[dict]:
+    """Documentos gerados ligados à vaga (currículos, cartas e respostas), mais recentes primeiro."""
+    if not CURRICULOS.is_dir():
+        return []
+    vaga_id = str(vaga.get("id") or "")
+    ids_rel = {str(i) for i in (vaga.get("ids_relacionados") or []) if i}
+    nomes_vaga = set(vaga.get("curriculos") or [])
+    for d in (vaga.get("documentos") or []):
+        if isinstance(d, dict) and d.get("nome"):
+            nomes_vaga.add(d["nome"])
+
+    saida: list[dict] = []
+    for arq in CURRICULOS.glob("*.meta.json"):
+        try:
+            meta = json.loads(arq.read_text(encoding="utf-8"))
+            if not isinstance(meta, dict):
+                continue
+        except (OSError, ValueError):
+            continue
+
+        alvo = meta.get("alvo") or {}
+        if not isinstance(alvo, dict):
+            alvo = {}
+
+        if alvo.get("tipo") == "base":
+            continue
+
+        nome = meta.get("nome") or arq.name[:-10]
+        meta["nome"] = nome
+        meta["tipo"] = meta.get("tipo") or "curriculo"
+
+        alvo_id = str(alvo.get("id") or "") if alvo.get("id") is not None else ""
+        pertence = (nome in nomes_vaga) or (
+            alvo.get("tipo") == "vaga" and alvo_id and (alvo_id == vaga_id or alvo_id in ids_rel)
+        )
+        if pertence:
+            saida.append(meta)
+
+    return sorted(saida, key=lambda m: m.get("criado_em") or "", reverse=True)
+
+
+def documentos_orfaos(vagas: list[dict]) -> list[dict]:
+    """Documentos de vagas arquivadas, removidas ou não encontradas, mais recentes primeiro."""
+    if not CURRICULOS.is_dir():
+        return []
+
+    vagas_vivas = [
+        v for v in vagas
+        if not v.get("arquivada_em") and not (v.get("triagem") == "visitada" and not v.get("etapa"))
+    ]
+
+    nomes_vivas: set[str] = set()
+    ids_vivas: set[str] = set()
+    for v in vagas_vivas:
+        for n in (v.get("curriculos") or []):
+            if n:
+                nomes_vivas.add(n)
+        for d in (v.get("documentos") or []):
+            if isinstance(d, dict) and d.get("nome"):
+                nomes_vivas.add(d["nome"])
+        if v.get("id"):
+            ids_vivas.add(str(v["id"]))
+        for r in (v.get("ids_relacionados") or []):
+            if r:
+                ids_vivas.add(str(r))
+
+    vagas_por_id: dict[str, dict] = {str(v["id"]): v for v in vagas if v.get("id")}
+
+    orfaos: list[dict] = []
+    for arq in CURRICULOS.glob("*.meta.json"):
+        try:
+            meta = json.loads(arq.read_text(encoding="utf-8"))
+            if not isinstance(meta, dict):
+                continue
+        except (OSError, ValueError):
+            continue
+
+        alvo = meta.get("alvo") or {}
+        if not isinstance(alvo, dict) or alvo.get("tipo") != "vaga":
+            continue
+
+        nome = meta.get("nome") or arq.name[:-10]
+        alvo_id = alvo.get("id")
+        alvo_id_str = str(alvo_id) if alvo_id is not None else ""
+
+        if (nome in nomes_vivas) or (alvo_id_str and alvo_id_str in ids_vivas):
+            continue
+
+        vaga_alvo = vagas_por_id.get(alvo_id_str) if alvo_id_str else None
+        if vaga_alvo is None:
+            motivo = "vaga não encontrada"
+            titulo = alvo.get("titulo") or ""
+            empresa = alvo.get("empresa") or ""
+        else:
+            titulo = vaga_alvo.get("titulo") or alvo.get("titulo") or ""
+            empresa = vaga_alvo.get("empresa") or alvo.get("empresa") or ""
+            if vaga_alvo.get("arquivada_em"):
+                motivo = "arquivada"
+            elif vaga_alvo.get("triagem") == "visitada" and not vaga_alvo.get("etapa"):
+                motivo = "removida"
+            else:
+                motivo = "removida"
+
+        orfaos.append({
+            "nome": nome,
+            "tipo": meta.get("tipo") or "curriculo",
+            "vaga_id": alvo_id,
+            "titulo": titulo,
+            "empresa": empresa,
+            "criado_em": meta.get("criado_em") or "",
+            "motivo": motivo,
+        })
+
+    return sorted(orfaos, key=lambda d: d.get("criado_em") or "", reverse=True)
 
 
 def arquivo_servivel(nome: str) -> Path | None:
