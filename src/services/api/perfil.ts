@@ -281,8 +281,21 @@ const origemDe = (origem: string) => `?origem=${encodeURIComponent(origem)}`
 export const revisarPerfil = (origem: string, relatos?: string[]) =>
   pedir<EstadoGeracao | RevisaoSemIa>("POST", "/api/perfil/revisao", { origem, relatos })
 
+/** Incorporação dos relatos (spec 060): o que entrou direto no perfil, desfazível enquanto o perfil não mudar. */
+export interface Incorporacao {
+  anterior: string | null
+  relatos: string[]
+  entrou: { tipo: string; secao: string | null; cargo: string | null; novo: string | null }[]
+  em: string
+}
+
 export const obterRevisao = (origem: string) =>
-  pedir<{ revisao: RevisaoPerfil | null; pode_alterar: boolean }>("GET", `/api/perfil/revisao${origemDe(origem)}`)
+  pedir<{ revisao: RevisaoPerfil | null; pode_alterar: boolean; incorporacao?: Incorporacao | null }>(
+    "GET",
+    `/api/perfil/revisao${origemDe(origem)}`,
+  )
+
+export const desfazerIncorporacao = () => pedir<{ ok: boolean }>("POST", "/api/perfil/revisao/desfazer", {})
 
 export const decidirRevisao = (origem: string, decisoes: DecisoesRevisao) =>
   pedir<{ revisao: RevisaoPerfil }>("PUT", "/api/perfil/revisao/decisoes", { origem, ...decisoes })
