@@ -36,6 +36,23 @@ Além disso, a análise automática depois da busca:
 A ideia de fundo vem do api-anything: aprender uma vez e reaproveitar até mudar, em vez de reenviar o mesmo texto
 longo a cada vez.
 
+## Clarifications
+
+### Session 2026-11-26
+
+- Q: As seções do perfil que não pesam na nota (Contato: e-mail, telefone, links) devem continuar indo no pedido? → A:
+  Não; saem do pedido de nota (FR-009). Hoje vão em todo pedido, gastam caracteres e mandam dado pessoal ao provedor.
+- Q: Quais metas valem para o tamanho do pedido e para a calibração? → A: pedido de 1 vaga com no máximo 20 mil
+  caracteres (medido em 25,7 mil em 26/11); nota mudando no máximo 10 pontos em 90% da amostra (SC-001 e SC-002
+  confirmadas).
+- Q: A calibração é passo do desenvolvimento ou recurso da ferramenta? → A: comando de desenvolvimento, que mostra a
+  comparação sem gravar e roda de novo quando as regras mudarem; sem botão na página (FR-003).
+- Q: No Forçar verificar, a vaga pronta espera a leitura das próximas para ir em grupo? → A: sim, a fila lê primeiro e
+  manda quando junta 3; se não houver mais vagas para juntar, manda o que tem (FR-004).
+- Q: No 429 da análise automática, quanto esperar, quando desistir e o que acontece com as vagas? → A: pausa de 20 s
+  entre lotes (`ANALISE_PAUSA`, 5 a 120 s); no 429, espera o pedido pelo provedor ou 60 s e diminui o lote; desiste
+  depois de 3 recusas seguidas, e as vagas voltam na próxima busca ou análise (FR-005, FR-006).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Regras enxutas, numa fonte só (Priority: P1)
@@ -57,6 +74,8 @@ analisadas e comparar com as notas antigas.
    as notas e os campos ficam equivalentes aos de antes (critério na SC-002); diferença grande bloqueia a troca.
 3. **Given** o assistente do chat analisando vagas pela skill, **When** ele lê a skill, **Then** a skill o leva ao mesmo
    arquivo de regras, sem uma segunda versão para manter.
+4. **Given** um perfil com a seção Contato (e-mail, telefone, links), **When** a ferramenta monta o pedido de nota,
+   **Then** essa seção não vai no pedido; o resto do perfil vai inteiro.
 
 ---
 
@@ -64,7 +83,8 @@ analisadas e comparar com as notas antigas.
 
 Quando a pessoa clica em Forçar verificar em várias vagas, a leitura das descrições continua uma por vez (com a pausa
 de cada portal), mas o pedido à IA junta até 3 vagas que já têm descrição, com a pausa `FORCAR_PAUSA` entre pedidos.
-Uma vaga sozinha vai sozinha, sem esperar as outras além de um tempo curto.
+A fila lê as descrições em sequência até juntar 3 vagas prontas e só então faz o pedido; se não houver mais vagas para
+juntar, manda as que tem (1 ou 2), sem esperar.
 
 **Why this priority**: divide o custo das regras sem voltar ao lote de 10 da spec 056, que estourava o limite.
 
@@ -95,7 +115,7 @@ nota depois, sem reiniciar o servidor.
 
 1. **Given** 25 vagas novas, **When** a análise automática roda, **Then** há pausa entre os lotes.
 2. **Given** um 429 no primeiro lote, **When** a análise segue, **Then** o lote seguinte é menor e as vagas do lote que
-   falhou voltam depois de um intervalo, sem reiniciar o servidor.
+   falhou voltam depois da espera (o tempo pedido pelo provedor ou 60 s), sem reiniciar o servidor.
 3. **Given** um erro que não é de limite (chave recusada, sem crédito), **When** ele acontece, **Then** o comportamento
    é o de hoje (reserva da spec 032 e o erro à vista), sem repetir sem fim.
 
@@ -120,8 +140,11 @@ vagas.
 
 - Regras enxutas trocadas e uma vaga com nota muito diferente da antiga: a troca não entra até a calibração passar.
 - Perfil vazio ou sem IA: o comportamento de hoje.
+- Perfil sem a seção Contato, ou com o contato espalhado em outra seção: o pedido leva o perfil como está, sem tentar
+  achar e-mail ou telefone no meio do texto.
 - Forçar verificar de uma vaga só: vai sozinha, sem esperar grupo.
-- 429 repetido por muito tempo: a análise para de tentar depois de um limite e mostra o erro, sem laço infinito.
+- 429 repetido: depois de 3 recusas seguidas a análise para e mostra o erro, sem laço infinito; as vagas voltam na
+  próxima busca ou análise.
 
 ## Requirements *(mandatory)*
 
@@ -130,16 +153,23 @@ vagas.
 - **FR-001**: As regras da nota MUST ficar num arquivo próprio, escrito para a IA, usado pela análise automática e pelo
   Forçar verificar.
 - **FR-002**: A skill `buscar-vagas` MUST apontar para esse arquivo nas regras da nota, sem repetir o texto.
-- **FR-003**: Antes de trocar as regras, a ferramenta MUST refazer a nota de uma amostra de vagas já analisadas e
-  mostrar a comparação; a troca só entra se o critério da SC-002 for atendido.
+- **FR-003**: Um comando de desenvolvimento MUST refazer a nota de uma amostra de vagas já analisadas com as regras
+  novas e mostrar a comparação com a nota gravada, sem gravar nada; a troca só vai à `master` se o critério da SC-002
+  for atendido, e o comando roda de novo sempre que as regras mudarem. Não há botão na página.
 - **FR-004**: O Forçar verificar MUST juntar até 3 vagas com descrição por pedido à IA, mantendo a leitura das
-  descrições uma por vez e a pausa `FORCAR_PAUSA` entre pedidos.
-- **FR-005**: A análise automática MUST fazer pausa entre lotes (configurável no `.env`, com padrão e faixa como as
-  outras pausas).
-- **FR-006**: Num 429, a análise automática MUST diminuir o lote (10 → 5 → 3 → 1) e tentar de novo depois de um
-  intervalo; só contam como tentadas as vagas de lotes enviados.
+  descrições uma por vez (com a pausa de cada portal) e a pausa `FORCAR_PAUSA` entre pedidos. A fila lê primeiro e
+  manda depois: o pedido sai quando há 3 vagas prontas ou quando não há mais vagas na fila para juntar (aí vai com 1
+  ou 2).
+- **FR-005**: A análise automática MUST fazer pausa entre lotes: `ANALISE_PAUSA` no `.env`, padrão 20 s, de 5 a
+  120 s.
+- **FR-006**: Quando a IA principal e as reservas recusam por limite de uso (429), a análise automática MUST esperar o
+  tempo que o provedor pedir (ou 60 s, se ele não disser), diminuir o lote (10 → 5 → 3 → 1) e tentar de novo. Depois
+  de 3 recusas seguidas, ela para e mostra o erro; as vagas sem nota voltam sozinhas na próxima busca ou na próxima
+  análise, sem reiniciar o servidor. Só contam como tentadas as vagas de lotes que a IA respondeu.
 - **FR-007**: O pedido de nota MUST manter idêntico, entre pedidos, todo o texto antes do início das vagas.
 - **FR-008**: A documentação (README, AGENTS.md, `.env.exemplo`, `dash/API.md` se mudar) MUST seguir as mudanças.
+- **FR-009**: O pedido de nota MUST deixar de fora a seção Contato do perfil (e-mail, telefone, links), que não pesa na
+  nota; as outras seções vão inteiras.
 
 ### Key Entities
 
@@ -162,7 +192,8 @@ vagas.
 ## Assumptions
 
 - O formato da resposta (o JSON de cada vaga) não muda; só o texto das regras.
-- A calibração usa a IA configurada pela pessoa e só roda com o clique ou o comando dela (custa chamadas).
+- A calibração usa a IA configurada no `.env` de quem roda o comando (no desenvolvimento, a branch pessoal) e custa
+  chamadas; quem usa a ferramenta recebe as regras já calibradas.
 - O cache do provedor é um ganho possível, não garantido; nada depende dele.
 - Ficam fora: o perfil compacto (resumo do perfil por IA) e a receita da página própria de empresa, que seguem na lista
   de desejos.
