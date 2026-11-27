@@ -381,6 +381,9 @@ a página aberta pela extensão Live Server (`dash/front/index.html`); e o
    `vagas.py agendamento` (mostra), `--ligar 08:00`, `--desligar`, `--continuar sim|nao` e
    `--cancelar-retomada linkedin`.
 
+   Na mesma janela, a aba **Limpeza** guarda os critérios para arquivar vagas antigas (fora dos critérios,
+   esperando decisão, não seguidas e sem resposta), com a prévia antes de arquivar (spec 054).
+
    Pelo terminal também dá, com o Python do ambiente que o `iniciar.py` preparou:
 
    ```bash

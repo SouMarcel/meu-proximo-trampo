@@ -406,7 +406,7 @@ O painel Filtros da busca tem quatro abas (spec 043), num formulário só, grava
 - **Portais**: `fontes`, com `opcoes.fontes_nac`, `opcoes.fontes_login` e `opcoes.portais_a_mapear`;
 - **Portais internacionais**: `internacional.fontes`, com `opcoes.fontes_int`;
 - **Empresas acompanhadas/excluídas**: `empresas` e `empresas_excluir`;
-- **Limpeza** (spec 054): `limpeza`, com rotas próprias (§3.4b). O `GET /api/config` a traz em `filtros`, mas o
+- **Limpeza** (spec 054; desde a spec 064, aba do diálogo Buscar vagas, não dos filtros): `limpeza`, com rotas próprias (§3.4b). O `GET /api/config` a traz em `filtros`, mas o
   `PUT /api/config` a ignora: só o `PUT /api/limpeza` grava os critérios.
 
 O resto de `internacional` fica no painel Filtros da busca internacional.
@@ -445,7 +445,7 @@ cargos; o front mostra o aviso de primeira vez).
 opcoes}`. Erro 400 com a regra que falhou (ex.: "informe pelo menos um cargo", "para híbrido ou presencial,
 informe a cidade"; nome fora dos países e regiões: "<campo>: país ou região desconhecido: X"; filtros.py, validar). Também usado por "Gravar filtros" nos primeiros passos.
 
-### 3.4b Limpeza de vagas antigas (Filtros da busca → Limpeza; spec 054)
+### 3.4b Limpeza de vagas antigas (Buscar vagas → Limpeza; spec 054; até a spec 064, nos Filtros da busca)
 
 Critérios por grupo, no `config.json` (`limpeza`; padrão: os quatro ligados, 30 dias):
 `{fora: {ligado, dias}, pendente: {ligado, dias, nota_abaixo_de: 1-100|null}, dispensadas: {ligado, dias, resultados:

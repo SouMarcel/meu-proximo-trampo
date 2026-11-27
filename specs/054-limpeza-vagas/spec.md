@@ -229,7 +229,7 @@ opção de gravar e ver só as não destacadas arquivadas.
 
 **Onde roda**
 
-- **FR-018**: Na página, a aba Limpeza dos filtros da busca MUST ter os critérios, o botão de prévia, a seleção por
+- **FR-018** (desde a spec 064, a aba fica no diálogo Buscar vagas): Na página, a aba Limpeza dos filtros da busca MUST ter os critérios, o botão de prévia, a seleção por
   vaga, o botão de arquivar com confirmação e o número de vagas já arquivadas.
 - **FR-019**: No terminal, um comando MUST mostrar a prévia e, com a opção de gravar, aplicar a limpeza nas não
   destacadas. Com uma opção a mais, aplica também nas destacadas.
