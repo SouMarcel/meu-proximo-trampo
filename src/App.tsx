@@ -29,6 +29,7 @@ import FunnelAnalytics from "./components/FunnelAnalytics"
 import InterviewCoach from "./components/InterviewCoach"
 import AndamentoBusca from "./components/AndamentoBusca"
 import UltimaBuscaLinha from "./components/UltimaBusca"
+import AgendamentoStatus from "./components/AgendamentoStatus"
 import CompletarDescricoes from "./components/CompletarDescricoes"
 
 // Modals
@@ -524,6 +525,7 @@ function Pagina({
           <div className="space-y-4">
             {painelBusca}
             <UltimaBuscaLinha busca={ultimaBusca} analisando={Boolean(versaoInfo?.analisando)} />
+            {servidor === "no_ar" && <AgendamentoStatus gatilho={`${estadoBusca?.inicio || ""}${estadoBusca?.situacao || ""}`} />}
             {configResumo && !configResumo.existe && (
               <p className="p-3 rounded-2xl border text-xs sm:text-sm flex items-center gap-2 flex-wrap bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200">
                 Antes da primeira busca, escolha os cargos e o local em

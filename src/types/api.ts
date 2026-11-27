@@ -449,11 +449,57 @@ export interface EstadoBusca {
     com_nota: boolean
     pendentes?: number
     completadas?: number
+    bloqueados?: string[]
+    retomada_as?: string | null
   } | null
+  /** Em buscas de origem "retomada" (spec 064): a retomada que está rodando. */
+  retomada?: { nome: string; portal: string }
   analise?: { rodando: boolean; faltam: number; erro: { motivo: string; em: string } | null }
   pode_alterar?: boolean
   /** Em "aguardando_login": o portal com login que espera a pessoa entrar na janela da ferramenta (spec 041). */
   login?: { portal: string; rotulo: string; ate: string } | null
+}
+
+// ---------- agendamento da busca (spec 064) ----------
+
+export interface Agendamento {
+  ligado: boolean
+  horario: string
+  continuar: boolean
+}
+
+export interface RetomadaAgendada {
+  nome: string
+  portal: string
+  proxima: string
+  em_espera_ate: string | null
+  consultas: number
+  descricoes: number
+  tentativas: number
+  criada_em: string
+  origem_busca: string
+}
+
+export interface EventoAgendamento {
+  tipo: "agendada" | "retomada"
+  situacao: string
+  portal?: string
+  em: string
+  motivo?: string | null
+}
+
+export interface EstadoAgendamento {
+  agendamento: Agendamento
+  proxima: string | null
+  hoje: {
+    situacao: "rodou" | "pulada" | "perdida" | "falha" | "devida" | "rodando"
+    em?: string
+    motivo?: string | null
+  } | null
+  retomadas: RetomadaAgendada[]
+  historico: EventoAgendamento[]
+  aviso_login: string | null
+  pode_alterar: boolean
 }
 
 // ---------- portais com login (spec 041) ----------

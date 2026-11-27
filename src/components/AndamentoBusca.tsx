@@ -101,12 +101,14 @@ export default function AndamentoBusca({ estado: e, iaErro, onCancelar, onTentar
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <p className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
             <Search className="w-4 h-4 text-indigo-500" />
-            <span>Buscando vagas</span>
+            <span>
+              {e.origem === "agendada" ? "Busca agendada" : e.origem === "retomada" ? `Retomada do ${e.retomada?.portal ?? "portal"}` : "Buscando vagas"}
+            </span>
             <span className="font-normal text-slate-500">
               consulta {n} de {total} · {e.encontradas || 0} vaga(s) encontrada(s)
             </span>
           </p>
-          {(s === "consultando" || s === "descricoes" || login) && e.origem === "pagina" && (
+          {(s === "consultando" || s === "descricoes" || login) && (e.origem === "pagina" || e.origem === "agendada" || e.origem === "retomada") && (
             <button
               onClick={() => rodar(onCancelar)}
               disabled={!podeMexer || ocupado}
@@ -186,6 +188,12 @@ export default function AndamentoBusca({ estado: e, iaErro, onCancelar, onTentar
         {Boolean(r.completadas) && (
           <p className="text-slate-600 dark:text-slate-400">
             {r.completadas} descrição(ões) pendente(s) de buscas anteriores lida(s) agora.
+          </p>
+        )}
+        {Boolean(r.retomada_as) && (
+          <p className="text-slate-600 dark:text-slate-400">
+            {r.bloqueados && r.bloqueados.length > 0 ? r.bloqueados.join(", ") : "Um portal"}{" "}
+            {r.bloqueados && r.bloqueados.length > 1 ? "bloquearam" : "bloqueou"}; a retomada roda às {horaDe(r.retomada_as)}.
           </p>
         )}
         <div className="text-slate-700 dark:text-slate-300">{nota}</div>
