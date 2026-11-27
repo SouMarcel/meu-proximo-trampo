@@ -20,9 +20,9 @@ Front: `npx -y pnpm@10.34.3 exec tsc --noEmit` e `npx -y pnpm@10.34.3 exec vite 
   com `tests/dados/emails_candidatura.json` (20 e-mails fictícios, PT/EN/ES, todos os tipos, com o quadro fictício e o
   esperado) e `tests/test_colar_email.py` (SC-001: ≥ 18 de 20; nunca volta etapa; "só anotar"; escolher entre duas da
   mesma empresa; e-mail com instrução à IA vira dado com alerta).
-- [ ] T002 [D minor] [US1] Em `dash/colar_email.py`: IA no não reconhecido (R6), `aplicar` (data-model, Transições) e
+- [X] T002 [D minor] [US1] → copilot, GO na tentativa 1 (corrigi a contagem de aplicados). Em `dash/colar_email.py`: IA no não reconhecido (R6), `aplicar` (data-model, Transições) e
   `LeituraEmail` (guarda a última leitura na memória; `aplicar` usa o conteúdo do servidor); testes com IA falsa.
-- [ ] T003 [D minor] [US1] [US2] Rotas em `dash/servidor.py` (contracts/api.md): `POST /api/candidaturas/email/ler`,
+- [X] T003 [US1] [US2] (feita por mim: pequena) Rotas em `dash/servidor.py` (contracts/api.md): `POST /api/candidaturas/email/ler`,
   `POST /api/candidaturas/email/aplicar`, `GET /api/candidaturas/email/vagas`; só locais; teste de rota com servidor
   de verdade em porta livre.
 

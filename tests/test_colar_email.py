@@ -2,14 +2,20 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
+import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
+from unittest import mock
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(RAIZ), str(RAIZ / "dash")]
 
+import banco  # noqa: E402
 import colar_email  # noqa: E402
+import ia  # noqa: E402
 
 
 class TestColarEmail(unittest.TestCase):
@@ -250,5 +256,202 @@ class TestColarEmail(unittest.TestCase):
                 )
 
 
+class BaseBanco(unittest.TestCase):  # banco temporário e vagas de teste
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        p = mock.patch.object(banco, "ARQUIVO", self.tmp / "banco.db")
+        p.start()
+        self.addCleanup(p.stop)
+
+    def vaga(self, vid, etapa=None, resultado=None, titulo="Analista Teste", empresa="Alfa Exemplo"):
+        banco.criar_de_link({"id": vid, "plataforma": "Gupy", "titulo": titulo, "empresa": empresa, "url": ""})
+        if etapa:
+            banco.atualizar_usuario(vid, {"etapa": etapa, "etapa_em": "2026-09-01", "triagem": "seguir",
+                                          "resultado": resultado})
+
+
+
+class TestIAeAplicar(BaseBanco):
+    def item(self, tipo_email="negativa", vaga_id="v1", trecho="Infelizmente não seguiremos.", n=1):
+        return {"chave": f"email:{n}", "tipo": "mudar", "tipo_email": tipo_email, "vaga_id": vaga_id,
+                "titulo": "Analista Teste", "trecho": trecho, "texto": trecho}
+
+    def nao_reconhecido(self):
+        return colar_email.propor(["Prezado, segue o material da reunião de ontem sobre o projeto."], [])[0]
+
+    def ia_falsa(self, resposta=None, erro=None, disponivel=True):
+        responder = mock.Mock(side_effect=erro) if erro else mock.Mock(return_value=resposta)
+        for p in (mock.patch.object(ia, "disponivel", return_value=disponivel),
+                  mock.patch.object(ia, "responder", responder),
+                  mock.patch.object(ia, "ultima", return_value={"nome": "IA falsa"})):
+            p.start()
+            self.addCleanup(p.stop)
+        return responder
+
+    def test_sem_ia_nao_chama_responder(self):
+        responder = self.ia_falsa("[]", disponivel=False)
+        itens = [self.nao_reconhecido()]
+        r = colar_email.completar_com_ia(itens, [])
+        self.assertEqual(r, {"usada": False, "nome": None, "erro": None})
+        responder.assert_not_called()
+
+    def test_ia_valida_vira_mudar(self):
+        self.vaga("v1", "aplicada")
+        vagas = banco.listar_vagas()
+        itens = [self.nao_reconhecido()]
+        frase = "segue o material da reunião"
+        self.ia_falsa(json.dumps([{"email": 1, "tipo": "entrevista", "vaga_id": "v1", "trecho": frase}]))
+        r = colar_email.completar_com_ia(itens, vagas)
+        self.assertEqual((r["usada"], r["nome"], r["erro"]), (True, "IA falsa", None))
+        self.assertEqual((itens[0]["tipo"], itens[0]["tipo_email"], itens[0]["vaga_id"]), ("mudar", "entrevista", "v1"))
+        self.assertTrue(itens[0]["por_ia"])
+        self.assertEqual(itens[0]["trecho"], frase)
+
+    def test_ia_invalida_deixa_item(self):
+        self.vaga("v1", "aplicada")
+        vagas = banco.listar_vagas()
+        for obj in ({"email": 1, "tipo": "negativa", "vaga_id": "v1", "trecho": "frase que não está no e-mail"},
+                    {"email": 1, "tipo": "negativa", "vaga_id": "outra", "trecho": "material da reunião"},
+                    {"email": 1, "tipo": "inventado", "vaga_id": "v1", "trecho": "material da reunião"}):
+            itens = [self.nao_reconhecido()]
+            self.ia_falsa(json.dumps([obj]))
+            colar_email.completar_com_ia(itens, vagas)
+            self.assertEqual(itens[0]["tipo"], "nao_reconhecido")
+            self.assertFalse(itens[0]["por_ia"])
+
+    def test_ia_erro(self):
+        self.ia_falsa(erro=ia.IAErro("falhou"))
+        itens = [self.nao_reconhecido()]
+        r = colar_email.completar_com_ia(itens, [])
+        self.assertEqual((r["usada"], r["nome"], r["erro"]), (True, None, "falhou"))
+        self.assertEqual(itens[0]["tipo"], "nao_reconhecido")
+
+    def test_negativa_encerra_e_anota_sem_apagar(self):
+        self.vaga("v1", "aplicada")
+        banco.anotar("v1", "anotação antiga")
+        r = colar_email.aplicar([self.item()], [{"chave": "email:1"}])
+        self.assertEqual((r["aplicados"], r["anotados"], r["erros"]), (1, 0, []))
+        v = banco.obter("v1")
+        self.assertEqual((v["etapa"], v["resultado"]), ("encerrada", "nao_aprovado"))
+        dia = date.today().strftime("%d/%m/%Y")
+        self.assertTrue(v["anotacao"].startswith("anotação antiga\n"))
+        self.assertIn(f'{dia} — e-mail de negativa: "Infelizmente não seguiremos."', v["anotacao"])
+
+    def test_nunca_volta_etapa(self):
+        self.vaga("v1", "entrevista")
+        r = colar_email.aplicar([self.item("entrevista", trecho="Convite para entrevista.")], [{"chave": "email:1"}])
+        self.assertEqual((r["aplicados"], r["anotados"]), (1, 1))
+        v = banco.obter("v1")
+        self.assertEqual(v["etapa"], "entrevista")
+        self.assertIn("e-mail de convite para entrevista ou teste", v["anotacao"])
+
+    def test_encerrada_nao_muda(self):
+        self.vaga("v1", "encerrada", "desisti")
+        r = colar_email.aplicar([self.item("contratacao", trecho="Bem-vindo ao time.")], [{"chave": "email:1"}])
+        self.assertEqual((r["aplicados"], r["anotados"]), (1, 1))
+        v = banco.obter("v1")
+        self.assertEqual((v["etapa"], v["resultado"]), ("encerrada", "desisti"))
+
+    def test_nao_reconhecido_exige_tipo_e_vaga(self):
+        self.vaga("v1", "aplicada")
+        item = {"chave": "email:1", "tipo": "nao_reconhecido", "tipo_email": None, "vaga_id": None,
+                "trecho": "", "texto": "Primeira frase do e-mail. Segunda."}
+        for esc in ({"chave": "email:1"}, {"chave": "email:1", "tipo_email": "negativa"},
+                    {"chave": "email:1", "vaga_id": "v1"}, {"chave": "email:9"}):
+            r = colar_email.aplicar([item], [esc])
+            self.assertEqual((r["aplicados"], r["anotados"], len(r["erros"])), (0, 0, 1))
+        self.assertEqual(banco.obter("v1")["etapa"], "aplicada")
+        self.assertFalse(banco.obter("v1").get("anotacao"))
+        r = colar_email.aplicar([item], [{"chave": "email:1", "tipo_email": "negativa", "vaga_id": "v1"}])
+        self.assertEqual((r["aplicados"], r["erros"]), (1, []))
+        self.assertIn('"Primeira frase do e-mail."', banco.obter("v1")["anotacao"])
+
+    def test_cinco_escolhas(self):
+        itens, escolhas = [], []
+        for n in range(1, 6):
+            self.vaga(f"v{n}", "aplicada", titulo=f"Cargo {'abcde'[n - 1] * 5}", empresa=f"Empresa{'fghij'[n - 1] * 4}")
+            itens.append(self.item(vaga_id=f"v{n}", n=n))
+            escolhas.append({"chave": f"email:{n}"})
+        self.assertEqual(colar_email.aplicar(itens, escolhas)["aplicados"], 5)
+
+    def test_leitura_nao_devolve_texto_e_usa_trecho_do_servidor(self):
+        self.vaga("v1", "aplicada", titulo="Analista Teste", empresa="Alfa Exemplo")
+        self.ia_falsa("[]", disponivel=False)
+        leitura = colar_email.LeituraEmail()
+        r = leitura.ler(["Infelizmente não seguiremos com sua candidatura na Alfa Exemplo para Analista Teste."])
+        self.assertTrue(all("texto" not in it for it in r["itens"]))
+        self.assertIn("lidas_em", r)
+        trecho = leitura.itens[0]["trecho"]
+        res = leitura.aplicar([{"chave": "email:1", "trecho": "adulterado", "tipo_email": "contratacao"}])
+        self.assertEqual((res["aplicados"], res["erros"]), (1, []))
+        self.assertNotIn("chaves", res)
+        v = banco.obter("v1")
+        self.assertEqual(v["resultado"], "nao_aprovado")
+        self.assertIn(trecho, v["anotacao"])
+        self.assertNotIn("adulterado", v["anotacao"])
+        self.assertEqual(leitura.itens, [])
+        with self.assertRaises(ValueError):
+            leitura.aplicar([])
+        with self.assertRaises(ValueError):
+            leitura.ler(["  "])
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRotasEmail(BaseBanco):  # T003: rotas do Colar e-mail (contracts/api.md)
+    def setUp(self):
+        super().setUp()
+        import http.client
+        import threading
+
+        import servidor
+        self.http = http.client
+        for p in (mock.patch.object(servidor.Handler, "hosts_permitidos", {"127.0.0.1", "localhost"}),
+                  mock.patch.object(colar_email, "LEITURA_EMAIL", colar_email.LeituraEmail()),
+                  mock.patch.object(ia, "disponivel", return_value=False)):
+            p.start()
+            self.addCleanup(p.stop)
+        self.srv = servidor.ThreadingHTTPServer(("127.0.0.1", 0), servidor.Handler)
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.addCleanup(self.srv.server_close)
+        self.addCleanup(self.srv.shutdown)
+
+    def pedir(self, metodo, caminho, corpo=None):
+        con = self.http.HTTPConnection("127.0.0.1", self.srv.server_address[1], timeout=10)
+        self.addCleanup(con.close)
+        dados = json.dumps(corpo).encode("utf-8") if corpo is not None else None
+        con.request(metodo, caminho, dados, {"Content-Type": "application/json"} if dados else {})
+        r = con.getresponse()
+        return r.status, json.loads(r.read())
+
+    def test_ler_e_aplicar(self):
+        self.vaga("v1", etapa="aplicada", titulo="Analista de Dados", empresa="Lumora Tecnologia")
+        self.vaga("v2", etapa="entrevista", titulo="Engenheiro de Software", empresa="Brisa Dados")
+        self.assertEqual(self.pedir("POST", "/api/candidaturas/email/ler", {"emails": ["", "  "]})[0], 400)
+        self.assertEqual(self.pedir("POST", "/api/candidaturas/email/aplicar", {"itens": [{"chave": "email:1"}]})[0], 400)
+        status, j = self.pedir("POST", "/api/candidaturas/email/ler", {"emails": [
+            "Infelizmente a Lumora Tecnologia decidiu seguir com outros candidatos para Analista de Dados.",
+            "Gostaríamos de agendar a segunda entrevista para Engenheiro de Software na Brisa Dados."]})
+        self.assertEqual(status, 200)
+        self.assertEqual([(i["tipo"], i["vaga_id"]) for i in j["itens"]], [("mudar", "v1"), ("anotar", "v2")])
+        self.assertNotIn("texto", j["itens"][0])
+        self.assertEqual(j["ia"], {"usada": False, "nome": None, "erro": None})
+        status, r = self.pedir("POST", "/api/candidaturas/email/aplicar",
+                               {"itens": [{"chave": "email:1"}, {"chave": "email:2"}]})
+        self.assertEqual((status, r), (200, {"aplicados": 2, "anotados": 1, "erros": []}))
+        v1, v2 = banco.obter("v1"), banco.obter("v2")
+        self.assertEqual((v1["etapa"], v1["resultado"]), ("encerrada", "nao_aprovado"))
+        self.assertIn("e-mail de negativa", v1["anotacao"])
+        self.assertEqual(v2["etapa"], "entrevista")
+        self.assertIn("e-mail de convite para entrevista ou teste", v2["anotacao"])
+
+    def test_vagas_para_escolher(self):
+        self.vaga("v1", etapa="aplicada", titulo="Analista de Dados", empresa="Lumora Tecnologia")
+        self.vaga("v3", titulo="Designer de Produto", empresa="Oficina Azul")
+        status, j = self.pedir("GET", "/api/candidaturas/email/vagas")
+        self.assertEqual((status, [v["id"] for v in j["vagas"]]), (200, ["v1"]))
+        status, j = self.pedir("GET", "/api/candidaturas/email/vagas?q=designer%20oficina")
+        self.assertEqual([v["id"] for v in j["vagas"]], ["v3"])

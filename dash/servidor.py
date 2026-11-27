@@ -33,6 +33,7 @@ import analise  # noqa: E402  (análise automática pela IA escolhida)
 import banco  # noqa: E402
 import buscador  # noqa: E402  (busca de vagas pela página, em segundo plano)
 import sincronia  # noqa: E402  (contas conectadas: candidaturas lidas nos portais, spec 018)
+import colar_email  # noqa: E402  (Colar e-mail em Atualizar candidaturas, spec 063)
 import gerador  # noqa: E402  (currículo pela página, em segundo plano)
 import filtros  # noqa: E402  (filtros.py, na raiz: lê e grava os filtros da busca no config.json)
 import ia  # noqa: E402  (ia.py, na raiz: provedores de IA)
@@ -159,6 +160,9 @@ class Handler(BaseHTTPRequestHandler):
             limpar = lambda lista: [{k: v for k, v in i.items() if k != "lida"} for i in lista or []]
             res = {**r, "itens": limpar(r.get("itens")), "historico": limpar(r.get("historico"))} if r else None
             return self._json(200, {**sincronia.LEITURA.estado, "resultado": res})
+        if metodo == "GET" and caminho == "/api/candidaturas/email/vagas":  # spec 063: escolher a candidatura
+            q = (parse_qs(urlsplit(self.path).query).get("q") or [""])[0]
+            return self._json(200, {"vagas": colar_email.vagas_para_escolher(q)})
         if metodo != "POST":
             return self._erro(405, "método não permitido")
         partes = caminho.strip("/").split("/")  # api / contas / <portal> / <acao>
@@ -198,6 +202,16 @@ class Handler(BaseHTTPRequestHandler):
             if not ligados:
                 return self._erro(409, "conecte pelo menos um portal")
             return self._json(200, sincronia.LEITURA.iniciar(ligados))
+        if caminho == "/api/candidaturas/email/ler":  # spec 063: só propõe; nada é gravado
+            emails = self._corpo().get("emails")
+            if not isinstance(emails, list):
+                raise ValueError("cole pelo menos um e-mail")
+            return self._json(200, colar_email.LEITURA_EMAIL.ler(emails))
+        if caminho == "/api/candidaturas/email/aplicar":  # grava só o que a pessoa marcou, com o trecho do servidor
+            itens = self._corpo().get("itens")
+            if not isinstance(itens, list) or not all(isinstance(i, dict) for i in itens):
+                raise ValueError("itens inválidos")
+            return self._json(200, colar_email.LEITURA_EMAIL.aplicar(itens[:colar_email.MAX_EMAILS]))
         if caminho == "/api/candidaturas/aplicar":
             corpo = self._corpo()
             chaves = corpo.get("chaves") or []
