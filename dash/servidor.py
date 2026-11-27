@@ -478,8 +478,8 @@ class Handler(BaseHTTPRequestHandler):
             atual = perfil.read_text(encoding="utf-8", errors="replace") if perfil.exists() else None
             rascunho = pp.rascunho_sem_ia(estado) if sem_ia else pp.rascunho_com_ia(estado, atual)
             with TRAVA_PERFIL:
-                estado = pp.carregar()
-                estado.update(rascunho=rascunho, etapa="rascunho")
+                estado = pp.carregar()  # refazer: as escolhas que ainda valem vêm junto (spec 065)
+                estado.update(rascunho=pp.herdar_escolhas(rascunho, estado.get("rascunho")), etapa="rascunho")
                 pp.salvar(estado)
             return self._json(200, pp.estado_para_pagina(True))
         if metodo == "POST" and caminho == "/api/perfil/do-curriculo":  # a proposta: lê e propõe, não grava
@@ -582,7 +582,16 @@ class Handler(BaseHTTPRequestHandler):
                 markdown = self._corpo().get("markdown")
                 return self._json(200, pp.previa(estado, None if markdown is None else str(markdown)))
             if metodo == "PUT" and caminho == "/api/perfil":
-                destino, anterior = pp.gravar_perfil(str(self._corpo().get("markdown") or ""))
+                corpo = self._corpo()
+                if "perfil_versao" in corpo:  # spec 065: o perfil não pode ter mudado com a revisão aberta
+                    perfil = pp.caminho_perfil()
+                    atual = perfil.read_text(encoding="utf-8", errors="replace") if perfil.exists() else None
+                    if corpo["perfil_versao"] != pp.versao_perfil(atual):
+                        return self._erro(409, "O perfil mudou depois que você abriu a Revisão. "
+                                               "Veja de novo o que muda antes de gravar.")
+                destino, anterior = pp.gravar_perfil(str(corpo.get("markdown") or ""))
+                if estado.get("rascunho"):
+                    estado["rascunho"]["gravado_em"] = pp._agora()
                 estado["etapa"] = "filtros"
                 pp.salvar(estado)
                 rel = lambda c: c.relative_to(pp.RAIZ).as_posix() if c and c.is_relative_to(pp.RAIZ) else (str(c) if c else None)

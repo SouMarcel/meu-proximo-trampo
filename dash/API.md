@@ -523,8 +523,8 @@ gravado no `perfil.md` sem a confirmação da pessoa (`PUT /api/perfil`).
 **`GET /api/perfil/estado`** — `{existe_perfil, perfil_do_curriculo: {arquivo, data}|null, etapa, materiais:
 [{id, tipo: curriculo_pdf|curriculo_docx|linkedin_pdf|linkedin_zip|texto|documento_pdf|documento_docx, nome, avisos,
 trecho (600), tem_texto, arquivo, area: linkedin|curriculo|documento, sugestao: {area, motivo}|null, ocr}], rascunho: null|{objetivo, resumo, formacao, certificacoes, habilidades, idiomas: [{texto, fonte}],
-experiencias: [{cargo, empresa, inicio, fim, itens, fonte}], conflitos: [{campo, opcoes: [{valor, fonte}], escolha}],
-origem: "ia"|"sem_ia"}, respostas: {id: valor}, contato: {email?, telefone?, linkedin?},
+experiencias: [{cargo, empresa, inicio, fim, itens, fonte}], conflitos: [{campo, opcoes: [{valor, nota, fonte}], escolha}],
+origem: "ia"|"sem_ia", gerado_em, gravado_em?}, respostas: {id: valor}, contato: {email?, telefone?, linkedin?},
 contatos_achados: {emails, telefones, linkedin}, perguntas: [{id, tipo: texto|lista|multi|opcoes|sim_nao, texto,
 opcoes?: [{valor, rotulo}], condicao?, idiomas?, niveis?, linhas?}], ia_disponivel, ocr_disponivel, pode_alterar}`
 (primeiros_passos.py: `estado_para_pagina`, `PERGUNTAS`, `perguntas_para`).
@@ -552,13 +552,22 @@ A pergunta `ingles` ("Qual o seu nível de inglês?") saiu; a resposta antiga co
 | `PUT /api/perfil/material/{id}` [local] | `{area*}` | `{estado, aviso: string\|null}` (aviso quando o arquivo era o Seu currículo e a marcação saiu) | Mover para; botão do aviso de área trocada |
 | `POST /api/perfil/material/{id}/ocr` [local] | `{}` | `{material, estado}` | OCR (PDF sem texto; OCR do Windows) |
 | `DELETE /api/perfil/material/{id}` [local] | — | estado | Remover material |
-| `POST /api/perfil/rascunho` [local] | `{sem_ia?: bool}` | estado (com `rascunho`) | Gerar rascunho com IA / Montar sem IA (com IA, até minutos) |
-| `POST /api/perfil/previa` [local] | `{markdown?}` | `{markdown, diagnostico: [{tipo: falta\|fraco\|info, mensagem, pergunta, ir}], textos: [{nome, texto}], diferencas: [{tipo: "+"\|"-", texto}]\|null, conflitos_pendentes}` | Diagnóstico, Revisão, "Ver o que muda" |
-| `PUT /api/perfil` [local] | `{markdown*}` | `{gravado: caminho, anterior: caminho\|null}` | Gravar perfil / Confirmar e gravar (a versão anterior é guardada) |
+| `POST /api/perfil/rascunho` [local] | `{sem_ia?: bool}` | estado (com `rascunho`; as escolhas do rascunho anterior com o mesmo campo e o mesmo valor já vêm marcadas, spec 065) | Gerar rascunho com IA / Montar sem IA / Refazer o rascunho (com IA, até minutos) |
+| `POST /api/perfil/previa` [local] | `{markdown?}` | `{markdown, diagnostico: [{tipo: falta\|fraco\|info, mensagem, pergunta, ir}], textos: [{nome, texto}], diferencas: [{tipo: "+"\|"-", texto}]\|null, conflitos_pendentes, perfil_versao: string\|null, aviso: {rascunho_em: string\|null, perfil_em, sairiam: string[], pode_refazer}\|null}` | Diagnóstico, Revisão, "Ver o que muda" |
+| `PUT /api/perfil` [local] | `{markdown*, perfil_versao?}` | `{gravado: caminho, anterior: caminho\|null}`; 409 quando `perfil_versao` não é a do perfil gravado | Gravar perfil / Confirmar e gravar (a versão anterior é guardada) |
 | `GET /api/perfil/filtros-propostos` | — | `{filtros, mudancas: [{campo, atual, proposto}], avisos, sugestao_en}` | passo Filtros |
 | `POST /api/perfil/filtros-propostos` [local] | `{sugerir_en: true}` | idem, com cargos em inglês sugeridos pela IA | Sugerir os cargos em inglês |
 
 Erros: 400 com a mensagem (ex.: conflito sem escolha no texto, arquivo .doc, IA sem resposta).
+
+**Conflitos e aviso da Revisão** (spec 065). Em cada opção de conflito, `valor` é o que entra no perfil e `nota` (até 200
+caracteres, `""` quando a IA não manda) é a explicação, só para a tela. `gerado_em` é quando o rascunho foi montado e
+`gravado_em`, quando o próprio assistente o gravou no perfil. Na prévia, `aviso` vem quando há perfil gravado, o rascunho
+é da IA e (a) a mais nova das duas datas é anterior à última mudança do `perfil.md` ou (b) o rascunho não tem data e
+algum item sairia. `sairiam` são as linhas do perfil atual que começam com `- ` ou `#` e não estão no texto que seria
+gravado (até 60; com `markdown`, sobre o texto editado). `perfil_versao` é a impressão (SHA-256, 16 hex) do perfil
+gravado; o `PUT /api/perfil` com ela diferente responde 409 "O perfil mudou depois que você abriu a Revisão. Veja de
+novo o que muda antes de gravar." Sem o campo, grava como antes.
 
 **Já tem currículo ("Usar este currículo e ir para as vagas")**
 

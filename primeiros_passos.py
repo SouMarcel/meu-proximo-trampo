@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import csv
 import difflib
+import hashlib
 import io
 import json
 import os
@@ -55,6 +56,10 @@ ORIGEM_CURRICULO = re.compile(r"<!--\s*origem:\s*curriculo\s+arquivo=(?P<arquivo
 
 class PerfilErro(ValueError):
     """Erro com mensagem legível, em português, para a página ou o chat."""
+
+
+def _agora() -> str:
+    return datetime.now().isoformat(timespec="seconds")
 
 
 def _config() -> dict:
@@ -501,7 +506,7 @@ FORMATO = ('{"objetivo": [{"texto", "fonte"}], "resumo": [{"texto", "fonte"}], '
            '"experiencias": [{"cargo", "empresa", "inicio", "fim", "itens": [{"texto", "fonte"}], "fonte"}], '
            '"formacao": [{"texto", "fonte"}], "certificacoes": [{"texto", "fonte"}], '
            '"habilidades": [{"texto", "fonte"}], "idiomas": [{"texto", "fonte"}], '
-           '"conflitos": [{"campo", "opcoes": [{"valor", "fonte"}]}]}')
+           '"conflitos": [{"campo", "opcoes": [{"valor", "nota", "fonte"}]}]}')
 
 
 def pedido_rascunho(estado: dict, perfil_atual: str | None = None) -> str:
@@ -522,6 +527,8 @@ def pedido_rascunho(estado: dict, perfil_atual: str | None = None) -> str:
         "- Todo item leva a fonte: o nome exato que aparece em \"### Fonte:\" (ou \"perfil atual\").",
         "- Quando duas fontes discordam num valor (datas, cargo, empresa), não escolha: escreva no campo "
         "exatamente {{conflito:N}} e descreva o conflito N (contando de 0) em \"conflitos\", com o valor de cada fonte.",
+        "- Em cada opção de conflito, \"valor\" é só o dado (a data, o nome, o cargo), sem explicação, porque ele entra "
+        "no perfil como está; a explicação, se houver, vai em \"nota\".",
         "- Experiências da mais recente para a mais antiga; datas como mm/aaaa quando houver mês.",
         "- Cada fonte diz a área na linha \"Área:\". Fontes da área certificado ou documento entram só em formação e "
         "certificações, nunca como experiência.",
@@ -563,10 +570,13 @@ def normalizar_rascunho(dados, fontes: set[str]) -> dict:
                                   "itens": [i for i in (_item(x, fontes) for x in e.get("itens") or []) if i],
                                   "fonte": str(e["fonte"]).strip()})
     r["origem"] = "ia"
+    r["gerado_em"] = _agora()
     r["conflitos"] = []
     for c in dados.get("conflitos") or []:  # a posição é o N de {{conflito:N}}: nada sai da lista
         c = c if isinstance(c, dict) else {}
-        opcoes = [{"valor": curto(o.get("valor"), 300), "fonte": str(o.get("fonte") or "").strip()}
+        # o valor entra no perfil; a nota (explicação da IA, spec 065) só aparece na tela
+        opcoes = [{"valor": curto(o.get("valor"), 300), "nota": curto(o.get("nota"), 200),
+                   "fonte": str(o.get("fonte") or "").strip()}
                   for o in c.get("opcoes") or [] if isinstance(o, dict) and str(o.get("fonte") or "").strip() in fontes]
         r["conflitos"].append({"campo": curto(c.get("campo"), 120), "opcoes": opcoes, "escolha": None})
     return r
@@ -596,7 +606,7 @@ def rascunho_com_ia(estado: dict, perfil_atual: str | None = None) -> dict:
 def rascunho_sem_ia(estado: dict) -> dict:
     """Sem IA: o rascunho nasce dos campos da exportação do LinkedIn; o resto fica para a pessoa."""
     r = {s: [] for s in SECOES_LISTA}
-    r.update(experiencias=[], conflitos=[], origem="sem_ia")
+    r.update(experiencias=[], conflitos=[], origem="sem_ia", gerado_em=_agora())
     for m in estado["materiais"]:
         c, f = m.get("campos"), m["nome"]
         if not c:
@@ -827,6 +837,15 @@ def _atual(texto) -> bool:
     return str(texto or "").strip().lower() in ("", "atual", "hoje", "present", "presente", "o momento")
 
 
+SO_DATA = re.compile(r"(\d{1,2}\s*[/.\-]\s*\d{4}|\d{4}(\s*[/.\-]\s*\d{1,2})?|[a-z]{3,9}\.?\s*(de\s*)?[/\s]*\d{4})")
+
+
+def _so_data(texto) -> bool:
+    """O texto é só uma data ("03/2021", "2021", "2021-03", "mar/2021", "março de 2021") ou "atual"."""
+    t = unicodedata.normalize("NFKD", str(texto or "")).encode("ascii", "ignore").decode().lower().strip()
+    return _atual(t) or bool(SO_DATA.fullmatch(t))
+
+
 def diagnosticar(rascunho: dict | None, respostas: dict | None) -> list[dict]:
     """Achados {tipo: falta|fraco|info, mensagem, pergunta, ir}; ir diz onde responder:
     "pergunta:<id>" (anamnese), "conflitos" ou "texto" (no editor da revisão)."""
@@ -858,6 +877,11 @@ def diagnosticar(rascunho: dict | None, respostas: dict | None) -> list[dict]:
             achar("fraco", f"Datas sem mês em {nome}.", "Em que mês você começou e saiu desse cargo?")
         if not e.get("itens"):
             achar("fraco", f"Sem descrição do que você fazia em {nome}.", "O que você fazia e entregava nesse cargo?")
+        for campo in ("inicio", "fim"):  # spec 065: a opção escolhida trouxe explicação junto da data
+            bruto = str(e.get(campo) or "")
+            valor = _escolher(bruto, r.get("conflitos") or []) if CONFLITO.search(bruto) else ""
+            if valor and not CONFLITO.search(valor) and not _so_data(valor):
+                achar("fraco", f"A data escolhida em {nome} traz texto a mais: {valor}.", "Qual é só a data?", "conflitos")
     for i in range(min(3, len(exps))):
         if resp.get(f"conquista:{i}") and not re.search(r"\d", str(resp.get(f"medida:{i}") or "")):
             achar("info", f"A conquista em {exps[i].get('cargo') or 'um cargo'} está sem medida.",
@@ -894,6 +918,63 @@ def _escolher(texto: str, conflitos: list[dict]) -> str:
 
 def _chave(texto) -> str:
     return " ".join(unicodedata.normalize("NFKD", str(texto or "")).encode("ascii", "ignore").decode().lower().split())
+
+
+def herdar_escolhas(novo: dict, antigo: dict | None) -> dict:
+    """Ao refazer o rascunho (spec 065): a escolha antiga vale no conflito novo de mesmo campo, se o valor escolhido
+    ainda é uma das opções. O resto fica sem escolha (nada de adivinhar)."""
+    escolhidos = {}
+    for c in (antigo or {}).get("conflitos") or []:
+        i = c.get("escolha")
+        if isinstance(i, int) and 0 <= i < len(c.get("opcoes") or []):
+            escolhidos.setdefault(_chave(c.get("campo")), _chave(c["opcoes"][i].get("valor")))
+    for c in novo.get("conflitos") or []:
+        valor = escolhidos.get(_chave(c.get("campo")))
+        if valor is not None and c.get("escolha") is None:
+            c["escolha"] = next((j for j, o in enumerate(c.get("opcoes") or []) if _chave(o.get("valor")) == valor), None)
+    return novo
+
+
+def versao_perfil(texto: str | None) -> str | None:
+    """Impressão do texto do perfil gravado: o Gravar da revisão confere que ele não mudou com a tela aberta."""
+    return None if texto is None else hashlib.sha256(str(texto).encode("utf-8")).hexdigest()[:16]
+
+
+def itens_que_sairiam(atual: str, novo: str, limite: int = 60) -> list[str]:
+    """Itens de lista e títulos do perfil atual que não estão no texto novo (linha que só mudou de lugar não conta)."""
+    tem = {_chave(l) for l in str(novo or "").splitlines()}
+    saem = []
+    for linha in str(atual or "").splitlines():
+        l = linha.strip()
+        if l.startswith(("- ", "#")) and _chave(l) not in tem and l not in saem:
+            saem.append(l)
+    return saem[:limite]
+
+
+def _aviso_substituir(r: dict, atual: str | None, markdown: str, destino: Path) -> dict | None:
+    """O rascunho é mais antigo que o perfil gravado (ou sem data e tiraria itens): a revisão avisa antes de gravar."""
+    if atual is None or r.get("origem") != "ia":
+        return None
+    perfil_em = datetime.fromtimestamp(destino.stat().st_mtime)
+    datas = []
+    for campo in ("gerado_em", "gravado_em"):  # gravado_em: o próprio assistente gravou este rascunho no perfil
+        try:
+            datas += [datetime.fromisoformat(str(r[campo]))] if r.get(campo) else []
+        except ValueError:
+            pass
+    rascunho_em = max(datas) if datas else None
+    sairiam = itens_que_sairiam(atual, markdown)
+    if (rascunho_em and rascunho_em >= perfil_em) or (not rascunho_em and not sairiam):
+        return None
+    try:
+        if str(RAIZ) not in sys.path:
+            sys.path.insert(0, str(RAIZ))
+        import ia
+        pode = bool(ia.disponivel())
+    except Exception:  # sem IA configurada, o refazer só fica desligado
+        pode = False
+    return {"rascunho_em": rascunho_em.isoformat(timespec="seconds") if rascunho_em else None,
+            "perfil_em": perfil_em.isoformat(timespec="seconds"), "sairiam": sairiam, "pode_refazer": pode}
 
 
 def montar_perfil(rascunho: dict | None, respostas: dict | None, contato: dict | None = None) -> str:
@@ -1003,7 +1084,8 @@ def previa(estado: dict, markdown: str | None = None, cfg: dict | None = None) -
         markdown = mascarar_documentos(str(markdown))[:LIMITE_TEXTO]
     return {"markdown": markdown, "diagnostico": diagnosticar(r, resp), "textos": textos,
             "diferencas": diferencas(atual, markdown) if atual is not None else None,
-            "conflitos_pendentes": len(CONFLITO.findall(markdown))}
+            "conflitos_pendentes": len(CONFLITO.findall(markdown)),
+            "perfil_versao": versao_perfil(atual), "aviso": _aviso_substituir(r, atual, markdown, destino)}
 
 
 # ---------------------------------------------------------------- filtros
