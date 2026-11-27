@@ -124,6 +124,8 @@ espera e, depois dela, o resultado.
   novo dia.
 - Dashboard desligado na hora da retomada: aquela tentativa não roda (mesma tolerância de 15 minutos da busca agendada);
   a próxima fica para 6 horas depois da hora perdida, se a próxima busca agendada ainda não tiver rodado.
+- "Continuar de onde parou" marcado com a busca agendada desligada: a retomada vale para as buscas manuais e, sem
+  próxima busca agendada para assumir o lugar, para 24 horas depois da busca que a criou (plano, R6).
 - Busca manual com retomada pendente: se a busca manual incluir o portal (espera já acabada), ela assume o lugar da
   retomada, como a busca agendada.
 - Portais com login (MyGreenhouse, spec 041): ficam de fora da busca agendada e da retomada, como na busca pelo
