@@ -72,6 +72,15 @@ Tudo roda no seu computador: sem conta, sem login e sem servidor de terceiros.
     Aplicação Enviada e "Não selecionado" vira Encerrada · não aprovado; a Nerdin não mostra entrevista
     nem proposta. Se a ferramenta não achar a página sozinha, informe o link em
     `NERDIN_CANDIDATURAS` no `.env`.
+  - **Colar e-mail** (spec 063): no mesmo diálogo, mesmo sem portal conectado, cole o corpo do e-mail
+    de andamento (candidatura recebida, convite para entrevista ou teste, proposta, negativa, vaga
+    cancelada, desistência, contratação), um por caixa ("+ outro e-mail"), e clique em Ler. A
+    ferramenta reconhece o tipo, acha a candidatura pela empresa e pelo cargo e propõe a mudança, com
+    o trecho do e-mail em que se apoia; quando o e-mail não muda a etapa (ex.: a 2ª entrevista), ela
+    propõe só anotar. Ao aplicar, o card muda de etapa (nunca para trás) e as Anotações ganham uma
+    linha com a data, o tipo e o trecho. O texto colado não é guardado, e a ferramenta não acessa a sua
+    caixa de e-mail. Com IA ligada, o e-mail que as regras não reconhecem vai à IA (só o corpo, sem
+    endereços nem cabeçalhos); sem IA, você escolhe a candidatura e a mudança.
   - A leitura acontece numa janela do Edge (ou do Chrome) só da ferramenta, com perfil
     próprio em `.cache/navegador` (fora do Git). Você faz o login nessa janela; a ferramenta
     nunca vê nem guarda a sua senha e não clica em nada nos portais.

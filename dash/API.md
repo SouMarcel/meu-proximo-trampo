@@ -830,6 +830,26 @@ marcado: bool}` (sincronia.py:32-86).
 Erros de navegador ou portal: 409 com a mensagem. O Desconectar só apaga o perfil inteiro da janela se não sobrar
 nenhuma conta nem portal com login conectado (3.11c).
 
+**Colar e-mail** (spec 063, `dash/colar_email.py`): no mesmo diálogo, sem precisar de portal conectado. A pessoa cola
+o corpo de cada e-mail numa caixa; a leitura só propõe, e a última leitura fica só na memória do servidor (o texto não
+é gravado). Com IA ligada, o que as regras não reconhecem vai à IA num pedido só (corpo sem endereços e cabeçalhos +
+lista de candidaturas id/empresa/cargo/etapa); a resposta só vale com tipo válido, vaga da lista e trecho copiado do
+e-mail.
+
+| Rota | Corpo | Resposta | Botão |
+|---|---|---|---|
+| `POST /api/candidaturas/email/ler` | `{emails: string[]}` (até 20, cada até 20.000 caracteres) | `{itens: [itemEmail], ia: {usada, nome, erro}, lidas_em}`; 400 "cole pelo menos um e-mail" | Ler |
+| `POST /api/candidaturas/email/aplicar` | `{itens: [{chave, vaga_id?, tipo_email?}]}` (até 20) | `{aplicados, anotados, erros: string[]}` (`aplicados` conta tudo o que foi gravado; `anotados`, as que foram só anotação); 400 sem leitura | Aplicar N mudanças |
+| `GET /api/candidaturas/email/vagas?q=` | — | `{vagas: [{id, titulo, empresa, etapa}]}` (até 30; sem `q`, as de Aplicações) | busca da candidatura |
+
+itemEmail: os campos do item das contas, com `portal: "email"`, `plataforma: "E-mail"`, `tipo: "mudar"|"quadro"|"anotar"|
+"escolher"|"nao_reconhecido"`, `para` nulo sem tipo, e mais `tipo_email` (`recebida`, `entrevista`, `proposta`,
+`negativa`, `cancelada`, `desistencia`, `contratacao` ou null), `rotulo`, `trecho`, `opcoes: [{id, titulo, empresa,
+etapa}]`, `alerta` (achado do filtro de integridade, spec 034) e `por_ia`. Ao aplicar, a mudança é recalculada com o
+card como está: etapa à frente muda (e `etapa_em` = hoje); etapa igual, anterior ou card encerrado só anota. Sempre
+acrescenta às Anotações `dd/mm/aaaa — e-mail de <rótulo>: "<trecho>"`. O trecho e o tipo vêm do servidor; a página só
+manda a vaga e o tipo que a pessoa escolheu quando a proposta não tinha.
+
 ### 3.11c Portais com login (Filtros da busca → Portais com login; spec 041)
 
 Todas **[local]**. Portais que só mostram a busca de vagas depois do login; o primeiro é `mygreenhouse` (MyGreenhouse

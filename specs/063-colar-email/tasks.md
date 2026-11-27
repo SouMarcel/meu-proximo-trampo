@@ -34,7 +34,7 @@ Front: `npx -y pnpm@10.34.3 exec tsc --noEmit` e `npx -y pnpm@10.34.3 exec vite 
 
 ## Phase 3: Fechamento
 
-- [ ] T005 [US1] Documentação: `dash/API.md` (3.11), `README.md`, `AGENTS.md` (FR-013).
+- [X] T005 [US1] Documentação: `dash/API.md` (3.11), `README.md`, `AGENTS.md` (FR-013).
 - [ ] T006 Validação: suíte inteira, typecheck e build do front, merge na branch pessoal, front copiado para
   `dash/front/` sem commit, dashboard reiniciado; quickstart passos 2 a 6 pela pessoa.
 
