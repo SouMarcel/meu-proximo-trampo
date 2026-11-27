@@ -45,8 +45,9 @@ export interface Rascunho {
   habilidades: ItemComFonte[]
   idiomas: ItemComFonte[]
   experiencias: { cargo: string; empresa: string; inicio: string; fim: string; itens: ItemComFonte[]; fonte?: string }[]
-  conflitos: { campo: string; opcoes: { valor: string; fonte?: string }[]; escolha: number | null }[]
+  conflitos: { campo: string; opcoes: { valor: string; fonte?: string; nota?: string }[]; escolha: number | null }[]
   origem: "ia" | "sem_ia"
+  gerado_em?: string
 }
 
 export interface Pergunta {
@@ -107,6 +108,8 @@ export interface Previa {
   textos: { nome: string; texto: string }[]
   diferencas: { tipo: "+" | "-"; texto: string }[] | null
   conflitos_pendentes?: number
+  perfil_versao?: string | null
+  aviso?: { rascunho_em: string | null; perfil_em: string; sairiam: string[]; pode_refazer: boolean } | null
 }
 
 export interface FiltrosPropostos {
@@ -168,8 +171,12 @@ export const rascunho = (semIA: boolean) => pedir<EstadoPerfil>("POST", "/api/pe
 export const previa = (markdown?: string | null) =>
   pedir<Previa>("POST", "/api/perfil/previa", markdown == null ? {} : { markdown })
 
-export const gravar = (markdown: string) =>
-  pedir<{ gravado: string; anterior: string | null }>("PUT", "/api/perfil", { markdown })
+export const gravar = (markdown: string, perfilVersao?: string | null) =>
+  pedir<{ gravado: string; anterior: string | null }>(
+    "PUT",
+    "/api/perfil",
+    perfilVersao !== undefined ? { markdown, perfil_versao: perfilVersao } : { markdown },
+  )
 
 export const filtrosPropostos = () => pedir<FiltrosPropostos>("GET", "/api/perfil/filtros-propostos")
 

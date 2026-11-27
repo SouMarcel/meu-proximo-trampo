@@ -147,6 +147,23 @@ export default function MeuPerfil({
   const { versao } = useGeracao()
   const [pendentesRelatos, setPendentesRelatos] = useState(0)
   const [conflitosRelatos, setConflitosRelatos] = useState(0)
+  const [resolvidosAoAbrir, setResolvidosAoAbrir] = useState<Set<number> | null>(null)
+  const estadoCarregado = e != null
+
+  // Fixa quais conflitos já estavam resolvidos ao abrir a tela; escolher durante a visita não os move.
+  useEffect(() => {
+    if (tela === "conflitos" && estadoCarregado) {
+      setResolvidosAoAbrir((atual) => {
+        if (atual) return atual
+        const s = new Set<number>()
+        ;(e?.rascunho?.conflitos || []).forEach((c, i) => {
+          if (c.escolha != null) s.add(i)
+        })
+        return s
+      })
+    } else if (tela !== "conflitos") setResolvidosAoAbrir(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tela, estadoCarregado])
 
   const carregarAvisosRelatos = useCallback(() => {
     perfilApi
@@ -479,38 +496,53 @@ export default function MeuPerfil({
     )
   } else if (tela === "conflitos") {
     const cf = e.rascunho?.conflitos || []
+    const resolvidos = resolvidosAoAbrir || new Set<number>()
+    const abertos = cf.map((c, i) => ({ c, i })).filter(({ i }) => !resolvidos.has(i))
+    const fechados = cf.map((c, i) => ({ c, i })).filter(({ i }) => resolvidos.has(i))
+    const campoConflito = ({ c, i }: { c: (typeof cf)[number]; i: number }) => (
+      <fieldset key={i} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
+        <legend className="px-1 font-semibold text-slate-800 dark:text-slate-200">
+          {i + 1}. {c.campo || "Conflito"}
+        </legend>
+        {c.opcoes.map((o, j) => (
+          <label key={j} className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name={`cf-${i}`}
+              checked={c.escolha === j}
+              disabled={so}
+              onChange={() => salvarProgresso({ escolhas: { [String(i)]: j } }).catch(falhou)}
+            />
+            <span>
+              {o.valor}
+              <Fonte f={o.fonte} />
+              {o.nota && <span className="block text-xs text-slate-500 dark:text-slate-400">{o.nota}</span>}
+            </span>
+          </label>
+        ))}
+        {!c.opcoes.length && <p className={DICA}>Sem opções: corrija no texto, na revisão.</p>}
+      </fieldset>
+    )
     corpo = (
       <>
         {!cf.length && conflitosRelatos === 0 && <p className={DICA}>As fontes não discordam em nada.</p>}
         {!!cf.length && (
           <>
-            <p className={DICA}>
-              As fontes discordam nestes pontos. Escolha o valor certo de cada um; se nenhum estiver certo, escolha um e corrija
-              na revisão.
-            </p>
-            {cf.map((c, i) => (
-              <fieldset key={i} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
-                <legend className="px-1 font-semibold text-slate-800 dark:text-slate-200">
-                  {i + 1}. {c.campo || "Conflito"}
-                </legend>
-                {c.opcoes.map((o, j) => (
-                  <label key={j} className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name={`cf-${i}`}
-                      checked={c.escolha === j}
-                      disabled={so}
-                      onChange={() => salvarProgresso({ escolhas: { [String(i)]: j } }).catch(falhou)}
-                    />
-                    <span>
-                      {o.valor}
-                      <Fonte f={o.fonte} />
-                    </span>
-                  </label>
-                ))}
-                {!c.opcoes.length && <p className={DICA}>Sem opções: corrija no texto, na revisão.</p>}
-              </fieldset>
-            ))}
+            {!abertos.length ? (
+              <p className={DICA}>Todos os conflitos estão resolvidos.</p>
+            ) : (
+              <p className={DICA}>
+                As fontes discordam nestes pontos. Escolha o valor certo de cada um; se nenhum estiver certo, escolha um e corrija
+                na revisão.
+              </p>
+            )}
+            {abertos.map(campoConflito)}
+            {!!fechados.length && (
+              <details className="space-y-2">
+                <summary className="cursor-pointer text-sm">{fechados.length} resolvidos (mudar)</summary>
+                <div className="space-y-2 mt-2">{fechados.map(campoConflito)}</div>
+              </details>
+            )}
           </>
         )}
         {conflitosRelatos > 0 && (
@@ -657,7 +689,7 @@ export default function MeuPerfil({
         return
       }
       try {
-        const j = await perfilApi.gravar(md)
+        const j = await perfilApi.gravar(md, prev.perfil_versao)
         onAviso(`Perfil gravado em ${j.gravado}${j.anterior ? `; a versão anterior ficou em ${j.anterior}` : ""}.`)
         setMd(null)
         setEditado(false)
@@ -667,11 +699,66 @@ export default function MeuPerfil({
         ir("filtros")
       } catch (err) {
         falhou(err)
+        setConfirmar(false)
+      }
+    }
+    const av = prev.aviso
+    const dataBr = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+    const refazer = async () => {
+      setCarregando("Refazendo o rascunho…")
+      try {
+        const j = await perfilApi.rascunho(false)
+        setE(j)
+        setSujo(true)
+        setConfirmar(false)
+        setMd(null)
+        setEditado(false)
+        setPrev(null)
+        if ((j.rascunho?.conflitos || []).some((c) => c.escolha == null)) ir("conflitos")
+      } catch (err) {
+        falhou(err)
+      } finally {
+        setCarregando("")
       }
     }
     corpo = (
       <>
         {dica && <p className={AVISO}>{dica}</p>}
+        {av && (
+          <div className={`${AVISO} space-y-2`}>
+            <p>
+              {av.rascunho_em
+                ? `Este rascunho é de ${dataBr(av.rascunho_em)} e o seu perfil mudou em ${dataBr(av.perfil_em)}. Gravar substitui o perfil inteiro.`
+                : "Gravar substitui o perfil inteiro, e itens do perfil atual não estão neste texto."}
+            </p>
+            {av.sairiam.length ? (
+              <div>
+                <p>Sairiam do perfil ({av.sairiam.length}):</p>
+                <ul className="text-xs list-disc pl-5 max-h-48 overflow-y-auto">
+                  {av.sairiam.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p>Nenhum item do perfil atual sairia.</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={!av.pode_refazer || so}
+                title={!av.pode_refazer || so ? "Ligue uma IA para refazer o rascunho" : undefined}
+                onClick={refazer}
+                className={BTN_SEC}
+              >
+                Refazer o rascunho
+              </button>
+              <button type="button" onClick={() => ir("concluido")} className={BTN_SEC}>
+                Manter o perfil atual
+              </button>
+            </div>
+          </div>
+        )}
         {sujo && editado && (
           <p className={AVISO}>
             Você respondeu mais coisas depois de editar este texto.{" "}
@@ -743,7 +830,7 @@ export default function MeuPerfil({
           </button>
         )}
         <button type="button" disabled={so} onClick={gravar} className={BTN_PRI}>
-          {confirmar ? "Confirmar e gravar" : e.existe_perfil ? "Ver o que muda" : "Gravar perfil"}
+          {confirmar ? (prev.aviso ? "Gravar mesmo assim (substitui o perfil)" : "Confirmar e gravar") : e.existe_perfil ? "Ver o que muda" : "Gravar perfil"}
         </button>
       </>
     )
