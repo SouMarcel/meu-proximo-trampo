@@ -1026,6 +1026,27 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, banco.limpar(ids))
         return self._erro(404 if metodo in ("GET", "PUT", "POST") else 405, "rota não encontrada")
 
+    def _agendamento(self, metodo: str, caminho: str):
+        """Busca agendada e retomada (spec 064): estado para a página e alterações locais."""
+        if metodo == "GET" and caminho == "/api/agendamento":
+            return self._json(200, {**agendador.AGENDADOR.estado(), "pode_alterar": self._local()})
+        if not self._local():
+            return self._erro(403, SO_LOCAL_PERFIL)
+        import agendamento
+        if metodo == "PUT" and caminho == "/api/agendamento":
+            corpo = self._corpo()
+            novos = filtros.salvar_agendamento(corpo)
+            if not novos.get("continuar"):
+                agendamento.apagar_retomadas()
+            return self._json(200, {**agendador.AGENDADOR.estado(), "pode_alterar": True})
+        if metodo == "DELETE" and caminho.startswith("/api/agendamento/retomadas/"):
+            self._corpo()
+            nome = unquote(caminho[len("/api/agendamento/retomadas/"):])
+            if not agendamento.cancelar_retomada(nome):
+                return self._erro(404, "não há retomada para este portal")
+            return self._json(200, {**agendador.AGENDADOR.estado(), "pode_alterar": True})
+        return self._erro(404, "rota não encontrada")
+
     def _id_da_rota(self, caminho: str) -> str | None:
         prefixo = "/api/vagas/"
         if not caminho.startswith(prefixo):
@@ -1105,6 +1126,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, self._config(filtros.salvar(self._corpo())))
             if caminho == "/api/limpeza" or caminho.startswith("/api/limpeza/"):
                 return self._limpeza(metodo, caminho)
+            if caminho == "/api/agendamento" or caminho.startswith("/api/agendamento/"):
+                return self._agendamento(metodo, caminho)
             if metodo == "POST" and caminho.startswith("/api/vagas/") and caminho.endswith("/analisar"):
                 return self._forcar(unquote(caminho[len("/api/vagas/"):-len("/analisar")]))
             if caminho.startswith("/api/vagas/") and "/salario" in caminho:
@@ -1157,6 +1180,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._front(caminho)
         if caminho == "/api/limpeza" or caminho.startswith("/api/limpeza/"):
             return self._limpeza("GET", caminho)
+        if caminho == "/api/agendamento":
+            return self._agendamento("GET", caminho)
         if caminho == "/api/repetidas":
             return self._repetidas("GET", caminho)
         if caminho == "/api/versao":

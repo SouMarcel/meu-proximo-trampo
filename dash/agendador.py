@@ -69,8 +69,12 @@ class Agendador:
         return (buscador.BUSCA.rodando() or v.ocupada() is not None or buscador.COMPLETAR.rodando()
                 or v._LEITURA.locked())
 
-    def estado(self) -> dict:
-        return {"devida": self._devida is not None}
+    def estado(self, agora: datetime | None = None) -> dict:
+        b_est = buscador.BUSCA.estado()
+        origem = b_est.get("origem") if isinstance(b_est, dict) else None
+        esta_rodando = buscador.BUSCA.rodando() or (b_est.get("situacao") not in ("concluida", "cancelada", "falha", "ociosa", "externa", "interrompida") if isinstance(b_est, dict) else False)
+        rodando = b_est if (origem == "agendada" and esta_rodando) else None
+        return _agendamento().estado_para_pagina(agora, devida=self._devida is not None, rodando=rodando)
 
     def tick(self, agora: datetime) -> None:
         ag = _agendamento()

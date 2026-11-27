@@ -75,7 +75,7 @@ faltaram e as descrições pendentes; sem novo bloqueio, a retomada some.
 
 ## Phase 4: US3 Ver o que está agendado e o que aconteceu (P2)
 
-- [ ] T008 [D minor] [US3] `dash/servidor.py`: `GET /api/agendamento`, `PUT /api/agendamento` (local; desmarcar
+- [X] T008 [D minor] [US3] → agy, GO na tentativa 1. `dash/servidor.py`: `GET /api/agendamento`, `PUT /api/agendamento` (local; desmarcar
   `continuar` apaga as retomadas), `DELETE /api/agendamento/retomadas/<nome>` (local; 404 sem retomada), no formato de
   contracts/api.md (`hoje`, `proxima`, `retomadas` com `consultas` e `descricoes` contadas pelo banco, `historico` até
   10, `aviso_login`); `GET /api/busca` com `origem` e `retomada`. `vagas.py agendamento` com `--ligar HH:MM`,

@@ -1,8 +1,12 @@
 """Busca agendada e retomada depois da espera (spec 064): configuração, regras do relógio, retomadas e integração.
 Config, cache e banco numa pasta temporária; portais e relógio falsos."""
+import contextlib
+import http.client
+import io
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -904,6 +908,171 @@ class TestRetomadaPontaAPonta(BaseBusca):
         self.portal()
         with self.assertRaises(buscador.BuscaRecusada):
             self.busca.iniciar(origem="retomada", retomada="falsa")
+
+
+class TestRotasEComando(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.raiz = Path(self.tmp.name)
+        self.config_arq = self.raiz / "config.json"
+        self.config_arq.write_text(json.dumps({
+            "termos": ["analista"],
+            "fontes": ["falsa"],
+            "agendamento": {"ligado": True, "horario": "08:00", "continuar": True}
+        }), encoding="utf-8")
+        self.cache = self.raiz / ".cache"
+        self.cache.mkdir(parents=True, exist_ok=True)
+        self.arq_estado = self.cache / "agendamento.json"
+        self.arq_retomadas = self.cache / "retomadas.json"
+
+        import servidor
+        self.patches = [
+            mock.patch.object(filtros, "CONFIG", self.config_arq),
+            mock.patch.object(agendamento, "CACHE", self.cache),
+            mock.patch.object(agendamento, "ARQ_ESTADO", self.arq_estado),
+            mock.patch.object(agendamento, "ARQ_RETOMADAS", self.arq_retomadas),
+            mock.patch.object(banco, "ARQUIVO", self.raiz / "banco.db"),
+            mock.patch.object(servidor.Handler, "hosts_permitidos", {"127.0.0.1", "localhost"}),
+        ]
+        for p in self.patches:
+            p.start()
+        self.addCleanup(self._limpar)
+
+        self.srv = servidor.ThreadingHTTPServer(("127.0.0.1", 0), servidor.Handler)
+        self.thread_srv = threading.Thread(target=self.srv.serve_forever, daemon=True)
+        self.thread_srv.start()
+        self.addCleanup(self.srv.server_close)
+        self.addCleanup(self.srv.shutdown)
+
+    def _limpar(self):
+        for p in reversed(self.patches):
+            p.stop()
+        self.tmp.cleanup()
+
+    def pedir(self, metodo, caminho, corpo=None):
+        con = http.client.HTTPConnection("127.0.0.1", self.srv.server_address[1], timeout=10)
+        self.addCleanup(con.close)
+        dados = json.dumps(corpo).encode("utf-8") if corpo is not None else None
+        headers = {"Content-Type": "application/json"}
+        con.request(metodo, caminho, dados, headers)
+        r = con.getresponse()
+        return r.status, json.loads(r.read().decode("utf-8"))
+
+    def test_get_devolve_formato_do_contrato(self):
+        st, r = self.pedir("GET", "/api/agendamento")
+        self.assertEqual(st, 200)
+        chaves_esperadas = {"agendamento", "proxima", "hoje", "retomadas", "historico", "aviso_login", "pode_alterar"}
+        self.assertTrue(chaves_esperadas.issubset(r.keys()))
+        self.assertEqual(r["agendamento"], {"ligado": True, "horario": "08:00", "continuar": True})
+        self.assertTrue(r["pode_alterar"])
+        self.assertIsInstance(r["retomadas"], list)
+        self.assertIsInstance(r["historico"], list)
+
+    def test_put_com_horario_invalido_400(self):
+        st, r = self.pedir("PUT", "/api/agendamento", {"horario": "25:00"})
+        self.assertEqual(st, 400)
+        self.assertIn("erro", r)
+        self.assertIn("horário inválido", r["erro"])
+
+    def test_put_continuar_falso_apaga_as_retomadas(self):
+        agendamento.gravar_retomadas({
+            "falsa": {
+                "portal": "Falsa",
+                "proxima": "2026-11-27T14:00",
+                "faltaram": [],
+                "tentativas": 0,
+                "criada_em": "2026-11-27T08:00",
+                "origem_busca": "agendada"
+            }
+        })
+        self.assertIn("falsa", agendamento.ler_retomadas())
+
+        st, r = self.pedir("PUT", "/api/agendamento", {"continuar": False})
+        self.assertEqual(st, 200)
+        self.assertFalse(r["agendamento"]["continuar"])
+        self.assertEqual(agendamento.ler_retomadas(), {})
+        self.assertEqual(r["retomadas"], [])
+
+    def test_delete_retomada_existente_200_e_some(self):
+        agendamento.gravar_retomadas({
+            "falsa": {
+                "portal": "Falsa",
+                "proxima": "2026-11-27T14:00",
+                "faltaram": [],
+                "tentativas": 0,
+                "criada_em": "2026-11-27T08:00",
+                "origem_busca": "agendada"
+            }
+        })
+        self.assertIn("falsa", agendamento.ler_retomadas())
+
+        st, r = self.pedir("DELETE", "/api/agendamento/retomadas/falsa")
+        self.assertEqual(st, 200)
+        self.assertNotIn("falsa", agendamento.ler_retomadas())
+        self.assertEqual(r["retomadas"], [])
+
+    def test_delete_retomada_inexistente_404(self):
+        st, r = self.pedir("DELETE", "/api/agendamento/retomadas/inexistente")
+        self.assertEqual(st, 404)
+        self.assertEqual(r, {"erro": "não há retomada para este portal"})
+
+    def test_vagas_agendamento_horario_invalido_codigo_2(self):
+        err = io.StringIO()
+        with mock.patch.object(sys, "argv", ["vagas.py", "agendamento", "--ligar", "25:00"]), \
+             contextlib.redirect_stderr(err):
+            codigo = vagas.main()
+        self.assertEqual(codigo, 2)
+        self.assertIn("horário inválido", err.getvalue())
+
+    def test_vagas_agendamento_ligar_0730_grava_no_config(self):
+        out = io.StringIO()
+        with mock.patch.object(sys, "argv", ["vagas.py", "agendamento", "--ligar", "07:30"]), \
+             contextlib.redirect_stdout(out):
+            codigo = vagas.main()
+        self.assertEqual(codigo, 0)
+        cfg = json.loads(self.config_arq.read_text(encoding="utf-8"))
+        self.assertEqual(cfg["agendamento"]["horario"], "07:30")
+        self.assertTrue(cfg["agendamento"]["ligado"])
+        self.assertIn("Busca agendada: ligada às 07:30", out.getvalue())
+
+    def test_vagas_agendamento_sem_opcao_mostra_estado(self):
+        agendamento.gravar_retomadas({
+            "falsa": {
+                "portal": "LinkedIn",
+                "proxima": "2026-11-27T14:00",
+                "faltaram": [{"termo": "a"}, {"termo": "b"}],
+                "tentativas": 0,
+                "criada_em": "2026-11-27T08:00",
+                "origem_busca": "agendada"
+            }
+        })
+        estado = agendamento.ler_estado()
+        agendamento.registrar_evento(estado, {
+            "tipo": "agendada", "situacao": "rodou", "em": "2026-11-27T08:00:12", "motivo": None
+        })
+        agendamento.gravar_estado(estado)
+
+        out = io.StringIO()
+        with mock.patch.object(sys, "argv", ["vagas.py", "agendamento"]), \
+             contextlib.redirect_stdout(out):
+            codigo = vagas.main()
+        self.assertEqual(codigo, 0)
+        texto = out.getvalue()
+        self.assertIn("Busca agendada: ligada às 08:00", texto)
+        self.assertIn("Continuar de onde parou: sim", texto)
+        self.assertIn("Próxima busca:", texto)
+        self.assertIn("LinkedIn: retoma às 14:00, faltam 2 consultas e 0 descrições", texto)
+        self.assertIn("Último evento: agendada rodou em 2026-11-27T08:00:12", texto)
+
+    def test_vagas_agendamento_cancelar_retomada(self):
+        agendamento.gravar_retomadas({"falsa": {"portal": "Falsa", "proxima": "2026-11-27T14:00"}})
+        self.assertIn("falsa", agendamento.ler_retomadas())
+        with mock.patch.object(sys, "argv", ["vagas.py", "agendamento", "--cancelar-retomada", "falsa"]), \
+             contextlib.redirect_stdout(io.StringIO()):
+            codigo = vagas.main()
+        self.assertEqual(codigo, 0)
+        self.assertNotIn("falsa", agendamento.ler_retomadas())
+
 
 
 if __name__ == "__main__":

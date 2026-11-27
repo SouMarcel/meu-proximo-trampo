@@ -7,6 +7,7 @@
   python vagas.py gravar            grava as candidatas avaliadas (.cache/avaliacoes.json)
   python vagas.py gravar --sem-avaliacao   grava as candidatas da última busca sem nota
   python vagas.py pedidos-linkedin  resumo dos pedidos ao LinkedIn e do que veio antes de cada bloqueio
+  python vagas.py agendamento       mostra ou altera a busca agendada e a retomada
 
 Configuração em config.json (copie de config.exemplo.json). Dashboard: python dash/servidor.py
 Uma busca por vez no computador: com uma busca rodando pela página do dashboard, buscar sai com código 4.
@@ -1032,6 +1033,67 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None, pasta: Path 
     return 0 if r["novas"] or not r["docs"] else 1
 
 
+def cmd_agendamento(args) -> int:
+    import agendamento
+
+    mudar = {}
+    if args.ligar is not None:
+        mudar["ligado"] = True
+        mudar["horario"] = args.ligar
+    elif args.desligar:
+        mudar["ligado"] = False
+    if args.continuar is not None:
+        mudar["continuar"] = (args.continuar == "sim")
+
+    if mudar:
+        try:
+            filtros.salvar_agendamento(mudar)
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            return 2
+        if args.continuar == "nao":
+            agendamento.apagar_retomadas()
+
+    if args.cancelar_retomada:
+        agendamento.cancelar_retomada(args.cancelar_retomada)
+
+    cfg = filtros.ler_config()
+    ag = filtros.efetivos(cfg)["agendamento"]
+    agora = datetime.now()
+    estado = agendamento.ler_estado()
+    proxima = agendamento.proxima_agendada(ag, agora, estado)
+
+    ligado_str = f"ligada às {ag['horario']}" if ag.get("ligado") else f"desligada (horário: {ag.get('horario', '08:00')})"
+    print(f"Busca agendada: {ligado_str}")
+    print(f"Continuar de onde parou: {'sim' if ag.get('continuar') else 'não'}")
+    if proxima:
+        print(f"Próxima busca: {proxima}")
+    else:
+        print("Próxima busca: nenhuma")
+
+    retomadas = agendamento.ler_retomadas()
+    for nome, ret in retomadas.items():
+        portal = ret.get("portal", nome)
+        prox = ret.get("proxima", "")
+        hora = prox[11:16] if len(prox) >= 16 else prox
+        consultas = len(ret.get("faltaram", []))
+        descricoes = len(banco.pendentes_de_descricao(portal))
+        c_str = f"{consultas} consulta" if consultas == 1 else f"{consultas} consultas"
+        d_str = f"{descricoes} descrição" if descricoes == 1 else f"{descricoes} descrições"
+        print(f"{portal}: retoma às {hora}, faltam {c_str} e {d_str}")
+
+    historico = estado.get("historico", [])
+    if historico:
+        ult = historico[0]
+        portal_str = f" ({ult['portal']})" if ult.get("portal") else ""
+        motivo_str = f" - {ult['motivo']}" if ult.get("motivo") else ""
+        print(f"Último evento: {ult.get('tipo')}{portal_str} {ult.get('situacao')} em {ult.get('em')}{motivo_str}")
+    else:
+        print("Último evento: nenhum")
+
+    return 0
+
+
 def main() -> int:
     for fluxo in (sys.stdout, sys.stderr):
         try:
@@ -1067,9 +1129,15 @@ def main() -> int:
     p5 = sub.add_parser("pedidos-linkedin", help="resumo dos pedidos ao LinkedIn e do que veio antes de cada bloqueio")
     p5.add_argument("--horas", type=int, default=48, help="período do resumo (padrão: 48 horas)")
 
+    p6 = sub.add_parser("agendamento", help="mostra ou altera a busca agendada e a retomada")
+    p6.add_argument("--ligar", help="liga no horário HH:MM")
+    p6.add_argument("--desligar", action="store_true", help="desliga a busca agendada")
+    p6.add_argument("--continuar", choices=["sim", "nao"], help="continua de onde parou após espera")
+    p6.add_argument("--cancelar-retomada", metavar="NOME", help="cancela a retomada do portal indicado")
+
     args = ap.parse_args()
     return {"buscar": cmd_buscar, "ver": cmd_ver, "gravar": cmd_gravar, "completar": cmd_completar,
-            "pedidos-linkedin": cmd_pedidos_linkedin}[args.cmd](args)
+            "pedidos-linkedin": cmd_pedidos_linkedin, "agendamento": cmd_agendamento}[args.cmd](args)
 
 
 if __name__ == "__main__":

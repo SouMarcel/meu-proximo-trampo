@@ -370,3 +370,79 @@ def retomadas_devidas(
             devidas.append(nome)
 
     return devidas, atualizadas, eventos
+
+
+def estado_para_pagina(agora: datetime | None = None, devida: bool = False, rodando: dict | None = None) -> dict:
+    """Monta o dicionário para a página /api/agendamento (sem pode_alterar).
+
+    Pura: recebe agora (opcional, padrão datetime.now()).
+    Imports de vagas, banco e filtros dentro da função.
+    """
+    import banco
+    import filtros
+    import vagas
+
+    if agora is None:
+        agora = datetime.now()
+    elif isinstance(agora, str):
+        agora = datetime.fromisoformat(agora)
+
+    cfg = filtros.ler_config()
+    ag = filtros.efetivos(cfg)["agendamento"]
+    estado = ler_estado()
+
+    proxima = proxima_agendada(ag, agora, estado)
+
+    # hoje
+    hoje = None
+    if rodando and isinstance(rodando, dict) and rodando.get("origem") == "agendada":
+        hoje = {"situacao": "rodando", "em": rodando.get("inicio"), "motivo": None}
+    elif devida:
+        hoje = {"situacao": "devida", "em": None, "motivo": None}
+    else:
+        dia_hoje = agora.date().isoformat()
+        for ev in estado.get("historico", []):
+            if ev.get("tipo") == "agendada" and str(ev.get("em", "")).startswith(dia_hoje):
+                hoje = {"situacao": ev.get("situacao"), "em": ev.get("em"), "motivo": ev.get("motivo")}
+                break
+
+    # retomadas
+    ret_dict = ler_retomadas()
+    retomadas = []
+    for nome, ret in ret_dict.items():
+        if not isinstance(ret, dict):
+            continue
+        portal = ret.get("portal", nome)
+        esperas = vagas.fontes_em_espera([nome], pagina=False)
+        em_espera_ate = esperas[0]["ate"] if esperas else None
+        consultas = len(ret.get("faltaram", []))
+        descricoes = len(banco.pendentes_de_descricao(portal))
+        retomadas.append({
+            "nome": nome,
+            "portal": portal,
+            "proxima": ret.get("proxima"),
+            "em_espera_ate": em_espera_ate,
+            "consultas": consultas,
+            "descricoes": descricoes,
+            "tentativas": ret.get("tentativas", 0),
+            "criada_em": ret.get("criada_em"),
+            "origem_busca": ret.get("origem_busca"),
+        })
+
+    # historico
+    historico = estado.get("historico", [])[:10]
+
+    # aviso_login
+    fontes_ligadas = filtros.efetivos(cfg).get("fontes", [])
+    avisos = vagas.fontes_com_login_fora(fontes_ligadas, pagina=False)
+    aviso_login = "; ".join(avisos.values()) if avisos else None
+
+    return {
+        "agendamento": ag,
+        "proxima": proxima,
+        "hoje": hoje,
+        "retomadas": retomadas,
+        "historico": historico,
+        "aviso_login": aviso_login,
+    }
+
