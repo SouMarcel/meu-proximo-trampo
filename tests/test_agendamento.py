@@ -402,7 +402,30 @@ class TestAgendador(unittest.TestCase):
         self.iniciar.assert_called_once()
 
 
+def _isolar_busca(teste):
+    """Busca de verdade numa thread: o estado da análise não lê o banco (na máquina lenta, a leitura disputava o banco
+    com a gravação da thread), e toda thread iniciada é esperada no fim, para não sobrar para o teste seguinte."""
+    p = mock.patch.object(buscador.Busca, "analise", staticmethod(lambda: {"rodando": False, "faltam": 0, "erro": None}))
+    p.start()
+    teste.addCleanup(p.stop)
+    original = buscador.Busca.iniciar
+
+    def iniciar(self_, *a, **kw):
+        try:
+            return original(self_, *a, **kw)
+        finally:
+            if self_._thread is not None:
+                teste.addCleanup(self_._thread.join, 30)
+    p2 = mock.patch.object(buscador.Busca, "iniciar", iniciar)
+    p2.start()
+    teste.addCleanup(p2.stop)
+
+
 class TestBuscaAgendada(BaseBusca):
+    def setUp(self):
+        super().setUp()
+        _isolar_busca(self)
+
     def test_ignora_intervalo_e_grava_a_origem(self):
         fim = (datetime.now() - timedelta(minutes=10)).isoformat(timespec="seconds")
         vagas._gravar_registro({"origem": "pagina", "situacao": "concluida", "fim": fim})
@@ -815,6 +838,7 @@ class TestRetomadaPontaAPonta(BaseBusca):
 
     def setUp(self):
         super().setUp()
+        _isolar_busca(self)
         (self.tmp / "config.json").write_text(json.dumps(self.CONFIG), encoding="utf-8")
         cache = self.tmp / ".cache"
         self.busca = buscador.Busca()
