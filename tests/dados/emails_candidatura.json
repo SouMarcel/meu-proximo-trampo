@@ -1,0 +1,162 @@
+{
+  "vagas": [
+    {
+      "id": "vaga-1",
+      "titulo": "Desenvolvedor Backend Python",
+      "empresa": "Lumora Tecnologia",
+      "etapa": "entrevista",
+      "resultado": null
+    },
+    {
+      "id": "vaga-2",
+      "titulo": "Engenheiro de Dados",
+      "empresa": "Lumora Tecnologia",
+      "etapa": "encerrada",
+      "resultado": "nao_aprovado"
+    },
+    {
+      "id": "vaga-3",
+      "titulo": "Analista de BI Pleno",
+      "empresa": "Brisa Dados S.A.",
+      "etapa": "salva",
+      "resultado": null
+    },
+    {
+      "id": "vaga-4",
+      "titulo": "Senior Frontend Engineer",
+      "empresa": "Northwind Labs",
+      "etapa": "aplicada",
+      "resultado": null
+    },
+    {
+      "id": "vaga-5",
+      "titulo": "Product Manager",
+      "empresa": "Oficina Azul Ltda",
+      "etapa": "proposta",
+      "resultado": null
+    },
+    {
+      "id": "vaga-6",
+      "titulo": "Especialista DevOps",
+      "empresa": "Solarium Tech",
+      "etapa": "aplicada",
+      "resultado": null
+    },
+    {
+      "id": "vaga-7",
+      "titulo": "Tech Lead",
+      "empresa": "Vértice Sistemas",
+      "etapa": "aplicada",
+      "resultado": null
+    },
+    {
+      "id": "vaga-8",
+      "titulo": "Consultor de Projetos",
+      "empresa": "Rio Claro Consultoria",
+      "etapa": "aplicada",
+      "resultado": null
+    }
+  ],
+  "emails": [
+    {
+      "texto": "De: recrutamento@brisadados.com.br\nPara: candidato@exemplo.com\nAssunto: Confirmação de candidatura\nData: 26/11/2026\n\nOlá! Recebemos sua candidatura para a vaga de Analista de BI Pleno na Brisa Dados S.A. Seu perfil está em análise pela nossa equipe.",
+      "tipo": "recebida",
+      "vaga_id": "vaga-3"
+    },
+    {
+      "texto": "Olá! Recebemos sua candidatura para Desenvolvedor Backend Python na Lumora Tecnologia. Gostaríamos de agendar uma entrevista e teste técnico para conhecermos melhor sua experiência.",
+      "tipo": "entrevista",
+      "vaga_id": "vaga-1"
+    },
+    {
+      "texto": "Prezado candidato,\nAgradecemos seu interesse e confirmamos que sua candidatura foi recebida. Infelizmente, decidimos seguir com outros candidatos para a posição de Consultor de Projetos na Rio Claro Consultoria neste momento.",
+      "tipo": "negativa",
+      "vaga_id": "vaga-8"
+    },
+    {
+      "texto": "Olá! Temos o prazer de lhe oferecer uma proposta de trabalho para o cargo de Tech Lead na Vértice Sistemas! Segue em anexo nossa carta proposta com os detalhes da remuneração.",
+      "tipo": "proposta",
+      "vaga_id": "vaga-7"
+    },
+    {
+      "texto": "Parabéns pela contratação! Seja bem-vindo ao time da Oficina Azul Ltda como nosso novo Product Manager. Estamos muito empolgados em trabalhar juntos!",
+      "tipo": "contratacao",
+      "vaga_id": "vaga-5"
+    },
+    {
+      "texto": "Informamos que o processo seletivo para Especialista DevOps na Solarium Tech foi cancelado devido ao congelamento de novas vagas. Agradecemos sua participação.",
+      "tipo": "cancelada",
+      "vaga_id": "vaga-6"
+    },
+    {
+      "texto": "Confirmamos que você retirou sua candidatura para a posição de Desenvolvedor Backend Python na Lumora Tecnologia. Sua desistência foi registrada em nosso sistema.",
+      "tipo": "desistencia",
+      "vaga_id": "vaga-1"
+    },
+    {
+      "texto": "Olá! Ficamos muito impressionados com seu histórico e queremos agendar uma conversa com o time de engenharia da Lumora Tecnologia. Quando você teria disponibilidade?",
+      "tipo": "entrevista",
+      "vaga_id": null
+    },
+    {
+      "texto": "Infelizmente não seguiremos com o processo seletivo para Especialista DevOps na Solarium Tech neste momento. Manteremos seus dados em nosso banco de talentos.",
+      "tipo": "negativa",
+      "vaga_id": "vaga-6"
+    },
+    {
+      "texto": "Sua candidatura foi recebida com sucesso para Tech Lead na Vértice Sistemas. Obrigado por se candidatar!",
+      "tipo": "recebida",
+      "vaga_id": "vaga-7"
+    },
+    {
+      "texto": "From: careers@northwindlabs.com\nTo: candidate@test.com\nSubject: Interview with Northwind Labs\n\nHi! Thank you for your application. We would like to invite you for a technical interview and coding challenge for the Senior Frontend Engineer position at Northwind Labs.",
+      "tipo": "entrevista",
+      "vaga_id": "vaga-4"
+    },
+    {
+      "texto": "We are pleased to offer you the position of Senior Frontend Engineer at Northwind Labs. Please review your formal job offer letter attached.",
+      "tipo": "proposta",
+      "vaga_id": "vaga-4"
+    },
+    {
+      "texto": "Thank you for interviewing with us. Unfortunately, we have decided to move forward with other candidates for the Senior Frontend Engineer role at Northwind Labs.",
+      "tipo": "negativa",
+      "vaga_id": "vaga-4"
+    },
+    {
+      "texto": "Your application has been received for the Senior Frontend Engineer position at Northwind Labs. Thank you for your application and interest in joining our team!",
+      "tipo": "recebida",
+      "vaga_id": "vaga-4"
+    },
+    {
+      "texto": "Congratulations! You have been hired as Senior Frontend Engineer at Northwind Labs. Welcome aboard to the team!",
+      "tipo": "contratacao",
+      "vaga_id": "vaga-4"
+    },
+    {
+      "texto": "We regret to inform you that the Senior Frontend Engineer position at Northwind Labs has been cancelled due to changing priorities.",
+      "tipo": "cancelada",
+      "vaga_id": "vaga-4"
+    },
+    {
+      "texto": "Hemos recibido tu postulacion para la vacante de Analista de BI Pleno en Brisa Dados S.A. Muchas gracias por postularte, tu perfil se encuentra en analisis.",
+      "tipo": "recebida",
+      "vaga_id": "vaga-3"
+    },
+    {
+      "texto": "Hola! Te invitamos a la siguiente etapa del proceso de seleccion con una entrevista y prueba tecnica para el cargo de Tech Lead en Vertice Sistemas.",
+      "tipo": "entrevista",
+      "vaga_id": "vaga-7"
+    },
+    {
+      "texto": "Estimado postulante,\nLamentablemente no vamos a continuar con su proceso de seleccion para Product Manager en Oficina Azul Ltda. Decidimos avanzar con otros candidatos.",
+      "tipo": "negativa",
+      "vaga_id": "vaga-5"
+    },
+    {
+      "texto": "Confira a nova edição da nossa newsletter semanal sobre novidades em tecnologia, inteligência artificial e mercado de trabalho. Acesse https://newsletter.exemplo.com/edicao-42 para conferir os destaques!",
+      "tipo": null,
+      "vaga_id": null
+    }
+  ]
+}

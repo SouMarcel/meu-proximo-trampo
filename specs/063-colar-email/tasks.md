@@ -16,7 +16,7 @@ Front: `npx -y pnpm@10.34.3 exec tsc --noEmit` e `npx -y pnpm@10.34.3 exec vite 
 
 ## Phase 1: US1 + US2 no servidor (P1)
 
-- [ ] T001 [D minor] [US1] `dash/colar_email.py` sem IA: `limpar`, `classificar`, `achar`, `propor` (research R2–R5),
+- [X] T001 [D minor] [US1] → agy, GO na tentativa 1. `dash/colar_email.py` sem IA: `limpar`, `classificar`, `achar`, `propor` (research R2–R5),
   com `tests/dados/emails_candidatura.json` (20 e-mails fictícios, PT/EN/ES, todos os tipos, com o quadro fictício e o
   esperado) e `tests/test_colar_email.py` (SC-001: ≥ 18 de 20; nunca volta etapa; "só anotar"; escolher entre duas da
   mesma empresa; e-mail com instrução à IA vira dado com alerta).
@@ -28,7 +28,7 @@ Front: `npx -y pnpm@10.34.3 exec tsc --noEmit` e `npx -y pnpm@10.34.3 exec vite 
 
 ## Phase 2: Página (frontend-react)
 
-- [ ] T004 [D minor] [US1] [US2] `src/services/api/contas.ts`, `src/components/modals/ColarEmail.tsx` (novo) e
+- [X] T004 [D minor] → copilot, GO na tentativa 1 (ajustes meus no aviso ⚠ e no botão dos portais). [US1] [US2] `src/services/api/contas.ts`, `src/components/modals/ColarEmail.tsx` (novo) e
   `src/components/modals/ConnectedAccountsModal.tsx`: área Colar e-mail com aviso, caixas e "+ outro e-mail", Ler,
   propostas no grupo "E-mail" com trecho e ⚠, escolhas de vaga e tipo, Aplicar das duas origens.
 
