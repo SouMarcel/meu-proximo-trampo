@@ -18,8 +18,8 @@ sai provisória pelos dados do portal (spec 057) até a pessoa colar a descriç�
 é republicada.
 
 Pausa de 2 segundos entre os pedidos (o Crawl-delay do site; JOBGETHER_PAUSA=N no .env, com N de 2 a 60) e, no
-primeiro bloqueio (403 ou 429), o JobGether fica de fora pelo resto da busca, sem nova tentativa, e das buscas das 24
-horas seguintes (a espera, gravada em .cache/).
+primeiro bloqueio (403 ou 429), o JobGether fica de fora pelo resto da busca, sem nova tentativa, e das buscas da
+espera seguinte (JOBGETHER_ESPERA, padrão 6 horas; gravada em .cache/).
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ TERMOS = ("API oficial do JobGether para assistentes de IA, sem chave e sem logi
           "todo, em inglês. Os termos de uso do JobGether proíbem acesso automatizado; a ferramenta usa a API que o "
           "portal oferece a assistentes, por decisão registrada na spec 030, e vem ligada; desligue aqui se não "
           "concordar. As vagas chegam sem "
-          "descrição (a nota da IA fica provisória). Se o JobGether limitar, a busca segue sem ele e ele fica 24 horas "
+          "descrição (a nota da IA fica provisória). Se o JobGether limitar, a busca segue sem ele e ele fica em espera (JOBGETHER_ESPERA, padrão 6 horas) "
           "em espera. A candidatura é no site da empresa.")
 
 URL = "https://jobgether.com/api/v1/jobs"
@@ -51,7 +51,7 @@ MAX_PAGINAS = 3  # por consulta (a API vai até 10)
 PAUSA = (2.0, 2.0)  # padrão, sem JOBGETHER_PAUSA: o Crawl-delay do robots.txt
 VAR_PAUSA = "JOBGETHER_PAUSA"  # no .env ou no ambiente: segundos de pausa (spec 030)
 PAUSA_MIN = 2.0  # API oficial: o mínimo é o Crawl-delay, e não os 3 s dos portais que leem páginas
-ESPERA = timedelta(hours=24)  # depois de um bloqueio, o JobGether fica de fora das buscas
+VAR_ESPERA = "JOBGETHER_ESPERA"  # no .env ou no ambiente: minutos de espera depois de um bloqueio
 ARQ_ESPERA = Path(__file__).resolve().parent.parent / ".cache" / "jobgether-espera.json"
 TEMPO = 30
 LIMITE_BYTES = 5_000_000
@@ -104,9 +104,15 @@ def _pausar() -> None:
     _comum.pausar(_estado, _estado["pausa"])
 
 
+def duracao_espera() -> timedelta:
+    """Quanto o portal fica de fora depois de um bloqueio: JOBGETHER_ESPERA do .env (padrão 6 horas), lida a cada uso."""
+    return _comum.espera_do_env(VAR_ESPERA)["duracao"]
+
+
 def espera(agora: datetime | None = None) -> dict | None:
-    """{"ate", "motivo"} nas ESPERA horas depois do último bloqueio; None fora delas ou sem arquivo legível."""
-    return _comum.ler_espera(ARQ_ESPERA, ESPERA, agora)
+    """{"ate", "motivo"} na espera do JOBGETHER_ESPERA (padrão 6 horas) depois do último bloqueio; None fora dela ou sem
+    arquivo legível."""
+    return _comum.ler_espera(ARQ_ESPERA, duracao_espera(), agora)
 
 
 def parada() -> bool:
@@ -118,7 +124,7 @@ def _bloquear(motivo: str) -> _comum.FonteErro:
     """Para o JobGether nesta busca e grava a espera para as próximas (o aviso do bloqueio já diz até quando)."""
     _estado["bloqueado"] = True
     _estado["avisos"].add("espera")
-    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + ESPERA).isoformat(timespec="minutes")
+    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + duracao_espera()).isoformat(timespec="minutes")
     return _comum.FonteErro(f"{BLOQUEIO} ({motivo}); em espera até {_comum.ate_quando(ate)}")
 
 

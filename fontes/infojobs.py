@@ -16,7 +16,7 @@ relatório, no máximo MAX_DESCRICOES por busca.
 
 Pausa sorteada de 3 a 7 segundos entre os pedidos (INFOJOBS_PAUSA=N no .env muda para N a N+4, com N de 3 a 60) e,
 no primeiro bloqueio (recusa, limite de consultas ou pedido de login), o InfoJobs fica de fora pelo resto da busca,
-sem nova tentativa, e das buscas das 24 horas seguintes (a espera, gravada em .cache/).
+sem nova tentativa, e das buscas da espera seguinte (INFOJOBS_ESPERA, padrão 6 horas; gravada em .cache/).
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ PLATAFORMA = "InfoJobs"
 AREAS = ("nacional",)  # só vagas do Brasil
 TERMOS = ("Consulta não oficial à busca pública do InfoJobs, portal de vagas de todas as áreas no Brasil, sem login. "
           "Os termos do InfoJobs não autorizam robôs: a ferramenta lê o mínimo, com uma pausa de alguns segundos entre "
-          "as consultas e, se o InfoJobs limitar, a busca segue sem ele e ele fica 24 horas em espera. "
+          "as consultas e, se o InfoJobs limitar, a busca segue sem ele e ele fica em espera (INFOJOBS_ESPERA, padrão 6 horas). "
           "A candidatura é sempre no próprio InfoJobs.")
 
 SITE = "https://www.infojobs.com.br/"
@@ -44,7 +44,7 @@ MAX_DESCRICOES = 30  # páginas de vaga lidas por busca; as outras ficam pendent
 PAUSA = (3.0, 7.0)  # padrão, sem INFOJOBS_PAUSA
 VAR_PAUSA = "INFOJOBS_PAUSA"  # no .env ou no ambiente: segundos de pausa mínima (spec 026)
 PAUSA_MIN, PAUSA_FAIXA = 3.0, 4.0  # N de 3 a 60; a pausa é sorteada de N a N + 4
-ESPERA = timedelta(hours=24)  # depois de um bloqueio, o InfoJobs fica de fora das buscas
+VAR_ESPERA = "INFOJOBS_ESPERA"  # no .env ou no ambiente: minutos de espera depois de um bloqueio
 ARQ_ESPERA = Path(__file__).resolve().parent.parent / ".cache" / "infojobs-espera.json"
 LIMITE_DESCRICAO = 12000
 BLOQUEIO = "o InfoJobs limitou as consultas"
@@ -92,9 +92,15 @@ def _pausar() -> None:
     _comum.pausar(_estado, _estado["pausa"])
 
 
+def duracao_espera() -> timedelta:
+    """Quanto o portal fica de fora depois de um bloqueio: INFOJOBS_ESPERA do .env (padrão 6 horas), lida a cada uso."""
+    return _comum.espera_do_env(VAR_ESPERA)["duracao"]
+
+
 def espera(agora: datetime | None = None) -> dict | None:
-    """{"ate", "motivo"} nas ESPERA horas depois do último bloqueio; None fora delas ou sem arquivo legível."""
-    return _comum.ler_espera(ARQ_ESPERA, ESPERA, agora)
+    """{"ate", "motivo"} na espera do INFOJOBS_ESPERA (padrão 6 horas) depois do último bloqueio; None fora dela ou sem
+    arquivo legível."""
+    return _comum.ler_espera(ARQ_ESPERA, duracao_espera(), agora)
 
 
 def parada() -> bool:
@@ -105,7 +111,7 @@ def parada() -> bool:
 def _bloquear(motivo: str) -> _comum.FonteErro:
     """Para o InfoJobs nesta busca e grava a espera para as próximas (o aviso do bloqueio já diz até quando)."""
     _estado.update(bloqueado=True, avisou_espera=True)
-    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + ESPERA).isoformat(timespec="minutes")
+    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + duracao_espera()).isoformat(timespec="minutes")
     return _comum.FonteErro(f"{BLOQUEIO} ({motivo}); em espera até {_comum.ate_quando(ate)}")
 
 

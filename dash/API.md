@@ -357,10 +357,11 @@ confirmar_espera?: bool}`. Resposta 202 = estado (abaixo) + `pode_alterar: true`
 409 `{erro, precisa_confirmar: bool, estado}` (busca rodando, intervalo mínimo de 30 min, busca recente ou portal
 em espera sem confirmar).
 
-**`GET /api/busca`** — andamento. `{situacao, origem: "pagina"|"terminal"|..., inicio, fim, com_nota, feitas, total,
+**`GET /api/busca`** — andamento. `{situacao, origem: "pagina"|"agendada"|"retomada"|"terminal"|...,
+retomada?: {nome, portal}, inicio, fim, com_nota, feitas, total,
 encontradas, consulta: {portal, cargo, grupo}|null, descricoes: {lidas, total}|null, erros: string[],
 login: {portal, rotulo, ate: ISO}|null, mensagem, resumo: null|{brutas, novas, fora_criterios, ja_vistas, excluidas_titulo, fora_da_janela, busca_id,
-com_nota, pendentes, completadas}, analise: {rodando, faltam, erro: {motivo, em}|null}, pode_alterar}`.
+com_nota, pendentes, completadas, bloqueados: string[], retomada_as: ISO|null}, analise: {rodando, faltam, erro: {motivo, em}|null}, pode_alterar}`.
 `situacao`: `ociosa`, `consultando`, `aguardando_login`, `descricoes`, `gravando`, `cancelando`, `concluida`,
 `cancelada`, `falha`, `interrompida`, `externa` (busca do terminal ou do chat). buscador.py:97-113, 200-203, 251-256.
 `aguardando_login` (spec 041): o login de um portal com login caiu; a janela da ferramenta veio para a frente e a busca
@@ -378,6 +379,25 @@ pode_alterar}` (campos conforme a situação; buscador.py:283-319).
 **`POST /api/busca/pendentes`** **[local]** — "Completar descrições" (lê só as descrições, sem buscar vagas).
 Resposta 202 `{situacao: "lendo", lidas, total, inicio}`. Erro 409 (busca rodando ou portal em espera).
 
+### 3.3b Agendamento e retomada (Buscar vagas → Agendamento; quadro abaixo de Buscar vagas; spec 064)
+
+Um relógio no servidor (`dash/agendador.py`, a cada 30 s) roda a busca agendada pela mesma busca da página, com
+`origem: "agendada"` (sem as confirmações do botão, sem os portais com login), e as retomadas com `origem:
+"retomada"` (só o portal e só as consultas que faltaram, mais as descrições pendentes dele). Regras em
+`agendamento.py`; arquivos em `.cache/agendamento.json`, `.cache/retomadas.json` e `.cache/buscas-historico.json`.
+
+**`GET /api/agendamento`** — `{agendamento: {ligado, horario: "HH:MM", continuar}, proxima: ISO|null, hoje:
+{situacao: "rodou"|"pulada"|"perdida"|"falha"|"devida"|"rodando", em, motivo}|null, retomadas: [{nome, portal,
+proxima, em_espera_ate, consultas, descricoes, tentativas, criada_em, origem_busca}], historico: [{tipo:
+"agendada"|"retomada", situacao, portal?, em, motivo?}] (até 10), aviso_login: string|null, pode_alterar}`.
+
+**`PUT /api/agendamento`** **[local]** — corpo `{ligado?, horario?, continuar?}` (ausente fica como está). Responde
+como o GET; 400 `{erro: "horário inválido: use HH:MM"}`. Desmarcar `continuar` apaga as retomadas. O Salvar filtros
+não mexe na chave `agendamento` do `config.json`.
+
+**`DELETE /api/agendamento/retomadas/<nome>`** **[local]** — cancela a retomada do portal (`linkedin`, `infojobs`…).
+Responde como o GET; 404 sem retomada.
+
 ### 3.4 Configuração da busca (Filtros da busca, Filtros da busca internacional)
 
 O painel Filtros da busca tem quatro abas (spec 043), num formulário só, gravado de uma vez pelo `PUT`:
@@ -386,7 +406,7 @@ O painel Filtros da busca tem quatro abas (spec 043), num formulário só, grava
 - **Portais**: `fontes`, com `opcoes.fontes_nac`, `opcoes.fontes_login` e `opcoes.portais_a_mapear`;
 - **Portais internacionais**: `internacional.fontes`, com `opcoes.fontes_int`;
 - **Empresas acompanhadas/excluídas**: `empresas` e `empresas_excluir`;
-- **Limpeza** (spec 054): `limpeza`, com rotas próprias (§3.4b). O `GET /api/config` a traz em `filtros`, mas o
+- **Limpeza** (spec 054; desde a spec 064, aba do diálogo Buscar vagas, não dos filtros): `limpeza`, com rotas próprias (§3.4b). O `GET /api/config` a traz em `filtros`, mas o
   `PUT /api/config` a ignora: só o `PUT /api/limpeza` grava os critérios.
 
 O resto de `internacional` fica no painel Filtros da busca internacional.
@@ -425,7 +445,7 @@ cargos; o front mostra o aviso de primeira vez).
 opcoes}`. Erro 400 com a regra que falhou (ex.: "informe pelo menos um cargo", "para híbrido ou presencial,
 informe a cidade"; nome fora dos países e regiões: "<campo>: país ou região desconhecido: X"; filtros.py, validar). Também usado por "Gravar filtros" nos primeiros passos.
 
-### 3.4b Limpeza de vagas antigas (Filtros da busca → Limpeza; spec 054)
+### 3.4b Limpeza de vagas antigas (Buscar vagas → Limpeza; spec 054; até a spec 064, nos Filtros da busca)
 
 Critérios por grupo, no `config.json` (`limpeza`; padrão: os quatro ligados, 30 dias):
 `{fora: {ligado, dias}, pendente: {ligado, dias, nota_abaixo_de: 1-100|null}, dispensadas: {ligado, dias, resultados:

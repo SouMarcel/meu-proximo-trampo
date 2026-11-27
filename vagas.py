@@ -7,6 +7,7 @@
   python vagas.py gravar            grava as candidatas avaliadas (.cache/avaliacoes.json)
   python vagas.py gravar --sem-avaliacao   grava as candidatas da última busca sem nota
   python vagas.py pedidos-linkedin  resumo dos pedidos ao LinkedIn e do que veio antes de cada bloqueio
+  python vagas.py agendamento       mostra ou altera a busca agendada e a retomada
 
 Configuração em config.json (copie de config.exemplo.json). Dashboard: python dash/servidor.py
 Uma busca por vez no computador: com uma busca rodando pela página do dashboard, buscar sai com código 4.
@@ -104,6 +105,10 @@ def _arq_registro() -> Path:
     return CACHE / "busca.json"
 
 
+def _arq_historico() -> Path:
+    return CACHE / "buscas-historico.json"
+
+
 def _travar(arq) -> bool:
     """Trava do sistema operacional: o sistema solta sozinho se o processo morrer."""
     try:
@@ -147,6 +152,26 @@ def _gravar_registro(dados: dict) -> None:
     os.replace(tmp, _arq_registro())
 
 
+def ler_historico() -> list[dict]:
+    """As buscas registradas pela TravaBusca, mais nova primeiro (até 20)."""
+    try:
+        dados = json.loads(_arq_historico().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [d for d in dados if isinstance(d, dict)] if isinstance(dados, list) else []
+
+
+def _gravar_historico(dados: dict) -> None:
+    try:
+        CACHE.mkdir(parents=True, exist_ok=True)
+        lista = [dados] + [d for d in ler_historico() if isinstance(d, dict)]
+        tmp = _arq_historico().with_name("buscas-historico.json.tmp")
+        tmp.write_text(json.dumps(lista[:20], ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, _arq_historico())
+    except OSError:
+        pass
+
+
 def ocupada() -> dict | None:
     """Quem está consultando os portais agora (o registro da busca), ou None."""
     CACHE.mkdir(parents=True, exist_ok=True)
@@ -186,9 +211,12 @@ class TravaBusca:
         situacao = self.situacao
         if tipo is not None:
             situacao = "cancelada" if issubclass(tipo, (Cancelada, KeyboardInterrupt)) else "erro"
+        fim = datetime.now().isoformat(timespec="seconds")
         try:
             _gravar_registro({"origem": self.origem, "inicio": self.inicio, "situacao": situacao,
-                              "fim": datetime.now().isoformat(timespec="seconds"), "pid": os.getpid()})
+                              "fim": fim, "pid": os.getpid()})
+            _gravar_historico({"origem": self.origem, "inicio": self.inicio, "fim": fim,
+                               "situacao": situacao})
         finally:
             _destravar(self.arq)
             self.arq.close()
@@ -311,7 +339,8 @@ def aviso_pausa(f: dict, nomes_fontes: list[str], pagina: bool | None = None) ->
 
 @_origem_linkedin("busca")
 def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa: float = 2.0,
-             incluir_presencial: bool = False, progresso=None, cancelado=None) -> dict:
+             incluir_presencial: bool = False, progresso=None, cancelado=None,
+             so_consultas: dict[str, list[dict]] | None = None) -> dict:
     """A busca, sem imprimir: consulta os portais, corta, agrupa repetidas e lê as descrições que faltam.
 
     progresso(evento) recebe {"etapa": "consulta", portal, cargo, grupo, feitas, total, encontradas} antes e
@@ -326,19 +355,34 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
     termos = f["termos"]
     horas = f["janela_horas"]
     plano = filtros.consultas(f, incluir_presencial=incluir_presencial)
-    login_fora = fontes_com_login_fora(nomes_fontes)  # portal com login: só na busca da página e conectado (spec 041)
-    rodam = [n for n in nomes_fontes if n not in login_fora]
-    total = contar_consultas(plano, rodam)
+    login_fora = fontes_com_login_fora(list(so_consultas.keys()) if so_consultas is not None else nomes_fontes)  # portal com login: só na busca da página e conectado (spec 041)
+    if so_consultas is not None:
+        rodam = [n for n in so_consultas if n not in login_fora]
+        total = sum(len(so_consultas.get(n, [])) for n in rodam)
+    else:
+        rodam = [n for n in nomes_fontes if n not in login_fora]
+        total = contar_consultas(plano, rodam)
     esperas = fontes_em_espera(rodam)
+    em_espera = {e["nome"] for e in esperas}
+    rodaram = [n for n in rodam if n not in em_espera]
     _comum.esquecer()  # as listas das fontes do exterior são baixadas de novo a cada busca
     brutas: dict[str, dict] = {}
     por_busca: dict[str, int] = {}
     erros: list[str] = [f"{n}: {aviso}" for n, aviso in login_fora.items()]
+    faltaram: dict[str, list[dict]] = {}
     feitas = 0
     for nome in rodam:
         fonte = FONTES[nome]
-        for c in consultas_da_fonte(plano, fonte):
+        tem_parada = (nome in rodaram) and hasattr(fonte, "parada") and callable(getattr(fonte, "parada", None))
+        consultas = so_consultas[nome] if so_consultas is not None else consultas_da_fonte(plano, fonte)
+        parada_no_inicio = tem_parada and fonte.parada()
+        bloqueou = False
+        for c in consultas:
             conferir()
+            if tem_parada and bloqueou:  # depois do bloqueio, nenhum pedido: a consulta fica para a retomada
+                faltaram.setdefault(nome, []).append(dict(c))
+                feitas += 1
+                continue
             if feitas:
                 time.sleep(pausa)
                 conferir()
@@ -347,6 +391,9 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
                       "grupo": rotulo_grupo(c["grupo"], f), "total": total}
             avisar({**evento, "feitas": feitas, "encontradas": len(brutas)})
             vagas, errs = fonte.buscar(c, horas, por_termo)
+            if tem_parada and not parada_no_inicio and fonte.parada():
+                bloqueou = True
+                faltaram.setdefault(nome, []).append(dict(c))
             rotulo = (f"{nome}: {cargo if c.get('agrupada') else c['termo']}"
                       + ("" if c["grupo"] == "remoto" else f" [{rotulo_grupo(c['grupo'], f)}]"))
             erros += [f"{rotulo}: {m}" for m in errs]
@@ -417,6 +464,8 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
         else:
             candidatas.append(v)
     descricoes_completadas = ler_descricoes(candidatas, fora, rodam, erros, avisar, conferir)
+    bloqueados = [n for n in rodaram if hasattr(FONTES[n], "parada") and callable(getattr(FONTES[n], "parada", None))
+                  and FONTES[n].parada()]
     for v in candidatas + fora:  # o candidatas.md e a nota pelo chat já leem o texto limpo (spec 034)
         verificar_texto(v)
     candidatas.sort(key=lambda r: r.get("publicada_em") or "", reverse=True)
@@ -434,6 +483,9 @@ def executar(cfg: dict, f: dict, nomes_fontes: list[str], por_termo: int, pausa:
         "outros_portais": outros_portais,
         "erros": erros,
         "espera": esperas,
+        "rodaram": rodaram,
+        "bloqueados": bloqueados,
+        "faltaram": faltaram,
         "aviso_cargos": filtros.aviso_cargos(f, nomes_fontes),
         "descricoes_completadas": descricoes_completadas,
         "candidatas": candidatas,
@@ -697,6 +749,15 @@ def cmd_buscar(args) -> int:
         print(str(e), file=sys.stderr)
         return 4
     salvar_candidatas(resultado, CACHE, args.trecho)
+    try:
+        import agendamento
+        ret = agendamento.registrar_retomadas(resultado, "terminal", f, gravado=not bloqueio_provavel(resultado))
+        if ret["retomada_as"]:
+            verbo = "bloquearam" if len(ret["bloqueados"]) > 1 else "bloqueou"
+            print(f"{', '.join(ret['bloqueados'])} {verbo}; com o dashboard ligado, a retomada roda às "
+                  f"{ret['retomada_as'][11:16]}")
+    except Exception as e:  # a retomada nunca derruba a busca
+        print(f"Aviso: não deu para registrar a retomada ({e!r}).", file=sys.stderr)
 
     candidatas, fora, erros, excluidas = (resultado["candidatas"], resultado["fora"], resultado["erros"],
                                           resultado["excluidas"])
@@ -972,6 +1033,67 @@ def gravar(sem_avaliacao: bool = False, arquivo: str | None = None, pasta: Path 
     return 0 if r["novas"] or not r["docs"] else 1
 
 
+def cmd_agendamento(args) -> int:
+    import agendamento
+
+    mudar = {}
+    if args.ligar is not None:
+        mudar["ligado"] = True
+        mudar["horario"] = args.ligar
+    elif args.desligar:
+        mudar["ligado"] = False
+    if args.continuar is not None:
+        mudar["continuar"] = (args.continuar == "sim")
+
+    if mudar:
+        try:
+            filtros.salvar_agendamento(mudar)
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            return 2
+        if args.continuar == "nao":
+            agendamento.apagar_retomadas()
+
+    if args.cancelar_retomada:
+        agendamento.cancelar_retomada(args.cancelar_retomada)
+
+    cfg = filtros.ler_config()
+    ag = filtros.efetivos(cfg)["agendamento"]
+    agora = datetime.now()
+    estado = agendamento.ler_estado()
+    proxima = agendamento.proxima_agendada(ag, agora, estado)
+
+    ligado_str = f"ligada às {ag['horario']}" if ag.get("ligado") else f"desligada (horário: {ag.get('horario', '08:00')})"
+    print(f"Busca agendada: {ligado_str}")
+    print(f"Continuar de onde parou: {'sim' if ag.get('continuar') else 'não'}")
+    if proxima:
+        print(f"Próxima busca: {proxima}")
+    else:
+        print("Próxima busca: nenhuma")
+
+    retomadas = agendamento.ler_retomadas()
+    for nome, ret in retomadas.items():
+        portal = ret.get("portal", nome)
+        prox = ret.get("proxima", "")
+        hora = prox[11:16] if len(prox) >= 16 else prox
+        consultas = len(ret.get("faltaram", []))
+        descricoes = len(banco.pendentes_de_descricao(portal))
+        c_str = f"{consultas} consulta" if consultas == 1 else f"{consultas} consultas"
+        d_str = f"{descricoes} descrição" if descricoes == 1 else f"{descricoes} descrições"
+        print(f"{portal}: retoma às {hora}, faltam {c_str} e {d_str}")
+
+    historico = estado.get("historico", [])
+    if historico:
+        ult = historico[0]
+        portal_str = f" ({ult['portal']})" if ult.get("portal") else ""
+        motivo_str = f" - {ult['motivo']}" if ult.get("motivo") else ""
+        print(f"Último evento: {ult.get('tipo')}{portal_str} {ult.get('situacao')} em {ult.get('em')}{motivo_str}")
+    else:
+        print("Último evento: nenhum")
+
+    return 0
+
+
 def main() -> int:
     for fluxo in (sys.stdout, sys.stderr):
         try:
@@ -1007,9 +1129,15 @@ def main() -> int:
     p5 = sub.add_parser("pedidos-linkedin", help="resumo dos pedidos ao LinkedIn e do que veio antes de cada bloqueio")
     p5.add_argument("--horas", type=int, default=48, help="período do resumo (padrão: 48 horas)")
 
+    p6 = sub.add_parser("agendamento", help="mostra ou altera a busca agendada e a retomada")
+    p6.add_argument("--ligar", help="liga no horário HH:MM")
+    p6.add_argument("--desligar", action="store_true", help="desliga a busca agendada")
+    p6.add_argument("--continuar", choices=["sim", "nao"], help="continua de onde parou após espera")
+    p6.add_argument("--cancelar-retomada", metavar="NOME", help="cancela a retomada do portal indicado")
+
     args = ap.parse_args()
     return {"buscar": cmd_buscar, "ver": cmd_ver, "gravar": cmd_gravar, "completar": cmd_completar,
-            "pedidos-linkedin": cmd_pedidos_linkedin}[args.cmd](args)
+            "pedidos-linkedin": cmd_pedidos_linkedin, "agendamento": cmd_agendamento}[args.cmd](args)
 
 
 if __name__ == "__main__":

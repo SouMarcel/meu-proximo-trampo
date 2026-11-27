@@ -165,7 +165,7 @@ class TestPadrao(unittest.TestCase):
         self.assertIn("vagascom", filtros.efetivos({})["fontes"])
         nomes = {o["nome"]: o for o in filtros.opcoes()["fontes_nac"]}
         self.assertEqual((nomes["vagascom"]["rotulo"], nomes["vagascom"]["precisa"]), ("Vagas.com", ""))
-        self.assertIn("24 horas", nomes["vagascom"]["termos"])
+        self.assertIn("VAGASCOM_ESPERA", nomes["vagascom"]["termos"])
 
 
 if __name__ == "__main__":
