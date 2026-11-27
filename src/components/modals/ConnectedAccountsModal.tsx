@@ -364,6 +364,24 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
         </div>
 
         <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+          <ColarEmail textos={textos} onTextos={setTextos} leitura={leitura} onLeitura={aoLer} disabled={Boolean(ocupado)} />
+
+          {itensEmail.length > 0 && (
+            <section className="space-y-2">
+              <h4 className="font-bold text-sm text-slate-900 dark:text-white">E-mail</h4>
+              {itensEmail.map((i) => (
+                <CartaoEmail
+                  key={i.chave}
+                  item={i}
+                  marcado={Boolean(marcasEmail[i.chave])}
+                  escolha={escolhas[i.chave]}
+                  onMarcar={(v) => setMarcasEmail((m) => ({ ...m, [i.chave]: v }))}
+                  onEscolher={(e) => setEscolhas((m) => ({ ...m, [i.chave]: e }))}
+                />
+              ))}
+            </section>
+          )}
+
           {!c && !erro && (
             <p className="flex items-center gap-2 text-slate-500">
               <Loader2 className="w-4 h-4 animate-spin" /> Carregando…
@@ -541,24 +559,6 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
                 </p>
               )}
             </>
-          )}
-
-          <ColarEmail textos={textos} onTextos={setTextos} leitura={leitura} onLeitura={aoLer} disabled={Boolean(ocupado)} />
-
-          {itensEmail.length > 0 && (
-            <section className="space-y-2">
-              <h4 className="font-bold text-sm text-slate-900 dark:text-white">E-mail</h4>
-              {itensEmail.map((i) => (
-                <CartaoEmail
-                  key={i.chave}
-                  item={i}
-                  marcado={Boolean(marcasEmail[i.chave])}
-                  escolha={escolhas[i.chave]}
-                  onMarcar={(v) => setMarcasEmail((m) => ({ ...m, [i.chave]: v }))}
-                  onEscolher={(e) => setEscolhas((m) => ({ ...m, [i.chave]: e }))}
-                />
-              ))}
-            </section>
           )}
 
           {erro && (
