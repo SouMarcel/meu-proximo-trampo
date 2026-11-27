@@ -165,7 +165,7 @@ outras ficam comigo (fila com threads e pausas, texto das regras e a calibraçã
   - `README.md`: a pausa nova, onde cita as pausas;
   - `docs/`: procurar menções ao recorte da skill pela análise (`grep -rn "Como dar a nota\|SKILL.md" docs`).
 - [X] T014 Suíte inteira verde, `python sincronizar_skills.py --conferir` e `graphify update .`.
-- [ ] T015 Fechamento:
+- [X] T015 Fechamento:
   - busca de dados pessoais no diff;
   - commits na branch;
   - merge na branch pessoal e dashboard reiniciado;
