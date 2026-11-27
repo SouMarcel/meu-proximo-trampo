@@ -45,7 +45,10 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   a área logada da Gupy, do Indeed e da Nerdin numa janela do navegador só da ferramenta (`navegador.py`,
   `contas/`), com o login feito pela pessoa; só leitura, só no clique, e a proposta só é gravada com
   a marcação dela. Nunca peça nem digite senha; nunca clique em botões dos portais. O LinkedIn
-  fica desativado. A Nerdin, com termos contrários, entra por decisão registrada (spec 059): só a página
+  fica desativado. **Colar e-mail** (spec 063, `dash/colar_email.py`): no mesmo diálogo, a pessoa cola o corpo
+  dos e-mails de andamento; a ferramenta propõe a mudança de etapa (nunca para trás; etapa igual vira "só anotar")
+  e, ao aplicar o marcado, acrescenta às Anotações a data, o tipo e o trecho; o texto não é guardado, e a caixa de
+  e-mail nunca é acessada. A Nerdin, com termos contrários, entra por decisão registrada (spec 059): só a página
   "Minhas candidaturas", lida pelo HTML. **Candidatura assistida** (constituição VI, spec 027): desligada por padrão e ligada
   vaga a vaga pela pessoa, com o aviso de risco; no detalhe da vaga, "Candidatar com ajuda" preenche campos do formulário na janela da ferramenta
   (`candidatura/`), só em domínio liberado (Indeed e LinkedIn bloqueados pelos termos), com

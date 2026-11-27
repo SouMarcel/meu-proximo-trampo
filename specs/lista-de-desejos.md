@@ -117,3 +117,13 @@ priorizado.
 - **Site do projeto no GitHub Pages** (`soumarcel.github.io/meu-proximo-trampo`, pasta `docs/` na master): página de
   apresentação, instalação e "Apoie o projeto", e talvez o dashboard em modo demonstração com vagas fictícias. A
   ferramenta em si não roda no Pages (precisa de Python e guarda dados pessoais no computador).
+
+## E-mails de vagas e candidaturas (spec 063)
+
+- **Alertas de vagas por e-mail**: colar o alerta do LinkedIn, Indeed ou JobGether (várias vagas num e-mail) e
+  escolher quais adicionar, pelo Adicionar Vaga por link. Ficou fora da spec 063, que cobre só o andamento das
+  candidaturas.
+- **Importar e-mails salvos**: uma pasta onde a pessoa deixa os e-mails baixados (`.eml`; `.msg` dá mais trabalho), lida
+  de uma vez, em vez de colar um a um.
+- **Ler uma pasta da caixa de e-mail**: só com credencial e só uma pasta (ex.: "Vagas"); no Outlook.com, exige login
+  OAuth. É o caminho mais arriscado (acesso à caixa); só com motivo forte.
