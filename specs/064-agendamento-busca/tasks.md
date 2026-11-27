@@ -23,7 +23,7 @@ Suíte: `.venv\Scripts\python.exe -m unittest discover -s tests`. Front: `npx -y
   `fontes/linkedin.py`, `infojobs.py`, `vagascom.py`, `jobgether.py`, `fullstack.py` e `mygreenhouse.py`: `VAR_ESPERA =
   "<PORTAL>_ESPERA"` e `duracao_espera()` lida a cada uso, no lugar da constante `ESPERA` em `espera()` e `_bloquear()`.
   Padrão 360 para todos. Novo `tests/test_espera_env.py`; ajustar os testes dos portais que usam `ESPERA`.
-- [ ] T002 [P] [D minor] Em `vagas.py` (research R3, R5, R7; data-model "Resultado do executar" e "Histórico de buscas"):
+- [X] T002 [P] [D minor] → agy, GO na tentativa 1. Em `vagas.py` (research R3, R5, R7; data-model "Resultado do executar" e "Histórico de buscas"):
   (a) `executar(..., so_consultas: dict[str, list[dict]] | None = None)`: com o parâmetro, só os portais da chave
   rodam, e só essas consultas (lista vazia: nenhuma consulta, vai direto às descrições pendentes do portal);
   (b) `resultado["faltaram"] = {nome: [consultas]}`: para portal com `parada()`, a consulta em que ele parou e as
@@ -81,7 +81,7 @@ faltaram e as descrições pendentes; sem novo bloqueio, a retomada some.
   10, `aviso_login`); `GET /api/busca` com `origem` e `retomada`. `vagas.py agendamento` com `--ligar HH:MM`,
   `--desligar`, `--continuar sim|nao`, `--cancelar-retomada <nome>` (horário inválido: código 2). Teste de rota com
   servidor de verdade em porta livre.
-- [ ] T009 [D minor] [US1] [US3] Front (`frontend-react`): `src/services/api/agendamento.ts` (tipos e chamadas),
+- [X] T009 [D minor] [US1] [US3] → copilot, GO na tentativa 1 (ajustei os textos de devida e bloqueou). Front (`frontend-react`): `src/services/api/agendamento.ts` (tipos e chamadas),
   `src/components/modals/AgendamentoAba.tsx` (novo, aba "Agendamento" no `SearchFiltersModal.tsx`, no molde da
   `LimpezaAba.tsx`: ligar, horário, "Continuar de onde parou", texto "roda só com o dashboard ligado; portais com login
   ficam de fora"), `src/components/AgendamentoStatus.tsx` (novo: próxima busca, hoje, retomadas com Cancelar, último
