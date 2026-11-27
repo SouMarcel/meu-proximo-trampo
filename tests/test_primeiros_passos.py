@@ -748,5 +748,166 @@ class TestDiagnosticoDoMarkdown(unittest.TestCase):
         self.assertNotIn("Intervalo", mensagens)  # 12/2023 → 01/2024: sem buraco
 
 
+class TestConflitosSeguros(Base):
+    """Spec 065: data do rascunho, nota separada do valor, aviso de perda, herança de escolhas, data com texto a mais."""
+
+    PERFIL = ("# Meu perfil de carreira\n\n## Experiência\n\n### Analista — Alfa (03/2021–atual)\n"
+              "- Painéis de vendas\n- Item que entrou depois do rascunho\n")
+
+    def rascunho(self, gerado_em=None, fim="{{conflito:0}}", opcoes=None, escolha=0):
+        r = {"origem": "ia", "objetivo": [], "resumo": [], "formacao": [], "certificacoes": [], "habilidades": [],
+             "idiomas": [],
+             "experiencias": [{"cargo": "Analista", "empresa": "Alfa", "inicio": "03/2021", "fim": fim,
+                               "itens": [{"texto": "Painéis de vendas", "fonte": "cv.docx"}], "fonte": "cv.docx"}],
+             "conflitos": [{"campo": "Fim na Alfa", "opcoes": opcoes or [{"valor": "atual", "nota": "", "fonte": "cv.docx"}],
+                            "escolha": escolha}]}
+        if gerado_em:
+            r["gerado_em"] = gerado_em
+        return r
+
+    def gravar_perfil(self, texto=None):
+        (self.tmp / "perfil.md").write_text(texto or self.PERFIL, encoding="utf-8")
+
+    def test_rascunho_com_data_e_nota_fora_do_perfil(self):
+        e = pp.estado_vazio()
+        pp.adicionar_material(e, "cv.docx", docx_bytes(["Analista — Alfa (03/2021–04/2018)"]))
+        resposta = {"experiencias": [{"cargo": "Analista", "empresa": "Alfa", "inicio": "03/2021", "fim": "{{conflito:0}}",
+                                      "itens": [], "fonte": "cv.docx"}],
+                    "conflitos": [{"campo": "Fim na Alfa", "opcoes": [
+                        {"valor": "04/2018", "nota": "no perfil atual, uma entrada única", "fonte": "cv.docx"},
+                        {"valor": "08/2019", "fonte": "cv.docx"}]}]}
+        pedidos = []
+        with mock.patch.object(ia, "responder", lambda p, **k: pedidos.append(p) or json.dumps(resposta)):
+            r = pp.rascunho_com_ia(e)
+        self.assertIn('"nota"', pedidos[0])
+        self.assertIn("vai em \"nota\"", pedidos[0])
+        self.assertTrue(r["gerado_em"])
+        self.assertEqual(r["conflitos"][0]["opcoes"][0]["nota"], "no perfil atual, uma entrada única")
+        self.assertEqual(r["conflitos"][0]["opcoes"][1]["nota"], "")
+        r["conflitos"][0]["escolha"] = 0
+        md = pp.montar_perfil(r, {})
+        self.assertIn("(03/2021–04/2018)", md)
+        self.assertNotIn("entrada única", md)
+        self.assertTrue(pp.rascunho_sem_ia(e)["gerado_em"])
+
+    def test_itens_que_sairiam(self):
+        novo = "## Experiência\n- Painéis de vendas\n### Analista — Alfa (03/2021–atual)\n"
+        self.assertEqual(pp.itens_que_sairiam(self.PERFIL, novo),
+                         ["# Meu perfil de carreira", "- Item que entrou depois do rascunho"])
+        self.assertEqual(pp.itens_que_sairiam(self.PERFIL, self.PERFIL), [])
+
+    def test_aviso_rascunho_antigo_e_novo(self):
+        self.gravar_perfil()
+        e = pp.estado_vazio()
+        e["rascunho"] = self.rascunho(gerado_em="2020-01-01T10:00:00")
+        p = pp.previa(e, cfg=self.cfg)
+        self.assertEqual(p["perfil_versao"], pp.versao_perfil(self.PERFIL))
+        self.assertEqual(p["aviso"]["rascunho_em"], "2020-01-01T10:00:00")
+        self.assertIn("- Item que entrou depois do rascunho", p["aviso"]["sairiam"])
+        self.assertNotIn("- Painéis de vendas", p["aviso"]["sairiam"])
+        com_item = p["markdown"] + "\n- Item que entrou depois do rascunho\n"  # a pessoa editou o texto
+        self.assertNotIn("- Item que entrou depois do rascunho", pp.previa(e, com_item, cfg=self.cfg)["aviso"]["sairiam"])
+        e["rascunho"]["gerado_em"] = "2999-01-01T00:00:00"
+        self.assertIsNone(pp.previa(e, cfg=self.cfg)["aviso"])
+        e["rascunho"]["gerado_em"] = "2020-01-01T10:00:00"
+        e["rascunho"]["gravado_em"] = "2999-01-01T00:00:00"  # o próprio assistente gravou depois
+        self.assertIsNone(pp.previa(e, cfg=self.cfg)["aviso"])
+
+    def test_aviso_sem_data_so_quando_algo_sai(self):
+        e = pp.estado_vazio()
+        e["rascunho"] = self.rascunho()
+        self.assertIsNone(pp.previa(e, cfg=self.cfg)["aviso"])  # sem perfil gravado
+        self.assertIsNone(pp.previa(e, cfg=self.cfg)["perfil_versao"])
+        self.gravar_perfil()
+        aviso = pp.previa(e, cfg=self.cfg)["aviso"]
+        self.assertIsNone(aviso["rascunho_em"])
+        self.assertTrue(aviso["sairiam"])
+        self.gravar_perfil(pp.montar_perfil(e["rascunho"], {}))
+        self.assertIsNone(pp.previa(e, cfg=self.cfg)["aviso"])
+        e["rascunho"]["origem"] = "sem_ia"
+        self.gravar_perfil()
+        self.assertIsNone(pp.previa(e, cfg=self.cfg)["aviso"])  # sem IA, a revisão já parte do perfil atual
+
+    def test_herdar_escolhas(self):
+        antigo = {"conflitos": [{"campo": "Fim na Alfa", "opcoes": [{"valor": "04/2018"}, {"valor": "08/2019"}], "escolha": 1},
+                                {"campo": "Curso", "opcoes": [{"valor": "Curso A"}], "escolha": 0}]}
+        novo = {"conflitos": [{"campo": "fim na  ALFA", "opcoes": [{"valor": "08/2019"}, {"valor": "02/2020"}], "escolha": None},
+                              {"campo": "Curso", "opcoes": [{"valor": "Curso B"}], "escolha": None},
+                              {"campo": "Outro", "opcoes": [{"valor": "x"}], "escolha": None}]}
+        r = pp.herdar_escolhas(novo, antigo)
+        self.assertEqual([c["escolha"] for c in r["conflitos"]], [0, None, None])
+        self.assertIs(pp.herdar_escolhas(novo, None), novo)
+
+    def test_diagnostico_data_com_texto_a_mais(self):
+        sujo = [{"valor": "04/2018 (no perfil atual, uma entrada única)", "fonte": "cv.docx"}]
+        achados = [a["mensagem"] for a in pp.diagnosticar(self.rascunho(opcoes=sujo), {})]
+        self.assertTrue(any("traz texto a mais" in m for m in achados))
+        for limpo in ("04/2018", "mar/2021", "março de 2021", "2021-03", "2021", "atual"):
+            achados = pp.diagnosticar(self.rascunho(opcoes=[{"valor": limpo, "fonte": "cv.docx"}]), {})
+            self.assertFalse(any("traz texto a mais" in a["mensagem"] for a in achados), limpo)
+        sem_escolha = pp.diagnosticar(self.rascunho(opcoes=sujo, escolha=None), {})
+        self.assertFalse(any("traz texto a mais" in a["mensagem"] for a in sem_escolha))
+
+    def test_intervalo_usa_a_data_escolhida_e_cargo_longo(self):
+        exp = lambda cargo, ini, fim: {"cargo": cargo, "empresa": "E", "inicio": ini, "fim": fim,
+                                       "itens": [{"texto": "x", "fonte": "cv.docx"}], "fonte": "cv.docx"}
+        r = {"origem": "ia", "experiencias": [exp("C", "05/2021", "08/2022"), exp("{{conflito:0}}", "{{conflito:1}}", "05/2021"),
+                                              exp("A", "10/2018", "05/2019")],
+             "conflitos": [{"campo": "cargo", "opcoes": [{"valor": "Consultor B"}], "escolha": 0},
+                           {"campo": "início", "opcoes": [{"valor": "01/2015"}, {"valor": "05/2019"}], "escolha": 1}]}
+        msgs = " ".join(a["mensagem"] for a in pp.diagnosticar(r, {}))
+        self.assertNotIn("Intervalo", msgs)  # a data escolhida (05/2019) fecha o buraco
+        self.assertNotIn("{{conflito", msgs)
+        r["conflitos"][1]["escolha"] = None  # sem escolha: não há como afirmar nada sobre B; o buraco A→C aparece
+        self.assertIn("Intervalo de 24 meses entre A e C", " ".join(a["mensagem"] for a in pp.diagnosticar(r, {})))
+        longo = {"origem": "ia", "conflitos": [], "experiencias": [exp("Longo", "01/2010", "12/2020"),
+                                                                  exp("Curto", "01/2012", "06/2012"),
+                                                                  exp("Depois", "02/2021", "atual")]}
+        self.assertNotIn("Intervalo", " ".join(a["mensagem"] for a in pp.diagnosticar(longo, {})))
+
+
+class TestGravarConfereVersao(Base):
+    """Spec 065, FR-012: PUT /api/perfil recusa quando o perfil mudou com a revisão aberta."""
+
+    def setUp(self):
+        super().setUp()
+        import http.client
+        import threading
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "dash"))
+        import servidor
+        self.http = http.client
+        destino = self.tmp / "perfil.md"
+        for p in (mock.patch.object(pp, "caminho_perfil", lambda cfg=None: destino),
+                  mock.patch.object(servidor.Handler, "hosts_permitidos", {"127.0.0.1", "localhost"})):
+            p.start()
+            self.addCleanup(p.stop)
+        self.srv = servidor.ThreadingHTTPServer(("127.0.0.1", 0), servidor.Handler)
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.addCleanup(self.srv.server_close)
+        self.addCleanup(self.srv.shutdown)
+
+    def pedir(self, corpo):
+        con = self.http.HTTPConnection("127.0.0.1", self.srv.server_address[1], timeout=10)
+        self.addCleanup(con.close)
+        con.request("PUT", "/api/perfil", json.dumps(corpo).encode("utf-8"), {"Content-Type": "application/json"})
+        r = con.getresponse()
+        return r.status, json.loads(r.read().decode("utf-8"))
+
+    def test_versao(self):
+        destino = self.tmp / "perfil.md"
+        st, _ = self.pedir({"markdown": "# Meu perfil de carreira\n- Um\n", "perfil_versao": None})  # sem perfil ainda
+        self.assertEqual(st, 200)
+        texto = destino.read_text(encoding="utf-8")
+        st, r = self.pedir({"markdown": "# Meu perfil de carreira\n- Dois\n", "perfil_versao": "velha"})
+        self.assertEqual(st, 409)
+        self.assertIn("O perfil mudou", r["erro"])
+        self.assertEqual(destino.read_text(encoding="utf-8"), texto)
+        st, _ = self.pedir({"markdown": "# Meu perfil de carreira\n- Dois\n", "perfil_versao": pp.versao_perfil(texto)})
+        self.assertEqual(st, 200)
+        st, _ = self.pedir({"markdown": "# Meu perfil de carreira\n- Três\n"})  # sem o campo: como antes
+        self.assertEqual(st, 200)
+        self.assertIn("Três", destino.read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()
