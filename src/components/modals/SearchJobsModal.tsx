@@ -10,12 +10,15 @@ import { mensagemDeErro } from "../../services/api"
 import { useFerramenta, motivoSemGravar } from "../../contexto/Ferramenta"
 import { horaDe } from "../../utils/formatters"
 import AgendamentoAba from "./AgendamentoAba"
+import LimpezaAba from "./LimpezaAba"
 
-/** Abas do Buscar vagas: a busca de agora e o agendamento (spec 064), que grava por conta própria. */
-type Aba = "agora" | "agendamento"
+/** Abas do Buscar vagas: a busca de agora, o agendamento (spec 064) e a limpeza de vagas antigas (spec 054); as duas
+ * últimas gravam por conta própria. */
+type Aba = "agora" | "agendamento" | "limpeza"
 const ABAS: { id: Aba; rotulo: string }[] = [
   { id: "agora", rotulo: "Buscar agora" },
   { id: "agendamento", rotulo: "Agendamento" },
+  { id: "limpeza", rotulo: "Limpeza" },
 ]
 
 interface SearchJobsModalProps {
@@ -92,7 +95,7 @@ export default function SearchJobsModal({ onClose, onIniciada, onPlano, onAbrirF
         role="dialog"
         aria-modal="true"
         aria-labelledby="titulo-busca"
-        className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+        className={`relative w-full ${aba === "limpeza" ? "max-w-2xl" : "max-w-xl"} bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
@@ -139,6 +142,12 @@ export default function SearchJobsModal({ onClose, onIniciada, onPlano, onAbrirF
         {aba === "agendamento" && (
           <div role="tabpanel" id="painel-busca-agendamento" aria-labelledby="aba-busca-agendamento" className="p-6 overflow-y-auto flex-1">
             <AgendamentoAba podeSalvar={podeGravar} />
+          </div>
+        )}
+
+        {aba === "limpeza" && (
+          <div role="tabpanel" id="painel-busca-limpeza" aria-labelledby="aba-busca-limpeza" className="p-6 overflow-y-auto flex-1">
+            <LimpezaAba podeSalvar={podeGravar} />
           </div>
         )}
 
