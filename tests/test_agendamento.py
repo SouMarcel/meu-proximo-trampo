@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -12,6 +13,7 @@ sys.path[:0] = [str(RAIZ), str(RAIZ / "dash")]
 import filtros  # noqa: E402
 import banco  # noqa: E402
 import vagas  # noqa: E402
+import agendamento  # noqa: E402
 
 
 class TestConfigAgendamento(unittest.TestCase):
@@ -192,6 +194,140 @@ class TestHistoricoBuscas(unittest.TestCase):
         self.assertEqual(vagas.ler_historico(), [])
         (self.cache / "buscas-historico.json").write_text('{"nao": "lista"}', encoding="utf-8")
         self.assertEqual(vagas.ler_historico(), [])
+
+
+class TestDecidirAgendada(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = Path(self.tmp.name) / ".cache"
+        self.arq_estado = self.cache / "agendamento.json"
+        self.patches = [
+            mock.patch.object(agendamento, "CACHE", self.cache),
+            mock.patch.object(agendamento, "ARQ_ESTADO", self.arq_estado),
+        ]
+        for p in self.patches:
+            p.start()
+        self.addCleanup(self._limpar)
+
+    def _limpar(self):
+        for p in reversed(self.patches):
+            p.stop()
+        self.tmp.cleanup()
+
+    def test_horario_e_tolerancia(self):
+        ag = {"ligado": True, "horario": "08:00"}
+        estado = {}
+        hist = []
+        agora_800 = datetime(2026, 11, 28, 8, 0)
+        agora_815 = datetime(2026, 11, 28, 8, 15)
+        agora_816 = datetime(2026, 11, 28, 8, 16)
+        agora_759 = datetime(2026, 11, 28, 7, 59)
+        self.assertEqual(agendamento.decidir_agendada(ag, agora_800, estado, hist), ("rodar", None))
+        self.assertEqual(agendamento.decidir_agendada(ag, agora_815, estado, hist), ("rodar", None))
+        self.assertEqual(
+            agendamento.decidir_agendada(ag, agora_816, estado, hist),
+            ("perdida", "o dashboard não estava ligado às 08:00"),
+        )
+        self.assertEqual(agendamento.decidir_agendada(ag, agora_759, estado, hist), (None, None))
+
+    def test_desligado(self):
+        ag = {"ligado": False, "horario": "08:00"}
+        agora = datetime(2026, 11, 28, 8, 0)
+        self.assertEqual(agendamento.decidir_agendada(ag, agora, {}, []), (None, None))
+
+    def test_dia_ja_registrado(self):
+        estado = {"dia": "2026-11-28", "historico": []}
+        ag = {"ligado": True, "horario": "08:00"}
+        agora = datetime(2026, 11, 28, 8, 0)
+        self.assertEqual(agendamento.decidir_agendada(ag, agora, estado, []), (None, None))
+        # Mesmo depois de mudar o horário para mais tarde no mesmo dia
+        ag_tarde = {"ligado": True, "horario": "10:00"}
+        agora_tarde = datetime(2026, 11, 28, 10, 0)
+        self.assertEqual(agendamento.decidir_agendada(ag_tarde, agora_tarde, estado, []), (None, None))
+
+    def test_manual_recente(self):
+        ag = {"ligado": True, "horario": "08:00"}
+        agora = datetime(2026, 11, 28, 8, 0)
+
+        # manual concluída às 07:30 -> "pulada" com "07:30"
+        hist_concluida = [{"origem": "pagina", "inicio": "2026-11-28T07:30:00", "situacao": "concluida"}]
+        decisao, motivo = agendamento.decidir_agendada(ag, agora, {}, hist_concluida)
+        self.assertEqual(decisao, "pulada")
+        self.assertIn("07:30", motivo)
+        self.assertEqual(motivo, "busca manual às 07:30")
+
+        # manual às 03:00 -> "rodar" (mais de 4h antes)
+        hist_3h = [{"origem": "pagina", "inicio": "2026-11-28T03:00:00", "situacao": "concluida"}]
+        self.assertEqual(agendamento.decidir_agendada(ag, agora, {}, hist_3h), ("rodar", None))
+
+        # manual cancelada às 07:30 -> "rodar"
+        hist_cancelada = [{"origem": "pagina", "inicio": "2026-11-28T07:30:00", "situacao": "cancelada"}]
+        self.assertEqual(agendamento.decidir_agendada(ag, agora, {}, hist_cancelada), ("rodar", None))
+
+        # manual rodando desde 07:55 -> "pulada"
+        hist_rodando = [{"origem": "terminal", "inicio": "2026-11-28T07:55:00", "situacao": "rodando"}]
+        decisao, motivo = agendamento.decidir_agendada(ag, agora, {}, hist_rodando)
+        self.assertEqual(decisao, "pulada")
+        self.assertIn("07:55", motivo)
+
+        # busca de origem "retomada" às 07:30 -> "rodar" (não é origem manual)
+        hist_retomada = [{"origem": "retomada", "inicio": "2026-11-28T07:30:00", "situacao": "concluida"}]
+        self.assertEqual(agendamento.decidir_agendada(ag, agora, {}, hist_retomada), ("rodar", None))
+
+    def test_proxima_agendada(self):
+        ag = {"ligado": True, "horario": "08:00"}
+        # às 07:00 -> hoje 08:00
+        agora_7 = datetime(2026, 11, 28, 7, 0)
+        self.assertEqual(agendamento.proxima_agendada(ag, agora_7, {}), "2026-11-28T08:00")
+
+        # às 09:00 -> amanhã 08:00
+        agora_9 = datetime(2026, 11, 28, 9, 0)
+        self.assertEqual(agendamento.proxima_agendada(ag, agora_9, {}), "2026-11-29T08:00")
+
+        # com o dia registrado às 08:05 -> amanhã
+        agora_805 = datetime(2026, 11, 28, 8, 5)
+        estado_registrado = {"dia": "2026-11-28"}
+        self.assertEqual(agendamento.proxima_agendada(ag, agora_805, estado_registrado), "2026-11-29T08:00")
+
+        # desligado -> None
+        self.assertIsNone(agendamento.proxima_agendada({"ligado": False, "horario": "08:00"}, agora_7, {}))
+
+    def test_registrar_evento_limite_trinta(self):
+        estado = {"dia": None, "historico": []}
+        for i in range(35):
+            estado = agendamento.registrar_evento(estado, {"idx": i})
+        self.assertEqual(len(estado["historico"]), 30)
+        self.assertEqual(estado["historico"][0]["idx"], 34)
+        self.assertEqual(estado["historico"][-1]["idx"], 5)
+
+        estado = agendamento.registrar_evento(estado, {"novo": True}, dia="2026-11-28")
+        self.assertEqual(estado["dia"], "2026-11-28")
+        self.assertEqual(estado["historico"][0]["novo"], True)
+
+    def test_estado_em_disco(self):
+        # Ausente -> padrão
+        self.assertEqual(agendamento.ler_estado(), {"dia": None, "historico": []})
+
+        # Quebrado -> padrão
+        self.cache.mkdir(parents=True, exist_ok=True)
+        self.arq_estado.write_text("{quebrado", encoding="utf-8")
+        self.assertEqual(agendamento.ler_estado(), {"dia": None, "historico": []})
+
+        # Gravar e ler atômico
+        estado = {"dia": "2026-11-28", "historico": [{"tipo": "agendada", "situacao": "rodou"}]}
+        agendamento.gravar_estado(estado)
+        self.assertEqual(agendamento.ler_estado(), estado)
+
+    def test_sem_datetime_now(self):
+        with mock.patch("agendamento.datetime") as m_dt:
+            m_dt.fromisoformat = datetime.fromisoformat
+            m_dt.side_effect = lambda *args, **kw: datetime(*args, **kw)
+            ag = {"ligado": True, "horario": "08:00"}
+            agora = datetime(2026, 11, 28, 8, 0)
+            agendamento.decidir_agendada(ag, agora, {}, [])
+            agendamento.manual_recente([], agora)
+            agendamento.proxima_agendada(ag, agora, {})
+            m_dt.now.assert_not_called()
 
 
 if __name__ == "__main__":

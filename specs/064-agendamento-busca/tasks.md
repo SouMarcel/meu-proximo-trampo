@@ -39,7 +39,7 @@ Suíte: `.venv\Scripts\python.exe -m unittest discover -s tests`. Front: `npx -y
 
 **Teste independente**: relógio falso no horário → a busca agendada começa uma vez; 07:30 manual concluída → pulada.
 
-- [ ] T004 [D minor] [US1] Novo `agendamento.py` (raiz), regras puras com `agora` injetável (research R2, R3; data-model
+- [X] T004 [D minor] [US1] → agy, GO na tentativa 1. Novo `agendamento.py` (raiz), regras puras com `agora` injetável (research R2, R3; data-model
   "Execução do relógio"): `decidir_agendada(cfg_agendamento, agora, estado, historico_buscas) -> ("rodar" | "pulada" |
   "perdida" | "esperar" | None, motivo)` (janela H a H + 15 min; data de hoje já em `estado["dia"]` → None; manual
   `pagina`/`terminal`/`chat` concluída ou rodando com início entre H − 4 h e H → "pulada" com "busca manual às HH:MM");
