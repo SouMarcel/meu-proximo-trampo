@@ -23,7 +23,8 @@ abaixo são opcionais: omita o que o anúncio não diz. Sem descrição que perm
   em que a vaga está escrita (`pt`, `en`, `es`…).
 - `fora_dos_criterios`: frase curta quando a vaga fura os filtros do usuário de um jeito que os campos acima não
   pegam (exige residência ou autorização de trabalho em outro país, ou morar em outra cidade). Nota baixa não é
-  motivo: isso é a aderência.
+  motivo: isso é a aderência. Salário e moeda nunca são motivo aqui (informado ou não, alto ou baixo, em qualquer
+  moeda): a ferramenta confere a moeda pelo campo `moeda` e o salário mínimo pelos números.
 - Candidatura; cada `frase` é o trecho do anúncio em que o campo se apoia (até 200 caracteres):
   - `autorizacao` {valor, frase}: `patrocina`, `nao_precisa` (o usuário já pode trabalhar onde a vaga aceita),
     `omisso` (fala de autorização sem dizer se patrocina) ou `nao_patrocina`;

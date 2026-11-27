@@ -1139,6 +1139,22 @@ def criterios(v: dict, f: dict) -> list[str]:
             motivos.append(f"Paga até US$ {anual:,.0f} por ano; seu mínimo é US$ {minimo:,.0f}")
     if internacional:
         motivos += elegibilidade(v, f)["motivos"]
-    if v.get("fora_dos_criterios"):
-        motivos.append(str(v["fora_dos_criterios"]))
+    fora_ia = sem_salario(v.get("fora_dos_criterios"))
+    if fora_ia:
+        motivos.append(fora_ia)
     return motivos
+
+
+# salário e moeda: a ferramenta confere pela moeda e pelos números (acima); na frase livre da IA não são motivo
+_SALARIO = re.compile(r"sal[aá]ri|remunera|pretens[aã]o|\bmoeda|\bsalary|\bcompensation|\bcurrency|\bpay\b|\bpaid\b"
+                      r"|\b(?:usd|eur|gbp|brl|cad|chf)\b|r\$|us\$|€|£", re.IGNORECASE)
+
+
+def sem_salario(texto) -> str:
+    """O "fora dos critérios" escrito pela IA sem os trechos sobre salário ou moeda: informado ou não, alto ou baixo,
+    em que moeda, nada disso tira a vaga dos critérios (a moeda aceita e o salário mínimo são conferidos acima, pelos
+    campos). O texto é cortado em ";", "." e ","; sobra o que fala de outra coisa (local, autorização, residência).
+    Sem sobra, devolve "" e a vaga não vai para Fora por esse motivo."""
+    partes = [p.strip() for p in re.split(r"[;\n]|\.(?:\s|$)|,\s", str(texto or ""))]
+    resto = [p for p in partes if p and not _SALARIO.search(p)]
+    return ", ".join(resto).strip(" ,.;")
