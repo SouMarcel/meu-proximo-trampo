@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-26
 
-**Status**: Draft
+**Status**: Concluída (2026-11-27)
 
 **Input**: User description: "Em Atualizar candidaturas, uma área para colar o conteúdo do e-mail. Vale para qualquer
 status: desde a candidatura validada (aplicação recebida), entrevista, proposta, negativa, desistência etc. A
