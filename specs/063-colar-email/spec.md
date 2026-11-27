@@ -29,6 +29,9 @@ texto do e-mail e cola em Atualizar candidaturas, que passa a ter o e-mail como 
 - Q: Onde fica e o que cobre? → A: dentro de Atualizar candidaturas, para qualquer mudança de status da candidatura
   (recebida, entrevista, teste, proposta, negativa, cancelada, desistência, contratação). Os alertas de vagas por
   e-mail saem desta spec e vão para a lista de desejos.
+- Q: O que fica guardado quando a pessoa confirma? → A: só a movimentação do card para o status identificado e a
+  justificativa (data, tipo do e-mail e o trecho em que se apoia) acrescentada às Anotações do card (Andamento e
+  anotação > Anotações). Nada mais é guardado: nem o e-mail, nem um histórico à parte.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -36,7 +39,8 @@ texto do e-mail e cola em Atualizar candidaturas, que passa a ter o e-mail como 
 
 A pessoa abre Atualizar candidaturas, cola o texto de um e-mail e clica em Ler. A ferramenta diz o que entendeu
 ("negativa da Empresa X para Analista de Dados"), acha a candidatura em Aplicações e propõe a mudança, com o trecho do
-e-mail em que se apoia. A pessoa confirma e a candidatura muda, com a data e o trecho guardados na vaga.
+e-mail em que se apoia. A pessoa confirma: o card vai para o status identificado, e a justificativa (data, tipo do e-mail e trecho) é
+acrescentada às Anotações do card, em Andamento e anotação, sem apagar o que já estava lá.
 
 | O e-mail diz | Proposta |
 |---|---|
@@ -59,12 +63,13 @@ confirmação de candidatura recebida; cada um propõe a mudança certa na candi
    Empresa X e o cargo Y, **Then** a ferramenta propõe Encerrada com "não aprovado", mostrando o trecho, e nada muda
    até a confirmação.
 2. **Given** a proposta confirmada, **When** a pessoa abre a vaga, **Then** ela tem a nova etapa (e o resultado, se
-   encerrada), a data e o trecho do e-mail; a análise de reprovação (spec 049) fica disponível como hoje.
+   encerrada) e, nas Anotações, uma linha nova com a justificativa (ex.: "26/11 — e-mail de negativa: 'seguimos com
+   outros candidatos'"); as anotações anteriores ficam; a análise de reprovação (spec 049) fica disponível como hoje.
 3. **Given** um convite para entrevista de uma candidatura aplicada, **When** a pessoa cola o texto, **Then** a
    ferramenta propõe a etapa Entrevista.
 4. **Given** uma candidatura já numa etapa mais adiantada que a do e-mail (ex.: em Entrevista e chega "candidatura
-   recebida"), **When** a pessoa cola o texto, **Then** a ferramenta não propõe voltar a etapa; só oferece guardar o
-   trecho.
+   recebida"), **When** a pessoa cola o texto, **Then** a ferramenta não propõe voltar a etapa e diz que a
+   candidatura já está adiante; nada muda.
 5. **Given** duas candidaturas na mesma empresa, **When** o e-mail não deixa claro o cargo, **Then** a ferramenta
    mostra as duas e a pessoa escolhe qual (ou nenhuma).
 6. **Given** um e-mail de uma candidatura que não está em Aplicações, **When** a pessoa cola o texto, **Then** a
@@ -99,8 +104,8 @@ mudam.
   guardado nem enviado à IA.
 - E-mail que não é sobre candidatura (propaganda, alerta de vagas, newsletter): a ferramenta diz que não reconheceu e
   não muda nada.
-- Mudança que já foi feita (a candidatura já está encerrada como "não aprovado"): a ferramenta avisa e só oferece
-  guardar o trecho.
+- Mudança que já foi feita (a candidatura já está encerrada como "não aprovado"): a ferramenta avisa e não muda
+  nada.
 - Proposta do e-mail e proposta do portal (Atualizar candidaturas pela conta conectada) para a mesma vaga: as duas
   aparecem na mesma lista, e a pessoa escolhe.
 - Sem IA ligada: os textos típicos de cada tipo funcionam; o que não for reconhecido sem IA aparece como "não
@@ -120,15 +125,16 @@ mudam.
 - **FR-004**: A ferramenta MUST NOT propor voltar uma candidatura para uma etapa anterior à atual.
 - **FR-005**: Nenhuma etapa ou resultado MUST mudar sem a confirmação da pessoa (constituição V); a confirmação pode
   ser de várias propostas de uma vez.
-- **FR-006**: Ao confirmar, a ferramenta MUST guardar na vaga a data e o trecho do e-mail em que a mudança se apoia
-  (não o e-mail inteiro).
+- **FR-006**: Ao confirmar, a ferramenta MUST mover o card para o status identificado e acrescentar às Anotações do
+  card (Andamento e anotação > Anotações) uma linha com a justificativa: a data, o tipo do e-mail e o trecho em que a
+  mudança se apoia (não o e-mail inteiro), sem apagar as anotações que já existem.
 - **FR-007**: A caixa MUST aceitar vários e-mails colados juntos e mostrar uma proposta por e-mail.
 - **FR-008**: O texto colado MUST ser tratado como dado, nunca como instrução: passa pelo filtro de integridade (spec
   034) e nada que ele peça é executado.
 - **FR-009**: A ferramenta MUST funcionar sem IA para os textos típicos de cada tipo; com IA ligada, MAY usar a IA para
   o que não reconheceu, mandando só o corpo do e-mail (sem endereços e cabeçalhos) e a lista de candidaturas (empresa,
   cargo, etapa).
-- **FR-010**: O texto colado MUST NOT ser guardado depois da leitura, a não ser o trecho do FR-006.
+- **FR-010**: Fora do FR-006, nada MUST ser guardado: nem o texto colado, nem a leitura, nem um histórico à parte.
 - **FR-011**: A ferramenta MUST NOT acessar a caixa de e-mail nem pedir credencial de e-mail.
 - **FR-012**: As propostas vindas do e-mail MUST aparecer junto das propostas dos portais conectados, no mesmo formato,
   com a origem "e-mail".
@@ -137,7 +143,8 @@ mudam.
 ### Key Entities
 
 - **E-mail colado**: o texto de um ou mais e-mails; não é guardado.
-- **Leitura do e-mail**: o tipo, a empresa e o cargo citados, a data e o trecho de apoio.
+- **Leitura do e-mail**: o tipo, a empresa e o cargo citados, a data e o trecho de apoio; existe só durante a
+  leitura e a confirmação.
 - **Proposta**: a candidatura, a etapa (e o resultado) sugeridos, a origem (e-mail ou portal); só vale com a
   confirmação.
 
