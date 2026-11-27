@@ -59,7 +59,7 @@ Não sobraram dúvidas no Technical Context. As decisões abaixo saíram da leit
 
 - **Decision**: em `diagnosticar`, para `inicio` e `fim` de cada experiência que têm marcador de conflito já escolhido,
   resolve o valor com `_escolher`; se não for "só data" (`mm/aaaa`, `aaaa`, `mês/aaaa` por extenso ou abreviado, ou
-  "atual"), acha `fraco`: "A data escolhida em <cargo> traz texto a mais: <valor>." com `ir: "conflitos"`.
+  "atual"), acha `fraco`: "A data escolhida em <cargo> traz texto a mais: <valor>." com `ir: "texto"` (o conflito resolvido não volta à aba Conflitos).
 - **Rationale**: FR-008; a data da experiência é o único lugar em que o formato é conhecido. Formação e certificações
   são texto livre e ficam com o aviso da Revisão e o refazer.
 

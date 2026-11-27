@@ -886,7 +886,8 @@ def diagnosticar(rascunho: dict | None, respostas: dict | None) -> list[dict]:
             bruto = str(e.get(campo) or "")
             valor = _escolher(bruto, cf) if CONFLITO.search(bruto) else ""
             if valor and not CONFLITO.search(valor) and not _so_data(valor):
-                achar("fraco", f"A data escolhida em {nome} traz texto a mais: {valor}.", "Qual é só a data?", "conflitos")
+                achar("fraco", f"A data escolhida em {nome} traz texto a mais: {valor}.",
+                      "Qual é só a data? Corrija no texto da Revisão (o conflito já resolvido não volta à aba Conflitos).")
     for i in range(min(3, len(exps))):
         if resp.get(f"conquista:{i}") and not re.search(r"\d", str(resp.get(f"medida:{i}") or "")):
             achar("info", f"A conquista em {resolvidas[i]['cargo'] or 'um cargo'} está sem medida.",

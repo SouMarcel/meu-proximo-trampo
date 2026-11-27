@@ -69,7 +69,7 @@ achado no Diagnóstico.
   `diagnosticar`, para `inicio` e `fim` de cada experiência com marcador `{{conflito:N}}` já escolhido, resolve com
   `_escolher`; se o valor não for "só data" (`mm/aaaa`, `aaaa`, `aaaa-mm`, mês por extenso ou abreviado com ano, ou
   `_atual`), acha `fraco` "A data escolhida em <cargo> traz texto a mais: <valor>." com pergunta "Qual é só a data?" e
-  `ir: "conflitos"`. Testes: "04/2018" passa; "04/2018 (comentário)" acusa; "mar/2021" passa.
+  `ir: "texto"` (emenda: os resolvidos não voltam à aba Conflitos). Testes: "04/2018" passa; "04/2018 (comentário)" acusa; "mar/2021" passa.
 - [X] T007 [D minor] → entregue junto da T005. [US2] [US3] Front da aba Conflitos (`frontend-react`: `src/services/api/perfil.ts`,
   `src/components/perfil/MeuPerfil.tsx`; research R8; depois da T005, mesmo arquivo): tipo `opcoes[].nota?`; a nota sob
   o valor, `text-xs` em cinza; ao entrar na tela "conflitos", guardar os índices com `escolha != null` (estado que só
