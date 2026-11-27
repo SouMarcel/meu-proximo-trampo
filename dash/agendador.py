@@ -78,20 +78,50 @@ class Agendador:
         config = fm.efetivos(fm.ler_config())["agendamento"]
         estado = ag.ler_estado()
         hoje = agora.date().isoformat()
+        iniciou = False
         if self._devida == hoje:
-            return self._tentar(agora, estado, hoje)
-        situacao, motivo = ag.decidir_agendada(config, agora, estado, _vagas().ler_historico())
-        if situacao in ("perdida", "pulada"):
-            ag.registrar_evento(estado, {"tipo": "agendada", "situacao": situacao,
-                                         "em": agora.isoformat(timespec="seconds"), "motivo": motivo}, dia=hoje)
-            ag.gravar_estado(estado)
-        elif situacao == "rodar":
-            self._devida = hoje
-            self._tentar(agora, estado, hoje)
+            iniciou = self._tentar(agora, estado, hoje)
+        else:
+            situacao, motivo = ag.decidir_agendada(config, agora, estado, _vagas().ler_historico())
+            if situacao in ("perdida", "pulada"):
+                ag.registrar_evento(estado, {"tipo": "agendada", "situacao": situacao,
+                                             "em": agora.isoformat(timespec="seconds"), "motivo": motivo}, dia=hoje)
+                ag.gravar_estado(estado)
+            elif situacao == "rodar":
+                self._devida = hoje
+                iniciou = self._tentar(agora, estado, hoje)
+        self._retomadas(agora, config, estado, livre=self._devida is None and not iniciou)
 
-    def _tentar(self, agora: datetime, estado: dict, hoje: str) -> None:
+    def _retomadas(self, agora: datetime, config: dict, estado: dict, livre: bool) -> None:
+        ag = _agendamento()
+        v = _vagas()
+        retomadas = ag.ler_retomadas()
+        devidas, atualizadas, eventos = ag.retomadas_devidas(
+            retomadas, agora, config, em_espera=lambda n: bool(v.fontes_em_espera([n], pagina=False)))
+        nome = devidas[0] if devidas and livre and not self.ocupado() else None
+        if nome:
+            # adia já: se a busca não rodar o portal, a retomada não reinicia a cada olhada
+            atualizadas[nome]["proxima"] = (agora + ag.INTERVALO_RETOMADA).isoformat(timespec="minutes")
+        if atualizadas != retomadas:
+            ag.gravar_retomadas(atualizadas)  # antes de iniciar: a busca grava o resultado dela por cima
+        for e in eventos:
+            ag.registrar_evento(estado, e)
+        if nome:
+            evento = {"tipo": "retomada", "portal": atualizadas[nome].get("portal", nome),
+                      "em": agora.isoformat(timespec="seconds")}
+            try:
+                buscador.BUSCA.iniciar(origem="retomada", retomada=nome)
+                evento["situacao"] = "rodou"
+            except (buscador.BuscaRecusada, ValueError) as e:
+                evento.update(situacao="falha", motivo=str(e))
+            ag.registrar_evento(estado, evento)
+            eventos.append(evento)
+        if eventos:
+            ag.gravar_estado(estado)
+
+    def _tentar(self, agora: datetime, estado: dict, hoje: str) -> bool:
         if self.ocupado():
-            return  # tenta de novo na próxima olhada, mesmo depois da tolerância
+            return False  # tenta de novo na próxima olhada, mesmo depois da tolerância
         ag = _agendamento()
         evento = {"tipo": "agendada", "em": agora.isoformat(timespec="seconds")}
         try:
@@ -102,6 +132,7 @@ class Agendador:
         self._devida = None
         ag.registrar_evento(estado, evento, dia=hoje)
         ag.gravar_estado(estado)
+        return True
 
 
 AGENDADOR = Agendador()

@@ -748,6 +748,15 @@ def cmd_buscar(args) -> int:
         print(str(e), file=sys.stderr)
         return 4
     salvar_candidatas(resultado, CACHE, args.trecho)
+    try:
+        import agendamento
+        ret = agendamento.registrar_retomadas(resultado, "terminal", f, gravado=not bloqueio_provavel(resultado))
+        if ret["retomada_as"]:
+            verbo = "bloquearam" if len(ret["bloqueados"]) > 1 else "bloqueou"
+            print(f"{', '.join(ret['bloqueados'])} {verbo}; com o dashboard ligado, a retomada roda às "
+                  f"{ret['retomada_as'][11:16]}")
+    except Exception as e:  # a retomada nunca derruba a busca
+        print(f"Aviso: não deu para registrar a retomada ({e!r}).", file=sys.stderr)
 
     candidatas, fora, erros, excluidas = (resultado["candidatas"], resultado["fora"], resultado["erros"],
                                           resultado["excluidas"])

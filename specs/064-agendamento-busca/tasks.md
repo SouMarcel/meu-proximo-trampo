@@ -66,7 +66,7 @@ faltaram e as descrições pendentes; sem novo bloqueio, a retomada some.
   fica com `faltaram` vazio e + 6 h); `retomadas_devidas(agora, cfg_agendamento, em_espera)` com perdida (mais de 15
   min no passado, avança de 6 em 6 h até o futuro), pulada (portal em espera, + 6 h), teto de 24 h sem agendamento
   ligado. Testes (US2-3, US2-4, US2-6, perdida, pulada, 24 h, caixa desmarcada).
-- [ ] T007 [D minor] [US2] Integração: `dash/buscador.py` chama `agendamento.depois_da_busca` no fim de toda busca
+- [X] T007 [D minor] [US2] → copilot, GO na tentativa 1. Integração: `dash/buscador.py` chama `agendamento.depois_da_busca` no fim de toda busca
   (também na falha por bloqueio provável, com `faltaram` = todas as consultas do portal); origem `retomada` roda
   `executar(so_consultas={nome: faltaram})` e pede a análise (FR-008); `dash/agendador.py` roda as retomadas devidas e
   registra perdida e pulada; `vagas.py cmd_buscar` chama `depois_da_busca(origem="terminal")` e avisa "LinkedIn

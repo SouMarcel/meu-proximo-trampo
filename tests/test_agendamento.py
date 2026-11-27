@@ -345,6 +345,7 @@ class TestAgendador(unittest.TestCase):
             mock.patch.object(vagas, "CACHE", raiz / ".cache"),
             mock.patch.object(agendamento, "CACHE", raiz / ".cache"),
             mock.patch.object(agendamento, "ARQ_ESTADO", raiz / ".cache" / "agendamento.json"),
+            mock.patch.object(agendamento, "ARQ_RETOMADAS", raiz / ".cache" / "retomadas.json"),
             mock.patch.object(buscador.BUSCA, "iniciar", self.iniciar),
         ]
         for p in self.patches:
@@ -787,6 +788,122 @@ class TestRetomadasRobustas(unittest.TestCase):
         ag = {"ligado": True, "horario": "08:00", "continuar": True}
         self.assertEqual(agendamento.retomadas_devidas(r, datetime(2026, 11, 27, 8, 0), ag, lambda n: False)[:2],
                          ([], {}))
+
+
+class PortalComVaga(PortalFalso):
+    """Devolve uma vaga por consulta, até bloquear: a busca que bloqueia no meio ainda vale (não é bloqueio provável)."""
+
+    def buscar(self, consulta: dict, horas: int, por_termo: int) -> tuple[list[dict], list[str]]:
+        vagas_, erros = super().buscar(consulta, horas, por_termo)
+        if erros:
+            return vagas_, erros
+        termo = consulta["termo"]
+        return [{"id": f"falsa-{termo}", "titulo": f"Analista {termo}", "empresa": f"Empresa {termo}", "local": "Remoto",
+                 "remoto": True, "publicada_em": datetime.now().date().isoformat(), "url": f"https://exemplo.invalid/{termo}",
+                 "url_candidatura": None, "salario": None, "tipo": None, "descricao": f"Descrição {termo}.",
+                 "plataforma": "Falsa"}], []
+
+
+class TestRetomadaPontaAPonta(BaseBusca):
+    CONFIG = {"fontes": ["falsa"], "termos": ["c1", "c2", "c3", "c4", "c5"],
+              "modelos": {"remoto": True, "hibrido": False, "presencial": False}, "empresas_excluir": [],
+              "janela_horas": 168, "ia": {"provedor": "nenhum"}, "agendamento": {"continuar": True}}
+
+    def setUp(self):
+        super().setUp()
+        (self.tmp / "config.json").write_text(json.dumps(self.CONFIG), encoding="utf-8")
+        cache = self.tmp / ".cache"
+        self.busca = buscador.Busca()
+        for p in (mock.patch.object(agendamento, "CACHE", cache),
+                  mock.patch.object(agendamento, "ARQ_ESTADO", cache / "agendamento.json"),
+                  mock.patch.object(agendamento, "ARQ_RETOMADAS", cache / "retomadas.json"),
+                  mock.patch.object(buscador, "BUSCA", self.busca),
+                  mock.patch.object(agendador.Agendador, "ocupado", lambda self_: self.busca.rodando())):
+            p.start()
+            self.addCleanup(p.stop)
+        self.ag = agendador.Agendador()
+
+    def portal(self, classe=PortalComVaga, **kw):
+        portal = classe(**kw)
+        p = mock.patch.dict(vagas.FONTES, {"falsa": portal})
+        p.start()
+        self.addCleanup(p.stop)
+        return portal
+
+    def tick_seis_horas_depois(self):
+        self.ag.tick(datetime.now() + timedelta(hours=6, minutes=1))
+        if self.busca._thread is not None:
+            self.busca._thread.join(20)
+
+    def busca_bloqueada(self, portal):
+        self.busca.iniciar()
+        self.busca._thread.join(20)
+        self.busca._thread = None
+        return self.busca.estado()
+
+    def test_bloqueio_grava_as_consultas_que_faltam_e_o_tick_retoma(self):
+        portal = self.portal(bloqueia_em=3)
+        estado = self.busca_bloqueada(portal)
+        self.assertEqual(estado["situacao"], "concluida", estado)
+        self.assertEqual(estado["resumo"]["bloqueados"], ["Falsa"])
+        self.assertTrue(estado["resumo"]["retomada_as"])
+        ret = agendamento.ler_retomadas()["falsa"]
+        self.assertEqual([c["termo"] for c in ret["faltaram"]], ["c3", "c4", "c5"])
+
+        portal.chamadas.clear()
+        portal._bloqueado, portal.bloqueia_em = False, None
+        self.tick_seis_horas_depois()
+        self.assertEqual([c["termo"] for c in portal.chamadas], ["c3", "c4", "c5"])
+        self.assertEqual(self.busca.estado()["retomada"], {"nome": "falsa", "portal": "Falsa"})
+        self.assertEqual(agendamento.ler_retomadas(), {})
+        self.assertEqual(agendamento.ler_estado()["historico"][0]["situacao"], "rodou")
+
+    def test_retomada_que_bloqueia_de_novo_continua(self):
+        portal = self.portal(bloqueia_em=3)
+        self.busca_bloqueada(portal)
+        portal.chamadas.clear()
+        portal._bloqueado, portal.bloqueia_em = False, 2
+        self.tick_seis_horas_depois()
+        self.assertEqual([c["termo"] for c in portal.chamadas], ["c3", "c4"])
+        ret = agendamento.ler_retomadas()["falsa"]
+        self.assertEqual([c["termo"] for c in ret["faltaram"]], ["c4", "c5"])
+        self.assertEqual(ret["tentativas"], 1)
+
+    def test_portal_em_espera_pula_a_retomada(self):
+        portal = self.portal(bloqueia_em=3)
+        self.busca_bloqueada(portal)
+        antes = agendamento.ler_retomadas()["falsa"]["proxima"]
+        portal.chamadas.clear()
+        portal._espera = {"ate": "2099-01-01T00:00", "motivo": "teste"}
+        self.tick_seis_horas_depois()
+        self.assertEqual(portal.chamadas, [])
+        depois = agendamento.ler_retomadas()["falsa"]
+        self.assertEqual(datetime.fromisoformat(depois["proxima"]) - datetime.fromisoformat(antes), timedelta(hours=6))
+        self.assertEqual(len(depois["faltaram"]), 3)
+        self.assertEqual(agendamento.ler_estado()["historico"][0]["situacao"], "pulada")
+
+    def test_ocupado_deixa_a_retomada_para_o_proximo_tick(self):
+        portal = self.portal(bloqueia_em=3)
+        self.busca_bloqueada(portal)
+        portal.chamadas.clear()
+        portal._bloqueado = False
+        with mock.patch.object(agendador.Agendador, "ocupado", return_value=True):
+            self.tick_seis_horas_depois()
+        self.assertEqual(portal.chamadas, [])
+        self.assertIn("falsa", agendamento.ler_retomadas())
+
+    def test_busca_nao_gravada_refaz_todas_as_consultas(self):
+        portal = self.portal(PortalFalso, bloqueia_em=3)  # nenhuma vaga e só erros: bloqueio provável, nada gravado
+        estado = self.busca_bloqueada(portal)
+        self.assertEqual(estado["situacao"], "falha", estado)
+        self.assertEqual(estado["resumo"]["bloqueados"], ["Falsa"])
+        ret = agendamento.ler_retomadas()["falsa"]
+        self.assertEqual([c["termo"] for c in ret["faltaram"]], ["c1", "c2", "c3", "c4", "c5"])
+
+    def test_retomada_sem_registro_e_recusada(self):
+        self.portal()
+        with self.assertRaises(buscador.BuscaRecusada):
+            self.busca.iniciar(origem="retomada", retomada="falsa")
 
 
 if __name__ == "__main__":

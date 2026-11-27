@@ -249,6 +249,35 @@ def depois_da_busca(
     return res
 
 
+def registrar_retomadas(resultado: dict, origem: str, f: dict, gravado: bool = True,
+                        so_consultas: dict | None = None, agora: datetime | None = None) -> dict:
+    """Grava as retomadas depois de uma busca (concluída ou barrada por bloqueio provável).
+
+    Devolve {"bloqueados": [rótulos dos portais bloqueados], "retomada_as": a menor hora da próxima retomada
+    deles ou None}. Busca não gravada perdeu as vagas das consultas anteriores: o portal bloqueado refaz todas."""
+    import banco
+    import filtros
+    import vagas
+
+    ag = filtros.efetivos(filtros.ler_config())["agendamento"]
+    agora = agora or datetime.now()
+    bloqueados = [n for n in resultado.get("bloqueados", []) if n in vagas.FONTES]
+    faltaram = {n: list(c) for n, c in resultado.get("faltaram", {}).items()}
+    if not gravado:
+        plano = filtros.consultas(f)
+        for nome in bloqueados:
+            faltaram[nome] = [dict(c) for c in (so_consultas[nome] if so_consultas and nome in so_consultas
+                                                else vagas.consultas_da_fonte(plano, vagas.FONTES[nome]))]
+    resultado = {**resultado, "faltaram": faltaram}
+    retomadas = depois_da_busca(
+        ler_retomadas(), resultado, origem, agora, bool(ag.get("continuar")),
+        lambda n: vagas.FONTES[n].PLATAFORMA,
+        lambda n: len(banco.pendentes_de_descricao(vagas.FONTES[n].PLATAFORMA)))
+    gravar_retomadas(retomadas)
+    horas = [retomadas[n]["proxima"] for n in bloqueados if n in retomadas]
+    return {"bloqueados": [vagas.FONTES[n].PLATAFORMA for n in bloqueados], "retomada_as": min(horas) if horas else None}
+
+
 def retomadas_devidas(
     retomadas: dict,
     agora: datetime,

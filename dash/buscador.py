@@ -49,6 +49,12 @@ def _filtros():
     return filtros
 
 
+def _agendamento():
+    _raiz()
+    import agendamento
+    return agendamento
+
+
 def _ia():
     _raiz()
     import ia
@@ -186,41 +192,55 @@ class Busca:
 
     # ---------- iniciar e cancelar
     def iniciar(self, sem_nota: bool = False, confirmar_recente: bool = False, confirmar_espera: bool = False,
-                origem: str = "pagina") -> dict:
+                origem: str = "pagina", retomada: str | None = None) -> dict:
         v = _vagas()
         da_pagina = origem == "pagina"  # a agendada dispensa intervalo, aviso de busca recente e confirmação de espera
+        faltaram = None
         with self._inicio:
             if self.rodando():
                 raise BuscaRecusada("Já há uma busca rodando pela página.")
             pl = self.plano()
-            if not pl["filtros_ok"]:
-                raise ValueError("Escolha os cargos em Filtros da busca antes de buscar.")
-            quem = v.ocupada()
-            if quem is not None:
-                raise BuscaRecusada(v.mensagem_ocupada(quem))
-            if da_pagina and pl["proxima_em"]:
-                raise BuscaRecusada(f"Para os portais não bloquearem a busca, espere um pouco: dá para buscar de novo "
-                                    f"a partir das {_hora(pl['proxima_em'])}.")
-            if pl["espera"]:
-                ate = _vagas()._comum.ate_quando  # com a data quando a espera passa de hoje (spec 026: 24 horas)
-                aviso = "; ".join(f"O {e['portal']} está em espera até {ate(e['ate'])} ({e['motivo']})"
-                                  for e in pl["espera"])
-                if pl["so_espera"]:
-                    raise BuscaRecusada(f"{aviso} e é o único portal ligado: não há o que buscar agora.")
-                if da_pagina and not confirmar_espera:
-                    raise BuscaRecusada(f"{aviso} e vai ficar de fora. Confirme para buscar só com os outros portais.",
-                                        precisa_confirmar=True)
-            if da_pagina and pl["recente"] and not confirmar_recente:
-                raise BuscaRecusada(f"A última busca terminou às {_hora(pl['ultima']['fim'])}: os portais devem ter "
-                                    "pouca vaga nova. Confirme para buscar mesmo assim.", precisa_confirmar=True)
+            if origem == "retomada":  # o relógio já conferiu a espera do portal; só ele e só o que faltou
+                ret = _agendamento().ler_retomadas().get(retomada) if retomada else None
+                if not isinstance(ret, dict) or retomada not in v.FONTES:
+                    raise BuscaRecusada("não há retomada para este portal")
+                faltaram = [dict(c) for c in ret.get("faltaram") or []]
+                quem = v.ocupada()
+                if quem is not None:
+                    raise BuscaRecusada(v.mensagem_ocupada(quem))
+            else:
+                if not pl["filtros_ok"]:
+                    raise ValueError("Escolha os cargos em Filtros da busca antes de buscar.")
+                quem = v.ocupada()
+                if quem is not None:
+                    raise BuscaRecusada(v.mensagem_ocupada(quem))
+                if da_pagina and pl["proxima_em"]:
+                    raise BuscaRecusada(f"Para os portais não bloquearem a busca, espere um pouco: dá para buscar de novo "
+                                        f"a partir das {_hora(pl['proxima_em'])}.")
+                if pl["espera"]:
+                    ate = _vagas()._comum.ate_quando  # com a data quando a espera passa de hoje (spec 026: 24 horas)
+                    aviso = "; ".join(f"O {e['portal']} está em espera até {ate(e['ate'])} ({e['motivo']})"
+                                      for e in pl["espera"])
+                    if pl["so_espera"]:
+                        raise BuscaRecusada(f"{aviso} e é o único portal ligado: não há o que buscar agora.")
+                    if da_pagina and not confirmar_espera:
+                        raise BuscaRecusada(f"{aviso} e vai ficar de fora. Confirme para buscar só com os outros portais.",
+                                            precisa_confirmar=True)
+                if da_pagina and pl["recente"] and not confirmar_recente:
+                    raise BuscaRecusada(f"A última busca terminou às {_hora(pl['ultima']['fim'])}: os portais devem ter "
+                                        "pouca vaga nova. Confirme para buscar mesmo assim.", precisa_confirmar=True)
             com_nota = pl["ia"]["ligada"] and pl["perfil_ok"] and not sem_nota
             self._cancelar.clear()
             with self._trava:
                 self._e = {"situacao": "consultando", "origem": origem, "inicio": _agora().isoformat(timespec="seconds"),
-                           "com_nota": com_nota, "feitas": 0, "total": pl["consultas"], "encontradas": 0,
+                           "com_nota": com_nota, "feitas": 0,
+                           "total": len(faltaram) if faltaram is not None else pl["consultas"], "encontradas": 0,
                            "consulta": None, "descricoes": None, "erros": [], "resumo": None, "mensagem": "",
                            "login": None}
-            self._thread = threading.Thread(target=self._rodar, args=(com_nota, origem), daemon=True, name="busca-pagina")
+                if faltaram is not None:
+                    self._e["retomada"] = {"nome": retomada, "portal": v.FONTES[retomada].PLATAFORMA}
+            self._thread = threading.Thread(target=self._rodar, args=(com_nota, origem, retomada, faltaram),
+                                            daemon=True, name="busca-pagina")
             self._thread.start()
         return self.estado()
 
@@ -263,12 +283,21 @@ class Busca:
     def _fim(self, situacao: str, **campos):
         self._set(situacao=situacao, fim=_agora().isoformat(timespec="seconds"), **campos)
 
-    def _rodar(self, com_nota: bool, origem: str = "pagina"):
+    def _registrar_retomadas(self, resultado: dict, origem: str, f: dict, gravado: bool, so_consultas) -> dict:
+        try:
+            return _agendamento().registrar_retomadas(resultado, origem, f, gravado=gravado, so_consultas=so_consultas)
+        except Exception as e:  # a retomada nunca derruba a busca
+            print(f"[busca pela página] erro ao registrar retomadas: {e!r}", file=sys.stderr)
+            return {}
+
+    def _rodar(self, com_nota: bool, origem: str = "pagina", retomada: str | None = None,
+               faltaram: list[dict] | None = None):
         v, fm = _vagas(), _filtros()
+        so_consultas = {retomada: faltaram} if retomada else None
         try:
             cfg = fm.ler_config()
             f = fm.efetivos(cfg)
-            nomes = [n for n in v.fontes_da_busca(cfg, f) if n in v.FONTES]
+            nomes = [retomada] if retomada else [n for n in v.fontes_da_busca(cfg, f) if n in v.FONTES]
             with v.TravaBusca(origem) as trava:
                 try:
                     # portais com login (spec 041): só na busca da página; nas outras, o executar os deixa de fora
@@ -276,7 +305,8 @@ class Busca:
                               else contextlib.nullcontext())
                     with sessao:
                         resultado = v.executar(cfg, f, nomes, cfg.get("resultados_por_termo", 40), pausa=PAUSA,
-                                               progresso=self._progresso, cancelado=self._cancelar.is_set)
+                                               progresso=self._progresso, cancelado=self._cancelar.is_set,
+                                               so_consultas=so_consultas)
                 except ImportError:
                     trava.situacao = "erro"
                     return self._fim("falha", mensagem="Falta uma biblioteca da busca: rode python iniciar.py "
@@ -287,18 +317,22 @@ class Busca:
                     raise v.Cancelada()
             erros = resultado["erros"][:LIMITE_ERROS]
             if v.bloqueio_provavel(resultado):
+                ret = self._registrar_retomadas(resultado, origem, f, False, so_consultas)
                 return self._fim("falha", erros=erros, mensagem="Os portais não responderam: provável bloqueio temporário. "
-                                                                "Espere antes de tentar de novo.")
+                                                                "Espere antes de tentar de novo.",
+                                 resumo={"bloqueados": ret.get("bloqueados", []), "retomada_as": ret.get("retomada_as")})
             self._set(situacao="gravando", erros=erros)
             v.salvar_candidatas(resultado, v.CACHE / "pagina")
             r = v.gravar_resultado(resultado, sem_avaliacao=True, origem=origem,
                                    status_sem_nota="pendente" if com_nota else "sem_analise")
+            ret = self._registrar_retomadas(resultado, origem, f, True, so_consultas)
             self._fim("concluida", erros=erros, resumo={
                 "brutas": resultado["brutas"], "novas": r["para_decidir"], "fora_criterios": len(r["fora_novas"]),
                 "ja_vistas": resultado["ja_vistas"] + len(r["existentes"]),
                 "excluidas_titulo": resultado["excluidas_titulo"], "fora_da_janela": resultado["fora_da_janela"],
                 "busca_id": r["busca_id"], "com_nota": com_nota,
-                "pendentes": r["pendentes"], "completadas": r["completadas"]})
+                "pendentes": r["pendentes"], "completadas": r["completadas"],
+                "bloqueados": ret.get("bloqueados", []), "retomada_as": ret.get("retomada_as")})
             if com_nota and (r["para_decidir"] or r["completadas"]):  # completadas: pendentes que ganharam o texto
                 analise.FILA.pedir()
         except v.Cancelada:
