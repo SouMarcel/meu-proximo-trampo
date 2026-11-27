@@ -46,7 +46,7 @@ que a ferramenta continue sozinha depois da espera, num ritmo (a cada 6 horas) q
 
 ### User Story 1 - Busca diária no horário escolhido (Priority: P1)
 
-Nos filtros da busca, uma aba nova "Agendamento" tem: ligar a busca agendada, o horário (uma vez por dia) e a caixa
+No diálogo Buscar vagas, uma aba nova "Agendamento" tem: ligar a busca agendada, o horário (uma vez por dia) e a caixa
 "Continuar de onde parou". A pessoa escolhe 08:00 e salva. No dia seguinte, às 08:00, com o dashboard ligado, a busca
 roda com os filtros salvos, como se ela tivesse clicado em Buscar, e a análise automática dá as notas.
 
@@ -141,7 +141,7 @@ espera e, depois dela, o resultado.
 
 ### Functional Requirements
 
-- **FR-001**: Os filtros da busca MUST ganhar a aba "Agendamento" com: ligar/desligar, horário (hora e minuto, uma vez
+- **FR-001**: O diálogo Buscar vagas MUST ganhar a aba "Agendamento" (ao lado de "Buscar agora") com: ligar/desligar, horário (hora e minuto, uma vez
   por dia) e a caixa "Continuar de onde parou", desligados por padrão.
 - **FR-002**: Com o agendamento ligado e o dashboard ligado, a ferramenta MUST rodar uma busca por dia no horário, com
   os filtros salvos, como a busca da página (análise automática incluída), e no máximo uma busca agendada por dia.

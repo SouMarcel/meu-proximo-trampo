@@ -367,7 +367,7 @@ a página aberta pela extensão Live Server (`dash/front/index.html`); e o
    se a última foi há menos de 6 horas, a página pede confirmação. Se o LinkedIn estiver em espera
    depois de um bloqueio, a página avisa até que horas e pergunta se busca só com os outros portais.
 
-   **Busca agendada** (Filtros da busca → aba **Agendamento**): marque "Buscar todo dia" e escolha o
+   **Busca agendada** (Buscar vagas → aba **Agendamento**): marque "Buscar todo dia" e escolha o
    horário; com o dashboard ligado, a busca roda sozinha uma vez por dia, com os filtros salvos e a
    análise automática, sem as perguntas do botão. Ela não roda se o dashboard estava desligado no
    horário (há uma tolerância de 15 minutos, para o computador que sai do modo de espera) nem se você

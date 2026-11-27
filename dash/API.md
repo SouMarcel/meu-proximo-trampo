@@ -379,7 +379,7 @@ pode_alterar}` (campos conforme a situação; buscador.py:283-319).
 **`POST /api/busca/pendentes`** **[local]** — "Completar descrições" (lê só as descrições, sem buscar vagas).
 Resposta 202 `{situacao: "lendo", lidas, total, inicio}`. Erro 409 (busca rodando ou portal em espera).
 
-### 3.3b Agendamento e retomada (Filtros da busca → Agendamento; quadro abaixo de Buscar vagas; spec 064)
+### 3.3b Agendamento e retomada (Buscar vagas → Agendamento; quadro abaixo de Buscar vagas; spec 064)
 
 Um relógio no servidor (`dash/agendador.py`, a cada 30 s) roda a busca agendada pela mesma busca da página, com
 `origem: "agendada"` (sem as confirmações do botão, sem os portais com login), e as retomadas com `origem:
