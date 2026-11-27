@@ -82,6 +82,9 @@ achado no Diagnóstico.
 A tela é a T007 (mesmo arquivo da nota; uma entrega só). **Teste independente**: tudo escolhido → Continuar → voltar
 à aba → só o resumo; abrir, mudar, sair e voltar → a escolha nova ficou.
 
+**Emenda (27/11, pedido no teste)**: os resolvidos não aparecem mais (sem o resumo "N resolvidos (mudar)"); feita
+por mim no front (patch).
+
 ## Phase 5: Polish
 
 - [X] T008 [P] `dash/API.md`: `rascunho.gerado_em`, `opcoes[].nota`, `previa` com `perfil_versao` e `aviso`, `PUT

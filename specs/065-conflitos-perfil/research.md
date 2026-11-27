@@ -71,6 +71,8 @@ Não sobraram dúvidas no Technical Context. As decisões abaixo saíram da leit
   A `nota` aparece sob o valor, em letra menor.
 - **Rationale**: só tela, sem campo novo no servidor; a escolha continua gravada a cada clique, como hoje.
 
+Emenda de 27/11: os resolvidos ao abrir não aparecem mais (sem `<details>`); decisão da pessoa no teste.
+
 ## R9. Botões do aviso na Revisão
 
 - **Decision**: "Refazer o rascunho" (com IA: chama o rascunho, volta à tela Conflitos se houver conflito sem escolha,

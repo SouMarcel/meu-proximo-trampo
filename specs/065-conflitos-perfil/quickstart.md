@@ -29,8 +29,8 @@ Na `frontend-react`: `npm run typecheck` e `npm run build`.
 4. Num rascunho antigo com valor "04/2018 (comentário)" escolhido no fim de uma experiência, o Diagnóstico aponta
    "A data escolhida em … traz texto a mais".
 
-## US3: recolher resolvidos
+## US3: resolvidos saem da aba
 
 1. Escolha todos os conflitos e clique em Continuar.
-2. Volte à aba Conflitos: aparece "Todos os conflitos estão resolvidos." e o resumo "N resolvidos (mudar)" fechado.
-3. Abra o resumo, mude uma escolha, saia e volte: a escolha nova ficou.
+2. Volte à aba Conflitos: aparece só "Todos os conflitos estão resolvidos.", sem nenhum conflito.
+3. Com um conflito sem escolha: só ele aparece; escolha e confira que continua à vista até sair da aba.

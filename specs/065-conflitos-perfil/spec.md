@@ -87,25 +87,25 @@ observação.
 
 ---
 
-### User Story 3 - Conflitos resolvidos recolhidos (Priority: P3)
+### User Story 3 - Conflitos resolvidos saem da aba (Priority: P3)
 
-A pessoa resolve os conflitos e clica em Continuar. Quando volta à aba Conflitos, vê primeiro os que ainda estão sem
-escolha. Os resolvidos ficam num resumo, "7 resolvidos", que abre a lista para mudar alguma escolha.
+A pessoa resolve os conflitos e clica em Continuar. Quando volta à aba Conflitos, vê só os que ainda estão sem
+escolha. Os resolvidos não aparecem mais: a escolha está guardada e vai para o perfil; para corrigir, a pessoa edita o
+texto na Revisão.
 
 **Why this priority**: melhora a clareza. Nada se perde sem ela, porque as escolhas já ficam guardadas.
 
-**Independent Test**: com conflitos todos escolhidos, clicar em Continuar, voltar à aba e conferir que só aparece o
-resumo dos resolvidos; abrir o resumo, mudar uma escolha e conferir que ela fica guardada.
+**Independent Test**: com conflitos todos escolhidos, clicar em Continuar, voltar à aba e conferir que nenhum conflito
+aparece, só a frase de que todos estão resolvidos.
 
 **Acceptance Scenarios**:
 
-1. **Given** conflitos com escolha feita antes de a pessoa entrar na aba, **When** a aba abre, **Then** eles aparecem
-   recolhidos no resumo "N resolvidos", e os sem escolha aparecem abertos.
-2. **Given** a pessoa está escolhendo na aba, **When** marca uma opção, **Then** o conflito continua aberto até ela
+1. **Given** conflitos com escolha feita antes de a pessoa entrar na aba, **When** a aba abre, **Then** eles não
+   aparecem, e os sem escolha aparecem abertos.
+2. **Given** a pessoa está escolhendo na aba, **When** marca uma opção, **Then** o conflito continua à vista até ela
    sair da aba (para corrigir um clique errado sem procurar).
 3. **Given** todos os conflitos resolvidos, **When** a aba abre, **Then** aparece a frase de que todos estão
-   resolvidos, o resumo para mudar e o botão Continuar.
-4. **Given** o resumo aberto, **When** a pessoa muda uma escolha, **Then** a nova escolha fica guardada como hoje.
+   resolvidos e o botão Continuar.
 
 ---
 
@@ -140,8 +140,9 @@ resumo dos resolvidos; abrir o resumo, mudar uma escolha e conferir que ela fica
 - **FR-007**: Só o valor MUST entrar no perfil quando a opção é escolhida; a observação aparece só na tela.
 - **FR-008**: O Diagnóstico MUST apontar data de início ou de fim de uma experiência cujo valor escolhido num conflito
   não é só uma data (traz texto a mais).
-- **FR-009**: Na aba Conflitos, os conflitos com escolha feita antes de a pessoa abrir a aba MUST aparecer recolhidos
-  num resumo com a contagem, que abre a lista para mudar; os sem escolha MUST aparecer abertos.
+- **FR-009**: Na aba Conflitos, os conflitos com escolha feita antes de a pessoa abrir a aba MUST NOT aparecer (decisão
+  da pessoa em 27/11: não há motivo para manter o histórico dos resolvidos; corrigir, no texto da Revisão); os sem
+  escolha MUST aparecer abertos.
 - **FR-010**: Um conflito escolhido durante a visita à aba MUST continuar aberto até a pessoa sair dela.
 - **FR-011**: Nada desta spec MUST gravar o perfil sem o clique da pessoa em Gravar (constituição IV e V); a versão
   anterior do perfil continua guardada a cada gravação, como hoje.
@@ -167,7 +168,7 @@ resumo dos resolvidos; abrir o resumo, mudar uma escolha e conferir que ela fica
   casos de teste com opções comentadas.
 - **SC-003**: Ao voltar à aba Conflitos com tudo resolvido, a pessoa vê numa só tela que não falta nada, sem precisar
   rolar a lista de conflitos.
-- **SC-004**: A pessoa consegue mudar uma escolha já feita em até 2 cliques a partir da aba Conflitos.
+- **SC-004**: A aba Conflitos nunca mostra um conflito resolvido em visita anterior.
 
 ## Assumptions
 
