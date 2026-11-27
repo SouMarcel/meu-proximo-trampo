@@ -365,6 +365,7 @@ def efetivos(cfg: dict) -> dict:
                                               else inter.get("empresas")) or []
                                   if isinstance(e, dict) and e.get("sistema") and e.get("id")]),
         "limpeza": _limpeza_cfg(cfg.get("limpeza")),
+        "agendamento": _agendamento_cfg(cfg.get("agendamento")),
     }
     if not loc and cfg.get("local"):
         f["local_legado"] = str(cfg["local"])  # formato antigo: onde fazer a busca do país
@@ -557,6 +558,7 @@ def validar(e: dict) -> dict:
         if not fontes:  # um portal com login sozinho não basta: ele não roda na busca pelo terminal
             raise ValueError("marque pelo menos um portal")
         portais["fontes"] = fontes + [k for k in FONTES_LOGIN if k in lista]
+    # "agendamento" (spec 064) também: só a aba Agendamento (PUT /api/agendamento, salvar_agendamento) grava
     # "limpeza" (spec 054) é ignorada aqui: o painel devolve o objeto lido ao abrir, e só a aba Limpeza
     # (PUT /api/limpeza, salvar_limpeza) grava os critérios; assim o Salvar filtros não desfaz o que a aba gravou
     return {**portais,
@@ -650,6 +652,61 @@ def salvar_limpeza(entrada) -> dict:
     novos = validar_limpeza(entrada)
     cfg = ler_config()
     cfg["limpeza"] = novos
+    _gravar(cfg)
+    return novos
+
+
+# ---------------------------------------------------------------- busca agendada (spec 064)
+
+HORARIO_PADRAO = "08:00"
+_RE_HORARIO = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
+
+
+def agendamento_padrao() -> dict:
+    """Quem ainda não mexeu na aba Agendamento: desligado, 08:00, sem "Continuar de onde parou"."""
+    return {"ligado": False, "horario": HORARIO_PADRAO, "continuar": False}
+
+
+def _horario(v) -> str | None:
+    s = str(v or "").strip()
+    if re.fullmatch(r"\d:\d\d", s):
+        s = "0" + s
+    return s if _RE_HORARIO.match(s) else None
+
+
+def _agendamento_cfg(v) -> dict:
+    """O agendamento do config.json completado com o padrão; o que estiver fora do formato fica no padrão."""
+    saida = agendamento_padrao()
+    if not isinstance(v, dict):
+        return saida
+    for k in ("ligado", "continuar"):
+        if isinstance(v.get(k), bool):
+            saida[k] = v[k]
+    saida["horario"] = _horario(v.get("horario")) or saida["horario"]
+    return saida
+
+
+def validar_agendamento(e, atual: dict | None = None) -> dict:
+    """Valida o que vem da aba Agendamento (ou do terminal). Campo ausente fica como está; horário inválido é erro."""
+    if not isinstance(e, dict):
+        raise ValueError("agendamento inválido")
+    saida = dict(atual or agendamento_padrao())
+    for k in ("ligado", "continuar"):
+        if k in e:
+            saida[k] = bool(e[k])
+    if "horario" in e:
+        h = _horario(e["horario"])
+        if not h:
+            raise ValueError("horário inválido: use HH:MM")
+        saida["horario"] = h
+    return saida
+
+
+def salvar_agendamento(entrada) -> dict:
+    """Grava só o agendamento no config.json (a aba Agendamento não depende dos outros filtros)."""
+    cfg = ler_config()
+    novos = validar_agendamento(entrada, _agendamento_cfg(cfg.get("agendamento")))
+    cfg["agendamento"] = novos
     _gravar(cfg)
     return novos
 
