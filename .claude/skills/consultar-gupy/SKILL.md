@@ -86,7 +86,7 @@ Quando a pergunta não disser onde nem em que modelo, use a `localidade` e os
 - "Vale a pena pra mim?": o caminho normal é mandar a vaga para o dashboard, onde
   ela recebe a nota. Se ele quiser a resposta no chat, leia o perfil (caminho em
   `perfil` no `config.json`) e siga "Como dar a nota" em
-  `.agents/skills/buscar-vagas/SKILL.md`.
+  `.agents/skills/buscar-vagas/regras-da-nota.md`.
 
 ## Mandar para o dashboard (só quando ele pedir)
 

@@ -910,6 +910,10 @@ Para instalar à mão, no Claude Code:
   para cada um, com o padrão e o mínimo: copie a linha e tire o `#` do começo. O JobGether, que usa a API
   oficial, tem `JOBGETHER_PAUSA`, de 2 a 60 (padrão 2). Aumente só a do portal
   que estiver bloqueando; vale a partir da busca seguinte, e o começo da busca mostra a pausa em uso.
+- **Pausas da IA:** o Forçar verificar manda até 3 vagas por pedido à IA, com `FORCAR_PAUSA` (0 a 60 s, padrão 5)
+  entre pedidos; a análise automática depois da busca manda lotes com `ANALISE_PAUSA` (5 a 120 s, padrão 20) entre
+  eles. Se o provedor recusar por limite de uso (erro 429, comum nos planos gratuitos), ela espera o tempo que ele
+  pedir (ou 60 s) e manda lotes menores; depois de 3 recusas seguidas, para e as vagas voltam na próxima busca.
 - A busca no startup.jobs usa o MCP público do próprio site (`https://api.startup.jobs/mcp`),
   sem login e só de leitura. Sem conta, ele mostra só as vagas dos últimos 14 dias e
   aceita 20 consultas por minuto; a ferramenta espaça as consultas sozinha. Ele filtra
