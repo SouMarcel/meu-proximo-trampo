@@ -11,6 +11,9 @@ ORIGENS_MANUAIS = ("pagina", "terminal", "chat")
 MAX_EVENTOS = 30
 CACHE = Path(__file__).resolve().parent / ".cache"
 ARQ_ESTADO = CACHE / "agendamento.json"
+ARQ_RETOMADAS = CACHE / "retomadas.json"
+INTERVALO_RETOMADA = timedelta(hours=6)
+TETO_SEM_AGENDADA = timedelta(hours=24)
 
 
 def horario_de_hoje(ag: dict, agora: datetime) -> datetime:
@@ -138,3 +141,203 @@ def registrar_evento(estado: dict, evento: dict, dia: str | None = None) -> dict
     if dia is not None:
         estado["dia"] = dia
     return estado
+
+
+def ler_retomadas() -> dict:
+    """Lê as retomadas agendadas em arquivo. Ausente, quebrado ou não-dicionário devolve {}."""
+    try:
+        dados = json.loads(ARQ_RETOMADAS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(dados, dict):
+        return {}
+    return dados
+
+
+def gravar_retomadas(d: dict) -> None:
+    """Grava as retomadas de forma atômica (.tmp + os.replace)."""
+    ARQ_RETOMADAS.parent.mkdir(parents=True, exist_ok=True)
+    tmp = ARQ_RETOMADAS.with_name(f"{ARQ_RETOMADAS.name}.tmp")
+    tmp.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, ARQ_RETOMADAS)
+
+
+def cancelar_retomada(nome: str) -> bool:
+    """Lê as retomadas, apaga a chave nome e grava. Devolve False se não havia a chave."""
+    retomadas = ler_retomadas()
+    if nome not in retomadas:
+        return False
+    del retomadas[nome]
+    gravar_retomadas(retomadas)
+    return True
+
+
+def apagar_retomadas() -> None:
+    """Apaga o arquivo de retomadas se existir."""
+    try:
+        ARQ_RETOMADAS.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def depois_da_busca(
+    retomadas: dict,
+    resultado: dict,
+    origem: str,
+    agora: datetime,
+    continuar: bool,
+    rotulo,
+    pendentes,
+) -> dict:
+    """Calcula o novo dicionário de retomadas após o fim de uma busca.
+
+    Pura: recebe e devolve o dicionário sem chamadas a datetime.now().
+    """
+    if not continuar:
+        return {}
+
+    if isinstance(agora, str):
+        agora = datetime.fromisoformat(agora)
+
+    if origem == "agendada":
+        res = {}
+    else:
+        res = {k: dict(v) for k, v in retomadas.items()}
+
+    rodaram = resultado.get("rodaram", [])
+    bloqueados = resultado.get("bloqueados", [])
+    faltaram_map = resultado.get("faltaram", {})
+
+    for nome in rodaram:
+        anterior = None if origem == "agendada" else retomadas.get(nome)
+        if nome in bloqueados:
+            tentativas_ant = anterior.get("tentativas", 0) if anterior else 0
+            tentativas = tentativas_ant + (1 if origem == "retomada" else 0)
+            origem_busca = (anterior.get("origem_busca") if anterior else None) or origem
+            criada_em = (anterior.get("criada_em") if anterior else None) or agora.isoformat(timespec="minutes")
+            proxima = (agora + INTERVALO_RETOMADA).isoformat(timespec="minutes")
+            res[nome] = {
+                "portal": rotulo(nome),
+                "origem_busca": origem_busca,
+                "criada_em": criada_em,
+                "proxima": proxima,
+                "faltaram": list(faltaram_map.get(nome, [])),
+                "tentativas": tentativas,
+            }
+        else:
+            if anterior:
+                if pendentes(nome) > 0:
+                    tentativas_ant = anterior.get("tentativas", 0)
+                    tentativas = tentativas_ant + (1 if origem == "retomada" else 0)
+                    origem_busca = anterior.get("origem_busca") or origem
+                    criada_em = anterior.get("criada_em") or agora.isoformat(timespec="minutes")
+                    proxima = (agora + INTERVALO_RETOMADA).isoformat(timespec="minutes")
+                    res[nome] = {
+                        "portal": rotulo(nome),
+                        "origem_busca": origem_busca,
+                        "criada_em": criada_em,
+                        "proxima": proxima,
+                        "faltaram": [],
+                        "tentativas": tentativas,
+                    }
+                else:
+                    res.pop(nome, None)
+            else:
+                # sem bloqueio e sem retomada anterior: nada
+                pass
+
+    return res
+
+
+def retomadas_devidas(
+    retomadas: dict,
+    agora: datetime,
+    ag: dict,
+    em_espera,
+) -> tuple[list[str], dict, list[dict]]:
+    """Identifica as retomadas devidas agora e atualiza o dicionário de retomadas.
+
+    Pura: recebe e devolve (nomes devidos agora, retomadas atualizadas, eventos)
+    sem chamadas a datetime.now().
+    """
+    if not ag or not ag.get("continuar"):
+        return [], {}, []
+
+    if isinstance(agora, str):
+        agora = datetime.fromisoformat(agora)
+
+    devidas: list[str] = []
+    atualizadas: dict = {}
+    eventos: list[dict] = []
+
+    ligado = bool(ag.get("ligado"))
+
+    for nome, ret_orig in retomadas.items():
+        ret = dict(ret_orig)
+        portal_nome = ret.get("portal", nome)
+
+        try:  # retomada com data quebrada no arquivo sai, sem derrubar o relógio
+            dt_criada = datetime.fromisoformat(str(ret.get("criada_em")))
+            dt_proxima = datetime.fromisoformat(str(ret.get("proxima")))
+        except (TypeError, ValueError):
+            continue
+        if dt_criada.tzinfo is not None and agora.tzinfo is None:
+            dt_criada = dt_criada.replace(tzinfo=None)
+        elif agora.tzinfo is not None and dt_criada.tzinfo is None:
+            dt_criada = dt_criada.replace(tzinfo=agora.tzinfo)
+
+        if dt_proxima.tzinfo is not None and agora.tzinfo is None:
+            dt_proxima = dt_proxima.replace(tzinfo=None)
+        elif agora.tzinfo is not None and dt_proxima.tzinfo is None:
+            dt_proxima = dt_proxima.replace(tzinfo=agora.tzinfo)
+
+        # Regra: ag["ligado"] falso e agora >= criada_em + 24 h
+        if not ligado and agora >= dt_criada + TETO_SEM_AGENDADA:
+            eventos.append({
+                "tipo": "retomada",
+                "portal": portal_nome,
+                "situacao": "encerrada",
+                "em": agora.isoformat(timespec="seconds"),
+                "motivo": "24 horas sem busca agendada",
+            })
+            continue
+
+        # Regra: agora < proxima
+        if agora < dt_proxima:
+            atualizadas[nome] = ret
+            continue
+
+        # Regra: agora > proxima + TOLERANCIA
+        if agora > dt_proxima + TOLERANCIA:
+            hora_perdida = dt_proxima.strftime("%H:%M")
+            while dt_proxima + TOLERANCIA < agora:
+                dt_proxima += INTERVALO_RETOMADA
+            eventos.append({
+                "tipo": "retomada",
+                "portal": portal_nome,
+                "situacao": "perdida",
+                "em": agora.isoformat(timespec="seconds"),
+                "motivo": f"o dashboard não estava ligado às {hora_perdida}",
+            })
+            if dt_proxima <= agora and em_espera(nome):  # caiu numa hora devida, mas o portal segue em espera
+                dt_proxima += INTERVALO_RETOMADA
+            ret["proxima"] = dt_proxima.isoformat(timespec="minutes")
+            atualizadas[nome] = ret
+            if dt_proxima <= agora:
+                devidas.append(nome)
+        elif em_espera(nome):
+            dt_proxima += INTERVALO_RETOMADA
+            eventos.append({
+                "tipo": "retomada",
+                "portal": portal_nome,
+                "situacao": "pulada",
+                "em": agora.isoformat(timespec="seconds"),
+                "motivo": "o portal ainda está em espera",
+            })
+            ret["proxima"] = dt_proxima.isoformat(timespec="minutes")
+            atualizadas[nome] = ret
+        else:
+            atualizadas[nome] = ret
+            devidas.append(nome)
+
+    return devidas, atualizadas, eventos

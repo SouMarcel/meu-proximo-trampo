@@ -411,5 +411,383 @@ class TestBuscaAgendada(BaseBusca):
         self.assertEqual(banco.ultima_busca()["origem"], "agendada")
 
 
+class TestRetomadas(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = Path(self.tmp.name) / ".cache"
+        self.arq_retomadas = self.cache / "retomadas.json"
+        self.patches = [
+            mock.patch.object(agendamento, "CACHE", self.cache),
+            mock.patch.object(agendamento, "ARQ_RETOMADAS", self.arq_retomadas),
+        ]
+        for p in self.patches:
+            p.start()
+        self.addCleanup(self._limpar)
+
+    def _limpar(self):
+        for p in reversed(self.patches):
+            p.stop()
+        self.tmp.cleanup()
+
+    def test_bloqueio_cria_retomada(self):
+        agora = datetime(2026, 11, 28, 8, 0)
+        resultado = {
+            "rodaram": ["linkedin"],
+            "bloqueados": ["linkedin"],
+            "faltaram": {"linkedin": [{"termo": "analista"}]},
+        }
+        res = agendamento.depois_da_busca(
+            retomadas={},
+            resultado=resultado,
+            origem="pagina",
+            agora=agora,
+            continuar=True,
+            rotulo=lambda n: "LinkedIn",
+            pendentes=lambda n: 0,
+        )
+        self.assertIn("linkedin", res)
+        self.assertEqual(res["linkedin"]["portal"], "LinkedIn")
+        self.assertEqual(res["linkedin"]["origem_busca"], "pagina")
+        self.assertEqual(res["linkedin"]["criada_em"], "2026-11-28T08:00")
+        self.assertEqual(res["linkedin"]["proxima"], "2026-11-28T14:00")
+        self.assertEqual(res["linkedin"]["faltaram"], [{"termo": "analista"}])
+        self.assertEqual(res["linkedin"]["tentativas"], 0)
+
+    def test_retomada_que_bloqueia_de_novo(self):
+        agora = datetime(2026, 11, 28, 14, 0)
+        anterior = {
+            "linkedin": {
+                "portal": "LinkedIn",
+                "origem_busca": "pagina",
+                "criada_em": "2026-11-28T08:00",
+                "proxima": "2026-11-28T14:00",
+                "faltaram": [{"termo": "analista"}],
+                "tentativas": 0,
+            }
+        }
+        resultado = {
+            "rodaram": ["linkedin"],
+            "bloqueados": ["linkedin"],
+            "faltaram": {"linkedin": [{"termo": "analista"}]},
+        }
+        res = agendamento.depois_da_busca(
+            retomadas=anterior,
+            resultado=resultado,
+            origem="retomada",
+            agora=agora,
+            continuar=True,
+            rotulo=lambda n: "LinkedIn",
+            pendentes=lambda n: 0,
+        )
+        self.assertEqual(res["linkedin"]["tentativas"], 1)
+        self.assertEqual(res["linkedin"]["criada_em"], "2026-11-28T08:00")
+        self.assertEqual(res["linkedin"]["origem_busca"], "pagina")
+        self.assertEqual(res["linkedin"]["proxima"], "2026-11-28T20:00")
+
+    def test_retomada_sem_bloqueio_e_sem_pendentes_some(self):
+        agora = datetime(2026, 11, 28, 14, 0)
+        anterior = {
+            "linkedin": {
+                "portal": "LinkedIn",
+                "origem_busca": "pagina",
+                "criada_em": "2026-11-28T08:00",
+                "proxima": "2026-11-28T14:00",
+                "faltaram": [{"termo": "analista"}],
+                "tentativas": 0,
+            }
+        }
+        resultado = {"rodaram": ["linkedin"], "bloqueados": [], "faltaram": {}}
+        res = agendamento.depois_da_busca(
+            retomadas=anterior,
+            resultado=resultado,
+            origem="retomada",
+            agora=agora,
+            continuar=True,
+            rotulo=lambda n: "LinkedIn",
+            pendentes=lambda n: 0,
+        )
+        self.assertEqual(res, {})
+
+    def test_retomada_sem_bloqueio_com_pendentes_fica_com_faltaram_vazio(self):
+        agora = datetime(2026, 11, 28, 14, 0)
+        anterior = {
+            "linkedin": {
+                "portal": "LinkedIn",
+                "origem_busca": "pagina",
+                "criada_em": "2026-11-28T08:00",
+                "proxima": "2026-11-28T14:00",
+                "faltaram": [{"termo": "analista"}],
+                "tentativas": 0,
+            }
+        }
+        resultado = {"rodaram": ["linkedin"], "bloqueados": [], "faltaram": {}}
+        res = agendamento.depois_da_busca(
+            retomadas=anterior,
+            resultado=resultado,
+            origem="retomada",
+            agora=agora,
+            continuar=True,
+            rotulo=lambda n: "LinkedIn",
+            pendentes=lambda n: 5,
+        )
+        self.assertIn("linkedin", res)
+        self.assertEqual(res["linkedin"]["faltaram"], [])
+        self.assertEqual(res["linkedin"]["proxima"], "2026-11-28T20:00")
+        self.assertEqual(res["linkedin"]["tentativas"], 1)
+        self.assertEqual(res["linkedin"]["criada_em"], "2026-11-28T08:00")
+
+    def test_busca_agendada_apaga_outras_e_cria_so_as_dela(self):
+        agora = datetime(2026, 11, 28, 8, 0)
+        anteriores = {
+            "linkedin": {"portal": "LinkedIn", "criada_em": "2026-11-27T10:00", "proxima": "2026-11-27T16:00"},
+            "gupy": {"portal": "Gupy", "criada_em": "2026-11-27T10:00", "proxima": "2026-11-27T16:00"},
+        }
+        resultado = {
+            "rodaram": ["infojobs"],
+            "bloqueados": ["infojobs"],
+            "faltaram": {"infojobs": [{"termo": "python"}]},
+        }
+        res = agendamento.depois_da_busca(
+            retomadas=anteriores,
+            resultado=resultado,
+            origem="agendada",
+            agora=agora,
+            continuar=True,
+            rotulo=lambda n: "InfoJobs",
+            pendentes=lambda n: 0,
+        )
+        self.assertEqual(list(res.keys()), ["infojobs"])
+        self.assertEqual(res["infojobs"]["origem_busca"], "agendada")
+        self.assertEqual(res["infojobs"]["tentativas"], 0)
+
+    def test_continuar_falso_devolve_vazio(self):
+        anteriores = {
+            "linkedin": {"portal": "LinkedIn"},
+        }
+        resultado = {
+            "rodaram": ["linkedin"],
+            "bloqueados": ["linkedin"],
+            "faltaram": {"linkedin": [{"termo": "dev"}]},
+        }
+        res = agendamento.depois_da_busca(
+            retomadas=anteriores,
+            resultado=resultado,
+            origem="pagina",
+            agora=datetime(2026, 11, 28, 8, 0),
+            continuar=False,
+            rotulo=lambda n: "LinkedIn",
+            pendentes=lambda n: 0,
+        )
+        self.assertEqual(res, {})
+
+    def test_portal_em_espera_fora_de_rodaram_nao_muda(self):
+        anteriores = {
+            "infojobs": {
+                "portal": "InfoJobs",
+                "origem_busca": "pagina",
+                "criada_em": "2026-11-28T02:00",
+                "proxima": "2026-11-28T08:00",
+                "faltaram": [{"termo": "dev"}],
+                "tentativas": 0,
+            }
+        }
+        resultado = {"rodaram": ["gupy"], "bloqueados": [], "faltaram": {}}
+        res = agendamento.depois_da_busca(
+            retomadas=anteriores,
+            resultado=resultado,
+            origem="pagina",
+            agora=datetime(2026, 11, 28, 8, 0),
+            continuar=True,
+            rotulo=lambda n: n.capitalize(),
+            pendentes=lambda n: 0,
+        )
+        self.assertIn("infojobs", res)
+        self.assertEqual(res["infojobs"], anteriores["infojobs"])
+
+    def test_devida_na_hora(self):
+        ag = {"ligado": True, "horario": "08:00", "continuar": True}
+        retomadas = {
+            "linkedin": {
+                "portal": "LinkedIn",
+                "criada_em": "2026-11-28T08:00",
+                "proxima": "2026-11-28T14:00",
+            }
+        }
+        agora = datetime(2026, 11, 28, 14, 0)
+        devidas, atualizadas, eventos = agendamento.retomadas_devidas(
+            retomadas, agora, ag, em_espera=lambda n: False
+        )
+        self.assertEqual(devidas, ["linkedin"])
+        self.assertEqual(atualizadas, retomadas)
+        self.assertEqual(eventos, [])
+
+    def test_pulada_com_portal_em_espera(self):
+        ag = {"ligado": True, "horario": "08:00", "continuar": True}
+        retomadas = {
+            "linkedin": {
+                "portal": "LinkedIn",
+                "criada_em": "2026-11-28T08:00",
+                "proxima": "2026-11-28T14:00",
+            }
+        }
+        agora = datetime(2026, 11, 28, 14, 0)
+        devidas, atualizadas, eventos = agendamento.retomadas_devidas(
+            retomadas, agora, ag, em_espera=lambda n: True
+        )
+        self.assertEqual(devidas, [])
+        self.assertEqual(atualizadas["linkedin"]["proxima"], "2026-11-28T20:00")
+        self.assertEqual(len(eventos), 1)
+        self.assertEqual(eventos[0]["tipo"], "retomada")
+        self.assertEqual(eventos[0]["portal"], "LinkedIn")
+        self.assertEqual(eventos[0]["situacao"], "pulada")
+        self.assertEqual(eventos[0]["motivo"], "o portal ainda está em espera")
+        self.assertEqual(eventos[0]["em"], "2026-11-28T14:00:00")
+
+    def test_perdida_proxima_02_e_tick_as_09(self):
+        ag = {"ligado": True, "horario": "08:00", "continuar": True}
+        retomadas = {
+            "linkedin": {
+                "portal": "LinkedIn",
+                "criada_em": "2026-11-27T20:00",
+                "proxima": "2026-11-28T02:00",
+            }
+        }
+        agora = datetime(2026, 11, 28, 9, 0)
+        devidas, atualizadas, eventos = agendamento.retomadas_devidas(
+            retomadas, agora, ag, em_espera=lambda n: False
+        )
+        self.assertEqual(devidas, [])
+        self.assertEqual(atualizadas["linkedin"]["proxima"], "2026-11-28T14:00")
+        self.assertEqual(len(eventos), 1)
+        self.assertEqual(eventos[0]["situacao"], "perdida")
+        self.assertEqual(eventos[0]["motivo"], "o dashboard não estava ligado às 02:00")
+
+    def test_perdida_tick_as_08_10_fica_devida(self):
+        ag = {"ligado": True, "horario": "08:00", "continuar": True}
+        retomadas = {
+            "linkedin": {
+                "portal": "LinkedIn",
+                "criada_em": "2026-11-27T20:00",
+                "proxima": "2026-11-28T02:00",
+            }
+        }
+        agora = datetime(2026, 11, 28, 8, 10)
+        devidas, atualizadas, eventos = agendamento.retomadas_devidas(
+            retomadas, agora, ag, em_espera=lambda n: False
+        )
+        self.assertEqual(devidas, ["linkedin"])
+        self.assertEqual(atualizadas["linkedin"]["proxima"], "2026-11-28T08:00")
+        self.assertEqual(len(eventos), 1)
+        self.assertEqual(eventos[0]["situacao"], "perdida")
+        self.assertEqual(eventos[0]["motivo"], "o dashboard não estava ligado às 02:00")
+
+    def test_teto_24_horas_sem_agendamento_ligado(self):
+        ag = {"ligado": False, "horario": "08:00", "continuar": True}
+        retomadas = {
+            "linkedin": {
+                "portal": "LinkedIn",
+                "criada_em": "2026-11-27T08:00",
+                "proxima": "2026-11-28T08:00",
+            }
+        }
+        agora = datetime(2026, 11, 28, 8, 0)
+        devidas, atualizadas, eventos = agendamento.retomadas_devidas(
+            retomadas, agora, ag, em_espera=lambda n: False
+        )
+        self.assertEqual(devidas, [])
+        self.assertEqual(atualizadas, {})
+        self.assertEqual(len(eventos), 1)
+        self.assertEqual(eventos[0]["tipo"], "retomada")
+        self.assertEqual(eventos[0]["portal"], "LinkedIn")
+        self.assertEqual(eventos[0]["situacao"], "encerrada")
+        self.assertEqual(eventos[0]["motivo"], "24 horas sem busca agendada")
+        self.assertEqual(eventos[0]["em"], "2026-11-28T08:00:00")
+
+    def test_com_agendamento_ligado_nao_ha_teto(self):
+        ag = {"ligado": True, "horario": "08:00", "continuar": True}
+        retomadas = {
+            "linkedin": {
+                "portal": "LinkedIn",
+                "criada_em": "2026-11-20T08:00",
+                "proxima": "2026-11-28T08:00",
+            }
+        }
+        agora = datetime(2026, 11, 28, 8, 0)
+        devidas, atualizadas, eventos = agendamento.retomadas_devidas(
+            retomadas, agora, ag, em_espera=lambda n: False
+        )
+        self.assertEqual(devidas, ["linkedin"])
+        self.assertIn("linkedin", atualizadas)
+        self.assertEqual(eventos, [])
+
+    def test_cancelar_retomada_e_arquivo_quebrado(self):
+        self.assertEqual(agendamento.ler_retomadas(), {})
+
+        dados = {"linkedin": {"portal": "LinkedIn"}}
+        agendamento.gravar_retomadas(dados)
+        self.assertEqual(agendamento.ler_retomadas(), dados)
+
+        self.assertTrue(agendamento.cancelar_retomada("linkedin"))
+        self.assertEqual(agendamento.ler_retomadas(), {})
+        self.assertFalse(agendamento.cancelar_retomada("linkedin"))
+
+        agendamento.gravar_retomadas(dados)
+        agendamento.apagar_retomadas()
+        self.assertEqual(agendamento.ler_retomadas(), {})
+
+        self.cache.mkdir(parents=True, exist_ok=True)
+        self.arq_retomadas.write_text("{quebrado", encoding="utf-8")
+        self.assertEqual(agendamento.ler_retomadas(), {})
+
+        self.arq_retomadas.write_text("[1, 2, 3]", encoding="utf-8")
+        self.assertEqual(agendamento.ler_retomadas(), {})
+
+    def test_sem_datetime_now_retomadas(self):
+        with mock.patch("agendamento.datetime") as m_dt:
+            m_dt.fromisoformat = datetime.fromisoformat
+            m_dt.side_effect = lambda *args, **kw: datetime(*args, **kw)
+            agora = datetime(2026, 11, 28, 8, 0)
+            ag = {"ligado": True, "horario": "08:00", "continuar": True}
+            retomadas = {
+                "linkedin": {
+                    "portal": "LinkedIn",
+                    "criada_em": "2026-11-28T02:00",
+                    "proxima": "2026-11-28T08:00",
+                }
+            }
+            agendamento.depois_da_busca(
+                retomadas={},
+                resultado={"rodaram": ["linkedin"], "bloqueados": ["linkedin"], "faltaram": {}},
+                origem="pagina",
+                agora=agora,
+                continuar=True,
+                rotulo=lambda n: "LinkedIn",
+                pendentes=lambda n: 0,
+            )
+            agendamento.retomadas_devidas(retomadas, agora, ag, em_espera=lambda n: False)
+            m_dt.now.assert_not_called()
+
+
+
+class TestRetomadasRobustas(unittest.TestCase):
+    def test_perdida_que_cai_na_hora_com_portal_em_espera_vai_para_depois(self):
+        from datetime import datetime
+        import agendamento
+        r = {"falsa": {"portal": "Falsa", "criada_em": "2026-11-27T02:00", "proxima": "2026-11-27T02:00",
+                       "faltaram": [], "tentativas": 0}}
+        ag = {"ligado": True, "horario": "08:00", "continuar": True}
+        devidas, novas, _ = agendamento.retomadas_devidas(r, datetime(2026, 11, 27, 8, 10), ag, lambda n: True)
+        self.assertEqual(devidas, [])
+        self.assertEqual(novas["falsa"]["proxima"], "2026-11-27T14:00")
+
+    def test_data_quebrada_sai_sem_erro(self):
+        from datetime import datetime
+        import agendamento
+        r = {"falsa": {"portal": "Falsa", "criada_em": None, "proxima": "x"}}
+        ag = {"ligado": True, "horario": "08:00", "continuar": True}
+        self.assertEqual(agendamento.retomadas_devidas(r, datetime(2026, 11, 27, 8, 0), ag, lambda n: False)[:2],
+                         ([], {}))
+
+
 if __name__ == "__main__":
     unittest.main()

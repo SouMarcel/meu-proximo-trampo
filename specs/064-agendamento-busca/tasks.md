@@ -59,7 +59,7 @@ Suíte: `.venv\Scripts\python.exe -m unittest discover -s tests`. Front: `npx -y
 **Teste independente**: portal falso bloqueia na 3ª consulta; 6 h depois (relógio falso) a retomada roda só as que
 faltaram e as descrições pendentes; sem novo bloqueio, a retomada some.
 
-- [ ] T006 [D minor] [US2] Em `agendamento.py` (research R6; data-model "Retomada" e transições): `.cache/retomadas.json`
+- [X] T006 [D minor] [US2] → agy, GO na tentativa 1 (corrigi perdida com portal em espera e data quebrada). Em `agendamento.py` (research R6; data-model "Retomada" e transições): `.cache/retomadas.json`
   (ler, gravar atômico, `cancelar(nome)`, `apagar_todas()`); `depois_da_busca(resultado, origem, agora, continuar)`
   (agendada apaga todas antes; portal que rodou e bloqueou cria ou atualiza com `proxima = agora + 6 h`, `tentativas +
   1` se origem `retomada`, `criada_em` mantido; portal que rodou sem bloquear: apaga se não houver pendente dele, senão
