@@ -9,6 +9,14 @@ import * as buscaApi from "../../services/api/busca"
 import { mensagemDeErro } from "../../services/api"
 import { useFerramenta, motivoSemGravar } from "../../contexto/Ferramenta"
 import { horaDe } from "../../utils/formatters"
+import AgendamentoAba from "./AgendamentoAba"
+
+/** Abas do Buscar vagas: a busca de agora e o agendamento (spec 064), que grava por conta própria. */
+type Aba = "agora" | "agendamento"
+const ABAS: { id: Aba; rotulo: string }[] = [
+  { id: "agora", rotulo: "Buscar agora" },
+  { id: "agendamento", rotulo: "Agendamento" },
+]
 
 interface SearchJobsModalProps {
   onClose: () => void
@@ -24,6 +32,7 @@ export default function SearchJobsModal({ onClose, onIniciada, onPlano, onAbrirF
   const [erro, setErro] = useState("")
   const [enviando, setEnviando] = useState(false)
   const [semNota, setSemNota] = useState(false)
+  const [aba, setAba] = useState<Aba>("agora")
 
   const carregarPlano = async () => {
     try {
@@ -103,7 +112,38 @@ export default function SearchJobsModal({ onClose, onIniciada, onPlano, onAbrirF
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 space-y-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+        <div role="tablist" aria-label="Buscar vagas" className="px-5 sm:px-6 pt-3 flex gap-1 border-b border-slate-200 dark:border-slate-800">
+          {ABAS.map((a) => {
+            const ativa = aba === a.id
+            return (
+              <button
+                key={a.id}
+                type="button"
+                role="tab"
+                id={`aba-busca-${a.id}`}
+                aria-selected={ativa}
+                aria-controls={`painel-busca-${a.id}`}
+                onClick={() => setAba(a.id)}
+                className={`px-3 py-2 -mb-px text-xs sm:text-sm font-semibold border-b-2 transition ${
+                  ativa
+                    ? "border-indigo-600 text-indigo-700 dark:text-indigo-300"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                {a.rotulo}
+              </button>
+            )
+          })}
+        </div>
+
+        {aba === "agendamento" && (
+          <div role="tabpanel" id="painel-busca-agendamento" aria-labelledby="aba-busca-agendamento" className="p-6 overflow-y-auto flex-1">
+            <AgendamentoAba podeSalvar={podeGravar} />
+          </div>
+        )}
+
+        {aba === "agora" && (
+        <div role="tabpanel" id="painel-busca-agora" aria-labelledby="aba-busca-agora" className="p-6 overflow-y-auto flex-1 space-y-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
           {!plano && !erro && (
             <p className="flex items-center gap-2 text-slate-500">
               <Loader2 className="w-4 h-4 animate-spin" /> Preparando a busca…
@@ -215,11 +255,13 @@ export default function SearchJobsModal({ onClose, onIniciada, onPlano, onAbrirF
             </p>
           )}
         </div>
+        )}
 
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-            Cancelar
+            {aba === "agora" ? "Cancelar" : "Fechar"}
           </button>
+          {aba === "agora" && (
           <button
             onClick={iniciar}
             disabled={!plano || !plano.filtros_ok || Boolean(espera) || plano.so_espera || !podeGravar || enviando}
@@ -228,6 +270,7 @@ export default function SearchJobsModal({ onClose, onIniciada, onPlano, onAbrirF
             {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             <span>{rotulo}</span>
           </button>
+          )}
         </div>
       </div>
     </div>

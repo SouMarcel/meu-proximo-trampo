@@ -12,7 +12,6 @@ import { mensagemDeErro } from "../../services/api"
 import { useFerramenta, AvisoSoLeitura } from "../../contexto/Ferramenta"
 import PortaisLogin from "./PortaisLogin"
 import LimpezaAba from "./LimpezaAba"
-import AgendamentoAba from "./AgendamentoAba"
 import { SISTEMAS_EMPRESA } from "../../utils/rotulos"
 
 export type ModoFiltros = "nacional" | "internacional"
@@ -35,8 +34,8 @@ const ROTULO = "text-xs font-semibold text-slate-600 dark:text-slate-300 block m
 const AVISO_AMBAR =
   "p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 text-xs"
 
-type Aba = "geral" | "portais" | "internacionais" | "empresas" | "limpeza" | "agendamento"
-type AbaComConta = Exclude<Aba, "geral" | "limpeza" | "agendamento">
+type Aba = "geral" | "portais" | "internacionais" | "empresas" | "limpeza"
+type AbaComConta = Exclude<Aba, "geral" | "limpeza">
 
 /** As abas do modo nacional; `legenda` é o contador por extenso, para o leitor de tela. */
 const ABAS: { id: Aba; rotulo: string; legenda?: (n: number) => string }[] = [
@@ -45,7 +44,6 @@ const ABAS: { id: Aba; rotulo: string; legenda?: (n: number) => string }[] = [
   { id: "internacionais", rotulo: "Portais internacionais", legenda: (n) => `${n} ${n === 1 ? "ligada" : "ligadas"}` },
   { id: "empresas", rotulo: "Empresas acompanhadas/excluídas", legenda: (n) => `${n} ${n === 1 ? "empresa" : "empresas"}` },
   { id: "limpeza", rotulo: "Limpeza" },
-  { id: "agendamento", rotulo: "Agendamento" },
 ]
 
 function semAcento(s: string) {
@@ -400,7 +398,7 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
           >
             {ABAS.map((a) => {
               const ativa = aba === a.id
-              const n = a.id === "geral" || a.id === "limpeza" || a.id === "agendamento" || !contagem ? null : contagem[a.id]
+              const n = a.id === "geral" || a.id === "limpeza" || !contagem ? null : contagem[a.id]
               return (
                 <button
                   key={a.id}
@@ -686,7 +684,6 @@ export default function SearchFiltersModal({ modo, proposta, onClose, onTrocarMo
               )}
 
               {aba === "limpeza" && <LimpezaAba podeSalvar={podeSalvar} />}
-              {aba === "agendamento" && <AgendamentoAba podeSalvar={podeSalvar} />}
 
               {aba === "empresas" && (
                 <>
