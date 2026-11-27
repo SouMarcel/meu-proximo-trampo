@@ -282,13 +282,13 @@ class TestFilaSequencial(Base):
     def ids_dos_pedidos(self):
         return [re.findall(r"^### id: (\S+)$", p, re.M) for p in self.pedidos_ia]
 
-    def test_uma_por_vez_na_ordem_com_a_pausa_da_ia(self):  # FR-001, FR-002, FR-004, SC-001
+    def test_em_grupos_na_ordem_com_a_pausa_da_ia(self):  # spec 056 FR-001/FR-004; spec 062 FR-004
         self.ia_falsa()
-        gravar(vaga("c"), vaga("a"), vaga("b"))
-        self.rodar("c", "a", "b", "a")
-        self.assertEqual(self.ids_dos_pedidos(), [["c"], ["a"], ["b"]])
-        self.assertEqual(self.sonos, [5.0, 5.0])  # nenhuma pausa antes do primeiro pedido
-        self.assertTrue(all(banco.obter(v)["analise_status"] == "feita" for v in "abc"))
+        gravar(vaga("c"), vaga("a"), vaga("b"), vaga("d"), vaga("e"))
+        self.rodar("c", "a", "b", "a", "d", "e")
+        self.assertEqual(self.ids_dos_pedidos(), [["c", "a", "b"], ["d", "e"]])
+        self.assertEqual(self.sonos, [5.0])  # nenhuma pausa antes do primeiro pedido
+        self.assertTrue(all(banco.obter(v)["analise_status"] == "feita" for v in "abcde"))
 
     def test_pausa_do_portal_entre_leituras_do_mesmo_portal(self):  # FR-003, SC-002
         self.ia_falsa()
@@ -306,33 +306,33 @@ class TestFilaSequencial(Base):
         self.assertEqual((self.fonte.lidas, outra.lidas), (["a", "b"], ["x"]))
         self.assertEqual(self.sonos, [8.0])  # só entre a e b (mesmo portal); x é de outro portal
 
-    def test_falha_de_uma_nao_afeta_as_outras(self):  # FR-005, SC-003
+    def test_falha_de_um_grupo_nao_afeta_os_outros(self):  # spec 056 FR-005; spec 062 US2 cenário 2
         padrao = None
 
         def responder(pedido, **_):
-            if "### id: b" in pedido:
+            if "### id: a" in pedido:
                 raise ia.IAErro("limite de pedidos da IA")
             return padrao(pedido)
         self.ia_falsa()
         padrao = ia.responder.side_effect
         ia.responder.side_effect = responder
-        gravar(vaga("a"), vaga("b"), vaga("c"))
-        self.rodar("a", "b", "c")
-        self.assertEqual(list(self.fila.falhas_atuais()), ["b"])
+        gravar(vaga("a"), vaga("b"), vaga("c"), vaga("d"))
+        self.rodar("a", "b", "c", "d")
+        self.assertEqual(sorted(self.fila.falhas_atuais()), ["a", "b", "c"])  # o grupo inteiro, com o motivo
         self.assertIn("limite de pedidos", self.fila.falhas_atuais()["b"]["motivo"])
-        self.assertEqual((banco.obter("a")["aderencia"], banco.obter("c")["aderencia"]), (70, 70))
+        self.assertEqual(banco.obter("d")["aderencia"], 70)
 
     def test_atual_e_fila_durante_a_rodada(self):  # FR-006
         vistos = []
 
         def responder(pedido, **_):
             vistos.append((self.fila.agora(), self.fila.verificando()))
-            vid = re.findall(r"^### id: (\S+)$", pedido, re.M)[0]
-            return json.dumps([{"id": vid, "aderencia": 70, "resumo": "Bate.", "modelo_trabalho": "remoto"}])
+            return json.dumps([{"id": vid, "aderencia": 70, "resumo": "Bate.", "modelo_trabalho": "remoto"}
+                               for vid in re.findall(r"^### id: (\S+)$", pedido, re.M)])
         self.ia_falsa(responder)
-        gravar(vaga("a"), vaga("b"))
-        self.rodar("a", "b")
-        self.assertEqual(vistos, [("a", ["a", "b"]), ("b", ["b"])])
+        gravar(vaga("a"), vaga("b"), vaga("c"), vaga("d"))
+        self.rodar("a", "b", "c", "d")
+        self.assertEqual(vistos, [("a", ["a", "b", "c", "d"]), ("d", ["d"])])
 
     def test_forcar_a_atual_nao_duplica(self):
         with mock.patch.object(analise, "ligada", return_value=True), mock.patch.object(self.fila, "_acordar"):
@@ -343,6 +343,166 @@ class TestFilaSequencial(Base):
         self.assertEqual((self.fila.agora(), self.fila.verificando()), ("a", ["a", "b"]))
 
 
+class TestForcarGrupos(TestFilaSequencial):
+    """Spec 062, US2: a fila lê as descrições uma por vez e junta até 3 vagas prontas num pedido à IA."""
+
+    def test_seis_em_dois_pedidos(self):  # SC-003
+        self.ia_falsa()
+        gravar(*[vaga(f"v{i}") for i in range(6)])
+        self.rodar(*[f"v{i}" for i in range(6)])
+        self.assertEqual([len(ids) for ids in self.ids_dos_pedidos()], [3, 3])
+        self.assertEqual(self.fila.falhas_atuais(), {})
+
+    def test_uma_so_vai_sem_esperar(self):  # edge case
+        self.ia_falsa()
+        gravar(vaga("a"))
+        self.rodar("a")
+        self.assertEqual((self.ids_dos_pedidos(), self.sonos), ([["a"]], []))
+
+    def test_le_primeiro_e_manda_depois(self):  # FR-004: leituras com a pausa do portal, um pedido no fim
+        self.ia_falsa()
+        self.fonte.pausa = lambda: {"faixa": (8.0, 12.0)}
+        lidas_no_pedido = []
+        padrao = ia.responder.side_effect
+
+        def responder(pedido, **kw):
+            lidas_no_pedido.append(list(self.fonte.lidas))
+            return padrao(pedido, **kw)
+        ia.responder.side_effect = responder
+        gravar(*[vaga(v, descricao="", descricao_pendente=True) for v in "abc"])
+        self.rodar("a", "b", "c")
+        self.assertEqual(self.ids_dos_pedidos(), [["a", "b", "c"]])
+        self.assertEqual(lidas_no_pedido, [["a", "b", "c"]])
+        self.assertEqual(self.sonos, [8.0, 8.0])
+
+    def test_vaga_que_mira_a_ia_vai_sozinha(self):  # US2 cenário 3 (spec 034)
+        self.ia_falsa()
+        gravar(vaga("a"), vaga("s", integridade={"veredito": "atencao"}), vaga("b"))
+        self.rodar("a", "s", "b")
+        self.assertEqual(self.ids_dos_pedidos(), [["a", "b"], ["s"]])
+
+    def test_vaga_nao_devolvida_falha_sozinha(self):
+        self.ia_falsa(lambda pedido, **_: json.dumps([{"id": "a", "aderencia": 70, "resumo": "Bate.",
+                                                        "modelo_trabalho": "remoto"}]))
+        gravar(vaga("a"), vaga("b"))
+        self.rodar("a", "b")
+        self.assertEqual(list(self.fila.falhas_atuais()), ["b"])
+        self.assertEqual(banco.obter("a")["aderencia"], 70)
+
+
+class TestAnaliseLimite(Base):
+    """Spec 062, US3: a análise automática manda lote a lote, com ANALISE_PAUSA entre eles; no limite de uso (429),
+    espera, diminui o lote e tenta de novo, sem perder vagas. Relógio falso: só anda quando a fila dorme."""
+
+    def setUp(self):
+        super().setUp()
+        self.t, self.sonos = 0.0, []
+
+        def dormir(s):
+            self.sonos.append(round(s, 3))
+            self.t += s
+        self.fila = analise.Fila(dormir=dormir, relogio=lambda: self.t)
+        p = mock.patch.object(analise, "pausa_lote", return_value=20.0)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def pendentes(self, n):
+        gravar(*[vaga(f"v{i:02d}", analise_status="pendente") for i in range(n)])
+
+    def rodar(self):
+        self.fila._pedido = True
+        self.fila._rodar()
+
+    def tamanhos(self):
+        return [len(re.findall(r"^### id: ", p, re.M)) for p in self.pedidos_ia]
+
+    def com_recusas(self, recusas, espera=None):
+        """IA falsa que recusa por limite as `recusas` primeiras chamadas e depois responde."""
+        self.ia_falsa()
+        padrao, conta = ia.responder.side_effect, [0]
+
+        def responder(pedido, **kw):
+            conta[0] += 1
+            if conta[0] <= recusas:
+                self.pedidos_ia.append(pedido)
+                raise ia.IAErro("limite de uso atingido no provedor", limite=True, espera=espera)
+            return padrao(pedido, **kw)
+        ia.responder.side_effect = responder
+
+    def com_nota(self):
+        return sum(1 for v in banco.listar_vagas() if v.get("analise_status") == "feita")
+
+    def test_lotes_com_pausa(self):  # FR-005
+        self.ia_falsa()
+        self.pendentes(25)
+        self.rodar()
+        self.assertEqual(self.tamanhos(), [10, 10, 5])
+        self.assertEqual(self.sonos, [20.0, 20.0])  # nada antes do primeiro
+        self.assertEqual(self.com_nota(), 25)
+        self.assertIsNone(self.fila.erro())
+
+    def test_429_espera_diminui_e_termina(self):  # FR-006, SC-004
+        self.com_recusas(1)
+        self.pendentes(25)
+        self.rodar()
+        self.assertEqual(self.tamanhos(), [10, 5, 5, 5, 5, 5])
+        self.assertIn(60.0, self.sonos)
+        self.assertEqual(self.com_nota(), 25)
+        self.assertIsNone(self.fila.erro())
+
+    def test_espera_pedida(self):
+        self.com_recusas(1, 30)
+        self.pendentes(3)
+        self.rodar()
+        self.assertEqual(self.sonos, [30.0])  # a espera pedida já cobre a pausa entre lotes
+        self.assertEqual(self.com_nota(), 3)
+
+    def test_espera_com_teto(self):
+        self.com_recusas(1, 4000)
+        self.pendentes(3)
+        self.rodar()
+        self.assertEqual(self.sonos[0], 300.0)
+
+    def test_tres_recusas_param_e_voltam_depois(self):  # FR-006, edge case
+        self.com_recusas(3)
+        self.pendentes(4)
+        self.rodar()
+        self.assertEqual(self.com_nota(), 0)
+        self.assertIn("limite de uso", self.fila.erro()["motivo"])
+        self.assertEqual(self.tamanhos(), [4, 4, 3])
+        self.rodar()  # logo depois: ainda na espera, nenhum pedido novo
+        self.assertEqual(len(self.pedidos_ia), 3)
+        self.t += 301  # passou a espera: um novo pedido (busca, Adicionar Vaga) leva as vagas de novo
+        self.rodar()
+        self.assertEqual(self.com_nota(), 4)
+        self.assertIsNone(self.fila.erro())
+
+    def test_outro_erro_como_antes(self):  # US3, cenário 3
+        self.ia_falsa(lambda pedido, **_: (_ for _ in ()).throw(ia.IAErro("chave recusada pelo provedor")))
+        self.pendentes(12)
+        self.rodar()
+        self.assertEqual(len(self.pedidos_ia), 1)
+        self.assertIn("chave recusada", self.fila.erro()["motivo"])  # e o 2º lote nem sai, sem repetir
+
+    def test_forcada_no_meio_passa_na_frente(self):
+        self.ia_falsa()
+        self.pendentes(12)
+        gravar(vaga("f", analise_status="sem_analise"))
+        padrao = ia.responder.side_effect
+
+        def responder(pedido, **kw):
+            if not self.pedidos_ia:  # durante o 1º lote, a pessoa força uma vaga
+                with mock.patch.object(analise, "ligada", return_value=True), \
+                        mock.patch.object(self.fila, "_acordar"):
+                    self.fila.forcar("f")
+            return padrao(pedido, **kw)
+        ia.responder.side_effect = responder
+        self.rodar()
+        ids = [re.findall(r"^### id: (\S+)$", p, re.M) for p in self.pedidos_ia]
+        self.assertEqual(ids[1], ["f"])  # a forçada vai antes do lote seguinte
+        self.assertEqual(self.com_nota(), 13)
+
+
 class TestPausas(unittest.TestCase):
     def test_pausa_ia(self):  # FR-004, US3
         import segredos
@@ -350,6 +510,13 @@ class TestPausas(unittest.TestCase):
                                 ("", 5.0), (None, 5.0)):
             with self.subTest(bruto=bruto), mock.patch.object(segredos, "ler", return_value=bruto):
                 self.assertEqual(analise.pausa_ia(), esperado)
+
+    def test_pausa_lote(self):  # spec 062, FR-005
+        import segredos
+        for bruto, esperado in (("0", 5.0), ("200", 120.0), ("7,5", 7.5), ("30", 30.0), ("abc", 20.0),
+                                ("inf", 20.0), ("", 20.0), (None, 20.0)):
+            with self.subTest(bruto=bruto), mock.patch.object(segredos, "ler", return_value=bruto):
+                self.assertEqual(analise.pausa_lote(), esperado)
 
     def test_pausa_leitura(self):  # FR-003
         f = fonte_falsa()

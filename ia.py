@@ -47,7 +47,13 @@ _trava_estado = threading.Lock()
 
 
 class IAErro(Exception):
-    """Falha ao falar com a IA. A mensagem já é legível, em português e sem chave."""
+    """Falha ao falar com a IA. A mensagem já é legível, em português e sem chave. `limite`: a recusa foi por limite de
+    uso (HTTP 429); `espera`: segundos que o provedor pediu para esperar, quando disse."""
+
+    def __init__(self, mensagem="", limite=False, espera=None):
+        super().__init__(mensagem)
+        self.limite = bool(limite)
+        self.espera = espera
 
 
 # Catálogo (research.md §2). "modelo" é o padrão sugerido: atual, de uso geral e de custo moderado.
@@ -304,6 +310,23 @@ def _texto(adaptador: str, resposta) -> str:
     return texto
 
 
+def _espera_pedida(cabecalhos, corpo: str) -> float | None:
+    """Segundos que o provedor pediu para esperar: `Retry-After` numérico ou `retryDelay` (Gemini) no corpo."""
+    try:
+        valor = cabecalhos.get("Retry-After") if cabecalhos is not None else None
+    except Exception:
+        valor = None
+    if valor is not None:
+        try:
+            s = float(str(valor).strip())
+            if s == s and s >= 0 and s != float("inf"):
+                return s
+        except ValueError:
+            pass
+    m = re.search(r'"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"', corpo or "")
+    return float(m.group(1)) if m else None
+
+
 def _postar(url, cabecalhos, corpo, tempo, modelo=""):
     req = urllib.request.Request(url, data=json.dumps(corpo).encode("utf-8"), method="POST",
                                  headers={**cabecalhos, "User-Agent": "meu-proximo-trampo"})
@@ -311,7 +334,11 @@ def _postar(url, cabecalhos, corpo, tempo, modelo=""):
         with urllib.request.urlopen(req, timeout=tempo) as r:
             bruto = r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
-        raise IAErro(motivo_http(e.code, e.read().decode("utf-8", "replace")[:2000], modelo)) from None
+        texto_erro = e.read().decode("utf-8", "replace")[:2000]
+        motivo = motivo_http(e.code, texto_erro, modelo)
+        if e.code == 429:
+            raise IAErro(motivo, limite=True, espera=_espera_pedida(e.headers, texto_erro)) from None
+        raise IAErro(motivo) from None
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         if isinstance(e, TimeoutError) or "timed out" in str(e):
             raise IAErro("o provedor demorou demais para responder; tente de novo") from None
@@ -369,15 +396,19 @@ def responder(pedido: str, sistema: str | None = None, tempo: float = 600, escol
             texto = _responder_uma(item, pedido, sistema, tempo, chave if escolha is not None else None)
         except IAErro as erro:
             falhas.append({"provedor": item.get("provedor"), "nome": nome_de(item), "modelo": modelo_efetivo(item),
-                           "motivo": str(erro)})
+                           "motivo": str(erro), "limite": erro.limite, "espera": erro.espera})
             continue
         _local.ultima = {"provedor": item["provedor"], "modelo": modelo_efetivo(item), "nome": nome_de(item),
                          "falhas": falhas}
         return texto
     _local.ultima = {"provedor": None, "modelo": "", "nome": "", "falhas": falhas}
+    limite = any(f["limite"] for f in falhas)
+    esperas = [f["espera"] for f in falhas if f["espera"] is not None]
+    espera = max(esperas) if esperas else None
     if len(falhas) == 1:
-        raise IAErro(falhas[0]["motivo"])
-    raise IAErro("nenhuma IA respondeu: " + "; ".join(f"{f['nome']}: {f['motivo']}" for f in falhas))
+        raise IAErro(falhas[0]["motivo"], limite=limite, espera=espera)
+    raise IAErro("nenhuma IA respondeu: " + "; ".join(f"{f['nome']}: {f['motivo']}" for f in falhas),
+                 limite=limite, espera=espera)
 
 
 def _responder_uma(escolha: dict, pedido: str, sistema: str | None, tempo: float, chave: str | None) -> str:
@@ -403,7 +434,7 @@ def _responder_uma(escolha: dict, pedido: str, sistema: str | None, tempo: float
     except IAErro as erro:
         motivo = mascarar(str(erro), chave or "")
         _registrar(escolha, False, motivo)
-        raise IAErro(motivo) from None
+        raise IAErro(motivo, limite=erro.limite, espera=erro.espera) from None
     _registrar(escolha, True, "")
     return texto
 
