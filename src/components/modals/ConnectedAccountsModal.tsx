@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { X, Link2, Loader2, AlertTriangle } from "lucide-react"
 import * as contasApi from "../../services/api/contas"
-import type { Contas, EstadoCandidaturas, ItemCandidatura } from "../../services/api/contas"
+import type { Contas, EstadoCandidaturas, ItemCandidatura, ItemEmail, LeituraEmail, VagaOpcao } from "../../services/api/contas"
 import { mensagemDeErro, ehErroApi } from "../../services/api"
 import { useFerramenta } from "../../contexto/Ferramenta"
 import { useConsulta } from "../../hooks/useConsulta"
@@ -14,6 +14,7 @@ import { ETAPAS, RESULTADOS } from "../../utils/rotulos"
 import { linkSeguro } from "../../utils/formatters"
 import { BTN_MINI } from "../curriculo/Curriculos"
 import LoginGuardado from "./LoginGuardado"
+import ColarEmail from "./ColarEmail"
 
 interface Props {
   onClose: () => void
@@ -38,6 +39,158 @@ function mudanca(i: ItemCandidatura): string {
   return `Nova em Aplicações · ${etapaTexto(i.para)}`
 }
 
+function mudancaEmail(i: ItemEmail): string {
+  if (i.tipo === "mudar") return `${etapaTexto(i.de)} → ${etapaTexto(i.para)}`
+  if (i.tipo === "quadro") return `Vagas Nacionais → ${etapaTexto(i.para)}`
+  if (i.tipo === "anotar") return "Só anotar (a candidatura já está nessa etapa ou adiante)"
+  if (i.tipo === "escolher") return "Escolha a candidatura"
+  return "Não reconheci; escolha a candidatura e a mudança"
+}
+
+const SELECT = "w-full max-w-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs"
+
+interface Escolha {
+  vaga_id?: string
+  tipo_email?: string
+}
+
+/** Escolha completa: vaga (e tipo, no não reconhecido) definidas. */
+function completo(i: ItemEmail, esc: Escolha | undefined): boolean {
+  if (i.tipo === "escolher") return Boolean(esc?.vaga_id)
+  if (i.tipo === "nao_reconhecido") return Boolean(esc?.vaga_id && esc?.tipo_email)
+  return true
+}
+
+function CartaoEmail({
+  item,
+  marcado,
+  escolha,
+  onMarcar,
+  onEscolher,
+}: {
+  item: ItemEmail
+  marcado: boolean
+  escolha: Escolha | undefined
+  onMarcar: (v: boolean) => void
+  onEscolher: (e: Escolha) => void
+}) {
+  const precisaVaga = item.tipo === "escolher" || item.tipo === "nao_reconhecido"
+  const [busca, setBusca] = useState("")
+  const [achadas, setAchadas] = useState<VagaOpcao[]>([])
+  const [sel, setSel] = useState<VagaOpcao | null>(null)
+  const semOpcoes = !item.opcoes.length
+  const vagas = semOpcoes
+    ? sel && !achadas.some((v) => v.id === sel.id)
+      ? [sel, ...achadas]
+      : achadas
+    : item.opcoes
+  const link = linkSeguro(item.url)
+
+  useEffect(() => {
+    if (!precisaVaga || !semOpcoes) return
+    let vivo = true
+    const t = setTimeout(() => {
+      contasApi
+        .vagasParaEscolher(busca.trim())
+        .then((j) => vivo && setAchadas(j.vagas || []))
+        .catch(() => vivo && setAchadas([]))
+    }, 300)
+    return () => {
+      vivo = false
+      clearTimeout(t)
+    }
+  }, [busca, precisaVaga, semOpcoes])
+
+  const escolher = (novo: Escolha) => {
+    const e = { ...escolha, ...novo }
+    onEscolher(e)
+    if (completo(item, e)) onMarcar(true)
+    else onMarcar(false)
+  }
+
+  return (
+    <div className="flex items-start gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+      <input
+        type="checkbox"
+        className="mt-0.5"
+        checked={marcado && completo(item, escolha)}
+        disabled={!completo(item, escolha)}
+        onChange={(ev) => onMarcar(ev.target.checked)}
+        aria-label={`Aplicar: ${item.titulo || item.rotulo}`}
+      />
+      <div className="space-y-1 min-w-0">
+        <p>
+          {item.titulo && (
+            <>
+              <b>{item.titulo}</b> — {item.empresa}
+            </>
+          )}
+          {link && (
+            <>
+              {" · "}
+              <a href={link} target="_blank" rel="noopener noreferrer" className="underline">
+                abrir
+              </a>
+            </>
+          )}
+        </p>
+        <p className={DICA}>
+          {item.rotulo}
+          {item.por_ia ? " · lido com IA" : ""}
+        </p>
+        {item.trecho && <p className={`italic ${DICA}`}>“{item.trecho}”</p>}
+        <p className="font-semibold text-indigo-700 dark:text-indigo-300">{mudancaEmail(item)}</p>
+        {item.avisos?.length > 0 && <p className="text-amber-700 dark:text-amber-300 text-[11px]">{item.avisos.join(" · ")}</p>}
+        {precisaVaga && (
+          <div className="space-y-1">
+            {semOpcoes && (
+              <input
+                type="search"
+                value={busca}
+                onChange={(ev) => setBusca(ev.target.value)}
+                placeholder="Buscar candidatura por título ou empresa"
+                aria-label="Buscar candidatura"
+                className={SELECT}
+              />
+            )}
+            <select
+              value={escolha?.vaga_id || ""}
+              onChange={(ev) => {
+                setSel(vagas.find((v) => v.id === ev.target.value) || null)
+                escolher({ vaga_id: ev.target.value || undefined })
+              }}
+              aria-label="Candidatura"
+              className={SELECT}
+            >
+              <option value="">Escolha a candidatura…</option>
+              {vagas.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.titulo} — {v.empresa}
+                </option>
+              ))}
+            </select>
+            {item.tipo === "nao_reconhecido" && (
+              <select
+                value={escolha?.tipo_email || ""}
+                onChange={(ev) => escolher({ tipo_email: ev.target.value || undefined })}
+                aria-label="Tipo de e-mail"
+                className={SELECT}
+              >
+                <option value="">Escolha a mudança…</option>
+                {contasApi.TIPOS_EMAIL.map((t) => (
+                  <option key={t.valor} value={t.valor}>
+                    {t.rotulo}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /** O ícone do portal vem do código do servidor; como <img>, um SVG não executa script. */
 function Icone({ svg }: { svg: string }) {
   if (!svg || !svg.trim().startsWith("<svg")) return null
@@ -52,6 +205,12 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
   const [marcadas, setMarcadas] = useState<Record<string, boolean>>({})
   const [erro, setErro] = useState("")
   const [ocupado, setOcupado] = useState("")
+  const [textos, setTextos] = useState<string[]>([""])
+  const [leitura, setLeitura] = useState<LeituraEmail | null>(null)
+  const [marcasEmail, setMarcasEmail] = useState<Record<string, boolean>>({})
+  const [escolhas, setEscolhas] = useState<Record<string, Escolha>>({})
+  const temEmail = useRef(false)
+  temEmail.current = Boolean(leitura?.itens.length)
   const antes = useRef<string | undefined>(undefined)
   const fechar = useRef(onClose)
   fechar.current = onClose
@@ -75,7 +234,7 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
       const acabou = anterior !== undefined && contasApi.ATIVAS.includes(anterior) && ee.situacao === "pronta"
       if (acabou && r && !r.itens.length && !r.historico.length && !Object.keys(r.erros || {}).length) {
         aviso.current(`Tudo certo: Aplicações já está em dia com os portais (${r.sem_mudanca || 0} candidatura(s) conferida(s)).`)
-        fechar.current()
+        if (!temEmail.current) fechar.current()
       }
     } catch (err) {
       setErro(
@@ -113,22 +272,64 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
   const grupos: Record<string, ItemCandidatura[]> = {}
   itens.forEach((i) => (grupos[i.plataforma] = grupos[i.plataforma] || []).push(i))
 
+  const itensEmail = leitura?.itens || []
+  const emailMarcado = (i: ItemEmail) => Boolean(marcasEmail[i.chave]) && completo(i, escolhas[i.chave])
+  const nEmail = itensEmail.filter(emailMarcado).length
+  const nTotal = nMarcadas + nEmail
+
+  const aoLer = (l: LeituraEmail) => {
+    setLeitura(l)
+    setEscolhas({})
+    const m: Record<string, boolean> = {}
+    l.itens.forEach((i) => (m[i.chave] = i.marcado && completo(i, undefined)))
+    setMarcasEmail(m)
+  }
+
   const aplicar = () =>
     acao("aplicar", async () => {
       const chaves = itens.filter((i) => marcadas[i.chave]).map((i) => i.chave)
-      if (!chaves.length) return setErro("Marque pelo menos uma candidatura.")
+      const emails = itensEmail.filter(emailMarcado)
+      if (!chaves.length && !emails.length) return setErro("Marque pelo menos uma candidatura.")
       const feitas = itens.filter((i) => chaves.includes(i.chave))
-      const j = await contasApi.aplicar({ chaves })
-      const lista =
-        feitas.slice(0, 3).map((i) => `${i.titulo} → ${etapaTexto(i.para)}`).join("; ") + (feitas.length > 3 ? `; e mais ${feitas.length - 3}` : "")
+      let aplicados = 0
+      let anotados = 0
+      const erros: string[] = []
+      if (chaves.length) {
+        const j = await contasApi.aplicar({ chaves })
+        aplicados += j.aplicados
+        erros.push(...(j.erros || []))
+      }
+      if (emails.length) {
+        const j = await contasApi.aplicarEmails(
+          emails.map((i) => {
+            const esc = escolhas[i.chave]
+            return {
+              chave: i.chave,
+              ...(esc?.vaga_id ? { vaga_id: esc.vaga_id } : {}),
+              ...(esc?.tipo_email ? { tipo_email: esc.tipo_email } : {}),
+            }
+          }),
+        )
+        aplicados += j.aplicados
+        anotados += j.anotados || 0
+        erros.push(...(j.erros || []))
+      }
+      const lista = feitas.length
+        ? ": " + feitas.slice(0, 3).map((i) => `${i.titulo} → ${etapaTexto(i.para)}`).join("; ") + (feitas.length > 3 ? `; e mais ${feitas.length - 3}` : "")
+        : ""
+      const notas = anotados > 0 ? `, ${anotados} só anotada(s)` : ""
       onQuadroMudou()
-      if (j.erros?.length) {
-        setErro("Não deu para gravar: " + j.erros.join(" · "))
-        onAviso(`Aplicações atualizadas (${j.aplicados}): ${lista}. Com erro: ${j.erros.length}.`, "erro")
+      if (erros.length) {
+        setErro("Não deu para gravar: " + erros.join(" · "))
+        onAviso(`Aplicações atualizadas (${aplicados}${notas})${lista}. Com erro: ${erros.length}.`, "erro")
         await carregar()
       } else {
-        onAviso(`Aplicações atualizadas (${j.aplicados}): ${lista}.`)
-        onClose()
+        onAviso(`Aplicações atualizadas (${aplicados}${notas})${lista}.`)
+        setTextos([""])
+        setLeitura(null)
+        setMarcasEmail({})
+        setEscolhas({})
+        if (chaves.length) onClose()
       }
     })
 
@@ -153,7 +354,7 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
               <p className="text-xs text-slate-500">
                 Lê o andamento das suas candidaturas na Gupy e no Indeed, numa janela do navegador só da ferramenta, com o
                 login feito por você. Só leitura: nada é clicado nem enviado nos portais, e só o que você marcar vai para
-                Aplicações.
+                Aplicações. Também lê e-mails que você colar.
               </p>
             </div>
           </div>
@@ -342,6 +543,24 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
             </>
           )}
 
+          <ColarEmail textos={textos} onTextos={setTextos} leitura={leitura} onLeitura={aoLer} disabled={Boolean(ocupado)} />
+
+          {itensEmail.length > 0 && (
+            <section className="space-y-2">
+              <h4 className="font-bold text-sm text-slate-900 dark:text-white">E-mail</h4>
+              {itensEmail.map((i) => (
+                <CartaoEmail
+                  key={i.chave}
+                  item={i}
+                  marcado={Boolean(marcasEmail[i.chave])}
+                  escolha={escolhas[i.chave]}
+                  onMarcar={(v) => setMarcasEmail((m) => ({ ...m, [i.chave]: v }))}
+                  onEscolher={(e) => setEscolhas((m) => ({ ...m, [i.chave]: e }))}
+                />
+              ))}
+            </section>
+          )}
+
           {erro && (
             <p role="alert" className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200 text-xs">
               <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -354,23 +573,25 @@ export default function ConnectedAccountsModal({ onClose, onAviso, onQuadroMudou
           <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
             Fechar
           </button>
-          {itens.length > 0 ? (
+          {itens.length > 0 || itensEmail.length > 0 ? (
             <>
+              {(itens.length > 0 || algum) && (
+                <button
+                  type="button"
+                  disabled={lendo || !podeGravar || Boolean(ocupado)}
+                  onClick={() => acao("ler", async () => { await contasApi.ler(); antes.current = "lendo"; await carregar() })}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50"
+                >
+                  {lendo ? "Lendo…" : itens.length > 0 ? "Ler de novo" : "Atualizar agora"}
+                </button>
+              )}
               <button
                 type="button"
-                disabled={!podeGravar || Boolean(ocupado)}
-                onClick={() => acao("ler", async () => { await contasApi.ler(); antes.current = "lendo"; await carregar() })}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50"
-              >
-                Ler de novo
-              </button>
-              <button
-                type="button"
-                disabled={!nMarcadas || !podeGravar || Boolean(ocupado)}
+                disabled={!nTotal || !podeGravar || Boolean(ocupado)}
                 onClick={aplicar}
                 className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
               >
-                {ocupado === "aplicar" ? "Aplicando…" : nMarcadas ? `Aplicar ${nMarcadas} ${nMarcadas === 1 ? "mudança" : "mudanças"}` : "Nada marcado"}
+                {ocupado === "aplicar" ? "Aplicando…" : nTotal ? `Aplicar ${nTotal} ${nTotal === 1 ? "mudança" : "mudanças"}` : "Nada marcado"}
               </button>
             </>
           ) : (
