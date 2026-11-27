@@ -19,7 +19,24 @@ pessoa lembrar de buscar de novo ou clicar em "Completar descrições" depois da
 LinkedIn ficaram sem descrição e, por isso, sem nota.
 
 A pessoa quer: uma busca por dia, no horário que ela escolher, sem precisar clicar; e, quando um bloqueio interromper,
-que a ferramenta continue sozinha depois da espera, com um limite para não insistir com o portal.
+que a ferramenta continue sozinha depois da espera, num ritmo (a cada 6 horas) que não insista com o portal.
+
+## Clarifications
+
+### Session 2026-11-27
+
+- Q: Se a pessoa já buscou à mão pouco antes do horário, a busca agendada roda mesmo assim? → A: Não; a busca agendada
+  do dia é pulada se houve uma busca manual nas 4 horas antes do horário, com aviso na página.
+- Q: Se o dashboard só liga depois do horário, no mesmo dia, a busca agendada daquele dia roda? → A: Não; perdeu o
+  horário, o dia fica sem busca agendada, e a próxima é a do dia seguinte.
+- Q: Com espera de 24 h, InfoJobs, Vagas.com, JobGether e FullStack nunca seriam retomados no mesmo dia; o que fazer?
+  → A: A espera desses quatro portais depois de um bloqueio passa de 24 para 4 horas (o LinkedIn segue com 6 h; o
+  MyGreenhouse, portal com login fora do agendamento, segue com 24 h), e eles entram na retomada como os outros.
+- Q: Como contar o limite de 2 retomadas quando a espera passa da meia-noite? → A: Não há mais limite de 2: a retomada
+  roda a cada 6 horas enquanto aquele portal não terminar com sucesso (todas as páginas e descrições lidas, sem
+  bloqueio) e para quando terminar ou quando chegar a próxima busca agendada, que assume o lugar dela.
+- Q: Se o dashboard estava desligado na hora da retomada, ela roda ao ligar? → A: Não, igual à busca agendada: a
+  tentativa perdida não roda; a próxima é 6 horas depois da hora perdida (ou a próxima busca agendada).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -38,10 +55,11 @@ como origem e o resultado.
 
 1. **Given** o agendamento ligado para 08:00 e o dashboard ligado, **When** chega 08:00, **Then** a busca roda uma vez
    com os filtros salvos e aparece no relatório como "agendada".
-2. **Given** o computador desligado às 08:00, **When** o dashboard liga às 10:00 do mesmo dia, **Then** a busca do dia
-   roda ao ligar (uma vez), com aviso de que foi fora do horário.
-3. **Given** a pessoa já buscou à mão às 07:30, **When** chega 08:00, **Then** a busca agendada roda mesmo assim (a
-   ferramenta não sabe se os filtros mudaram) [ver Assumptions].
+2. **Given** o computador desligado às 08:00, **When** o dashboard liga às 10:00 do mesmo dia, **Then** a busca
+   agendada daquele dia não roda; a página mostra a próxima (amanhã às 08:00).
+3. **Given** a pessoa já buscou à mão às 07:30, **When** chega 08:00, **Then** a busca agendada do dia não roda e a
+   página mostra "Busca agendada pulada: busca manual às 07:30"; se a busca manual foi às 03:00 (mais de 4 horas
+   antes), a agendada roda.
 4. **Given** uma busca rodando (à mão) às 08:00, **When** chega o horário, **Then** a agendada espera essa terminar e
    não roda duas ao mesmo tempo.
 5. **Given** o agendamento desligado, **When** chega o horário, **Then** nada acontece.
@@ -53,8 +71,8 @@ como origem e o resultado.
 Com "Continuar de onde parou" marcado, quando um portal bloqueia no meio da busca (agendada ou manual), a ferramenta
 guarda o que faltou daquele portal (as páginas de resultado não lidas e as descrições pendentes). Quando a espera
 acaba, ela retoma só isso, com as pausas de sempre, e as vagas que ganharem descrição recebem a nota da análise
-automática. Se o portal bloquear de novo na retomada, ela espera outra vez e tenta mais uma; na terceira, para e mostra
-o aviso até a pessoa pedir.
+automática. Se o portal bloquear de novo na retomada, ela tenta de novo 6 horas depois, e assim por diante, até o
+portal terminar com sucesso ou até a próxima busca agendada, que assume o lugar dela.
 
 **Why this priority**: é o que tira da pessoa o trabalho de voltar depois de 6 horas; sem isso, a busca agendada perde
 metade do valor nos dias de bloqueio.
@@ -68,13 +86,15 @@ falso), a retomada lê o que faltou, e as vagas ganham descrição e nota.
    6 horas acaba, **Then** a ferramenta lê essas descrições (com a pausa do LinkedIn) e a análise dá as notas.
 2. **Given** o bloqueio veio antes de ler todas as páginas de resultado do LinkedIn, **When** a espera acaba, **Then**
    a retomada lê as páginas que faltaram, além das descrições.
-3. **Given** um novo bloqueio na retomada, **When** ele acontece, **Then** a ferramenta espera de novo e faz no máximo
-   mais uma retomada naquele dia; na terceira vez, para e a página mostra "LinkedIn bloqueou de novo; retome quando
-   quiser".
-4. **Given** a caixa desmarcada, **When** um portal bloqueia, **Then** o comportamento é o de hoje (espera e nada de
+3. **Given** um novo bloqueio na retomada, **When** ele acontece, **Then** a ferramenta marca a próxima retomada para
+   6 horas depois e a página mostra "LinkedIn bloqueou de novo; nova tentativa às HH:MM".
+4. **Given** a retomada leu todas as páginas e descrições que faltavam sem bloqueio, **When** ela termina, **Then** não
+   há nova retomada daquele portal até o próximo bloqueio.
+5. **Given** a caixa desmarcada, **When** um portal bloqueia, **Then** o comportamento é o de hoje (espera e nada de
    retomada sozinha).
-5. **Given** a busca agendada do dia seguinte chegando enquanto ainda há retomada pendente, **When** chega o horário,
-   **Then** a busca do dia substitui a retomada (ela já inclui o portal, se a espera tiver acabado).
+6. **Given** a busca agendada do dia seguinte chegando enquanto ainda há retomada pendente, **When** chega o horário,
+   **Then** a busca do dia substitui a retomada (ela já inclui o portal, se a espera tiver acabado) e as retomadas
+   seguintes passam a ser as dessa busca.
 
 ---
 
@@ -96,13 +116,16 @@ espera e, depois dela, o resultado.
 
 ### Edge Cases
 
-- Dashboard desligado no horário e o dia todo: a busca daquele dia não roda; no dia seguinte, a do novo dia.
-- Dashboard desligado no fim da espera: a retomada roda quando o dashboard ligar, se ainda for o mesmo dia e dentro do
-  limite de 2.
+- Dashboard desligado no horário (o dia todo ou só naquela hora): a busca daquele dia não roda; no dia seguinte, a do
+  novo dia.
+- Dashboard desligado na hora da retomada: aquela tentativa não roda (mesma tolerância de 15 minutos da busca agendada);
+  a próxima fica para 6 horas depois da hora perdida, se a próxima busca agendada ainda não tiver rodado.
+- Busca manual com retomada pendente: se a busca manual incluir o portal (espera já acabada), ela assume o lugar da
+  retomada, como a busca agendada.
 - Portais com login (MyGreenhouse, spec 041): ficam de fora da busca agendada e da retomada, como na busca pelo
   terminal (rodam só no botão Buscar), com aviso.
-- Portal com espera de 24 horas (InfoJobs, Vagas.com, JobGether, FullStack): a retomada só acontece se a espera acabar
-  no mesmo dia; senão, a busca agendada do dia seguinte cobre.
+- InfoJobs, Vagas.com, JobGether e FullStack: a espera depois de um bloqueio passa a ser de 4 horas (FR-012), e a
+  retomada vale para eles como para o LinkedIn.
 - Busca sem IA ligada: a busca agendada grava as vagas sem nota, como a manual.
 - A pessoa muda o horário depois que a busca do dia já rodou: a nova hora vale a partir do dia seguinte.
 - Fuso e horário de verão: o horário é o do computador.
@@ -115,28 +138,39 @@ espera e, depois dela, o resultado.
   por dia) e a caixa "Continuar de onde parou", desligados por padrão.
 - **FR-002**: Com o agendamento ligado e o dashboard ligado, a ferramenta MUST rodar uma busca por dia no horário, com
   os filtros salvos, como a busca da página (análise automática incluída), e no máximo uma busca agendada por dia.
-- **FR-003**: Se o dashboard ligar depois do horário, no mesmo dia, sem a busca agendada daquele dia ter rodado, a
-  ferramenta MUST rodá-la ao ligar, uma vez.
+- **FR-002a**: A busca agendada do dia MUST ser pulada se houve uma busca manual (página, chat ou terminal) nas 4 horas
+  antes do horário; a página e o resultado da última execução MUST mostrar que ela foi pulada e por quê.
+- **FR-003**: A busca agendada MUST rodar só se o dashboard estiver ligado no horário (tolerância de 15 minutos, para o
+  computador que sai do modo de espera); se o dashboard ligar depois disso, a busca agendada daquele dia MUST NOT rodar,
+  e a próxima é a do dia seguinte.
 - **FR-004**: A busca agendada MUST NOT rodar ao mesmo tempo que outra busca; ela espera a que estiver rodando.
 - **FR-005**: A busca agendada MUST deixar de fora os portais com login, com aviso, e MUST respeitar as esperas em
   andamento: o portal em espera fica de fora daquela busca sem perguntar (a escolha da pessoa já está no agendamento).
 - **FR-006**: Com "Continuar de onde parou" marcado, quando um portal bloqueia durante uma busca (agendada ou manual),
   a ferramenta MUST guardar o que faltou daquele portal (páginas de resultado e descrições pendentes) e retomá-lo
   quando a espera acabar, com as pausas e as regras do portal (constituição VI).
-- **FR-007**: A ferramenta MUST fazer no máximo 2 retomadas por portal por dia; depois, MUST parar e mostrar o aviso
-  até a pessoa pedir.
+- **FR-007**: Se o portal bloquear de novo na retomada, a ferramenta MUST marcar outra retomada para 6 horas depois, e
+  repetir enquanto o portal não terminar com sucesso (todas as páginas e descrições que faltavam lidas, sem bloqueio).
+  As retomadas MUST parar quando o portal terminar com sucesso ou quando a próxima busca agendada rodar (ela assume o
+  lugar delas); nunca mais de uma retomada do mesmo portal ao mesmo tempo. Uma retomada perdida porque o dashboard
+  estava desligado MUST NOT rodar ao ligar (tolerância de 15 minutos, como no FR-003); a próxima tentativa é 6 horas
+  depois da hora perdida.
 - **FR-008**: As vagas que ganharem descrição na retomada MUST entrar na análise automática (spec 062).
 - **FR-009**: A página MUST mostrar a próxima busca agendada, a retomada esperando (portal e hora, com cancelar) e o
   resultado da última busca agendada e das retomadas.
 - **FR-010**: O agendamento MUST ficar no `config.json` (sem dados pessoais além do horário) e valer também para quem
   usa a ferramenta pelo terminal, que pode ver e mudar o agendamento por comando.
 - **FR-011**: A documentação (README, AGENTS.md, `dash/API.md`, `.env.exemplo` se mudar) MUST descrever o
-  agendamento, a retomada e o limite de 2.
+  agendamento, a retomada a cada 6 horas até terminar com sucesso e a espera nova de 4 horas.
+- **FR-012**: A espera depois de um bloqueio no InfoJobs, no Vagas.com, no JobGether e na FullStack MUST passar de 24
+  para 4 horas (a busca manual, a agendada e a retomada respeitam a mesma espera). O LinkedIn segue com 6 horas e o
+  MyGreenhouse com 24 horas.
 
 ### Key Entities
 
 - **Agendamento**: ligado, horário, "continuar de onde parou"; parte da configuração da busca.
-- **Retomada**: portal, hora em que a espera acaba, o que faltou (páginas e descrições), tentativas no dia.
+- **Retomada**: portal, busca de origem, hora da próxima tentativa, o que faltou (páginas e descrições), tentativas
+  feitas.
 - **Execução agendada**: data, horário real, origem (agendada, ao ligar, retomada), resultado.
 
 ## Success Criteria *(mandatory)*
@@ -147,15 +181,16 @@ espera e, depois dela, o resultado.
   testados.
 - **SC-002**: Depois de um bloqueio com "Continuar de onde parou", pelo menos 90% das descrições pendentes daquele
   portal são lidas e ganham nota no mesmo dia, sem a pessoa clicar (quando o portal não bloqueia de novo).
-- **SC-003**: Nunca mais de 2 retomadas por portal por dia, e nunca duas buscas ao mesmo tempo.
+- **SC-003**: Nunca duas buscas (ou retomadas) ao mesmo tempo, nunca uma retomada antes de 6 horas da anterior do
+  mesmo portal, e nenhuma retomada depois que o portal terminou com sucesso ou que a próxima busca agendada rodou.
 - **SC-004**: A pessoa sabe, pela página, quando é a próxima busca e o que aconteceu na última, sem abrir o terminal.
 
 ## Assumptions
 
 - A busca agendada só roda com o servidor do dashboard ligado (a ferramenta é local); não há serviço do sistema
   operacional (Agendador de Tarefas do Windows) nesta spec.
-- A busca agendada roda mesmo que a pessoa tenha buscado à mão antes no mesmo dia; ela custa os mesmos pedidos de uma
-  busca manual. Se isso incomodar, o clarify pode mudar para "pula se já houve busca nas últimas N horas".
+- A busca manual usa os mesmos filtros salvos que a agendada; por isso, uma busca manual nas 4 horas antes do horário
+  substitui a agendada do dia (clarify de 27/11).
 - "Continuar de onde parou" vale para qualquer portal que entra em espera, mas o caso que motivou a spec é o LinkedIn
   (espera de 6 horas).
 - A retomada não pergunta antes de seguir (o `--confirmar-espera` da busca pelo terminal): marcar a caixa é a
