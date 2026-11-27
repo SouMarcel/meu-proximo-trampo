@@ -870,34 +870,48 @@ def diagnosticar(rascunho: dict | None, respostas: dict | None) -> list[dict]:
               "pergunta:ferramentas")
     if not r.get("idiomas") and not resp.get("idiomas"):
         achar("fraco", "Idiomas vazios.", "Quais idiomas você fala e em que nível?", "pergunta:idiomas")
-    for e in exps:
-        nome = " — ".join(x for x in (e.get("cargo"), e.get("empresa")) if x) or "um cargo"
+    cf = r.get("conflitos") or []
+    escolhido = lambda v: _escolher(str(v or ""), cf) if CONFLITO.search(str(v or "")) else (v or "")
+    # spec 065: datas e cargos com conflito já escolhido valem pelo valor escolhido (antes, a data em conflito sumia
+    # e o Diagnóstico via um intervalo onde não havia)
+    resolvidas = [{k: escolhido(e.get(k)) for k in ("cargo", "empresa", "inicio", "fim")} for e in exps]
+    for e, er in zip(exps, resolvidas):
+        nome = " — ".join(x for x in (er["cargo"], er["empresa"]) if x and not CONFLITO.search(x)) or "um cargo"
         sem_mes = lambda v: v and not CONFLITO.search(v) and not _mes(v)  # conflito: a pessoa ainda vai escolher
-        if sem_mes(e.get("inicio")) or (not _atual(e.get("fim")) and sem_mes(e.get("fim"))):
+        if sem_mes(er["inicio"]) or (not _atual(er["fim"]) and sem_mes(er["fim"])):
             achar("fraco", f"Datas sem mês em {nome}.", "Em que mês você começou e saiu desse cargo?")
         if not e.get("itens"):
             achar("fraco", f"Sem descrição do que você fazia em {nome}.", "O que você fazia e entregava nesse cargo?")
         for campo in ("inicio", "fim"):  # spec 065: a opção escolhida trouxe explicação junto da data
             bruto = str(e.get(campo) or "")
-            valor = _escolher(bruto, r.get("conflitos") or []) if CONFLITO.search(bruto) else ""
+            valor = _escolher(bruto, cf) if CONFLITO.search(bruto) else ""
             if valor and not CONFLITO.search(valor) and not _so_data(valor):
                 achar("fraco", f"A data escolhida em {nome} traz texto a mais: {valor}.", "Qual é só a data?", "conflitos")
     for i in range(min(3, len(exps))):
         if resp.get(f"conquista:{i}") and not re.search(r"\d", str(resp.get(f"medida:{i}") or "")):
-            achar("info", f"A conquista em {exps[i].get('cargo') or 'um cargo'} está sem medida.",
+            achar("info", f"A conquista em {resolvidas[i]['cargo'] or 'um cargo'} está sem medida.",
                   "Houve algum número (prazo, volume, custo, satisfação) que mostre o resultado? Só se tiver certeza.",
                   f"pergunta:medida:{i}")
     for linha in resp.get("ferramentas") or []:
         if not re.search(r"[—\-–:]\s*\S", linha):
             achar("fraco", f"Ferramenta sem nível: {linha}.", f"Qual o seu nível em {linha}?", "pergunta:ferramentas")
-    datas = sorted(((_mes(e.get("inicio")), _mes(e.get("fim")) if not _atual(e.get("fim")) else None, e)
-                    for e in exps if _mes(e.get("inicio"))), key=lambda x: x[0])
-    for (ini_a, fim_a, a), (ini_b, _, b) in zip(datas, datas[1:]):
-        if fim_a:
-            meses = (ini_b[0] - fim_a[0]) * 12 + ini_b[1] - fim_a[1]
+    datas = sorted(((_mes(x["inicio"]), None if _atual(x["fim"]) else _mes(x["fim"]), x)
+                    for x in resolvidas if _mes(x["inicio"])), key=lambda d: d[0])
+    # intervalo: do fim mais tardio até ali (um cargo longo cobre os que começaram e terminaram dentro dele)
+    fim_max, quem, aberto, pular = None, None, False, False
+    for ini, fim, x in datas:
+        if quem and not aberto and not pular:
+            meses = (ini[0] - fim_max[0]) * 12 + ini[1] - fim_max[1]
             if meses > 6:
-                achar("info", f"Intervalo de {meses} meses entre {a.get('cargo')} e {b.get('cargo')}.",
+                achar("info", f"Intervalo de {meses} meses entre {quem['cargo']} e {x['cargo']}.",
                       "O que você fez nesse período (curso, projeto, pausa)? Só se quiser contar.")
+        pular = False
+        if _atual(x["fim"]):
+            aberto = True
+        elif fim is None:
+            pular = True  # fim ilegível: não dá para afirmar intervalo logo depois dele
+        elif fim_max is None or fim > fim_max:
+            fim_max, quem = fim, x
     for c in r.get("conflitos") or []:
         if c.get("escolha") is None:
             achar("falta", f"Conflito sem escolha: {c.get('campo')}.", "Qual dos valores está certo?", "conflitos")

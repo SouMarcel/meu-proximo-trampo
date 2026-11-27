@@ -848,6 +848,23 @@ class TestConflitosSeguros(Base):
         sem_escolha = pp.diagnosticar(self.rascunho(opcoes=sujo, escolha=None), {})
         self.assertFalse(any("traz texto a mais" in a["mensagem"] for a in sem_escolha))
 
+    def test_intervalo_usa_a_data_escolhida_e_cargo_longo(self):
+        exp = lambda cargo, ini, fim: {"cargo": cargo, "empresa": "E", "inicio": ini, "fim": fim,
+                                       "itens": [{"texto": "x", "fonte": "cv.docx"}], "fonte": "cv.docx"}
+        r = {"origem": "ia", "experiencias": [exp("C", "05/2021", "08/2022"), exp("{{conflito:0}}", "{{conflito:1}}", "05/2021"),
+                                              exp("A", "10/2018", "05/2019")],
+             "conflitos": [{"campo": "cargo", "opcoes": [{"valor": "Consultor B"}], "escolha": 0},
+                           {"campo": "início", "opcoes": [{"valor": "01/2015"}, {"valor": "05/2019"}], "escolha": 1}]}
+        msgs = " ".join(a["mensagem"] for a in pp.diagnosticar(r, {}))
+        self.assertNotIn("Intervalo", msgs)  # a data escolhida (05/2019) fecha o buraco
+        self.assertNotIn("{{conflito", msgs)
+        r["conflitos"][1]["escolha"] = None  # sem escolha: não há como afirmar nada sobre B; o buraco A→C aparece
+        self.assertIn("Intervalo de 24 meses entre A e C", " ".join(a["mensagem"] for a in pp.diagnosticar(r, {})))
+        longo = {"origem": "ia", "conflitos": [], "experiencias": [exp("Longo", "01/2010", "12/2020"),
+                                                                  exp("Curto", "01/2012", "06/2012"),
+                                                                  exp("Depois", "02/2021", "atual")]}
+        self.assertNotIn("Intervalo", " ".join(a["mensagem"] for a in pp.diagnosticar(longo, {})))
+
 
 class TestGravarConfereVersao(Base):
     """Spec 065, FR-012: PUT /api/perfil recusa quando o perfil mudou com a revisão aberta."""
