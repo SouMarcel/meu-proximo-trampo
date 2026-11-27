@@ -21,8 +21,8 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   `dash/dados/`, `.cache/` e `.env` (chaves de API e logins de portal). Nunca os coloque num commit.
 - **Respeite os portais**: consultas espaçadas, só o necessário; no Indeed, no LinkedIn, no InfoJobs, no
   Vagas.com, na Nerdin e na EY, só a busca pública, sem login nem a conta da pessoa, parando no primeiro
-  bloqueio. Depois de um bloqueio, o LinkedIn fica 6 horas de fora (o InfoJobs e o Vagas.com, 24 horas),
-  e a busca pergunta antes de seguir sem ele (`vagas.py buscar` sai com código 5; repita com
+  bloqueio. Depois de um bloqueio, o portal fica de fora pelo tempo do `<PORTAL>_ESPERA` no `.env` (minutos,
+  60 a 2880, padrão 360 = 6 horas; spec 064), e a busca pergunta antes de seguir sem ele (`vagas.py buscar` sai com código 5; repita com
   `--confirmar-espera` só com o OK da pessoa). A pausa de cada portal que lê páginas é ajustável no
   `.env` (`<PORTAL>_PAUSA`, de 3 a 60 s; exemplos em `.env.exemplo`); o Forçar verificar lê uma vaga por vez, com essa
   pausa entre leituras (no LinkedIn, `LINKEDIN_FORCAR_PAUSA`, 30 a 600 s, padrão 60), e manda até 3 vagas por pedido à IA,
@@ -31,9 +31,9 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   vaga aguarda e volta sozinha (spec 057). O JobGether entra só pela API que o
   portal oferece a assistentes de IA; os termos dele proíbem acesso automatizado, e ele vem ligado por padrão por
   decisão registrada (constituição VI, "Termos contrários", spec 030); a página da vaga não é lida, e no bloqueio
-  ele fica 24 horas de fora (`JOBGETHER_PAUSA`, de 2 a 60 s). A FullStack também tem termos que proíbem acesso
+  ele fica em espera (`JOBGETHER_PAUSA`, de 2 a 60 s). A FullStack também tem termos que proíbem acesso
   automatizado e não tem API oficial: entra pelos pedidos públicos que a página do portal faz, desligada por padrão
-  (spec 040), e no bloqueio fica 24 horas de fora. **Empresas acompanhadas** (spec 042): a página de vagas de
+  (spec 040), e no bloqueio fica em espera. **Empresas acompanhadas** (spec 042): a página de vagas de
   qualquer empresa (Greenhouse, Lever, Ashby, Teamtailor, o site da EY, que deixou de ser portal, ou a página própria,
   lida pela IA da pessoa só quando muda e só com o texto público dela), um pedido por empresa por busca. **Busca com login** (constituição VI, spec 041): portais que só
   mostram a busca depois do login (o MyGreenhouse Jobs, com termos contrários) ficam em "Portais com login", desligados
@@ -81,6 +81,8 @@ OpenCode e outros assistentes que leem `AGENTS.md`. Responda e escreva em portug
   `PY dash/banco.py repetidas` (a mesma vaga em vários portais, com a empresa escrita de outro jeito, spec 058: mostra os
   grupos; só junta com `--gravar` e o OK da pessoa), `PY dash/banco.py documentos-orfaos` (currículos, cartas e
   respostas de vagas que saíram do quadro ou foram arquivadas, spec 061: mostra; só apaga com `--gravar` e o OK da pessoa),
+  `PY vagas.py agendamento` (busca agendada e retomada, spec 064: mostra; `--ligar HH:MM`, `--desligar`,
+  `--continuar sim|nao` e `--cancelar-retomada <portal>` só com o OK da pessoa),
   `PY consultar_gupy.py <ferramenta> chave=valor …` (perguntas pontuais à Gupy sem a integração
   MCP) e `python iniciar.py` (abre o dashboard em http://127.0.0.1:8765). Perfil: `PY primeiros_passos.py extrair <arquivo>` (texto de
   currículo ou LinkedIn sem documentos de identificação), `diagnostico [perfil.md]` e

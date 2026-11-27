@@ -89,7 +89,7 @@ faltaram e as descrições pendentes; sem novo bloqueio, a retomada some.
 
 ## Phase 5: Fechamento
 
-- [ ] T010 Documentação: `dash/API.md` (3.3b e origem no estado da busca), `README.md` (agendamento, retomada, esperas
+- [X] T010 Documentação (também a skill buscar-vagas, sem as 24 horas): `dash/API.md` (3.3b e origem no estado da busca), `README.md` (agendamento, retomada, esperas
   no `.env`, fim das "24 horas"), `AGENTS.md`, `.env.exemplo` (as seis `<PORTAL>_ESPERA`), docstring do `vagas.py`
   (FR-011).
 - [ ] T011 Validação: suíte inteira, typecheck e build do front, merge na branch pessoal, front copiado para

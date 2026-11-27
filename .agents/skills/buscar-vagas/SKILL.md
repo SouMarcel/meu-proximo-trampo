@@ -332,7 +332,7 @@ busca pública de cada site (`fontes/infojobs.py`, `fontes/vagascom.py`), sem lo
 - no máximo 30 descrições de cada portal por busca (as outras ficam com **descrição pendente**);
 - os termos do InfoJobs não autorizam robôs: ele está na busca por escolha da pessoa, que pode
   desligá-lo no painel; não leia páginas do InfoJobs por conta própria fora dos scripts;
-- no primeiro bloqueio, o portal sai da busca e fica **24 horas em espera**, com a mesma pergunta do
+- no primeiro bloqueio, o portal sai da busca e fica **em espera** (`<PORTAL>_ESPERA`, padrão 6 horas), com a mesma pergunta do
   LinkedIn (código 5).
 
 As **empresas acompanhadas** (`fontes/ats.py`, specs 031 e 042) aceitam a página de vagas de qualquer empresa:
@@ -353,7 +353,7 @@ mesmos pedidos públicos que a página do portal faz (`fontes/fullstack.py`), se
 - só para quem mora no Brasil; a lista do país é lida uma vez por busca para todos os cargos; cargo em português não
   acha nada;
 - descrição pelo detalhe da vaga (até 30 por busca); não abra páginas da FullStack por conta própria fora dos scripts;
-- no primeiro bloqueio, sai da busca e fica **24 horas em espera** (código 5).
+- no primeiro bloqueio, sai da busca e fica **em espera** (`<PORTAL>_ESPERA`, padrão 6 horas) (código 5).
 
 O MyGreenhouse Jobs (`my.greenhouse.io`, a busca entre as empresas do Greenhouse) é um **portal com login**
 (`fontes/mygreenhouse.py`, spec 041; constituição VI, "Busca com login"):
@@ -372,7 +372,7 @@ assistentes de IA (`fontes/jobgether.py`), sem chave, sem login e sem cookies:
 - na busca nacional, traz as remotas abertas a quem mora no país dela; na internacional, as de cada país e as do
   "mundo todo"; cargo em português não acha nada;
 - as vagas vêm sem descrição (a página não abre para a ferramenta);
-- no primeiro bloqueio, sai da busca e fica **24 horas em espera** (código 5).
+- no primeiro bloqueio, sai da busca e fica **em espera** (`<PORTAL>_ESPERA`, padrão 6 horas) (código 5).
 
 As **empresas acompanhadas** (Greenhouse, Lever e Ashby, `fontes/ats.py`, lista `empresas` do `config.json`) rodam
 nas duas áreas: na nacional, as remotas abertas a quem mora no país e as presenciais ou híbridas na cidade; na

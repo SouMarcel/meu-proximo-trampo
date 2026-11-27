@@ -367,6 +367,20 @@ a página aberta pela extensão Live Server (`dash/front/index.html`); e o
    se a última foi há menos de 6 horas, a página pede confirmação. Se o LinkedIn estiver em espera
    depois de um bloqueio, a página avisa até que horas e pergunta se busca só com os outros portais.
 
+   **Busca agendada** (Filtros da busca → aba **Agendamento**): marque "Buscar todo dia" e escolha o
+   horário; com o dashboard ligado, a busca roda sozinha uma vez por dia, com os filtros salvos e a
+   análise automática, sem as perguntas do botão. Ela não roda se o dashboard estava desligado no
+   horário (há uma tolerância de 15 minutos, para o computador que sai do modo de espera) nem se você
+   buscou à mão nas 4 horas antes. Portais com login ficam de fora (rodam só no botão Buscar). A caixa
+   **Continuar de onde parou** cuida dos bloqueios: quando um portal bloqueia no meio de uma busca
+   (agendada, pela página, pelo terminal ou pelo chat), a ferramenta guarda as consultas que faltaram e,
+   a cada 6 horas, tenta de novo só isso e as descrições pendentes daquele portal, até ele terminar, até
+   a próxima busca agendada ou, sem busca agendada, por 24 horas. A tentativa que cair com o dashboard
+   desligado não roda ao ligar; fica para 6 horas depois. Abaixo de Buscar vagas, um quadro mostra a
+   próxima busca, o que aconteceu hoje e as retomadas marcadas, com Cancelar. Pelo terminal:
+   `vagas.py agendamento` (mostra), `--ligar 08:00`, `--desligar`, `--continuar sim|nao` e
+   `--cancelar-retomada linkedin`.
+
    Pelo terminal também dá, com o Python do ambiente que o `iniciar.py` preparou:
 
    ```bash
@@ -795,7 +809,7 @@ Para instalar à mão, no Claude Code:
   "Descrição pendente", sem nota, e o texto delas é lido primeiro na busca seguinte. Sem esperar a
   próxima busca, o botão **Completar descrições** (no topo de Vagas Nacionais) ou `vagas.py completar`
   lê só essas descrições, sem buscar vagas novas, com o mesmo limite e a mesma pausa; durante a
-  espera de 6 horas ele fica desligado e mostra o horário.
+  espera depois de um bloqueio ele fica desligado e mostra o horário.
   - **O limite do LinkedIn é por rede (IP)**, não por pessoa: quem está na mesma rede (casa,
     escritório, Wi-Fi compartilhado) divide a mesma cota.
   - **Bloqueado com frequência?** Ponha `LINKEDIN_PAUSA=10` (segundos) no arquivo `.env` da raiz:
@@ -806,8 +820,8 @@ Para instalar à mão, no Claude Code:
     nova tentativa, e os outros portais seguem. O aviso traz o motivo: "excesso de pedidos" (espere);
     "recusa automática, costuma ser a rede" (VPN, Wi-Fi corporativo ou internet compartilhada: outra
     rede costuma resolver); ou "pediu login".
-  - Depois de um bloqueio, o LinkedIn fica **6 horas em espera**: nesse período nenhum pedido vai a
-    ele, e a página, o terminal e o chat perguntam antes de buscar só com os outros portais.
+  - Depois de um bloqueio, o LinkedIn fica **em espera** (6 horas; ajustável com `LINKEDIN_ESPERA`): nesse
+    período nenhum pedido vai a ele, e a página, o terminal e o chat perguntam antes de buscar só com os outros portais.
   - Com mais de 5 cargos e o LinkedIn ou o Indeed ligados, o painel de filtros e a busca avisam do
     risco de bloqueio (dá para salvar mesmo assim).
 
@@ -839,8 +853,8 @@ Para instalar à mão, no Claude Code:
   - a descrição vem da página da vaga, só para as que entram no dashboard (até 30 por busca);
   - pausa sorteada de 3 a 7 segundos entre os pedidos;
   - se o InfoJobs recusar, limitar ou pedir login, ele sai daquela busca sem nova tentativa e fica
-    **24 horas em espera**: nesse período nenhum pedido vai a ele, e a página, o terminal e o chat
-    perguntam antes de buscar só com os outros portais.
+    **em espera** (6 horas; `INFOJOBS_ESPERA`): nesse período nenhum pedido vai a ele, e a página, o terminal e o
+    chat perguntam antes de buscar só com os outros portais.
 
   A candidatura é sempre no próprio InfoJobs.
 - A busca no Vagas.com (`vagas.com.br`, vagas de todas as áreas no Brasil) é uma consulta não oficial
@@ -850,7 +864,7 @@ Para instalar à mão, no Claude Code:
   - ficam só as vagas cujo título bate com o cargo;
   - a lista só diz quando a vaga é 100% home office; o modelo das outras fica para a análise com IA;
   - a descrição vem da página da vaga (até 30 por busca);
-  - a pausa e a espera de 24 horas depois de um bloqueio são as mesmas do InfoJobs.
+  - a pausa e a espera depois de um bloqueio (`VAGASCOM_ESPERA`) seguem as regras do InfoJobs.
 
   A candidatura é sempre no próprio Vagas.com.
 - A busca no JobGether (`jobgether.com`, vagas remotas de empresas do mundo todo) usa a API oficial que o portal
@@ -865,7 +879,7 @@ Para instalar à mão, no Claude Code:
   - A lista não traz a descrição, e a página da vaga não abre para a ferramenta: as vagas entram sem descrição, e a
     nota da IA fica provisória. Use "Forçar verificar" ou cole o texto da vaga.
   - Pausa de 2 segundos entre os pedidos (`JOBGETHER_PAUSA`, de 2 a 60). Se o JobGether recusar ou limitar, ele sai
-    daquela busca sem nova tentativa e fica **24 horas em espera**, como o InfoJobs.
+    daquela busca sem nova tentativa e fica **em espera** (`JOBGETHER_ESPERA`), como o InfoJobs.
   - Um link `jobgether.com/offer/…` colado no Adicionar Vaga abre o formulário para você completar, com o mesmo id
     da busca. A candidatura assistida não funciona no `jobgether.com`.
 
@@ -893,7 +907,7 @@ Para instalar à mão, no Claude Code:
   - A descrição vem do detalhe da vaga, só para as que entram no dashboard (até 30 por busca). O e-mail do
     recrutador que o portal devolve não é guardado.
   - Pausa sorteada de 3 a 7 segundos; se a FullStack recusar ou limitar, ela sai daquela busca sem nova tentativa
-    e fica **24 horas em espera**, como o JobGether.
+    e fica **em espera** (`FULLSTACK_ESPERA`), como o JobGether.
   - Um link `talent.fullstack.com/jobs/…` colado no Adicionar Vaga entra com o mesmo id da busca.
 
   A candidatura é no próprio portal da FullStack.
@@ -911,7 +925,7 @@ Para instalar à mão, no Claude Code:
   - A vaga tem o mesmo id das empresas acompanhadas (não duplica) e oferece "Acompanhar empresa". A descrição vem da
     página pública da vaga no Greenhouse, sem a sua sessão (até 30 por busca).
   - Pausa sorteada de 3 a 7 segundos (`MYGREENHOUSE_PAUSA`, de 3 a 60). Se o portal recusar ou limitar, ele sai da
-    busca sem nova tentativa e fica **24 horas em espera**. Captcha, login não feito ou página diferente da esperada
+    busca sem nova tentativa e fica **em espera** (`MYGREENHOUSE_ESPERA`). Captcha, login não feito ou página diferente da esperada
     deixam o portal de fora só daquela busca, com aviso.
 - **Pausa por portal:** cada portal que lê páginas (LinkedIn, Nerdin, InfoJobs, Vagas.com, FullStack, MyGreenhouse
   Jobs e o site da EY, nas empresas acompanhadas) tem a sua pausa, ajustável no arquivo `.env` da raiz com `<PORTAL>_PAUSA=N` (`LINKEDIN_PAUSA`, `NERDIN_PAUSA`,
@@ -919,6 +933,10 @@ Para instalar à mão, no Claude Code:
   para cada um, com o padrão e o mínimo: copie a linha e tire o `#` do começo. O JobGether, que usa a API
   oficial, tem `JOBGETHER_PAUSA`, de 2 a 60 (padrão 2). Aumente só a do portal
   que estiver bloqueando; vale a partir da busca seguinte, e o começo da busca mostra a pausa em uso.
+- **Espera por portal:** depois de um bloqueio, o portal fica de fora das buscas por um tempo, ajustável no `.env`
+  com `<PORTAL>_ESPERA=N` em minutos, de 60 a 2880 (padrão 360, 6 horas): `LINKEDIN_ESPERA`, `INFOJOBS_ESPERA`,
+  `VAGASCOM_ESPERA`, `JOBGETHER_ESPERA`, `FULLSTACK_ESPERA` e `MYGREENHOUSE_ESPERA`. Fora da faixa, vale o limite mais
+  próximo. Mudar o valor vale na hora, inclusive para a espera que já está correndo.
 - **Pausas da IA:** o Forçar verificar manda até 3 vagas por pedido à IA, com `FORCAR_PAUSA` (0 a 60 s, padrão 5)
   entre pedidos; a análise automática depois da busca manda lotes com `ANALISE_PAUSA` (5 a 120 s, padrão 20) entre
   eles. Se o provedor recusar por limite de uso (erro 429, comum nos planos gratuitos), ela espera o tempo que ele
