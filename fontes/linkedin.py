@@ -6,7 +6,7 @@ cidade com raio ou "Worldwide") e o modelo de trabalho do grupo; a janela de tem
 filtro do próprio LinkedIn. A descrição vem da página pública da vaga, só das vagas que vão para o relatório,
 no máximo MAX_DESCRICOES por busca; as outras ficam pendentes para a próxima. Pausa de 3 a 7 segundos entre os
 pedidos (LINKEDIN_PAUSA=N no .env aumenta para N a N+4, com N de 3 a 60) e, no primeiro bloqueio (limite de consultas ou pedido de login), o LinkedIn fica de fora pelo resto da busca,
-sem nova tentativa (constituição, princípio VI), e também das buscas das 6 horas seguintes (a espera, gravada em
+sem nova tentativa (constituição, princípio VI), e também das buscas da espera seguinte (LINKEDIN_ESPERA, padrão 6 horas, gravada em
 .cache/). O aviso traz o motivo provável.
 
 Cada pedido ao LinkedIn (busca, descrição, link e post colados) entra no registro .cache/linkedin-pedidos.json
@@ -40,7 +40,7 @@ POR_PAIS = True
 GLOBAL = True  # também na consulta "mundo todo" (Worldwide)
 POR_REGIAO = True  # e na consulta por região (spec 047): o nome em inglês no local ("European Union")
 TERMOS = ("Consulta não oficial à busca pública do LinkedIn, sem login e sem a sua conta. Há uma pausa de alguns "
-          "segundos entre as consultas e, se o LinkedIn limitar, a busca segue sem ele e ele fica 6 horas em espera. "
+          "segundos entre as consultas e, se o LinkedIn limitar, a busca segue sem ele e ele fica em espera (LINKEDIN_ESPERA, padrão 6 horas). "
           "A candidatura é sempre no próprio LinkedIn.")
 
 BUSCA = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
@@ -53,7 +53,7 @@ MAX_PAGINAS = 1  # uma página por consulta: poucas consultas, menos risco de bl
 MAX_PAGINAS_AGRUPADA = 3  # a consulta com os cargos juntos (AGRUPAR) lê até 3 páginas
 AGRUPAR = True  # os cargos de um grupo numa consulta só, ligados por OR
 MAX_DESCRICOES = 20  # descrições lidas por busca; as outras ficam pendentes para a próxima
-ESPERA = timedelta(hours=6)  # depois de um bloqueio, o LinkedIn fica de fora das buscas
+VAR_ESPERA = "LINKEDIN_ESPERA"  # no .env ou no ambiente: minutos de espera depois de um bloqueio
 ARQ_ESPERA = Path(__file__).resolve().parent.parent / ".cache" / "linkedin-espera.json"
 ARQ_PEDIDOS = ARQ_ESPERA.with_name("linkedin-pedidos.json")  # o registro dos pedidos (spec 024)
 MAX_PEDIDOS = 300  # o registro guarda os últimos N pedidos
@@ -126,13 +126,19 @@ def _motivo(codigo: int) -> str:
 def _bloquear(motivo: str) -> _comum.FonteErro:
     """Para o LinkedIn nesta busca e grava a espera para as próximas (se não der para gravar, segue sem ela)."""
     _estado["bloqueado"] = True
-    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + ESPERA).isoformat(timespec="minutes")
+    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + duracao_espera()).isoformat(timespec="minutes")
     return _comum.FonteErro(f"{BLOQUEIO} ({motivo}); em espera até {_hora(ate)}")
 
 
+def duracao_espera() -> timedelta:
+    """Quanto o portal fica de fora depois de um bloqueio: LINKEDIN_ESPERA do .env (padrão 6 horas), lida a cada uso."""
+    return _comum.espera_do_env(VAR_ESPERA)["duracao"]
+
+
 def espera(agora: datetime | None = None) -> dict | None:
-    """{"ate", "motivo"} nas ESPERA horas depois do último bloqueio; None fora delas ou sem arquivo legível."""
-    return _comum.ler_espera(ARQ_ESPERA, ESPERA, agora)
+    """{"ate", "motivo"} na espera do LINKEDIN_ESPERA (padrão 6 horas) depois do último bloqueio; None fora dela ou sem
+    arquivo legível."""
+    return _comum.ler_espera(ARQ_ESPERA, duracao_espera(), agora)
 
 
 def parada() -> bool:

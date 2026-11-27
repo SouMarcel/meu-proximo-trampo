@@ -269,7 +269,7 @@ class TestPausaEBloqueio(SemRede):  # US4, SC-002
         self.assertTrue(aviso.startswith("JobGether: pausa de 4 s entre os pedidos (JOBGETHER_PAUSA)"), aviso)
         self.assertIsNone(jobgether.aviso_pausa(2))  # sem a variável, sem aviso
 
-    def test_bloqueio_poe_em_espera_de_24_horas(self):
+    def test_bloqueio_poe_em_espera_do_padrao(self):
         for codigo in (403, 429):
             with self.subTest(codigo=codigo):
                 _comum.esquecer()
@@ -286,7 +286,7 @@ class TestPausaEBloqueio(SemRede):  # US4, SC-002
                 e = jobgether.espera()
                 self.assertEqual(e["motivo"], f"código {codigo}")
                 horas = (datetime.fromisoformat(e["ate"]) - datetime.now()).total_seconds() / 3600
-                self.assertAlmostEqual(horas, 24, delta=0.1)
+                self.assertAlmostEqual(horas, 6, delta=0.1)
                 self.assertEqual([x["nome"] for x in vagas.fontes_em_espera(["indeed", "jobgether"])], ["jobgether"])
 
     def test_vagas_lidas_antes_do_bloqueio_seguem(self):

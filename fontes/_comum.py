@@ -149,7 +149,7 @@ def esquecer() -> None:
 
 # ---------------------------------------------------------------- portais que leem páginas (spec 026)
 # Pausa ajustável por <NOME>_PAUSA no .env, pedido de página com parada no bloqueio e espera depois dele. Cada fonte
-# chama estas funções com os próprios atributos (VAR_PAUSA, PAUSA, ARQ_ESPERA, ESPERA…).
+# chama estas funções com os próprios atributos (VAR_PAUSA, PAUSA, ARQ_ESPERA, VAR_ESPERA…).
 
 PAUSA_MAX = 60.0  # o teto de qualquer <NOME>_PAUSA
 BLOQUEIOS = (403, 429, 503)
@@ -180,6 +180,32 @@ def pausa_do_env(var: str, padrao: tuple[float, float], minimo: float, maximo: f
     elif n > maximo:
         n, ajuste = maximo, f"{var} acima do máximo de {num(maximo)} segundos; vale o máximo"
     return {"faixa": (n, n + faixa), "definida": True, "ajuste": ajuste}
+
+
+ESPERA_PADRAO = 360  # minutos que um portal fica de fora depois de um bloqueio
+ESPERA_MIN = 60
+ESPERA_MAX = 2880
+
+
+def espera_do_env(var: str, padrao: int = ESPERA_PADRAO, minimo: int = ESPERA_MIN, maximo: int = ESPERA_MAX) -> dict:
+    """{"duracao": timedelta, "definida": a variável está no .env ou no ambiente, "ajuste": motivo quando o valor
+    foi trocado pelo limite ou ignorado, ou ""}. `var` vale em minutos, entre `minimo` e `maximo`."""
+    bruto = segredos.ler(var)
+    if not bruto:
+        return {"duracao": timedelta(minutes=padrao), "definida": False, "ajuste": ""}
+    try:
+        n = float(bruto.replace(",", "."))
+        if not math.isfinite(n):
+            raise ValueError
+    except ValueError:
+        return {"duracao": timedelta(minutes=padrao), "definida": True,
+                "ajuste": f"o valor de {var} ({bruto[:20]}) não é um número e foi ignorado"}
+    n, ajuste = int(round(n)), ""
+    if n < minimo:
+        n, ajuste = minimo, f"{var} abaixo do mínimo de {minimo} minutos; vale o mínimo"
+    elif n > maximo:
+        n, ajuste = maximo, f"{var} acima do máximo de {maximo} minutos; vale o máximo"
+    return {"duracao": timedelta(minutes=n), "definida": True, "ajuste": ajuste}
 
 
 def aviso_pausa(portal: str, no_portal: str, var: str, p: dict, pedidos: int) -> str | None:

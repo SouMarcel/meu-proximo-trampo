@@ -17,7 +17,7 @@ Suíte: `.venv\Scripts\python.exe -m unittest discover -s tests`. Front: `npx -y
 
 ## Phase 1: Base (bloqueia as histórias)
 
-- [ ] T001 [P] [D minor] Espera no `.env` (FR-012, research R8): em `fontes/_comum.py`, `espera_do_env(var, padrao=360,
+- [X] T001 [P] [D minor] → copilot, GO na tentativa 1. Espera no `.env` (FR-012, research R8): em `fontes/_comum.py`, `espera_do_env(var, padrao=360,
   minimo=60, maximo=2880) -> {"duracao": timedelta, "definida": bool, "ajuste": str}` no molde de `pausa_do_env`
   (aceita vírgula; "60 a 2880" minutos; fora da faixa vira o limite com aviso; inválido usa o padrão com aviso). Em
   `fontes/linkedin.py`, `infojobs.py`, `vagascom.py`, `jobgether.py`, `fullstack.py` e `mygreenhouse.py`: `VAR_ESPERA =
@@ -27,10 +27,10 @@ Suíte: `.venv\Scripts\python.exe -m unittest discover -s tests`. Front: `npx -y
   (a) `executar(..., so_consultas: dict[str, list[dict]] | None = None)`: com o parâmetro, só os portais da chave
   rodam, e só essas consultas (lista vazia: nenhuma consulta, vai direto às descrições pendentes do portal);
   (b) `resultado["faltaram"] = {nome: [consultas]}`: para portal com `parada()`, a consulta em que ele parou e as
-  seguintes dele; (c) `TravaBusca.__exit__` acrescenta `{origem, inicio, fim, situacao}` a
+  seguintes dele, mais `resultado["rodaram"]` e `resultado["bloqueados"]`; (c) `TravaBusca.__exit__` acrescenta `{origem, inicio, fim, situacao}` a
   `.cache/buscas-historico.json` (últimas 20) e `ler_historico()`. Testes em `tests/test_agendamento.py` com um portal
   falso que bloqueia na 3ª consulta.
-- [ ] T003 [P] [US1] `filtros.py` (data-model "Agendamento"): `agendamento_padrao()` (`ligado` false, `horario`
+- [X] T003 [P] [US1] `filtros.py` (data-model "Agendamento"): `agendamento_padrao()` (`ligado` false, `horario`
   "08:00", `continuar` false), `_agendamento_cfg` tolerante, `validar_agendamento` ("HH:MM", 00:00 a 23:59; erro
   "horário inválido: use HH:MM"), `salvar_agendamento` (grava só a chave, como `salvar_limpeza`) e `efetivos()` com
   `agendamento`. Testes em `tests/test_agendamento.py`. (feita por mim: pequena)

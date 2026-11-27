@@ -203,7 +203,8 @@ class TestLeitura(SemRede):
 
 
 class TestBloqueio(SemRede):
-    def test_429_poe_em_espera_de_24_horas(self):  # SC-005
+    @mock.patch.object(_comum.segredos, "ler", return_value="")
+    def test_429_poe_em_espera_do_padrao(self, _ler):  # SC-005
         self.abridor([HOME_OFFICE, 429])
         c = grupos(CFG)
         self.assertEqual(numeros(infojobs.buscar(c["remoto"], 168, 20)[0]), [70001, 70002, 70003, 70004, 70006])
@@ -220,7 +221,7 @@ class TestBloqueio(SemRede):
             self.assertEqual(req.get_header("User-agent"), _comum.AGENTE)
         e = infojobs.espera()
         self.assertEqual(e["motivo"], "código 429")
-        self.assertAlmostEqual((datetime.fromisoformat(e["ate"]) - datetime.now()).total_seconds() / 3600, 24, delta=0.1)
+        self.assertAlmostEqual((datetime.fromisoformat(e["ate"]) - datetime.now()).total_seconds() / 3600, 6, delta=0.1)
         self.assertEqual([x["nome"] for x in vagas.fontes_em_espera(["indeed", "infojobs"])], ["infojobs"])
 
     def test_na_espera_nenhum_pedido(self):

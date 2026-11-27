@@ -16,7 +16,7 @@ faz pedido (as vagas são remotas).
 
 Pausa sorteada de 3 a 7 segundos entre os pedidos (FULLSTACK_PAUSA=N no .env muda para N a N+4, com N de 3 a 60) e, no
 primeiro bloqueio (401, 403, 429 ou 503), a FullStack fica de fora pelo resto da busca, sem nova tentativa, e das
-buscas das 24 horas seguintes (a espera, gravada em .cache/).
+buscas da espera seguinte (FULLSTACK_ESPERA, padrão 6 horas; gravada em .cache/).
 """
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ TERMOS = ("Consulta não oficial às vagas públicas da FullStack (vagas remotas
           "termos de uso da FullStack proíbem acesso automatizado e não há API oficial: a ferramenta faz os mesmos "
           "pedidos públicos que a página do portal, por decisão registrada na spec 040, e vem desligada; ligue aqui "
           "se concordar. Há uma pausa de alguns segundos entre as consultas e, se a FullStack limitar, a busca segue "
-          "sem ela e ela fica 24 horas em espera. A candidatura é no próprio portal da FullStack.")
+          "sem ela e ela fica em espera (FULLSTACK_ESPERA, padrão 6 horas). A candidatura é no próprio portal da FullStack.")
 
 API = "https://api-v1.fullstack.com/api/"
 SITE = "https://talent.fullstack.com/jobs/"
@@ -49,7 +49,7 @@ PAISES = {"brazil": "1ae07c37-d911-413f-9160-8cd2a5d93257"}  # nome do jobspy ->
 PAUSA = (3.0, 7.0)  # padrão, sem FULLSTACK_PAUSA
 VAR_PAUSA = "FULLSTACK_PAUSA"  # no .env ou no ambiente: segundos de pausa mínima (spec 040)
 PAUSA_MIN, PAUSA_FAIXA = 3.0, 4.0  # N de 3 a 60; a pausa é sorteada de N a N + 4
-ESPERA = timedelta(hours=24)  # depois de um bloqueio, a FullStack fica de fora das buscas
+VAR_ESPERA = "FULLSTACK_ESPERA"  # no .env ou no ambiente: minutos de espera depois de um bloqueio
 ARQ_ESPERA = Path(__file__).resolve().parent.parent / ".cache" / "fullstack-espera.json"
 BLOQUEIOS = (401, 403, 429, 503)
 TEMPO = 30
@@ -98,9 +98,15 @@ def _pausar() -> None:
     _comum.pausar(_estado, _estado["pausa"])
 
 
+def duracao_espera() -> timedelta:
+    """Quanto o portal fica de fora depois de um bloqueio: FULLSTACK_ESPERA do .env (padrão 6 horas), lida a cada uso."""
+    return _comum.espera_do_env(VAR_ESPERA)["duracao"]
+
+
 def espera(agora: datetime | None = None) -> dict | None:
-    """{"ate", "motivo"} nas ESPERA horas depois do último bloqueio; None fora delas ou sem arquivo legível."""
-    return _comum.ler_espera(ARQ_ESPERA, ESPERA, agora)
+    """{"ate", "motivo"} na espera do FULLSTACK_ESPERA (padrão 6 horas) depois do último bloqueio; None fora dela ou sem
+    arquivo legível."""
+    return _comum.ler_espera(ARQ_ESPERA, duracao_espera(), agora)
 
 
 def parada() -> bool:
@@ -111,7 +117,7 @@ def parada() -> bool:
 def _bloquear(motivo: str) -> _comum.FonteErro:
     """Para a FullStack nesta busca e grava a espera para as próximas (o aviso do bloqueio já diz até quando)."""
     _estado.update(bloqueado=True, avisou_espera=True)
-    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + ESPERA).isoformat(timespec="minutes")
+    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + duracao_espera()).isoformat(timespec="minutes")
     return _comum.FonteErro(f"{BLOQUEIO} ({motivo}); em espera até {_comum.ate_quando(ate)}")
 
 

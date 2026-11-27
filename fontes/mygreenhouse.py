@@ -16,7 +16,7 @@ A leitura roda só no botão Buscar da página, numa aba em segundo plano da jan
 - a descrição vem da API pública do quadro da empresa (fontes/ats.py), sem a sessão.
 
 Pausa sorteada de 3 a 7 segundos entre os pedidos (MYGREENHOUSE_PAUSA=N no .env muda para N a N+4, com N de 3 a 60).
-No primeiro bloqueio (403, 429 ou 503), o portal sai da busca, sem nova tentativa, e das buscas das 24 horas
+No primeiro bloqueio (403, 429 ou 503), o portal sai da busca, sem nova tentativa, e das buscas da espera seguinte (MYGREENHOUSE_ESPERA, padrão 6 horas)
 seguintes (a espera, gravada em .cache/). Captcha, login não feito, janela fechada ou página que a ferramenta não
 reconhece param o portal só nesta busca, com aviso.
 """
@@ -40,7 +40,7 @@ GLOBAL = True  # …e a consulta internacional global (sem local)
 COM_LOGIN = True
 TERMOS = ("Busca do MyGreenhouse Jobs com o seu login, na janela da ferramenta. Os termos do MyGreenhouse proíbem "
           "acesso automatizado, e a Greenhouse pode suspender a conta. Entra por decisão registrada na spec 041 e vem "
-          "desligado. Roda só pelo botão Buscar da página, com pausa entre os pedidos e 24 horas de espera se o portal "
+          "desligado. Roda só pelo botão Buscar da página, com pausa entre os pedidos e a espera do MYGREENHOUSE_ESPERA (padrão 6 horas) se o portal "
           "limitar.")
 AVISO_RISCO = ("Os termos do MyGreenhouse proíbem acesso automatizado (robôs e programas que leem o site). A Greenhouse "
                "pode limitar, suspender ou encerrar a sua conta do MyGreenhouse. A ferramenta só lê os resultados da "
@@ -65,7 +65,7 @@ JANELA_5_DIAS = 120  # horas: até esse valor, a busca vai com "postadas nos úl
 PAUSA = (3.0, 7.0)  # padrão, sem MYGREENHOUSE_PAUSA
 VAR_PAUSA = "MYGREENHOUSE_PAUSA"
 PAUSA_MIN, PAUSA_FAIXA = 3.0, 4.0  # N de 3 a 60; a pausa é sorteada de N a N + 4
-ESPERA = timedelta(hours=24)
+VAR_ESPERA = "MYGREENHOUSE_ESPERA"  # no .env ou no ambiente: minutos de espera depois de um bloqueio
 ARQ_ESPERA = Path(__file__).resolve().parent.parent / ".cache" / "mygreenhouse-espera.json"
 BLOQUEIOS = (403, 429, 503)
 PROPS = "browsing,page,moreResultsAvailable,jobPosts"  # nunca trackingData nem recentSearches
@@ -123,9 +123,15 @@ def _pausar() -> None:
     _comum.pausar(_estado, _estado["pausa"])
 
 
+def duracao_espera() -> timedelta:
+    """Quanto o portal fica de fora depois de um bloqueio: MYGREENHOUSE_ESPERA do .env (padrão 6 horas), lida a cada uso."""
+    return _comum.espera_do_env(VAR_ESPERA)["duracao"]
+
+
 def espera(agora: datetime | None = None) -> dict | None:
-    """{"ate", "motivo"} nas ESPERA horas depois do último bloqueio; None fora delas ou sem arquivo legível."""
-    return _comum.ler_espera(ARQ_ESPERA, ESPERA, agora)
+    """{"ate", "motivo"} na espera do MYGREENHOUSE_ESPERA (padrão 6 horas) depois do último bloqueio; None fora dela ou
+    sem arquivo legível."""
+    return _comum.ler_espera(ARQ_ESPERA, duracao_espera(), agora)
 
 
 def parada() -> bool:
@@ -135,7 +141,7 @@ def parada() -> bool:
 
 def _bloquear(motivo: str) -> _sessao.PortalComLoginErro:
     _estado.update(bloqueado=True, avisou_espera=True)
-    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + ESPERA).isoformat(timespec="minutes")
+    ate = (_comum.gravar_espera(ARQ_ESPERA, motivo) + duracao_espera()).isoformat(timespec="minutes")
     return _sessao.PortalComLoginErro(f"{BLOQUEIO} ({motivo}); em espera até {_comum.ate_quando(ate)}", "bloqueio")
 
 
