@@ -46,7 +46,7 @@ Suíte: `.venv\Scripts\python.exe -m unittest discover -s tests`. Front: `npx -y
   `proxima_agendada(cfg, agora, estado)`; leitura e gravação atômica de `.cache/agendamento.json` (`dia`, `historico`
   com os 30 últimos eventos). Testes em `tests/test_agendamento.py` (US1-1, US1-2, US1-3, US1-5, mudança de horário no
   mesmo dia).
-- [ ] T005 [D minor] [US1] `dash/buscador.py`: `Busca.iniciar(..., origem="pagina", retomada=None)`; com origem
+- [X] T005 [D minor] [US1] → copilot, GO na tentativa 1. `dash/buscador.py`: `Busca.iniciar(..., origem="pagina", retomada=None)`; com origem
   `agendada` ou `retomada`: sem confirmação de recente nem de espera, sem intervalo mínimo, portal em espera fica de fora
   com aviso nos erros, roda fora de `_sessao.na_pagina` (portais com login de fora, com aviso), `TravaBusca(origem)` e
   `gravar_resultado(origem=...)`. Novo `dash/agendador.py`: classe `Agendador` com thread daemon, `tick(agora)` a cada

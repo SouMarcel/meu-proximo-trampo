@@ -30,6 +30,7 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 import analise  # noqa: E402  (análise automática pela IA escolhida)
+import agendador  # noqa: E402  (relógio da busca agendada, spec 064)
 import banco  # noqa: E402
 import buscador  # noqa: E402  (busca de vagas pela página, em segundo plano)
 import sincronia  # noqa: E402  (contas conectadas: candidaturas lidas nos portais, spec 018)
@@ -1369,6 +1370,7 @@ def main() -> int:
     if not args.sem_navegador:
         webbrowser.open(endereco)
     try:
+        agendador.AGENDADOR.iniciar()
         servidor.serve_forever()
     except KeyboardInterrupt:
         pass

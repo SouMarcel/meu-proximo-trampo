@@ -16,6 +16,7 @@ se o login caiu, traz a janela da ferramenta para a frente e espera a pessoa ent
 """
 from __future__ import annotations
 
+import contextlib
 import sys
 import threading
 from datetime import datetime, timedelta
@@ -184,8 +185,10 @@ class Busca:
         }
 
     # ---------- iniciar e cancelar
-    def iniciar(self, sem_nota: bool = False, confirmar_recente: bool = False, confirmar_espera: bool = False) -> dict:
+    def iniciar(self, sem_nota: bool = False, confirmar_recente: bool = False, confirmar_espera: bool = False,
+                origem: str = "pagina") -> dict:
         v = _vagas()
+        da_pagina = origem == "pagina"  # a agendada dispensa intervalo, aviso de busca recente e confirmação de espera
         with self._inicio:
             if self.rodando():
                 raise BuscaRecusada("Já há uma busca rodando pela página.")
@@ -195,7 +198,7 @@ class Busca:
             quem = v.ocupada()
             if quem is not None:
                 raise BuscaRecusada(v.mensagem_ocupada(quem))
-            if pl["proxima_em"]:
+            if da_pagina and pl["proxima_em"]:
                 raise BuscaRecusada(f"Para os portais não bloquearem a busca, espere um pouco: dá para buscar de novo "
                                     f"a partir das {_hora(pl['proxima_em'])}.")
             if pl["espera"]:
@@ -204,20 +207,20 @@ class Busca:
                                   for e in pl["espera"])
                 if pl["so_espera"]:
                     raise BuscaRecusada(f"{aviso} e é o único portal ligado: não há o que buscar agora.")
-                if not confirmar_espera:
+                if da_pagina and not confirmar_espera:
                     raise BuscaRecusada(f"{aviso} e vai ficar de fora. Confirme para buscar só com os outros portais.",
                                         precisa_confirmar=True)
-            if pl["recente"] and not confirmar_recente:
+            if da_pagina and pl["recente"] and not confirmar_recente:
                 raise BuscaRecusada(f"A última busca terminou às {_hora(pl['ultima']['fim'])}: os portais devem ter "
                                     "pouca vaga nova. Confirme para buscar mesmo assim.", precisa_confirmar=True)
             com_nota = pl["ia"]["ligada"] and pl["perfil_ok"] and not sem_nota
             self._cancelar.clear()
             with self._trava:
-                self._e = {"situacao": "consultando", "origem": "pagina", "inicio": _agora().isoformat(timespec="seconds"),
+                self._e = {"situacao": "consultando", "origem": origem, "inicio": _agora().isoformat(timespec="seconds"),
                            "com_nota": com_nota, "feitas": 0, "total": pl["consultas"], "encontradas": 0,
                            "consulta": None, "descricoes": None, "erros": [], "resumo": None, "mensagem": "",
                            "login": None}
-            self._thread = threading.Thread(target=self._rodar, args=(com_nota,), daemon=True, name="busca-pagina")
+            self._thread = threading.Thread(target=self._rodar, args=(com_nota, origem), daemon=True, name="busca-pagina")
             self._thread.start()
         return self.estado()
 
@@ -260,15 +263,18 @@ class Busca:
     def _fim(self, situacao: str, **campos):
         self._set(situacao=situacao, fim=_agora().isoformat(timespec="seconds"), **campos)
 
-    def _rodar(self, com_nota: bool):
+    def _rodar(self, com_nota: bool, origem: str = "pagina"):
         v, fm = _vagas(), _filtros()
         try:
             cfg = fm.ler_config()
             f = fm.efetivos(cfg)
             nomes = [n for n in v.fontes_da_busca(cfg, f) if n in v.FONTES]
-            with v.TravaBusca("pagina") as trava:
+            with v.TravaBusca(origem) as trava:
                 try:
-                    with _sessao().na_pagina(esperar_login=self._esperar_login):  # portais com login (spec 041)
+                    # portais com login (spec 041): só na busca da página; nas outras, o executar os deixa de fora
+                    sessao = (_sessao().na_pagina(esperar_login=self._esperar_login) if origem == "pagina"
+                              else contextlib.nullcontext())
+                    with sessao:
                         resultado = v.executar(cfg, f, nomes, cfg.get("resultados_por_termo", 40), pausa=PAUSA,
                                                progresso=self._progresso, cancelado=self._cancelar.is_set)
                 except ImportError:
@@ -285,7 +291,7 @@ class Busca:
                                                                 "Espere antes de tentar de novo.")
             self._set(situacao="gravando", erros=erros)
             v.salvar_candidatas(resultado, v.CACHE / "pagina")
-            r = v.gravar_resultado(resultado, sem_avaliacao=True, origem="pagina",
+            r = v.gravar_resultado(resultado, sem_avaliacao=True, origem=origem,
                                    status_sem_nota="pendente" if com_nota else "sem_analise")
             self._fim("concluida", erros=erros, resumo={
                 "brutas": resultado["brutas"], "novas": r["para_decidir"], "fora_criterios": len(r["fora_novas"]),

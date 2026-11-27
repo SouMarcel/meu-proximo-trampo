@@ -9,11 +9,14 @@ from pathlib import Path
 from unittest import mock
 
 RAIZ = Path(__file__).resolve().parent.parent
-sys.path[:0] = [str(RAIZ), str(RAIZ / "dash")]
+sys.path[:0] = [str(RAIZ), str(RAIZ / "dash"), str(RAIZ / "tests")]
 import filtros  # noqa: E402
 import banco  # noqa: E402
 import vagas  # noqa: E402
 import agendamento  # noqa: E402
+import agendador  # noqa: E402
+import buscador  # noqa: E402
+from test_busca import Base as BaseBusca  # noqa: E402
 
 
 class TestConfigAgendamento(unittest.TestCase):
@@ -328,6 +331,84 @@ class TestDecidirAgendada(unittest.TestCase):
             agendamento.manual_recente([], agora)
             agendamento.proxima_agendada(ag, agora, {})
             m_dt.now.assert_not_called()
+
+
+class TestAgendador(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        raiz = Path(self.tmp.name)
+        (raiz / "config.json").write_text(json.dumps(
+            {"termos": ["analista"], "agendamento": {"ligado": True, "horario": "08:00"}}), encoding="utf-8")
+        self.iniciar = mock.Mock()
+        self.patches = [
+            mock.patch.object(filtros, "CONFIG", raiz / "config.json"),
+            mock.patch.object(vagas, "CACHE", raiz / ".cache"),
+            mock.patch.object(agendamento, "CACHE", raiz / ".cache"),
+            mock.patch.object(agendamento, "ARQ_ESTADO", raiz / ".cache" / "agendamento.json"),
+            mock.patch.object(buscador.BUSCA, "iniciar", self.iniciar),
+        ]
+        for p in self.patches:
+            p.start()
+            self.addCleanup(p.stop)
+        self.addCleanup(self.tmp.cleanup)
+        self.ag = agendador.Agendador()
+        self.livre = mock.patch.object(agendador.Agendador, "ocupado", return_value=False)
+        self.livre.start()
+        self.addCleanup(self.livre.stop)
+
+    def situacoes(self):
+        return [e["situacao"] for e in agendamento.ler_estado()["historico"]]
+
+    def test_inicia_uma_vez_com_origem_agendada(self):
+        self.ag.tick(datetime(2026, 11, 28, 8, 0))
+        self.iniciar.assert_called_once_with(origem="agendada")
+        self.assertEqual(self.situacoes(), ["rodou"])
+        self.ag.tick(datetime(2026, 11, 28, 8, 1))
+        self.iniciar.assert_called_once()
+
+    def test_ocupado_espera_e_roda_depois_da_tolerancia(self):
+        with mock.patch.object(agendador.Agendador, "ocupado", return_value=True):
+            self.ag.tick(datetime(2026, 11, 28, 8, 0))
+            self.ag.tick(datetime(2026, 11, 28, 8, 20))
+        self.iniciar.assert_not_called()
+        self.assertEqual(self.situacoes(), [])
+        self.ag.tick(datetime(2026, 11, 28, 8, 40))
+        self.iniciar.assert_called_once_with(origem="agendada")
+        self.assertEqual(self.situacoes(), ["rodou"])
+
+    def test_janela_nao_vista_e_perdida(self):
+        self.ag.tick(datetime(2026, 11, 28, 8, 20))
+        self.iniciar.assert_not_called()
+        self.assertEqual(self.situacoes(), ["perdida"])
+
+    def test_manual_recente_pula(self):
+        hist = [{"origem": "pagina", "situacao": "concluida", "inicio": "2026-11-28T07:30:00"}]
+        with mock.patch.object(vagas, "ler_historico", return_value=hist):
+            self.ag.tick(datetime(2026, 11, 28, 8, 0))
+        self.iniciar.assert_not_called()
+        self.assertEqual(self.situacoes(), ["pulada"])
+
+    def test_recusa_vira_falha(self):
+        self.iniciar.side_effect = buscador.BuscaRecusada("sem portais")
+        self.ag.tick(datetime(2026, 11, 28, 8, 0))
+        e = agendamento.ler_estado()["historico"][0]
+        self.assertEqual((e["situacao"], e["motivo"]), ("falha", "sem portais"))
+        self.ag.tick(datetime(2026, 11, 28, 8, 1))
+        self.iniciar.assert_called_once()
+
+
+class TestBuscaAgendada(BaseBusca):
+    def test_ignora_intervalo_e_grava_a_origem(self):
+        fim = (datetime.now() - timedelta(minutes=10)).isoformat(timespec="seconds")
+        vagas._gravar_registro({"origem": "pagina", "situacao": "concluida", "fim": fim})
+        with self.assertRaises(buscador.BuscaRecusada):
+            buscador.Busca().iniciar()  # na página, o intervalo mínimo recusa
+        b = buscador.Busca()
+        b.iniciar(origem="agendada")
+        b._thread.join(20)
+        self.assertEqual(b.estado()["situacao"], "concluida", b.estado())
+        self.assertEqual(vagas.ultima()["origem"], "agendada")
+        self.assertEqual(banco.ultima_busca()["origem"], "agendada")
 
 
 if __name__ == "__main__":
