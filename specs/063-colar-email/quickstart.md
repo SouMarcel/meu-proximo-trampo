@@ -20,7 +20,7 @@ npm run build
 
 ## Teste na branch pessoal
 
-1. Mesclar a `063-colar-email` na `marcel` (e o front pela `front/atualizacao` ou build local), reiniciar o dashboard
+1. Mesclar a `063-colar-email` na branch pessoal (e o front pela `front/atualizacao` ou build local), reiniciar o dashboard
    (`python iniciar.py --sem-navegador`).
 2. Abrir Atualizar candidaturas: a área Colar e-mail aparece mesmo sem portal conectado, com o aviso de colar só o corpo.
 3. Colar uma negativa real de uma candidatura de Aplicações → Ler → a proposta mostra "negativa", o trecho e
