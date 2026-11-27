@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-27
 
-**Status**: Draft
+**Status**: Concluída (2026-11-27)
 
 **Input**: User description: "Conflitos do Meu perfil mais claros e seguros. (1) Na aba Conflitos, depois que a pessoa
 escolhe e clica em Continuar, os conflitos já resolvidos ficam recolhidos num resumo "N resolvidos (mudar)" em vez de

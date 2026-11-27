@@ -89,9 +89,9 @@ por mim no front (patch).
 
 - [X] T008 [P] `dash/API.md`: `rascunho.gerado_em`, `opcoes[].nota`, `previa` com `perfil_versao` e `aviso`, `PUT
   /api/perfil` com `perfil_versao` e o 409, herança de escolhas no `POST /api/perfil/rascunho` (contracts/api.md).
-- [ ] T009 Suíte inteira, `graphify update .`, procurar dados pessoais nos arquivos alterados; commit na branch.
-- [ ] T010 Teste na branch pessoal (merge na `marcel`, front pelo build local da `frontend-react`), quickstart US1 a US3;
-  com o OK: `master`, push, PR do front pela Action, `git merge master` na `marcel`, apagar worktree e branch.
+- [X] T009 Suíte inteira, `graphify update .`, procurar dados pessoais nos arquivos alterados; commit na branch.
+- [X] T010 Teste na branch pessoal (merge na branch pessoal, front pelo build local da `frontend-react`), quickstart US1 a US3;
+  com o OK: `master`, push, PR do front pela Action, `git merge master` na branch pessoal, apagar worktree e branch.
 
 ## Dependencies & Execution Order
 
