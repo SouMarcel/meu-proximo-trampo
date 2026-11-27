@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Colar e-mail (negativas e alertas de vagas)
+# Specification Quality Checklist: Colar e-mail em Atualizar candidaturas
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-11-26
@@ -31,6 +31,7 @@
 
 ## Notes
 
-- Pontos para o `/speckit-clarify`: o convite para entrevista (US3) entra agora ou fica para depois; se a IA entra
-  quando o e-mail não é reconhecido sem ela (FR-009); a amostra da SC-001 (20 negativas reais da pessoa).
-- `dash/API.md` aparece no FR-012 por ser a documentação do contrato com o front, que é parte do processo do projeto.
+- Revista em 26/11 com o pedido da pessoa: a área fica em Atualizar candidaturas e cobre qualquer mudança de status;
+  os alertas de vagas foram para a lista de desejos.
+- Pontos para o `/speckit-clarify`: se a IA entra quando o e-mail não é reconhecido sem ela (FR-009); a amostra da
+  SC-001 (20 e-mails reais da pessoa); se a confirmação em lote (FR-005) precisa de uma revisão item a item.
