@@ -30,13 +30,17 @@ que a ferramenta continue sozinha depois da espera, num ritmo (a cada 6 horas) q
 - Q: Se o dashboard só liga depois do horário, no mesmo dia, a busca agendada daquele dia roda? → A: Não; perdeu o
   horário, o dia fica sem busca agendada, e a próxima é a do dia seguinte.
 - Q: Com espera de 24 h, InfoJobs, Vagas.com, JobGether e FullStack nunca seriam retomados no mesmo dia; o que fazer?
-  → A: A espera desses quatro portais depois de um bloqueio passa de 24 para 4 horas (o LinkedIn segue com 6 h; o
-  MyGreenhouse, portal com login fora do agendamento, segue com 24 h), e eles entram na retomada como os outros.
+  → A: (revista na pergunta seguinte sobre o `.env`) A espera de cada portal passa a ser ajustável, com padrão de 6
+  horas para todos, e esses portais entram na retomada como os outros.
 - Q: Como contar o limite de 2 retomadas quando a espera passa da meia-noite? → A: Não há mais limite de 2: a retomada
   roda a cada 6 horas enquanto aquele portal não terminar com sucesso (todas as páginas e descrições lidas, sem
   bloqueio) e para quando terminar ou quando chegar a próxima busca agendada, que assume o lugar dela.
 - Q: Se o dashboard estava desligado na hora da retomada, ela roda ao ligar? → A: Não, igual à busca agendada: a
   tentativa perdida não roda; a próxima é 6 horas depois da hora perdida (ou a próxima busca agendada).
+- Q: Onde fica a espera de cada portal depois de um bloqueio? → A: No `.env`, uma variável por portal
+  (`<PORTAL>_ESPERA`, em minutos, de 60 a 2880), com padrão de 360 minutos (6 h) para todos os portais que têm espera
+  (LinkedIn, InfoJobs, Vagas.com, JobGether, FullStack e MyGreenhouse). A retomada segue a cada 6 horas fixas; se a
+  espera do portal ainda não acabou nessa hora, a tentativa é pulada e a próxima fica para 6 horas depois.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -124,8 +128,9 @@ espera e, depois dela, o resultado.
   retomada, como a busca agendada.
 - Portais com login (MyGreenhouse, spec 041): ficam de fora da busca agendada e da retomada, como na busca pelo
   terminal (rodam só no botão Buscar), com aviso.
-- InfoJobs, Vagas.com, JobGether e FullStack: a espera depois de um bloqueio passa a ser de 4 horas (FR-012), e a
-  retomada vale para eles como para o LinkedIn.
+- Espera de cada portal ajustável no `.env` (FR-012): se a pessoa puser uma espera maior que 6 horas, a retomada que
+  cair antes do fim da espera é pulada e a próxima fica para 6 horas depois; valor fora da faixa (60 a 2880 minutos)
+  vira o limite mais próximo, como nas pausas.
 - Busca sem IA ligada: a busca agendada grava as vagas sem nota, como a manual.
 - A pessoa muda o horário depois que a busca do dia já rodou: a nova hora vale a partir do dia seguinte.
 - Fuso e horário de verão: o horário é o do computador.
@@ -150,7 +155,8 @@ espera e, depois dela, o resultado.
   a ferramenta MUST guardar o que faltou daquele portal (páginas de resultado e descrições pendentes) e retomá-lo
   quando a espera acabar, com as pausas e as regras do portal (constituição VI).
 - **FR-007**: Se o portal bloquear de novo na retomada, a ferramenta MUST marcar outra retomada para 6 horas depois, e
-  repetir enquanto o portal não terminar com sucesso (todas as páginas e descrições que faltavam lidas, sem bloqueio).
+  repetir enquanto o portal não terminar com sucesso (se a espera do portal, ajustável no FR-012, ainda não tiver
+  acabado na hora da tentativa, ela é pulada e a próxima fica para 6 horas depois) (todas as páginas e descrições que faltavam lidas, sem bloqueio).
   As retomadas MUST parar quando o portal terminar com sucesso ou quando a próxima busca agendada rodar (ela assume o
   lugar delas); nunca mais de uma retomada do mesmo portal ao mesmo tempo. Uma retomada perdida porque o dashboard
   estava desligado MUST NOT rodar ao ligar (tolerância de 15 minutos, como no FR-003); a próxima tentativa é 6 horas
@@ -160,11 +166,13 @@ espera e, depois dela, o resultado.
   resultado da última busca agendada e das retomadas.
 - **FR-010**: O agendamento MUST ficar no `config.json` (sem dados pessoais além do horário) e valer também para quem
   usa a ferramenta pelo terminal, que pode ver e mudar o agendamento por comando.
-- **FR-011**: A documentação (README, AGENTS.md, `dash/API.md`, `.env.exemplo` se mudar) MUST descrever o
-  agendamento, a retomada a cada 6 horas até terminar com sucesso e a espera nova de 4 horas.
-- **FR-012**: A espera depois de um bloqueio no InfoJobs, no Vagas.com, no JobGether e na FullStack MUST passar de 24
-  para 4 horas (a busca manual, a agendada e a retomada respeitam a mesma espera). O LinkedIn segue com 6 horas e o
-  MyGreenhouse com 24 horas.
+- **FR-011**: A documentação (README, AGENTS.md, `dash/API.md` e `.env.exemplo`) MUST descrever o agendamento, a
+  retomada a cada 6 horas até terminar com sucesso e as variáveis `<PORTAL>_ESPERA`.
+- **FR-012**: A espera depois de um bloqueio MUST ser ajustável no `.env`, uma variável por portal que tem espera:
+  `LINKEDIN_ESPERA`, `INFOJOBS_ESPERA`, `VAGASCOM_ESPERA`, `JOBGETHER_ESPERA`, `FULLSTACK_ESPERA` e
+  `MYGREENHOUSE_ESPERA`, em minutos, de 60 a 2880, com padrão de 360 (6 horas) para todos (antes: 6 h no LinkedIn e
+  24 h nos outros). Valor fora da faixa vira o limite mais próximo; valor inválido ou ausente usa o padrão. A busca
+  manual, a agendada e a retomada respeitam a mesma espera.
 
 ### Key Entities
 
