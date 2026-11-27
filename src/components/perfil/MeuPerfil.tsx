@@ -497,8 +497,8 @@ export default function MeuPerfil({
   } else if (tela === "conflitos") {
     const cf = e.rascunho?.conflitos || []
     const resolvidos = resolvidosAoAbrir || new Set<number>()
+    // resolvidos antes de abrir a tela não aparecem mais (spec 065); corrigir, só no texto da revisão
     const abertos = cf.map((c, i) => ({ c, i })).filter(({ i }) => !resolvidos.has(i))
-    const fechados = cf.map((c, i) => ({ c, i })).filter(({ i }) => resolvidos.has(i))
     const campoConflito = ({ c, i }: { c: (typeof cf)[number]; i: number }) => (
       <fieldset key={i} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
         <legend className="px-1 font-semibold text-slate-800 dark:text-slate-200">
@@ -537,12 +537,6 @@ export default function MeuPerfil({
               </p>
             )}
             {abertos.map(campoConflito)}
-            {!!fechados.length && (
-              <details className="space-y-2">
-                <summary className="cursor-pointer text-sm">{fechados.length} resolvidos (mudar)</summary>
-                <div className="space-y-2 mt-2">{fechados.map(campoConflito)}</div>
-              </details>
-            )}
           </>
         )}
         {conflitosRelatos > 0 && (
